@@ -255,6 +255,12 @@ function loadSongInfo() {
                         <button class="btn-primary" onclick="downloadSingle('${song.id}')">📥 下载单曲</button>
                     </div>
                 </div>
+                <div style="margin-top:10px;">
+                    <details style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; background: #f8fafc;">
+                        <summary style="font-size:12px; color:#007bff; cursor:pointer; font-weight:600; outline:none;">📄 查看 Raw JSON 响应数据</summary>
+                        <pre style="background:#1e293b; color:#38bdf8; padding:10px; border-radius:6px; font-size:11px; max-height:200px; overflow-y:auto; margin-top:6px; font-family:Consolas, monospace;">${JSON.stringify(song, null, 2)}</pre>
+                    </details>
+                </div>
                 <div style="margin-top:10px; font-size:12px; color:#444; max-height:150px; overflow-y:auto; background:#f8f9fa; padding:8px; border-radius:4px;">
                     <pre style="margin:0; font-family:inherit;">${song.lyric || '暂无歌词'}</pre>
                 </div>

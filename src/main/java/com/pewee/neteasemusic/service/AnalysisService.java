@@ -69,18 +69,41 @@ public class AnalysisService {
                 dto.setPic(alObj.getString("picUrl"));
                 dto.setAl_name(alObj.getString("name"));
             }
+            // Fallback: Check 'pc' object for album name if al_name is empty
+            if ((dto.getAl_name() == null || dto.getAl_name().isEmpty()) && songInfo.containsKey("pc")) {
+                JSONObject pcObj = songInfo.getJSONObject("pc");
+                if (pcObj != null && pcObj.containsKey("alb")) {
+                    dto.setAl_name(pcObj.getString("alb"));
+                }
+            }
 
             JSONArray arArray = songInfo.getJSONArray("ar");
             if (arArray == null) {
                 arArray = songInfo.getJSONArray("artists");
             }
             if (arArray != null) {
-                dto.setAr_name(
-                    arArray.stream()
-                        .map(ar -> ((JSONObject) ar).getString("name"))
+                String parsedAr = arArray.stream()
+                        .map(ar -> {
+                            JSONObject arObj = (JSONObject) ar;
+                            String name = arObj.getString("name");
+                            if ((name == null || name.isEmpty()) && arObj.containsKey("alias")) {
+                                JSONArray alias = arObj.getJSONArray("alias");
+                                if (alias != null && !alias.isEmpty()) {
+                                    name = alias.getString(0);
+                                }
+                            }
+                            return name;
+                        })
                         .filter(n -> n != null && !n.isEmpty())
-                        .collect(Collectors.joining("/"))
-                );
+                        .collect(Collectors.joining("/"));
+                dto.setAr_name(parsedAr);
+            }
+            // Fallback: Check 'pc' object for artist names if ar_name is still empty
+            if ((dto.getAr_name() == null || dto.getAr_name().isEmpty()) && songInfo.containsKey("pc")) {
+                JSONObject pcObj = songInfo.getJSONObject("pc");
+                if (pcObj != null && pcObj.containsKey("ar")) {
+                    dto.setAr_name(pcObj.getString("ar"));
+                }
             }
             dto.setLyric(lyricJson.getJSONObject("lrc") != null ? lyricJson.getJSONObject("lrc").getString("lyric") : "");
             dto.setTlyric(lyricJson.containsKey("tlyric") ? lyricJson.getJSONObject("tlyric").getString("lyric") : null);
