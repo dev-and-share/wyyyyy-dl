@@ -57,13 +57,27 @@ public class AnalysisService {
 
             SingleMusicAnalysisRespDTO dto = new SingleMusicAnalysisRespDTO();
             dto.setName(songInfo.getString("name"));
-            dto.setPic(songInfo.getJSONObject("al").getString("picUrl"));
-            dto.setAl_name(songInfo.getJSONObject("al").getString("name"));
-            dto.setAr_name(
-                songInfo.getJSONArray("ar").stream()
-                    .map(ar -> ((JSONObject) ar).getString("name"))
-                    .collect(Collectors.joining("/"))
-            );
+            JSONObject alObj = songInfo.getJSONObject("al");
+            if (alObj == null) {
+                alObj = songInfo.getJSONObject("album");
+            }
+            if (alObj != null) {
+                dto.setPic(alObj.getString("picUrl"));
+                dto.setAl_name(alObj.getString("name"));
+            }
+
+            JSONArray arArray = songInfo.getJSONArray("ar");
+            if (arArray == null) {
+                arArray = songInfo.getJSONArray("artists");
+            }
+            if (arArray != null) {
+                dto.setAr_name(
+                    arArray.stream()
+                        .map(ar -> ((JSONObject) ar).getString("name"))
+                        .filter(n -> n != null && !n.isEmpty())
+                        .collect(Collectors.joining("/"))
+                );
+            }
             dto.setLyric(lyricJson.getJSONObject("lrc") != null ? lyricJson.getJSONObject("lrc").getString("lyric") : "");
             dto.setTlyric(lyricJson.containsKey("tlyric") ? lyricJson.getJSONObject("tlyric").getString("lyric") : null);
             dto.setUrl(songUrlData.getString("url").replace("http://", "https://"));

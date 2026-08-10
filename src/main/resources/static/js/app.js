@@ -164,9 +164,10 @@ function renderPage(page) {
     pageTracks.forEach(track => {
         const li = document.createElement("li");
         const arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
+        const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
         li.innerHTML = `
             <div>
-                <strong>${track.name}</strong> - <span style="color:#666;">${arNames}</span>
+                <strong>${track.name}</strong>${artistText}
             </div>
             <div>
                 <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🎵 查看歌曲</button>
@@ -208,8 +209,9 @@ function loadAlbumInfo() {
             (album.songs || []).forEach(song => {
                 const li = document.createElement("li");
                 const arNames = song.artists || (song.ar ? song.ar.map(a => a.name).join('/') : '');
+                const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
                 li.innerHTML = `
-                    <div><strong>${song.name}</strong> - <span style="color:#666;">${arNames}</span></div>
+                    <div><strong>${song.name}</strong>${artistText}</div>
                     <div>
                         <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 查看歌曲</button>
                         <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${song.id}')">📥 下载</button>
@@ -233,13 +235,20 @@ function loadSongInfo() {
         .then(resp => {
             const song = resp.data.data;
             const infoDiv = document.getElementById("song-info");
+            const arText = song.ar_name || '群星 / 未知';
+            const alText = song.al_name || '暂无专辑';
+            const sizeText = song.size || '未知大小';
+            const levelText = song.level || level;
+            const imgSrc = song.pic || song.picUrl || '';
+            const imgHtml = imgSrc ? `<img src="${imgSrc}" style="width:100px; height:100px; border-radius:8px; object-fit:cover;">` : '';
+
             infoDiv.innerHTML = `
                 <div style="display:flex; gap:15px; margin-top:10px;">
-                    <img src="${song.pic}" style="width:100px; height:100px; border-radius:8px; object-fit:cover;">
+                    ${imgHtml}
                     <div>
                         <h4 style="margin:0 0 6px 0;">${song.name}</h4>
-                        <div style="font-size:13px; color:#555;">歌手：${song.ar_name} | 专辑：${song.al_name}</div>
-                        <div style="font-size:12px; color:#777; margin-bottom:8px;">大小：${song.size} | 音质：${song.level}</div>
+                        <div style="font-size:13px; color:#555;">歌手：${arText} | 专辑：${alText}</div>
+                        <div style="font-size:12px; color:#777; margin-bottom:8px;">大小：${sizeText} | 音质：${levelText}</div>
                         <button class="btn-primary" onclick="downloadSingle('${song.id}')">📥 下载单曲</button>
                     </div>
                 </div>
@@ -273,8 +282,10 @@ function searchSongs() {
                 (data || []).forEach(song => {
                     const li = document.createElement("li");
                     const arNames = song.artists || (song.ar ? song.ar.map(a => a.name).join('/') : '');
+                    const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
+                    const albumText = song.al && song.al.name ? ` (专辑: ${song.al.name})` : '';
                     li.innerHTML = `
-                        <div><strong>${song.name}</strong> - <span style="color:#666;">${arNames}</span> (专辑: ${song.al ? song.al.name : '未知'})</div>
+                        <div><strong>${song.name}</strong>${artistText}${albumText}</div>
                         <div>
                             <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 查看歌曲</button>
                             <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${song.id}')">📥 下载</button>
