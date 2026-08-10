@@ -38,6 +38,10 @@ public class QrLoginController {
         return generateQr(model); 
     }
 	
+	@GetMapping("/favicon.ico")
+	public String favicon() {
+		return "forward:/favicon.png";
+	}
 	
 	@GetMapping("/home")
     public String home(Model model) {
