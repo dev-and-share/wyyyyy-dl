@@ -26,19 +26,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const tabLinks = document.querySelectorAll(".tab-btn");
     tabLinks.forEach(button => {
         button.addEventListener("click", () => {
-            tabLinks.forEach(btn => btn.classList.remove("active"));
-            button.classList.add("active");
-
             const targetTabId = button.getAttribute("data-tab");
-            document.querySelectorAll(".tab-content").forEach(content => {
-                content.style.display = (content.id === targetTabId) ? "block" : "none";
-            });
+            const tabName = targetTabId.replace('tab-', '');
+            switchTab(tabName);
         });
     });
 
     // 自动触发一次后台任务轮询（如果有未完成任务）
     fetchDownloadTasks();
 });
+
+function switchTab(tabName) {
+    const targetTabId = 'tab-' + tabName;
+    const tabLinks = document.querySelectorAll(".tab-btn");
+    tabLinks.forEach(button => {
+        if (button.getAttribute("data-tab") === targetTabId) {
+            button.classList.add("active");
+        } else {
+            button.classList.remove("active");
+        }
+    });
+
+    document.querySelectorAll(".tab-content").forEach(content => {
+        content.style.display = (content.id === targetTabId) ? "block" : "none";
+    });
+}
 
 /* ==========================================================================
    📂 手风琴 (Accordion) 折叠逻辑
@@ -85,6 +97,9 @@ function jumpToPlaylistDetail(playlistId) {
 }
 
 function jumpToSongDetail(songId) {
+    // 切换至歌单/单曲主 Tab
+    switchTab('playlist');
+
     const input = document.getElementById("songId");
     if (input) input.value = songId;
     

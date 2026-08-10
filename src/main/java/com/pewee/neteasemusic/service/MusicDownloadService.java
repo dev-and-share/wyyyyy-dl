@@ -268,6 +268,14 @@ public class MusicDownloadService implements InitializingBean {
 		if (!repeat && hs.contains(id)) {
 			log.info("歌曲id: {} 已存在,跳过!", id);
 			taskStatus.setStatus("SKIP");
+			if ("未知歌曲".equals(taskStatus.getName()) || taskStatus.getName() == null) {
+				try {
+					SingleMusicAnalysisRespDTO analysis = analysisService.analyzeSingleSong(id, "standard");
+					if (analysis != null && analysis.getName() != null) {
+						taskStatus.setName(analysis.getName());
+					}
+				} catch (Exception ignored) {}
+			}
 			return;
 		}
 
