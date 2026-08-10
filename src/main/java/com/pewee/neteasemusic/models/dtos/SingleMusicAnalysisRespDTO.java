@@ -9,6 +9,8 @@ public class SingleMusicAnalysisRespDTO {
 	
 	private String al_name;
 	
+	private Long al_id;
+	
 	private String ar_name;
 	
 	private String lyric;
@@ -25,4 +27,5 @@ public class SingleMusicAnalysisRespDTO {
 	
 	private String url;
 	
+	private Object rawData;
 }

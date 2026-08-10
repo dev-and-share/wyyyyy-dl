@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -57,13 +58,59 @@ public class AnalysisService {
 
             SingleMusicAnalysisRespDTO dto = new SingleMusicAnalysisRespDTO();
             dto.setName(songInfo.getString("name"));
-            dto.setPic(songInfo.getJSONObject("al").getString("picUrl"));
-            dto.setAl_name(songInfo.getJSONObject("al").getString("name"));
-            dto.setAr_name(
-                songInfo.getJSONArray("ar").stream()
-                    .map(ar -> ((JSONObject) ar).getString("name"))
-                    .collect(Collectors.joining("/"))
-            );
+            dto.setRawData(songInfo); // Attach full NetEase raw song object
+
+            // Extract Album (Check al -> album -> pc.alb)
+            JSONObject alObj = songInfo.getJSONObject("al");
+            if (alObj == null) {
+                alObj = songInfo.getJSONObject("album");
+            }
+            if (alObj != null) {
+                dto.setPic(alObj.getString("picUrl"));
+                dto.setAl_name(alObj.getString("name"));
+                dto.setAl_id(alObj.getLong("id"));
+            }
+            if ((dto.getAl_name() == null || dto.getAl_name().isEmpty()) && songInfo.containsKey("pc")) {
+                JSONObject pcObj = songInfo.getJSONObject("pc");
+                if (pcObj != null && StringUtils.isNotBlank(pcObj.getString("alb"))) {
+                    dto.setAl_name(pcObj.getString("alb"));
+                }
+            }
+
+            // Extract Artists (Check pc.ar first as it contains full chorus names, then ar/artists -> alias)
+            String fullArtistName = null;
+            if (songInfo.containsKey("pc")) {
+                JSONObject pcObj = songInfo.getJSONObject("pc");
+                if (pcObj != null && StringUtils.isNotBlank(pcObj.getString("ar"))) {
+                    fullArtistName = pcObj.getString("ar");
+                }
+            }
+
+            if (StringUtils.isNotBlank(fullArtistName)) {
+                dto.setAr_name(fullArtistName);
+            } else {
+                JSONArray arArray = songInfo.getJSONArray("ar");
+                if (arArray == null) {
+                    arArray = songInfo.getJSONArray("artists");
+                }
+                if (arArray != null) {
+                    String parsedAr = arArray.stream()
+                            .map(ar -> {
+                                JSONObject arObj = (JSONObject) ar;
+                                String name = arObj.getString("name");
+                                if (StringUtils.isBlank(name) && arObj.containsKey("alias")) {
+                                    JSONArray alias = arObj.getJSONArray("alias");
+                                    if (alias != null && !alias.isEmpty()) {
+                                        name = alias.getString(0);
+                                    }
+                                }
+                                return name;
+                            })
+                            .filter(StringUtils::isNotBlank)
+                            .collect(Collectors.joining("/"));
+                    dto.setAr_name(parsedAr);
+                }
+            }
             dto.setLyric(lyricJson.getJSONObject("lrc") != null ? lyricJson.getJSONObject("lrc").getString("lyric") : "");
             dto.setTlyric(lyricJson.containsKey("tlyric") ? lyricJson.getJSONObject("tlyric").getString("lyric") : null);
             dto.setUrl(songUrlData.getString("url").replace("http://", "https://"));
@@ -72,6 +119,7 @@ public class AnalysisService {
             dto.setStatus(200);
             return dto;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }

@@ -116,11 +116,32 @@ public class NeteaseAPIService implements InitializingBean{
 	 }
 	 
 	 
-	 private static  String getCookieValue(String cookie) {
-		// 设置 Cookie
-	    StringBuilder cookieHeader = new StringBuilder("os=pc;appver=;osver=;deviceId=pyncm!");
-	    cookieHeader.append(";").append(cookie);
-	    return cookieHeader.toString();
+	 /**
+	  * Formats and deduplicates the Cookie header value to prevent NetEase API blocking.
+	  * 
+	  * Note: The NetEase EAPI endpoint (specifically URL resolution v1) will return "url": null and 
+	  * "code": -110 if it detects duplicate cookie keys where the first key contains an empty value, 
+	  * e.g., "appver=" (which was previously hardcoded).
+	  * This method checks if the cookie loaded from file already contains os, appver, or deviceId, 
+	  * and appends defaults only if they are missing. It also sets appver=8.9.70 by default to mimic 
+	  * the official NetEase PC client.
+	  */
+	 private static String getCookieValue(String cookie) {
+		if (cookie == null) {
+			return "os=pc;appver=8.9.70;osver=;deviceId=pyncm!";
+		}
+		StringBuilder cookieHeader = new StringBuilder();
+		if (!cookie.contains("os=")) {
+			cookieHeader.append("os=pc;");
+		}
+		if (!cookie.contains("appver=")) {
+			cookieHeader.append("appver=8.9.70;");
+		}
+		if (!cookie.contains("deviceId=")) {
+			cookieHeader.append("deviceId=pyncm!;");
+		}
+		cookieHeader.append(cookie);
+		return cookieHeader.toString();
 	 }
 
 	private static String md5Hex(String input) throws Exception {
