@@ -25,4 +25,5 @@ public class SingleMusicAnalysisRespDTO {
 	
 	private String url;
 	
+	private Object rawData;
 }

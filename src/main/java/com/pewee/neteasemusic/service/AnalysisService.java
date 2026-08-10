@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -57,10 +58,9 @@ public class AnalysisService {
 
             SingleMusicAnalysisRespDTO dto = new SingleMusicAnalysisRespDTO();
             dto.setName(songInfo.getString("name"));
-            // NetEase API Compatibility Fix:
-            // The legacy song detail API returns keys "album" and "artists",
-            // whereas newer v3 API endpoints return "al" and "ar".
-            // We safely inspect both to prevent NullPointerException on null fields.
+            dto.setRawData(songInfo); // Attach full NetEase raw song object
+
+            // Extract Album (Check al -> album -> pc.alb)
             JSONObject alObj = songInfo.getJSONObject("al");
             if (alObj == null) {
                 alObj = songInfo.getJSONObject("album");
@@ -69,40 +69,45 @@ public class AnalysisService {
                 dto.setPic(alObj.getString("picUrl"));
                 dto.setAl_name(alObj.getString("name"));
             }
-            // Fallback: Check 'pc' object for album name if al_name is empty
             if ((dto.getAl_name() == null || dto.getAl_name().isEmpty()) && songInfo.containsKey("pc")) {
                 JSONObject pcObj = songInfo.getJSONObject("pc");
-                if (pcObj != null && pcObj.containsKey("alb")) {
+                if (pcObj != null && StringUtils.isNotBlank(pcObj.getString("alb"))) {
                     dto.setAl_name(pcObj.getString("alb"));
                 }
             }
 
-            JSONArray arArray = songInfo.getJSONArray("ar");
-            if (arArray == null) {
-                arArray = songInfo.getJSONArray("artists");
-            }
-            if (arArray != null) {
-                String parsedAr = arArray.stream()
-                        .map(ar -> {
-                            JSONObject arObj = (JSONObject) ar;
-                            String name = arObj.getString("name");
-                            if ((name == null || name.isEmpty()) && arObj.containsKey("alias")) {
-                                JSONArray alias = arObj.getJSONArray("alias");
-                                if (alias != null && !alias.isEmpty()) {
-                                    name = alias.getString(0);
-                                }
-                            }
-                            return name;
-                        })
-                        .filter(n -> n != null && !n.isEmpty())
-                        .collect(Collectors.joining("/"));
-                dto.setAr_name(parsedAr);
-            }
-            // Fallback: Check 'pc' object for artist names if ar_name is still empty
-            if ((dto.getAr_name() == null || dto.getAr_name().isEmpty()) && songInfo.containsKey("pc")) {
+            // Extract Artists (Check pc.ar first as it contains full chorus names, then ar/artists -> alias)
+            String fullArtistName = null;
+            if (songInfo.containsKey("pc")) {
                 JSONObject pcObj = songInfo.getJSONObject("pc");
-                if (pcObj != null && pcObj.containsKey("ar")) {
-                    dto.setAr_name(pcObj.getString("ar"));
+                if (pcObj != null && StringUtils.isNotBlank(pcObj.getString("ar"))) {
+                    fullArtistName = pcObj.getString("ar");
+                }
+            }
+
+            if (StringUtils.isNotBlank(fullArtistName)) {
+                dto.setAr_name(fullArtistName);
+            } else {
+                JSONArray arArray = songInfo.getJSONArray("ar");
+                if (arArray == null) {
+                    arArray = songInfo.getJSONArray("artists");
+                }
+                if (arArray != null) {
+                    String parsedAr = arArray.stream()
+                            .map(ar -> {
+                                JSONObject arObj = (JSONObject) ar;
+                                String name = arObj.getString("name");
+                                if (StringUtils.isBlank(name) && arObj.containsKey("alias")) {
+                                    JSONArray alias = arObj.getJSONArray("alias");
+                                    if (alias != null && !alias.isEmpty()) {
+                                        name = alias.getString(0);
+                                    }
+                                }
+                                return name;
+                            })
+                            .filter(StringUtils::isNotBlank)
+                            .collect(Collectors.joining("/"));
+                    dto.setAr_name(parsedAr);
                 }
             }
             dto.setLyric(lyricJson.getJSONObject("lrc") != null ? lyricJson.getJSONObject("lrc").getString("lyric") : "");
