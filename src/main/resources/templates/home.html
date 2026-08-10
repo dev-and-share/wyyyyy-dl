@@ -12,7 +12,7 @@
     <div class="header-container">
         <div>
             <h2 class="header-title">🎵 网易云音乐下载器</h2>
-            <div class="header-sub">简洁、高效的无损音频解析与批量下载工具</div>
+            <div class="header-sub">高效的无损音频解析与批量下载工具</div>
         </div>
         <div class="repeat-switch-container">
             <label style="cursor: pointer;">
@@ -177,6 +177,7 @@
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
                 <button class="jump-link-btn" style="background:rgba(255,255,255,0.15); color:white; border:none; padding:6px 12px;" onclick="openLyricModal()">🎤 歌词</button>
+                <button class="btn-icon-close" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
                 <button class="btn-icon-close" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
             </div>
         </div>
@@ -189,7 +190,7 @@
                 <h3 class="lyric-modal-title" id="lyricModalTitle">🎵 歌曲歌词</h3>
                 <button class="btn-icon-close" onclick="closeLyricModal()">✕</button>
             </div>
-            <pre class="lyric-modal-body" id="lyricModalContent">暂无歌词</pre>
+            <div class="lyric-modal-body" id="lyricModalContent"></div>
         </div>
     </div>
 

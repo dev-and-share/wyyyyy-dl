@@ -591,60 +591,134 @@ ul.data-list li:last-child {
     }
 }
 
+/* 播放器最小化胶囊状态 (Compact Capsule Mode) */
+.bottom-audio-bar.minimized {
+    left: 20px;
+    right: auto;
+    bottom: 20px;
+    width: 280px !important;
+    border-radius: 30px;
+    padding: 8px 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.bottom-audio-bar.minimized .audio-bar-inner {
+    gap: 10px;
+}
+
+.bottom-audio-bar.minimized .audio-track-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.bottom-audio-bar.minimized .audio-controls {
+    display: none;
+}
+
 /* ==========================================================================
-   🎤 歌词大弹窗 Modal (Lyric Modal Overlay)
+   🎤 全屏沉浸式 LRC 歌词 Modal (True Fullscreen LRC Overlay)
    ========================================================================== */
 .lyric-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 15, 29, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     z-index: 10000;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
 }
 
 .lyric-modal-card {
-    background: rgba(30, 41, 59, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 16px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 80vh;
+    background: transparent;
+    border: none;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
     display: flex;
     flex-direction: column;
     color: white;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    box-shadow: none;
     overflow: hidden;
 }
 
 .lyric-modal-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px 40px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: rgba(15, 23, 42, 0.5);
 }
 
 .lyric-modal-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     margin: 0;
+    color: #f8fafc;
 }
 
 .lyric-modal-body {
-    padding: 20px;
+    flex: 1;
+    padding: 40px 10% 120px 10%;
     overflow-y: auto;
-    font-size: 15px;
+    font-family: system-ui, -apple-system, sans-serif;
+    scroll-behavior: smooth;
+}
+
+/* 带有 LRC 时间戳的逐行歌词样式 */
+.lrc-line {
+    padding: 10px 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #64748b;
+    text-align: left;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    user-select: none;
+}
+
+.lrc-line:hover {
+    color: #94a3b8;
+}
+
+.lrc-line.active {
+    font-size: 24px;
+    font-weight: 700;
+    color: #38bdf8;
+    transform: translateX(6px);
+    text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+}
+
+/* 无时间戳纯文本歌词 Fallback 样式 */
+.lrc-fallback {
+    text-align: left;
+    font-size: 16px;
     line-height: 2;
-    text-align: center;
-    color: #e2e8f0;
+    color: #cbd5e1;
     white-space: pre-wrap;
     font-family: inherit;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .lyric-modal-header {
+        padding: 15px 20px;
+    }
+    .lyric-modal-body {
+        padding: 20px 20px 100px 20px;
+    }
+    .lrc-line {
+        font-size: 16px;
+    }
+    .lrc-line.active {
+        font-size: 20px;
+    }
 }

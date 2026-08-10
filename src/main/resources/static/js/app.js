@@ -34,6 +34,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 自动触发一次后台任务轮询（如果有未完成任务）
     fetchDownloadTasks();
+
+    // 绑定在线播放器 timeupdate 事件实现全屏 LRC 逐行高亮平滑滚动
+    const player = document.getElementById("globalAudioPlayer");
+    if (player) {
+        player.addEventListener("timeupdate", () => {
+            if (!parsedLrcList || parsedLrcList.length === 0) return;
+            const currentTime = player.currentTime;
+            let activeIndex = -1;
+            for (let i = 0; i < parsedLrcList.length; i++) {
+                if (parsedLrcList[i].time <= currentTime) {
+                    activeIndex = i;
+                } else {
+                    break;
+                }
+            }
+            if (activeIndex !== -1 && activeIndex !== currentLrcIndex) {
+                currentLrcIndex = activeIndex;
+                updateLrcHighlight(activeIndex);
+            }
+        });
+    }
 });
 
 function switchTab(tabName) {
@@ -565,6 +586,22 @@ function jumpToAlbumDetail(albumId) {
    ========================================================================== */
 
 let currentPlayingLyric = "";
+let parsedLrcList = [];
+let currentLrcIndex = -1;
+let isAudioPlayerMinimized = false;
+
+function toggleMinimizeAudioPlayer() {
+    const bar = document.getElementById('globalAudioBar');
+    if (bar) {
+        bar.classList.toggle('minimized');
+        isAudioPlayerMinimized = bar.classList.contains('minimized');
+        if (isAudioPlayerMinimized) {
+            document.body.style.paddingBottom = '';
+        } else {
+            document.body.style.paddingBottom = (window.innerWidth <= 768) ? '140px' : '110px';
+        }
+    }
+}
 
 function playAudioOnline(url, title, artist, cover, lyric) {
     if (!url) {
@@ -580,6 +617,10 @@ function playAudioOnline(url, title, artist, cover, lyric) {
 
     if (bar && player) {
         bar.style.display = "block";
+        if (isAudioPlayerMinimized) {
+            bar.classList.remove('minimized');
+            isAudioPlayerMinimized = false;
+        }
 
         // Sanitize artist name string to strictly avoid displaying "null" / "undefined"
         let validArtist = artist;
@@ -591,9 +632,25 @@ function playAudioOnline(url, title, artist, cover, lyric) {
         artistEl.textContent = validArtist;
         coverEl.src = cover || "";
         currentPlayingLyric = lyric || "暂无歌词";
+        parsedLrcList = parseLrc(currentPlayingLyric);
+        currentLrcIndex = -1;
 
         player.src = url;
         player.play().catch(err => console.log("自动播放尝试被浏览器防护阻断，需手动点击播放按钮:", err));
+
+        // Bind timeupdate event
+        player.ontimeupdate = () => {
+            const time = player.currentTime;
+            for (let i = 0; i < parsedLrcList.length; i++) {
+                if (time >= parsedLrcList[i].time && (i === parsedLrcList.length - 1 || time < parsedLrcList[i + 1].time)) {
+                    if (currentLrcIndex !== i) {
+                        currentLrcIndex = i;
+                        updateLrcHighlight(i);
+                    }
+                    break;
+                }
+            }
+        };
 
         // Prevent bottom content occlusion by adding dynamic body padding-bottom
         document.body.style.paddingBottom = (window.innerWidth <= 768) ? '140px' : '110px';
@@ -626,12 +683,56 @@ function closeAudioPlayer() {
     if (player) {
         player.pause();
         player.src = "";
+        player.ontimeupdate = null;
     }
     if (bar) {
         bar.style.display = "none";
+        bar.classList.remove('minimized');
+        isAudioPlayerMinimized = false;
     }
     // Restore original body padding-bottom
     document.body.style.paddingBottom = "";
+}
+
+/* ==========================================================================
+   🎤 LRC 逐行解析与全屏沉浸式滚动引擎
+   ========================================================================== */
+
+function parseLrc(lrcText) {
+    if (!lrcText) return [];
+    const lines = lrcText.split('\n');
+    const result = [];
+    const timeReg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+
+    lines.forEach(line => {
+        const match = timeReg.exec(line);
+        if (match) {
+            const min = parseInt(match[1], 10);
+            const sec = parseInt(match[2], 10);
+            const msStr = match[3];
+            const ms = msStr.length === 2 ? parseInt(msStr, 10) * 10 : parseInt(msStr, 10);
+            const totalSeconds = min * 60 + sec + ms / 1000;
+            const text = line.replace(timeReg, '').trim();
+            if (text) {
+                result.push({ time: totalSeconds, text });
+            }
+        }
+    });
+
+    result.sort((a, b) => a.time - b.time);
+    return result;
+}
+
+function updateLrcHighlight(index) {
+    const lines = document.querySelectorAll(".lrc-line");
+    lines.forEach((line, idx) => {
+        if (idx === index) {
+            line.classList.add("active");
+            line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            line.classList.remove("active");
+        }
+    });
 }
 
 function openLyricModal() {
