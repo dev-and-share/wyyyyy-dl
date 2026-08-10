@@ -161,6 +161,23 @@
         </div>
     </div>
 
+    <!-- 底部固定在线试听播放器 (Global Audio Player Bar) -->
+    <div class="bottom-audio-bar" id="globalAudioBar" style="display: none;">
+        <div class="audio-bar-inner">
+            <div class="audio-track-info">
+                <img id="audioBarCover" src="" class="audio-cover" alt="封面">
+                <div class="audio-text">
+                    <div id="audioBarTitle" class="audio-title">未在播放</div>
+                    <div id="audioBarArtist" class="audio-artist">未知歌手</div>
+                </div>
+            </div>
+            <div class="audio-controls">
+                <audio id="globalAudioPlayer" controls style="height: 36px; outline: none; width: 100%; max-width: 500px;"></audio>
+            </div>
+            <button class="btn-icon-close" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
+        </div>
+    </div>
+
     <!-- JavaScript 全局控制引擎 -->
     <script src="/js/app.js"></script>
 </body>

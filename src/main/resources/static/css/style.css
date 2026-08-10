@@ -457,3 +457,110 @@ ul.data-list li:last-child {
         width: 170px !important;
     }
 }
+
+/* ==========================================================================
+   🎵 底部固定在线试听播放器 (Global Audio Player Bar)
+   ========================================================================== */
+.bottom-audio-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 9998;
+    padding: 10px 24px;
+    transition: transform 0.3s ease;
+}
+
+.audio-bar-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.audio-track-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 220px;
+    max-width: 320px;
+}
+
+.audio-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #334155;
+}
+
+.audio-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.audio-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.audio-artist {
+    font-size: 12px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.audio-controls {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.btn-icon-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.btn-icon-close:hover {
+    color: #ffffff;
+}
+
+@media (max-width: 768px) {
+    .bottom-audio-bar {
+        padding: 8px 12px;
+    }
+    .audio-bar-inner {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .audio-track-info {
+        max-width: 100%;
+        width: 100%;
+    }
+    .audio-controls {
+        width: 100%;
+    }
+    .audio-controls audio {
+        width: 100%;
+    }
+}

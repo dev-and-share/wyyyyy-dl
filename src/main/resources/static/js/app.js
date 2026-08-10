@@ -172,7 +172,8 @@ function renderPage(page) {
                 <strong>${track.name}</strong>${artistText}
             </div>
             <div>
-                <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🎵 查看歌曲</button>
+                <button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(arNames||'').replace(/'/g, "\\'")}')">▶️ 试听</button>
+                <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🎵 详情</button>
                 <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${track.id}')">📥 下载</button>
             </div>
         `;
@@ -215,7 +216,8 @@ function loadAlbumInfo() {
                 li.innerHTML = `
                     <div><strong>${song.name}</strong>${artistText}</div>
                     <div>
-                        <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 查看歌曲</button>
+                        <button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arNames||'').replace(/'/g, "\\'")}')">▶️ 试听</button>
+                        <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 详情</button>
                         <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${song.id}')">📥 下载</button>
                     </div>
                 `;
@@ -252,6 +254,7 @@ function loadSongInfo() {
                         <h4 style="margin:0 0 6px 0;">${song.name}</h4>
                         <div style="font-size:13px; color:#555;">歌手：${arText} | 专辑：${alText}</div>
                         <div style="font-size:12px; color:#777; margin-bottom:8px;">大小：${sizeText} | 音质：${levelText}</div>
+                        <button class="btn-primary" style="background:#10b981; margin-right:6px;" onclick="playAudioOnline('${song.url}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arText||'').replace(/'/g, "\\'")}', '${imgSrc}')">▶️ 在线试听</button>
                         <button class="btn-primary" onclick="downloadSingle('${song.id}')">📥 下载单曲</button>
                     </div>
                 </div>
@@ -296,7 +299,8 @@ function searchSongs() {
                     li.innerHTML = `
                         <div><strong>${song.name}</strong>${artistText}${albumText}</div>
                         <div>
-                            <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 查看歌曲</button>
+                            <button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arNames||'').replace(/'/g, "\\'")}')">▶️ 试听</button>
+                            <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 详情</button>
                             <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${song.id}')">📥 下载</button>
                         </div>
                     `;
@@ -479,5 +483,63 @@ function hideMonitor() {
     if (monitorInterval) {
         clearInterval(monitorInterval);
         monitorInterval = null;
+    }
+}
+
+/* ==========================================================================
+   🎧 在线试听播放器控制 (Online Audio Player Controller)
+   ========================================================================== */
+
+function playAudioOnline(url, title, artist, cover) {
+    if (!url) {
+        alert("未获取到在线播放链接（可能由于版权保护或下架）");
+        return;
+    }
+
+    const bar = document.getElementById("globalAudioBar");
+    const player = document.getElementById("globalAudioPlayer");
+    const titleEl = document.getElementById("audioBarTitle");
+    const artistEl = document.getElementById("audioBarArtist");
+    const coverEl = document.getElementById("audioBarCover");
+
+    if (bar && player) {
+        bar.style.display = "block";
+        titleEl.textContent = title || "未知歌曲";
+        artistEl.textContent = artist || "未知歌手";
+        coverEl.src = cover || "";
+
+        player.src = url;
+        player.play().catch(err => console.log("自动播放尝试被浏览器防护阻断，需手动点击播放按钮:", err));
+    }
+}
+
+function playSongById(songId, songName, artistName, coverUrl) {
+    const levelSelect = document.getElementById("songLevel");
+    const level = levelSelect ? levelSelect.value : "lossless";
+    
+    axios.post('/Song_V1', new URLSearchParams({ id: songId, level: level, type: 'json' }))
+        .then(resp => {
+            const song = resp.data.data;
+            if (song && song.url) {
+                const title = songName || song.name;
+                const artist = artistName || song.ar_name || "群星 / 未知";
+                const cover = coverUrl || song.pic || song.picUrl || "";
+                playAudioOnline(song.url, title, artist, cover);
+            } else {
+                alert("未解析到试听 URL（可能由于无版权或许可限制）");
+            }
+        })
+        .catch(err => alert("请求试听音频失败：" + err));
+}
+
+function closeAudioPlayer() {
+    const bar = document.getElementById("globalAudioBar");
+    const player = document.getElementById("globalAudioPlayer");
+    if (player) {
+        player.pause();
+        player.src = "";
+    }
+    if (bar) {
+        bar.style.display = "none";
     }
 }
