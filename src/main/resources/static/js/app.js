@@ -163,7 +163,9 @@ function renderPage(page) {
 
     pageTracks.forEach(track => {
         const li = document.createElement("li");
+        // Extract artists safely (TrackDTO uses String 'artists', while raw NetEase JSON uses Array 'ar')
         const arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
+        // Omit the trailing hyphen '-' if no artist is available
         const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
         li.innerHTML = `
             <div>
@@ -231,6 +233,7 @@ function loadSongInfo() {
         return;
     }
 
+    // Note: AnalysisController /Song_V1 endpoint expects parameter key 'id' (not 'ids')
     axios.post('/Song_V1', new URLSearchParams({ id: id, level: level, type: 'json' }))
         .then(resp => {
             const song = resp.data.data;

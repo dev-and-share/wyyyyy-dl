@@ -57,6 +57,10 @@ public class AnalysisService {
 
             SingleMusicAnalysisRespDTO dto = new SingleMusicAnalysisRespDTO();
             dto.setName(songInfo.getString("name"));
+            // NetEase API Compatibility Fix:
+            // The legacy song detail API returns keys "album" and "artists",
+            // whereas newer v3 API endpoints return "al" and "ar".
+            // We safely inspect both to prevent NullPointerException on null fields.
             JSONObject alObj = songInfo.getJSONObject("al");
             if (alObj == null) {
                 alObj = songInfo.getJSONObject("album");
