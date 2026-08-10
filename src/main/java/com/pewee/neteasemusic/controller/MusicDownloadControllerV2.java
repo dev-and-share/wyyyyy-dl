@@ -1,14 +1,17 @@
 package com.pewee.neteasemusic.controller;
 
+import java.util.Collection;
 import javax.annotation.Resource;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pewee.neteasemusic.enums.CommonRespInfo;
 import com.pewee.neteasemusic.models.common.RespEntity;
+import com.pewee.neteasemusic.models.common.DownloadTaskStatus;
 import com.pewee.neteasemusic.service.MusicDownloadService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -55,5 +58,16 @@ public class MusicDownloadControllerV2 {
 	public RespEntity<String> downloadAlbum(@RequestParam(value = "id") Long id) {
 		musicService.downloadAlbumV2(id);
 		return RespEntity.apply(CommonRespInfo.SUCCESS,"OK");
+	}
+
+	@GetMapping("/tasks")
+	public RespEntity<Collection<DownloadTaskStatus>> getDownloadTasks() {
+		return RespEntity.apply(CommonRespInfo.SUCCESS, musicService.getDownloadTasks());
+	}
+
+	@PostMapping("/tasks/clear")
+	public RespEntity<String> clearDownloadTasks() {
+		musicService.clearDownloadTasks();
+		return RespEntity.apply(CommonRespInfo.SUCCESS, "OK");
 	}
 }

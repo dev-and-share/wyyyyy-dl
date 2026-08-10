@@ -51,6 +51,88 @@
 		  display: block;
 		}
 
+		
+		/* 下载监视器样式 */
+		.monitor-panel {
+			font-family: Arial, sans-serif;
+			width: 90%;
+			max-width: 900px;
+			margin: 20px auto;
+			padding: 15px;
+			border: 1px solid #ddd;
+			border-radius: 8px;
+			background-color: #f9f9f9;
+			box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+		}
+		.monitor-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			border-bottom: 2px solid #eee;
+			padding-bottom: 10px;
+			margin-bottom: 10px;
+		}
+		.monitor-title {
+			margin: 0;
+			font-size: 16px;
+			color: #333;
+		}
+		.monitor-list {
+			max-height: 250px;
+			overflow-y: auto;
+			padding: 5px;
+			border: 1px solid #eee;
+			border-radius: 4px;
+			background: white;
+		}
+		.monitor-item {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 8px 10px;
+			border-bottom: 1px solid #f5f5f5;
+			font-size: 13px;
+		}
+		.monitor-item:last-child {
+			border-bottom: none;
+		}
+		.song-name-container {
+			display: flex;
+			flex-direction: column;
+			max-width: 70%;
+		}
+		.song-name {
+			font-weight: bold;
+			color: #333;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.badge {
+			padding: 3px 8px;
+			border-radius: 12px;
+			font-size: 10px;
+			font-weight: bold;
+			color: white;
+			text-align: center;
+			min-width: 70px;
+			display: inline-block;
+		}
+		.badge-pending { background-color: #9e9e9e; }
+		.badge-downloading { background-color: #ff9800; animation: pulse 1s infinite alternate; }
+		.badge-success { background-color: #4caf50; }
+		.badge-skip { background-color: #607d8b; }
+		.badge-failed { background-color: #f44336; }
+		.error-msg {
+			color: #f44336;
+			font-size: 11px;
+			margin-top: 2px;
+			word-break: break-all;
+		}
+		@keyframes pulse {
+			from { opacity: 0.6; }
+			to { opacity: 1; }
+		}
     </style>
 </head>
 <body>
@@ -151,6 +233,19 @@
 		</div>
 	</div>
 	  
+	<!-- 下载监控面板 -->
+	<div class="monitor-panel" id="downloadMonitor" style="display: none;">
+		<div class="monitor-header">
+			<h4 class="monitor-title">📥 歌曲下载进度监控</h4>
+			<div>
+				<button onclick="clearMonitorTasks()" style="margin: 0; padding: 3px 8px; font-size: 11px;">清空历史</button>
+				<button onclick="hideMonitor()" style="margin: 0 0 0 5px; padding: 3px 8px; font-size: 11px;">隐藏</button>
+			</div>
+		</div>
+		<div class="monitor-list" id="monitorList">
+			<!-- 进度项目动态插入 -->
+		</div>
+	</div>
 
     <script>
     	document.addEventListener("DOMContentLoaded", () => {
@@ -466,20 +561,116 @@
         
         function downloadSingle(id) {
 		    axios.get(`/v2/single?id=${id}`)
-		        .then(() => alert("单曲下载任务已提交"))
+		        .then(() => startProgressPolling())
 		        .catch(err => alert("单曲下载失败：" + err));
 		}
 		
 		function downloadPlaylist(id) {
 		    axios.get(`/v2/playlist?id=${id}`)
-		        .then(() => alert("歌单下载任务已提交"))
+		        .then(() => startProgressPolling())
 		        .catch(err => alert("歌单下载失败：" + err));
 		}
 		
 		function downloadAlbum(id) {
 		    axios.get(`/v2/album?id=${id}`)
-		        .then(() => alert("专辑下载任务已提交"))
+		        .then(() => startProgressPolling())
 		        .catch(err => alert("专辑下载失败：" + err));
+		}
+
+		// 下载监控轮询逻辑
+		let monitorInterval = null;
+
+		function startProgressPolling() {
+			document.getElementById('downloadMonitor').style.display = 'block';
+			fetchDownloadTasks();
+			if (!monitorInterval) {
+				monitorInterval = setInterval(fetchDownloadTasks, 1500);
+			}
+		}
+
+		function fetchDownloadTasks() {
+			axios.get('/v2/tasks')
+				.then(resp => {
+					if (resp.data.code === "000000") {
+						const tasks = resp.data.data || [];
+						// 按提交时间从新到旧排序
+						tasks.sort((a, b) => b.timestamp - a.timestamp);
+
+						const listContainer = document.getElementById('monitorList');
+						listContainer.innerHTML = '';
+
+						if (tasks.length === 0) {
+							listContainer.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无下载任务</div>';
+							return;
+						}
+
+						let hasActiveTask = false;
+
+						tasks.forEach(task => {
+							const item = document.createElement('div');
+							item.className = 'monitor-item';
+
+							const nameContainer = document.createElement('div');
+							nameContainer.className = 'song-name-container';
+
+							const songName = document.createElement('span');
+							songName.className = 'song-name';
+							songName.textContent = task.name || `未知歌曲 (ID: ${task.id})`;
+							nameContainer.appendChild(songName);
+
+							if (task.status === 'FAILED' && task.errorMsg) {
+								const errorSpan = document.createElement('span');
+								errorSpan.className = 'error-msg';
+								errorSpan.textContent = `❌ 失败原因: ${task.errorMsg}`;
+								nameContainer.appendChild(errorSpan);
+							}
+
+							item.appendChild(nameContainer);
+
+							const badge = document.createElement('span');
+							badge.className = `badge badge-${task.status.toLowerCase()}`;
+							
+							let statusText = task.status;
+							if (task.status === 'PENDING') statusText = '排队中';
+							if (task.status === 'DOWNLOADING') {
+								statusText = '下载中';
+								hasActiveTask = true;
+							}
+							if (task.status === 'SUCCESS') statusText = '成功';
+							if (task.status === 'SKIP') statusText = '已跳过';
+							if (task.status === 'FAILED') statusText = '失败';
+
+							badge.textContent = statusText;
+							item.appendChild(badge);
+
+							listContainer.appendChild(item);
+						});
+
+						// 如果没有正在排队或下载中的任务，停止轮询以节省性能
+						if (!hasActiveTask && monitorInterval) {
+							const hasPending = tasks.some(t => t.status === 'PENDING');
+							if (!hasPending) {
+								clearInterval(monitorInterval);
+								monitorInterval = null;
+							}
+						}
+					}
+				})
+				.catch(err => console.error("获取下载任务进度失败:", err));
+		}
+
+		function clearMonitorTasks() {
+			axios.post('/v2/tasks/clear')
+				.then(() => fetchDownloadTasks())
+				.catch(err => alert("清空历史记录失败：" + err));
+		}
+
+		function hideMonitor() {
+			document.getElementById('downloadMonitor').style.display = 'none';
+			if (monitorInterval) {
+				clearInterval(monitorInterval);
+				monitorInterval = null;
+			}
 		}
     </script>
 </body>

@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import com.pewee.neteasemusic.models.common.DownloadTaskStatus;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -47,6 +50,8 @@ public class MusicDownloadService implements InitializingBean {
 
 	public static final ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 5, 60, TimeUnit.MINUTES,
 			new ArrayBlockingQueue<>(10000));
+
+	public static final ConcurrentHashMap<Long, DownloadTaskStatus> downloadTasks = new ConcurrentHashMap<>();
 	@Resource
 	private AnalysisConfig config;
 
@@ -250,63 +255,54 @@ public class MusicDownloadService implements InitializingBean {
 	}
 
 	public void downloadSingleSongV2(Long id) {
-		if (!repeat && hs.contains(id)) {
-			log.info("歌曲id: {} 已存在,跳过!", id);
-			return;
-		}
-		SingleMusicAnalysisRespDTO analysisSingleMusic = analysisService.analyzeSingleSong(id, "lossless");
-		if (200 != analysisSingleMusic.getStatus()) {
-			throw new ServiceException(CommonRespInfo.SYS_ERROR);
-		}
-		String dir = path;
-		String fileName = analysisSingleMusic.getName();
-		log.info("开始将歌曲: {} 写入目录: {}", fileName, dir);
-		FileUtils.writeToFile(Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())),
-				HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
-		File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())).toFile();
-		TagUtils.setTags(file, analysisSingleMusic.getName(), analysisSingleMusic.getAr_name(),
-				analysisSingleMusic.getAl_name());
-		log.info("将歌曲: {} 写入目录: {} 已完成!", fileName, dir);
-		try {
-			log.info("开始将歌词: {} 写入目录: {}", fileName, dir);
-			FileUtils.writeToFile(Paths.get(dir, fileName + ".lrc"),
-					analysisSingleMusic.getLyric().getBytes("UTF-8"));
-			log.info("将歌词: {} 写入目录: {} 已完成!", fileName, dir);
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		hs.add(id);
-		queue.offer(id);
+		doDownloadSingleSongV2(id, this.path, "未知歌曲");
 	}
 
-	public void doDownloadSingleSongV2(Long id, String path) {
+	public void doDownloadSingleSongV2(Long id, String path, String trackName) {
+		DownloadTaskStatus taskStatus = downloadTasks.get(id);
+		if (taskStatus == null) {
+			taskStatus = new DownloadTaskStatus(id, trackName, "PENDING", null, System.currentTimeMillis());
+			downloadTasks.put(id, taskStatus);
+		}
+
 		if (!repeat && hs.contains(id)) {
 			log.info("歌曲id: {} 已存在,跳过!", id);
+			taskStatus.setStatus("SKIP");
 			return;
 		}
-		SingleMusicAnalysisRespDTO analysisSingleMusic = analysisService.analyzeSingleSong(id, "lossless");
-		if (200 != analysisSingleMusic.getStatus()) {
-			throw new ServiceException(CommonRespInfo.SYS_ERROR);
-		}
-		String dir = path;
-		String fileName = analysisSingleMusic.getName();
-		log.info("开始将歌曲: {} 写入目录: {}", fileName, dir);
-		FileUtils.writeToFile(Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())),
-				HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
-		File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())).toFile();
-		TagUtils.setTags(file, analysisSingleMusic.getName(), analysisSingleMusic.getAr_name(),
-				analysisSingleMusic.getAl_name());
-		log.info("将歌曲: {} 写入目录: {} 已完成!", fileName, dir);
+
+		taskStatus.setStatus("DOWNLOADING");
 		try {
-			log.info("开始将歌词: {} 写入目录: {}", fileName, dir);
-			FileUtils.writeToFile(Paths.get(dir, fileName + ".lrc"),
-					analysisSingleMusic.getLyric().getBytes("UTF-8"));
-			log.info("将歌词: {} 写入目录: {} 已完成!", fileName, dir);
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+			SingleMusicAnalysisRespDTO analysisSingleMusic = analysisService.analyzeSingleSong(id, "lossless");
+			if (analysisSingleMusic == null || 200 != analysisSingleMusic.getStatus()) {
+				throw new RuntimeException("分析歌曲URL失败");
+			}
+			taskStatus.setName(analysisSingleMusic.getName());
+			String dir = path;
+			String fileName = analysisSingleMusic.getName();
+			log.info("开始将歌曲: {} 写入目录: {}", fileName, dir);
+			FileUtils.writeToFile(Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())),
+					HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
+			File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())).toFile();
+			TagUtils.setTags(file, analysisSingleMusic.getName(), analysisSingleMusic.getAr_name(),
+					analysisSingleMusic.getAl_name());
+			log.info("将歌曲: {} 写入目录: {} 已完成!", fileName, dir);
+			try {
+				log.info("开始将歌词: {} 写入目录: {}", fileName, dir);
+				FileUtils.writeToFile(Paths.get(dir, fileName + ".lrc"),
+						analysisSingleMusic.getLyric().getBytes("UTF-8"));
+				log.info("将歌词: {} 写入目录: {} 已完成!", fileName, dir);
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+			hs.add(id);
+			queue.offer(id);
+			taskStatus.setStatus("SUCCESS");
+		} catch (Exception e) {
+			log.error("下载歌曲失败, id: {}", id, e);
+			taskStatus.setStatus("FAILED");
+			taskStatus.setErrorMsg(e.getMessage() != null ? e.getMessage() : e.toString());
 		}
-		hs.add(id);
-		queue.offer(id);
 	}
 
 	public void downloadPlaylistV2(Long id) {
@@ -316,9 +312,11 @@ public class MusicDownloadService implements InitializingBean {
 		}
 		List<TrackDTO> tracks = analysisPlaylist.getPlaylist().getTracks();
 		for (TrackDTO trackDTO : tracks) {
+			DownloadTaskStatus taskStatus = new DownloadTaskStatus(trackDTO.getId(), trackDTO.getName(), "PENDING", null, System.currentTimeMillis());
+			downloadTasks.put(trackDTO.getId(), taskStatus);
 			executor.execute(() -> {
 				doDownloadSingleSongV2(trackDTO.getId(), this.path + "歌单/"
-						+ FileUtils.getValidatedPathName(analysisPlaylist.getPlaylist().getName()) + "/");
+						+ FileUtils.getValidatedPathName(analysisPlaylist.getPlaylist().getName()) + "/", trackDTO.getName());
 			});
 		}
 	}
@@ -330,12 +328,13 @@ public class MusicDownloadService implements InitializingBean {
 		}
 		List<TrackDTO> tracks = analysisAlbum.getAlbum().getSongs();
 		for (TrackDTO trackDTO : tracks) {
+			DownloadTaskStatus taskStatus = new DownloadTaskStatus(trackDTO.getId(), trackDTO.getName(), "PENDING", null, System.currentTimeMillis());
+			downloadTasks.put(trackDTO.getId(), taskStatus);
 			executor.execute(() -> {
 				doDownloadSingleSongV2(trackDTO.getId(),
-						this.path + "专辑/" + FileUtils.getValidatedPathName(analysisAlbum.getAlbum().getName()) + "/");
+						this.path + "专辑/" + FileUtils.getValidatedPathName(analysisAlbum.getAlbum().getName()) + "/", trackDTO.getName());
 			});
 		}
-
 	}
 
 	public void setRepeat(Boolean repeat) {
@@ -366,6 +365,14 @@ public class MusicDownloadService implements InitializingBean {
 
 	public Boolean getRepeat() {
 		return this.repeat;
+	}
+
+	public Collection<DownloadTaskStatus> getDownloadTasks() {
+		return downloadTasks.values();
+	}
+
+	public void clearDownloadTasks() {
+		downloadTasks.clear();
 	}
 
 }
