@@ -740,7 +740,7 @@ function parseLrc(lrcText) {
 
     // 保障机制：若整块字符串内包含多组 [mm:ss.ms] 但没有被换行符切开
     if (result.filter(r => r.time >= 0).length === 0) {
-        const globalReg = /\[(\d{2}):(\d{2})[\.:](\d{2,3})\]([^\[]+/g;
+        const globalReg = /\[(\d{2}):(\d{2})[\.:](\d{2,3})\]([^\[]+)/g;
         let gMatch;
         while ((gMatch = globalReg.exec(lrcText)) !== null) {
             const min = parseInt(gMatch[1], 10);
