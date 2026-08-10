@@ -153,6 +153,15 @@ function loadPlaylistDetail() {
         .catch(err => alert("获取歌单详情失败：" + err));
 }
 
+function getValidArtistNames(track) {
+    if (!track) return '';
+    let arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
+    if (!arNames || arNames === 'null' || arNames === 'undefined' || arNames.trim() === '') {
+        return '';
+    }
+    return arNames;
+}
+
 function renderPage(page) {
     const list = document.getElementById("playlist-tracks");
     list.innerHTML = "";
@@ -163,9 +172,7 @@ function renderPage(page) {
 
     pageTracks.forEach(track => {
         const li = document.createElement("li");
-        // Extract artists safely (TrackDTO uses String 'artists', while raw NetEase JSON uses Array 'ar')
-        const arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
-        // Omit the trailing hyphen '-' if no artist is available
+        const arNames = getValidArtistNames(track);
         const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
         li.innerHTML = `
             <div>
@@ -211,7 +218,7 @@ function loadAlbumInfo() {
             list.innerHTML = "";
             (album.songs || []).forEach(song => {
                 const li = document.createElement("li");
-                const arNames = song.artists || (song.ar ? song.ar.map(a => a.name).join('/') : '');
+                const arNames = getValidArtistNames(song);
                 const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
                 li.innerHTML = `
                     <div><strong>${song.name}</strong>${artistText}</div>
@@ -293,7 +300,7 @@ function searchSongs() {
             if (type === "1") { // 单曲
                 (data || []).forEach(song => {
                     const li = document.createElement("li");
-                    const arNames = song.artists || (song.ar ? song.ar.map(a => a.name).join('/') : '');
+                    const arNames = getValidArtistNames(song);
                     const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
                     const albumText = song.al && song.al.name ? ` (专辑: ${song.al.name})` : '';
                     li.innerHTML = `

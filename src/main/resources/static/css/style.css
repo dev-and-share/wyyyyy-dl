@@ -371,6 +371,14 @@ ul.data-list li:last-child {
     margin-top: 10px;
 }
 
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
 /* ==========================================================================
    📱 移动端响应式适配 (Responsive Mobile Adaptation)
    ========================================================================== */
@@ -378,6 +386,24 @@ ul.data-list li:last-child {
     .form-row {
         flex-direction: column;
         gap: 8px;
+    }
+
+    .pagination-container {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+    }
+    .pagination-container button.btn-primary {
+        width: auto !important;
+        flex: 1;
+        padding: 8px 6px;
+        font-size: 12px;
+        white-space: nowrap;
+        margin-top: 0 !important;
+    }
+    .pagination-container span {
+        white-space: nowrap !important;
+        font-size: 12px;
+        flex-shrink: 0;
     }
 
     body {

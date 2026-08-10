@@ -58,7 +58,7 @@
                     </div>
                     <div id="playlist-info"></div>
                     <ul class="data-list" id="playlist-tracks"></ul>
-                    <div id="playlist-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                    <div id="playlist-pagination" class="pagination-container">
                         <button id="prev-page" class="btn-primary" onclick="changePage(-1)" disabled>上一页</button>
                         <span id="page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
                         <button id="next-page" class="btn-primary" onclick="changePage(1)">下一页</button>
@@ -137,7 +137,7 @@
                         <button class="btn-primary" onclick="searchSongs()">搜索</button>
                     </div>
                     <ul class="data-list" id="search-results"></ul>
-                    <div id="search-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                    <div id="search-pagination" class="pagination-container">
                         <button id="search-prev" class="btn-primary" onclick="changeSearchPage(-1)" disabled>上一页</button>
                         <span id="search-page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
                         <button id="search-next" class="btn-primary" onclick="changeSearchPage(1)">下一页</button>
