@@ -72,6 +72,7 @@ public class AnalysisService {
             dto.setStatus(200);
             return dto;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
