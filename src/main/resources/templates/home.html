@@ -2,676 +2,166 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>音乐 · 信息展示</title>
+    <title>🎵 网易云音乐下载器 · 现代体验版</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        section { margin-bottom: 30px; }
-        input, button, select { padding: 5px; margin: 5px; }
-        ul { list-style-type: none; padding: 0; }
-        li { padding: 5px 0; border-bottom: 1px solid #ccc; }
-        .tabs {
-		  font-family: Arial, sans-serif;
-		  width: 90%;
-		  max-width: 900px;
-		  margin: 20px auto;
-		}
-		
-		.tab-nav {
-		  display: flex;
-		  border-bottom: 2px solid #ccc;
-		  margin-bottom: 1em;
-		}
-		
-		.tab-link {
-		  background: none;
-		  border: none;
-		  padding: 10px 20px;
-		  cursor: pointer;
-		  font-size: 16px;
-		  border-bottom: 3px solid transparent;
-		  transition: border-color 0.3s;
-		}
-		
-		.tab-link:hover {
-		  border-bottom-color: #888;
-		}
-		
-		.tab-link.active {
-		  font-weight: bold;
-		  border-bottom-color: #007bff;
-		  color: #007bff;
-		}
-		
-		.tab-content {
-		  display: none;
-		}
-		
-		.tab-content.active {
-		  display: block;
-		}
-
-		
-		/* 下载监视器样式 */
-		.monitor-panel {
-			font-family: Arial, sans-serif;
-			width: 90%;
-			max-width: 900px;
-			margin: 20px auto;
-			padding: 15px;
-			border: 1px solid #ddd;
-			border-radius: 8px;
-			background-color: #f9f9f9;
-			box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-		}
-		.monitor-header {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			border-bottom: 2px solid #eee;
-			padding-bottom: 10px;
-			margin-bottom: 10px;
-		}
-		.monitor-title {
-			margin: 0;
-			font-size: 16px;
-			color: #333;
-		}
-		.monitor-list {
-			max-height: 250px;
-			overflow-y: auto;
-			padding: 5px;
-			border: 1px solid #eee;
-			border-radius: 4px;
-			background: white;
-		}
-		.monitor-item {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			padding: 8px 10px;
-			border-bottom: 1px solid #f5f5f5;
-			font-size: 13px;
-		}
-		.monitor-item:last-child {
-			border-bottom: none;
-		}
-		.song-name-container {
-			display: flex;
-			flex-direction: column;
-			max-width: 70%;
-		}
-		.song-name {
-			font-weight: bold;
-			color: #333;
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-		.badge {
-			padding: 3px 8px;
-			border-radius: 12px;
-			font-size: 10px;
-			font-weight: bold;
-			color: white;
-			text-align: center;
-			min-width: 70px;
-			display: inline-block;
-		}
-		.badge-pending { background-color: #9e9e9e; }
-		.badge-downloading { background-color: #ff9800; animation: pulse 1s infinite alternate; }
-		.badge-success { background-color: #4caf50; }
-		.badge-skip { background-color: #607d8b; }
-		.badge-failed { background-color: #f44336; }
-		.error-msg {
-			color: #f44336;
-			font-size: 11px;
-			margin-top: 2px;
-			word-break: break-all;
-		}
-		@keyframes pulse {
-			from { opacity: 0.6; }
-			to { opacity: 1; }
-		}
-    </style>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <h2>🎵 网易云音乐 · 下载器</h2>
-    
-    <div id="title">项目地址:https://github.com/pewee-live/netease-dl</div>
-    
-    <div style="margin-top: 10px;">
-        <label>
-            <input type="checkbox" id="repeatSwitch" onchange="toggleRepeat()"> 允许重复下载
-        </label>
+    <!-- 页头 -->
+    <div class="header-container">
+        <div>
+            <h2 class="header-title">🎵 网易云音乐下载器</h2>
+            <div class="header-sub">简洁、高效的无损音频解析与批量下载工具</div>
+        </div>
+        <div class="repeat-switch-container">
+            <label style="cursor: pointer;">
+                <input type="checkbox" id="repeatSwitch" onchange="toggleRepeat()"> 允许重复下载
+            </label>
+        </div>
     </div>
 
-	<div class="tabs">
-		<nav class="tab-nav">
-		    <button class="tab-link active" data-tab="tab-playlist">歌单</button>
-		    <button class="tab-link" data-tab="tab-album">专辑</button>
-		    <button class="tab-link" data-tab="tab-search">搜索</button>
-	  </nav>
-	  
-	  <div id="tab-playlist" class="tab-content active">
-	    <h3>我的歌单 & 查看歌单详情</h3>
-	    <!-- 这里放我的歌单和歌单详情内容 -->
-	    <!-- 例如：输入歌单ID、加载歌单按钮、歌单详情列表等 -->
-	    <!-- 用户歌单 -->
-	    <section>
-	        <h3>1. 我的歌单</h3>
-	        <button onclick="loadMyPlaylists()">加载歌单</button>
-	        <ul id="playlist-list"></ul>
-	    </section>
-	    
-		<section>
-		    <h3>2. 查看歌单详情</h3>
-		    <input type="text" id="playlistId" placeholder="输入歌单 ID">
-		    <button onclick="loadPlaylistDetail()">查看详情</button>
-		    <div id="playlist-info"></div>
-		    <ul id="playlist-tracks"></ul>
-		    <div id="playlist-pagination">
-		        <button id="prev-page" onclick="changePage(-1)" disabled>上一页</button>
-		        <span id="page-indicator">第 1 页</span>
-		        <button id="next-page" onclick="changePage(1)">下一页</button>
-		    </div>
-		</section>
-		
-		<!-- 歌曲信息 -->
-	    <section>
-	        <h3>3. 查看歌曲信息</h3>
-	        <input type="text" id="songId" placeholder="歌曲 ID">
-	        <select id="songLevel">
-	            <option value="standard">standard</option>
-	            <option value="exhigh">exhigh</option>
-	            <option value="lossless">lossless</option>
-	        </select>
-	        <button onclick="loadSongInfo()">查看歌曲</button>
-	        <div id="song-info"></div>
-	    </section>
-		
-	  </div>
-	  
-	  <div id="tab-album" class="tab-content">
-	    <h3>查看专辑信息</h3>
-	    <!-- 这里放查看专辑的内容 -->
-	        <!-- 专辑信息 -->
-	    <section>
-	        <input type="text" id="albumId" placeholder="输入专辑 ID">
-	        <button onclick="loadAlbumInfo()">查看专辑</button>
-	        <div id="album-info">
-	        	<p><strong>下载：</strong> <span id="album-download"></span></p>
-			    <p><strong>专辑名：</strong> <span id="album-name"></span></p>
-			    <p><strong>歌手：</strong> <span id="album-artist"></span></p>
-			    <p><strong>发行时间：</strong> <span id="album-publish-time"></span></p>
-			    <p><strong>封面：</strong> <img id="album-cover" style="max-width: 200px;"></p>
-			    <h4>歌曲列表：</h4>
-			    <ul id="album-tracks"></ul>
-		  	</div>
-	    </section>
-	  </div>
-	
-		  <div id="tab-search" class="tab-content">
-			  <h3>搜索</h3>
-			  <section>
-			    <input type="text" id="searchKeyword" placeholder="关键词" />
-			    <select id="searchType">
-			      <option value="1">单曲</option>
-			      <option value="100">歌手</option>
-			      <option value="10">专辑</option>
-			      <option value="1000">歌单</option>
-			    </select>
-			    <input type="number" name = "每页数量" id="searchLimit" value="10" min="1" />
-			    <button onclick="searchSongs()">搜索</button>
-			    <ul id="search-results"></ul>
-			    <div id="search-pagination">
-			      <button onclick="changeSearchPage(-1)" id="search-prev" disabled>上一页</button>
-			      <span id="search-page-indicator">第 1 页</span>
-			      <button onclick="changeSearchPage(1)" id="search-next">下一页</button>
-			    </div>
-			  </section>
-		</div>
-	</div>
-	  
-	<!-- 下载监控面板 -->
-	<div class="monitor-panel" id="downloadMonitor" style="display: none;">
-		<div class="monitor-header">
-			<h4 class="monitor-title">📥 歌曲下载进度监控</h4>
-			<div>
-				<button onclick="clearMonitorTasks()" style="margin: 0; padding: 3px 8px; font-size: 11px;">清空历史</button>
-				<button onclick="hideMonitor()" style="margin: 0 0 0 5px; padding: 3px 8px; font-size: 11px;">隐藏</button>
-			</div>
-		</div>
-		<div class="monitor-list" id="monitorList">
-			<!-- 进度项目动态插入 -->
-		</div>
-	</div>
+    <!-- 顶栏 Tab 切换 -->
+    <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="tab-playlist">📁 歌单模块</button>
+        <button class="tab-btn" data-tab="tab-album">💽 专辑模块</button>
+        <button class="tab-btn" data-tab="tab-search">🔍 搜索模块</button>
+    </div>
 
-    <script>
-    	document.addEventListener("DOMContentLoaded", () => {
-		    axios.get('/v2/getRepeat')
-		        .then(resp => {
-		            if (resp.data.code === "000000") {
-		                document.getElementById('repeatSwitch').checked = resp.data.data === true;
-		            }
-		        })
-		        .catch(err => console.error("获取重复下载配置失败:", err));
-		});
+    <!-- 1. 歌单 Tab 内容 (手风琴布局) -->
+    <div id="tab-playlist" class="tab-content active">
+        <div class="accordion-wrapper">
+            
+            <!-- Section 1: 我的歌单 -->
+            <div class="accordion-card active" id="card-my-playlist">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📋 1. 我的歌单</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <p style="font-size:13px; color:#666;">加载已登录账号收藏或创建的歌单列表。</p>
+                    <button class="btn-primary" onclick="loadMyPlaylists()">加载歌单列表</button>
+                    <ul class="data-list" id="playlist-list"></ul>
+                </div>
+            </div>
 
-		function toggleRepeat() {
-		    const repeat = document.getElementById('repeatSwitch').checked;
-		    axios.get(`/v2/setRepeat?repeat=${repeat}`)
-		        .then(resp => {
-		            if (resp.data.code !== "000000") {
-		                console.warn("重复下载配置更新可能未成功", resp.data);
-		            }
-		        })
-		        .catch(err => {
-		            console.error("配置更新失败:", err);
-		            alert("配置更新失败");
-		            document.getElementById('repeatSwitch').checked = !repeat;
-		        });
-		}
+            <!-- Section 2: 查看歌单详情 -->
+            <div class="accordion-card active" id="card-playlist-detail">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">🎼 2. 查看歌单详情</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="display:flex; gap:10px; margin-bottom:12px; margin-top: 10px;">
+                        <input type="text" id="playlistId" placeholder="输入歌单 ID (如 18240336196)" style="flex:1;">
+                        <button class="btn-primary" onclick="loadPlaylistDetail()">查看歌单详情</button>
+                    </div>
+                    <div id="playlist-info"></div>
+                    <ul class="data-list" id="playlist-tracks"></ul>
+                    <div id="playlist-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                        <button id="prev-page" class="btn-primary" onclick="changePage(-1)" disabled>上一页</button>
+                        <span id="page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
+                        <button id="next-page" class="btn-primary" onclick="changePage(1)">下一页</button>
+                    </div>
+                </div>
+            </div>
 
-    	document.querySelectorAll(".tab-link").forEach(button => {
-		  button.addEventListener("click", () => {
-		    const tabId = button.getAttribute("data-tab");
-		
-		    // 移除所有tab-link active样式
-		    document.querySelectorAll(".tab-link").forEach(btn => btn.classList.remove("active"));
-		    // 隐藏所有tab-content
-		    document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
-		
-		    // 激活当前tab按钮
-		    button.classList.add("active");
-		    // 显示对应内容
-		    document.getElementById(tabId).classList.add("active");
-		  });
-		});
+            <!-- Section 3: 查看歌曲信息 -->
+            <div class="accordion-card" id="card-song-detail">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">🎧 3. 查看歌曲信息</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="display:flex; gap:10px; margin-bottom:12px; margin-top: 10px;">
+                        <input type="text" id="songId" placeholder="输入歌曲 ID" style="flex:1;">
+                        <select id="songLevel">
+                            <option value="standard">standard (标准)</option>
+                            <option value="exhigh">exhigh (极高)</option>
+                            <option value="lossless" selected>lossless (无损)</option>
+                        </select>
+                        <button class="btn-primary" onclick="loadSongInfo()">查看单曲信息</button>
+                    </div>
+                    <div id="song-info"></div>
+                </div>
+            </div>
 
-    	
-    	
-    	
-        function loadMyPlaylists() {
-   			 axios.post('/MyPlaylist')
-		        .then(resp => {
-		            const list = document.getElementById("playlist-list");
-		            list.innerHTML = '';
-		            const playlists = resp.data.data.playlists; // ✅ 正确访问 playlists 字段
-		            playlists.forEach(pl => {
-		                const li = document.createElement("li");
-		                li.innerText = `${pl.name}（共 ${pl.trackCount} 首歌） ID: ${pl.id}`;
-		                list.appendChild(li);
-		            });
-		        })
-		        .catch(err => alert("加载失败：" + err));
-		}
-		
-		
-		
-		let allTracks = [];
-		let currentPage = 1;
-		const pageSize = 50;
-		
-		function loadPlaylistDetail() {
-		    const id = document.getElementById("playlistId").value;
-		    if (!id) {
-		        alert("请输入歌单ID");
-		        return;
-		    }
-		
-		    axios.post('/Playlist', new URLSearchParams({ id }))
-		        .then(resp => {
-		            if (resp.data.code !== "000000") {
-		                throw new Error(resp.data.msg || "服务异常");
-		            }
-		
-		            const playlist = resp.data.data.playlist;
-		            allTracks = playlist.tracks || [];
-		            currentPage = 1;
-		
-		            // 显示歌单基本信息
-		            const infoDiv = document.getElementById("playlist-info");
-		            infoDiv.innerHTML = `
-		                <h3>歌单详情：${playlist.name}</h3>
-		                <button onclick="downloadPlaylist(${playlist.id})">下载整个歌单</button><br/>
-		                <img src="${playlist.coverImgUrl}" alt="封面" width="200"/><br/>
-		                <strong>创建人：</strong>${playlist.creator}<br/>
-		                <strong>描述：</strong>${playlist.description || '无'}<br/>
-		                <strong>共 ${playlist.trackCount} 首歌</strong>
-		            `;
-		
-		            renderTracksPage();
-		        })
-		        .catch(error => {
-		            console.error("加载歌单详情失败：", error);
-		            alert("加载歌单详情失败：" + error.message);
-		        });
-		}
-		
-		function renderTracksPage() {
-		    const list = document.getElementById("playlist-tracks");
-		    const start = (currentPage - 1) * pageSize;
-		    const end = start + pageSize;
-		    const pageTracks = allTracks.slice(start, end);
-		
-		    if (pageTracks.length === 0) {
-		        list.innerHTML = "<li>该页暂无歌曲</li>";
-		        return;
-		    }
-		
-		    list.innerHTML = pageTracks.map(t =>
-		        `<li><strong>${t.name}</strong> - ${t.artists}（ID: ${t.id}）</li>`
-		    ).join('');
-		
-		    // 更新分页按钮状态
-		    document.getElementById("page-indicator").textContent = `第 ${currentPage} 页`;
-		    document.getElementById("prev-page").disabled = currentPage === 1;
-		    document.getElementById("next-page").disabled = end >= allTracks.length;
-		}
-		
-		function changePage(offset) {
-		    const newPage = currentPage + offset;
-		    if (newPage < 1 || (newPage - 1) * pageSize >= allTracks.length) {
-		        return;
-		    }
-		    currentPage = newPage;
-		    renderTracksPage();
-		}
+        </div>
+    </div>
 
-		function loadAlbumInfo() {
-		    const albumId = document.getElementById("albumId").value;
-		    fetch(`/Album?id=${albumId}`)
-		        .then(res => res.json())
-		        .then(resp => {
-		            if (resp.code !== '000000') {
-		                alert("加载专辑失败：" + resp.msg);
-		                return;
-		            }
-		
-		            const album = resp.data.album;
-		
-		            // 渲染基础信息
-		            document.getElementById("album-name").innerText = album.name;
-		            document.getElementById("album-artist").innerText = album.artist;
-		            document.getElementById("album-publish-time").innerText =
-		                new Date(album.publishTime).toLocaleDateString();
-		            document.getElementById("album-cover").src = album.coverImgUrl;
-		
-		            // 渲染歌曲列表
-		            const tracksList = document.getElementById("album-tracks");
-		            tracksList.innerHTML = "";
-		            album.songs.forEach(track => {
-		                const li = document.createElement("li");
-		                li.textContent = `${track.name} - ${track.artists}（ID: ${track.id}）`;
-		                tracksList.appendChild(li);
-		            });
-		            document.getElementById("album-download").innerHTML = `
-					    <button onclick="downloadAlbum(${album.id})">下载整个专辑</button>
-					`;
-		        })
-		        .catch(err => {
-		            alert("加载专辑失败：" + err);
-		        });
-		}
-				
-		
-        function loadSongInfo() {
-			const songId = document.getElementById('songId').value;
-  			const level = document.getElementById('songLevel').value;
-	
-			  if (!songId) {
-			    alert('请输入歌曲ID');
-			    return;
-			  }
-		  fetch(`/Song_V1?id=${songId}&level=${level}`)
-		    .then(res => res.json())
-		    .then(data => {
-		      if (data.code === "000000" && data.data) {
-		        const song = data.data; // 单个歌曲对象
-		        // 显示歌曲信息示范
-		        const container = document.getElementById('song-info');
-		        container.innerHTML = `
-		          <h3>歌曲详情</h3>
-		          	<button onclick="downloadSingle(${song.id})">下载</button><br/>
-			        <p><strong>歌曲名：</strong> ${song.name}</p>
-			        <p><strong>文件大小：</strong> ${song.size}</p>
-			        <p><strong>歌曲图片：</strong></p>
-			        <p><strong>专辑名：</strong> ${song.al_name}</p>
-			        <p><strong>歌手名：</strong> ${song.ar_name}</p>
-			        <p><strong>歌词：</strong></p>
-			        <pre>${song.lyric || '无歌词'}</pre>
-			        <p><strong>翻译歌词：</strong></p>
-			        <pre>${song.tlyric || '无翻译歌词'}</pre>
-		        `;
-		      } else {
-		        alert("加载歌曲失败!");
-		      }
-		    })
-		    .catch(err => alert("加载歌曲失败：" + err));
-		}
+    <!-- 2. 专辑 Tab 内容 -->
+    <div id="tab-album" class="tab-content" style="display:none;">
+        <div class="accordion-wrapper">
+            <div class="accordion-card active" id="card-album-detail">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">💽 查看专辑信息</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="display:flex; gap:10px; margin-bottom:12px; margin-top: 10px;">
+                        <input type="text" id="albumId" placeholder="输入专辑 ID" style="flex:1;">
+                        <button class="btn-primary" onclick="loadAlbumInfo()">查看专辑</button>
+                    </div>
+                    <div id="album-info">
+                        <p><strong>下载：</strong> <span id="album-download"></span></p>
+                        <p><strong>专辑名：</strong> <span id="album-name"></span></p>
+                        <p><strong>歌手：</strong> <span id="album-artist"></span></p>
+                        <p><strong>发行时间：</strong> <span id="album-publish-time"></span></p>
+                        <p><strong>封面：</strong><br><img id="album-cover" style="max-width: 150px; border-radius:8px; margin-top:5px;"></p>
+                        <h4>歌曲列表：</h4>
+                        <ul class="data-list" id="album-tracks"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        let searchPage = 1;
-		const searchPageSize = () => parseInt(document.getElementById("searchLimit").value) || 10;
-		
-		function searchSongs() {
-		    const kw = document.getElementById("searchKeyword").value;
-		    const type = document.getElementById("searchType").value;
-		    const limit = searchPageSize();
-		    const offset = (searchPage - 1) * limit;
-		
-		    if (!kw) {
-		        return alert("请输入关键词");
-		    }
-		
-		    axios.post(`/Search?keywords=${encodeURIComponent(kw)}&type=${type}&limit=${limit}&offset=${offset}`)
-		        .then(resp => {
-		            const list = document.getElementById("search-results");
-		            const results = resp.data.data || [];
-		            list.innerHTML = '';
-		
-		            if (results.length === 0) {
-		                list.innerHTML = '<li>无搜索结果</li>';
-		                return;
-		            }
-		            
-		            //渲染内容
-		            renderSearchResultsByType(type, results);
-		
-		            // 更新页码显示
-		            document.getElementById("search-page-indicator").textContent = `第 ${searchPage} 页`;
-		            document.getElementById("search-prev").disabled = searchPage === 1;
-		            document.getElementById("search-next").disabled = results.length < limit; // 如果结果不足一页，说明没有下一页
-		        })
-		        .catch(err => {
-		            alert("搜索失败：" + err);
-		        });
-		}
-		
-		function renderSearchResultsByType(type, data) {
-		    const list = document.getElementById("search-results");
-		    list.innerHTML = '';
-		
-		    if (type === "1") {
-		        // 🎵 单曲
-		        data.forEach(item => {
-		            const li = document.createElement("li");
-		            li.textContent = `${item.name} - ${item.artists}（ID: ${item.id}）`;
-		            list.appendChild(li);
-		        });
-		    } else if (type === "100") {
-		        // 🎤 歌手
-		        data.forEach(artist => {
-		            const li = document.createElement("li");
-		            li.innerHTML = `
-		                <img src="${artist.picUrl}" alt="头像" style="height:40px;width:40px;border-radius:50%;margin-right:10px;">
-		                ${artist.name}（ID: ${artist.id}）
-		            `;
-		            list.appendChild(li);
-		        });
-		    } else if (type === "10") {
-		    	// 专辑
-		    	data.forEach(album => {
-				
-					 // 渲染专辑 AlbumDTO
-      				const date = album.publishTime ? new Date(album.publishTime).toLocaleDateString() : "未知";
-		            const li = document.createElement("li");
-		            li.innerHTML = `
-				        <div style="margin-bottom: 1em; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
-				          <img src="${album.picUrl}" alt="封面" width="80" style="vertical-align: middle; margin-right: 10px;" />
-				          <strong>${album.name}</strong>（共 ${album.size || 0} 首）<br/>
-				          🏷️ ID: ${album.id || "未知"}<br/>
-				          🎤 艺术家: ${album.artist?.name || "未知"}<br/>
-				          🏢 发行公司: ${album.company || "未知"}<br/>
-				          📅 发行时间: ${date}<br/>
-				        </div>
-				      `;
-		            list.appendChild(li);
-		        });
-		    } else if (type === "1000") {
-		    	//歌单
-		    	data.forEach(playlist => {
-				
-		            const li = document.createElement("li");
-		            li.innerHTML = `
-				      <div style="margin-bottom: 1em; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
-				        <img src="${playlist.coverImgUrl}" alt="封面" width="80" style="vertical-align: middle; margin-right: 10px;" />
-				        <strong>${playlist.name}</strong>（共 ${playlist.trackCount || 0} 首）<br/>
-				        🆔 歌单ID: ${playlist.id}<br/>
-				        📄 描述: ${playlist.description || "无"}<br/>
-				      </div>
-				    `;
-		            list.appendChild(li);
-		        });
-		    }	else {
-		        const li = document.createElement("li");
-		        li.textContent = `暂不支持该类型（type=${type}）的渲染`;
-		        list.appendChild(li);
-		    }
-		}
-		
-		function changeSearchPage(offset) {
-		    const newPage = searchPage + offset;
-		    if (newPage < 1) return;
-		
-		    searchPage = newPage;
-		    searchSongs();
-		}
+    <!-- 3. 搜索 Tab 内容 -->
+    <div id="tab-search" class="tab-content" style="display:none;">
+        <div class="accordion-wrapper">
+            <div class="accordion-card active" id="card-search">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">🔍 关键词搜索</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="display:flex; gap:10px; margin-bottom:12px; margin-top: 10px;">
+                        <input type="text" id="searchKeyword" placeholder="输入关键词 (歌曲 / 歌手 / 歌单)" style="flex:1;">
+                        <select id="searchType">
+                            <option value="1">单曲</option>
+                            <option value="1000">歌单</option>
+                            <option value="10">专辑</option>
+                            <option value="100">歌手</option>
+                        </select>
+                        <input type="number" id="searchLimit" value="10" min="1" style="width:70px;">
+                        <button class="btn-primary" onclick="searchSongs()">搜索</button>
+                    </div>
+                    <ul class="data-list" id="search-results"></ul>
+                    <div id="search-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                        <button id="search-prev" class="btn-primary" onclick="changeSearchPage(-1)" disabled>上一页</button>
+                        <span id="search-page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
+                        <button id="search-next" class="btn-primary" onclick="changeSearchPage(1)">下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        
-        function downloadSingle(id) {
-		    axios.get(`/v2/single?id=${id}`)
-		        .then(() => startProgressPolling())
-		        .catch(err => alert("单曲下载失败：" + err));
-		}
-		
-		function downloadPlaylist(id) {
-		    axios.get(`/v2/playlist?id=${id}`)
-		        .then(() => startProgressPolling())
-		        .catch(err => alert("歌单下载失败：" + err));
-		}
-		
-		function downloadAlbum(id) {
-		    axios.get(`/v2/album?id=${id}`)
-		        .then(() => startProgressPolling())
-		        .catch(err => alert("专辑下载失败：" + err));
-		}
+    <!-- 右下角悬浮半透明下载监控卡片 (Floating Glassmorphism Widget) -->
+    <div class="floating-monitor" id="floatingMonitor" style="display: none;">
+        <div class="monitor-header" onclick="toggleMinimizeMonitor()">
+            <span class="monitor-header-title" id="monitorHeaderTitle">📥 下载监控</span>
+            <div class="monitor-header-actions" onclick="event.stopPropagation();">
+                <button class="btn-icon" onclick="clearMonitorTasks()" title="清空历史记录">🗑️</button>
+                <button class="btn-icon" onclick="toggleMinimizeMonitor()" title="最小化 / 展开">➖</button>
+                <button class="btn-icon" onclick="hideMonitor()" title="关闭监控">✕</button>
+            </div>
+        </div>
+        <div class="monitor-body">
+            <div class="monitor-task-list" id="monitorTaskList"></div>
+        </div>
+    </div>
 
-		// 下载监控轮询逻辑
-		let monitorInterval = null;
-
-		function startProgressPolling() {
-			document.getElementById('downloadMonitor').style.display = 'block';
-			fetchDownloadTasks();
-			if (!monitorInterval) {
-				monitorInterval = setInterval(fetchDownloadTasks, 1500);
-			}
-		}
-
-		function fetchDownloadTasks() {
-			axios.get('/v2/tasks')
-				.then(resp => {
-					if (resp.data.code === "000000") {
-						const tasks = resp.data.data || [];
-						// 按提交时间从新到旧排序
-						tasks.sort((a, b) => b.timestamp - a.timestamp);
-
-						const listContainer = document.getElementById('monitorList');
-						listContainer.innerHTML = '';
-
-						if (tasks.length === 0) {
-							listContainer.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无下载任务</div>';
-							return;
-						}
-
-						let hasActiveTask = false;
-
-						tasks.forEach(task => {
-							const item = document.createElement('div');
-							item.className = 'monitor-item';
-
-							const nameContainer = document.createElement('div');
-							nameContainer.className = 'song-name-container';
-
-							const songName = document.createElement('span');
-							songName.className = 'song-name';
-							songName.textContent = task.name || `未知歌曲 (ID: ${task.id})`;
-							nameContainer.appendChild(songName);
-
-							if (task.status === 'FAILED' && task.errorMsg) {
-								const errorSpan = document.createElement('span');
-								errorSpan.className = 'error-msg';
-								errorSpan.textContent = `❌ 失败原因: ${task.errorMsg}`;
-								nameContainer.appendChild(errorSpan);
-							}
-
-							item.appendChild(nameContainer);
-
-							const badge = document.createElement('span');
-							badge.className = `badge badge-${task.status.toLowerCase()}`;
-							
-							let statusText = task.status;
-							if (task.status === 'PENDING') statusText = '排队中';
-							if (task.status === 'DOWNLOADING') {
-								statusText = '下载中';
-								hasActiveTask = true;
-							}
-							if (task.status === 'SUCCESS') statusText = '成功';
-							if (task.status === 'SKIP') statusText = '已跳过';
-							if (task.status === 'FAILED') statusText = '失败';
-
-							badge.textContent = statusText;
-							item.appendChild(badge);
-
-							listContainer.appendChild(item);
-						});
-
-						// 如果没有正在排队或下载中的任务，停止轮询以节省性能
-						if (!hasActiveTask && monitorInterval) {
-							const hasPending = tasks.some(t => t.status === 'PENDING');
-							if (!hasPending) {
-								clearInterval(monitorInterval);
-								monitorInterval = null;
-							}
-						}
-					}
-				})
-				.catch(err => console.error("获取下载任务进度失败:", err));
-		}
-
-		function clearMonitorTasks() {
-			axios.post('/v2/tasks/clear')
-				.then(() => fetchDownloadTasks())
-				.catch(err => alert("清空历史记录失败：" + err));
-		}
-
-		function hideMonitor() {
-			document.getElementById('downloadMonitor').style.display = 'none';
-			if (monitorInterval) {
-				clearInterval(monitorInterval);
-				monitorInterval = null;
-			}
-		}
-    </script>
+    <!-- JavaScript 全局控制引擎 -->
+    <script src="/js/app.js"></script>
 </body>
 </html>
