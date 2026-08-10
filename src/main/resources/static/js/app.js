@@ -206,10 +206,35 @@ function loadAlbumInfo() {
     axios.post('/Album', new URLSearchParams({ id }))
         .then(resp => {
             const album = resp.data.data.album;
-            document.getElementById("album-name").textContent = album.name;
-            document.getElementById("album-artist").textContent = album.artist;
-            document.getElementById("album-publish-time").textContent = album.publishTime;
-            document.getElementById("album-cover").src = album.picUrl;
+            document.getElementById("album-name").textContent = album.name || '未知专辑';
+            document.getElementById("album-artist").textContent = album.artist || '群星 / 未知';
+
+            // Format Unix millisecond timestamp to readable date string YYYY-MM-DD
+            if (album.publishTime) {
+                const pubDate = new Date(Number(album.publishTime));
+                if (!isNaN(pubDate.getTime())) {
+                    const y = pubDate.getFullYear();
+                    const m = String(pubDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(pubDate.getDate()).padStart(2, '0');
+                    document.getElementById("album-publish-time").textContent = `${y}-${m}-${d}`;
+                } else {
+                    document.getElementById("album-publish-time").textContent = album.publishTime;
+                }
+            } else {
+                document.getElementById("album-publish-time").textContent = '未知发行时间';
+            }
+
+            // Cover Image Fallback Fix (AlbumDTO uses coverImgUrl, fallback to picUrl)
+            const coverUrl = album.coverImgUrl || album.picUrl || '';
+            const coverImg = document.getElementById("album-cover");
+            if (coverUrl) {
+                coverImg.src = coverUrl;
+                coverImg.style.display = "block";
+            } else {
+                coverImg.style.display = "none";
+                document.getElementById("album-cover").insertAdjacentHTML('afterend', '<span style="font-size:12px; color:#888;">(暂无封面)</span>');
+            }
+
             document.getElementById("album-download").innerHTML = `
                 <button class="btn-primary" onclick="downloadAlbum('${album.id}')">📥 下载专辑</button>
             `;
@@ -253,6 +278,7 @@ function loadSongInfo() {
             const levelText = song.level || level;
             const imgSrc = song.pic || song.picUrl || '';
             const imgHtml = imgSrc ? `<img src="${imgSrc}" style="width:100px; height:100px; border-radius:8px; object-fit:cover;">` : '';
+            const albumBtn = song.al_id ? `<button class="btn-primary" style="background:#8b5cf6; margin-right:6px;" onclick="jumpToAlbumDetail('${song.al_id}')">💽 查看专辑</button>` : '';
 
             infoDiv.innerHTML = `
                 <div style="display:flex; gap:15px; margin-top:10px;">
@@ -261,7 +287,8 @@ function loadSongInfo() {
                         <h4 style="margin:0 0 6px 0;">${song.name}</h4>
                         <div style="font-size:13px; color:#555;">歌手：${arText} | 专辑：${alText}</div>
                         <div style="font-size:12px; color:#777; margin-bottom:8px;">大小：${sizeText} | 音质：${levelText}</div>
-                        <button class="btn-primary" style="background:#10b981; margin-right:6px;" onclick="playAudioOnline('${song.url}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arText||'').replace(/'/g, "\\'")}', '${imgSrc}')">▶️ 在线试听</button>
+                        <button class="btn-primary" style="background:#10b981; margin-right:6px;" onclick="playAudioOnline('${song.url}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arText||'').replace(/'/g, "\\'")}', '${imgSrc}', '${(song.lyric||'').replace(/'/g, "\\'")}')">▶️ 在线试听</button>
+                        ${albumBtn}
                         <button class="btn-primary" onclick="downloadSingle('${song.id}')">📥 下载单曲</button>
                     </div>
                 </div>
@@ -494,10 +521,37 @@ function hideMonitor() {
 }
 
 /* ==========================================================================
+   🔗 联动跳转逻辑 (Interactive Navigation Engine)
+   ========================================================================== */
+
+function jumpToAlbumDetail(albumId) {
+    if (!albumId) return;
+
+    // 1. Switch to Album tab
+    switchTab('album');
+
+    // 2. Fill album ID input
+    const input = document.getElementById('albumId');
+    if (input) input.value = albumId;
+
+    // 3. Expand accordion card
+    const card = document.getElementById('card-album-detail');
+    if (card && !card.classList.contains('active')) {
+        const header = card.querySelector('.accordion-header');
+        if (header) toggleAccordionCard(header);
+    }
+
+    // 4. Trigger album data load
+    loadAlbumInfo();
+}
+
+/* ==========================================================================
    🎧 在线试听播放器控制 (Online Audio Player Controller)
    ========================================================================== */
 
-function playAudioOnline(url, title, artist, cover) {
+let currentPlayingLyric = "";
+
+function playAudioOnline(url, title, artist, cover, lyric) {
     if (!url) {
         alert("未获取到在线播放链接（可能由于版权保护或下架）");
         return;
@@ -511,12 +565,23 @@ function playAudioOnline(url, title, artist, cover) {
 
     if (bar && player) {
         bar.style.display = "block";
+
+        // Sanitize artist name string to strictly avoid displaying "null" / "undefined"
+        let validArtist = artist;
+        if (!validArtist || validArtist === 'null' || validArtist === 'undefined') {
+            validArtist = '群星 / 未知';
+        }
+
         titleEl.textContent = title || "未知歌曲";
-        artistEl.textContent = artist || "未知歌手";
+        artistEl.textContent = validArtist;
         coverEl.src = cover || "";
+        currentPlayingLyric = lyric || "暂无歌词";
 
         player.src = url;
         player.play().catch(err => console.log("自动播放尝试被浏览器防护阻断，需手动点击播放按钮:", err));
+
+        // Prevent bottom content occlusion by adding dynamic body padding-bottom
+        document.body.style.paddingBottom = (window.innerWidth <= 768) ? '140px' : '110px';
     }
 }
 
@@ -531,7 +596,8 @@ function playSongById(songId, songName, artistName, coverUrl) {
                 const title = songName || song.name;
                 const artist = artistName || song.ar_name || "群星 / 未知";
                 const cover = coverUrl || song.pic || song.picUrl || "";
-                playAudioOnline(song.url, title, artist, cover);
+                const lyric = song.lyric || "暂无歌词";
+                playAudioOnline(song.url, title, artist, cover, lyric);
             } else {
                 alert("未解析到试听 URL（可能由于无版权或许可限制）");
             }
@@ -548,5 +614,28 @@ function closeAudioPlayer() {
     }
     if (bar) {
         bar.style.display = "none";
+    }
+    // Restore original body padding-bottom
+    document.body.style.paddingBottom = "";
+}
+
+function openLyricModal() {
+    const modal = document.getElementById("lyricModal");
+    const content = document.getElementById("lyricModalContent");
+    const title = document.getElementById("lyricModalTitle");
+    const playerTitle = document.getElementById("audioBarTitle").textContent;
+    const playerArtist = document.getElementById("audioBarArtist").textContent;
+
+    if (modal && content) {
+        title.textContent = `${playerTitle} - ${playerArtist}`;
+        content.textContent = currentPlayingLyric || "暂无歌词";
+        modal.style.display = "flex";
+    }
+}
+
+function closeLyricModal() {
+    const modal = document.getElementById("lyricModal");
+    if (modal) {
+        modal.style.display = "none";
     }
 }

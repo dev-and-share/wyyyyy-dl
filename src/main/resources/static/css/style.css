@@ -590,3 +590,61 @@ ul.data-list li:last-child {
         width: 100%;
     }
 }
+
+/* ==========================================================================
+   🎤 歌词大弹窗 Modal (Lyric Modal Overlay)
+   ========================================================================== */
+.lyric-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.lyric-modal-card {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    color: white;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.lyric-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lyric-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.lyric-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    font-size: 15px;
+    line-height: 2;
+    text-align: center;
+    color: #e2e8f0;
+    white-space: pre-wrap;
+    font-family: inherit;
+}

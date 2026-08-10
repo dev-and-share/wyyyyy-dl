@@ -68,6 +68,7 @@ public class AnalysisService {
             if (alObj != null) {
                 dto.setPic(alObj.getString("picUrl"));
                 dto.setAl_name(alObj.getString("name"));
+                dto.setAl_id(alObj.getLong("id"));
             }
             if ((dto.getAl_name() == null || dto.getAl_name().isEmpty()) && songInfo.containsKey("pc")) {
                 JSONObject pcObj = songInfo.getJSONObject("pc");
