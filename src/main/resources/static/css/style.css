@@ -22,7 +22,7 @@ body {
     background-color: var(--bg-color);
     color: var(--text-main);
     margin: 0;
-    padding: 20px;
+    padding: 20px 20px 95px 20px;
     line-height: 1.6;
 }
 
@@ -234,7 +234,7 @@ ul.data-list li:last-child {
 /* Floating Download Monitor Widget (Glassmorphism) */
 .floating-monitor {
     position: fixed;
-    bottom: 24px;
+    bottom: 85px;
     right: 24px;
     width: 360px;
     background: rgba(255, 255, 255, 0.92);
@@ -472,7 +472,7 @@ ul.data-list li:last-child {
 
     /* 右下角悬浮监控挂件移动端自适应 */
     .floating-monitor {
-        bottom: 12px;
+        bottom: 85px;
         right: 12px;
         left: 12px;
         width: auto !important;

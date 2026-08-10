@@ -335,6 +335,24 @@ let parsedLrcList = [];
 let currentLrcIndex = -1;
 let isAudioPlayerMinimized = false;
 
+function toggleMinimizeAudioPlayer() {
+    const bar = document.getElementById("globalAudioPlayerBar") || document.getElementById("globalAudioBar");
+    if (bar) {
+        bar.classList.toggle("minimized");
+    }
+}
+
+function closeAudioPlayer() {
+    const bar = document.getElementById("globalAudioPlayerBar") || document.getElementById("globalAudioBar");
+    const player = document.getElementById("globalAudioPlayer");
+    if (player) {
+        player.pause();
+    }
+    if (bar) {
+        bar.style.display = "none";
+    }
+}
+
 function playAudioOnline(url, name, artist, cover, lyric) {
     if (!url) {
         alert("暂无直接播放链接，请切换音质重试或点击下载");
