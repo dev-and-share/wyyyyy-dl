@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  netease-music-dl:
+    build: .
+    image: peweelive/netease-music-dl:latest
+    container_name: netease-music-dl
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Asia/Shanghai
+      - HOST_DOWNLOAD_PATH=${HOST_DOWNLOAD_PATH}
+    volumes:
+      # 读取 .env 配置文件中的 HOST_DOWNLOAD_PATH
+      - ${HOST_DOWNLOAD_PATH}:/media/music

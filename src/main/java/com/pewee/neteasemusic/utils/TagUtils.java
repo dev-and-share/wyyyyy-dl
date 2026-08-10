@@ -41,9 +41,45 @@ public class TagUtils {
         }
     }
 
-    public static void main(String[] args) {
-        // Validation code for manual testing
-        // File testFile = new File("path/to/test.mp3");
-        // setTags(testFile, "Test Title", "Test Artist", "Test Album");
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class TagInfo {
+        private String title;
+        private String artist;
+        private String album;
+    }
+
+    public static TagInfo readTags(File file) {
+        String defaultTitle = file.getName();
+        int dotIdx = defaultTitle.lastIndexOf('.');
+        if (dotIdx > 0) defaultTitle = defaultTitle.substring(0, dotIdx);
+        
+        String defaultArtist = "";
+        if (defaultTitle.contains(" - ")) {
+            String[] parts = defaultTitle.split(" - ", 2);
+            defaultArtist = parts[0].trim();
+            defaultTitle = parts[1].trim();
+        }
+
+        String defaultAlbum = file.getParentFile() != null ? file.getParentFile().getName() : "";
+
+        try {
+            AudioFile audioFile = AudioFileIO.read(file);
+            Tag tag = audioFile.getTag();
+            if (tag != null) {
+                String t = tag.getFirst(FieldKey.TITLE);
+                String a = tag.getFirst(FieldKey.ARTIST);
+                String al = tag.getFirst(FieldKey.ALBUM);
+
+                return new TagInfo(
+                        (t != null && !t.trim().isEmpty()) ? t.trim() : defaultTitle,
+                        (a != null && !a.trim().isEmpty()) ? a.trim() : defaultArtist,
+                        (al != null && !al.trim().isEmpty()) ? al.trim() : defaultAlbum
+                );
+            }
+        } catch (Exception ignored) {}
+
+        return new TagInfo(defaultTitle, defaultArtist, defaultAlbum);
     }
 }

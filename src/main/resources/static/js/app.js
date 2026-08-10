@@ -1,5 +1,5 @@
 /* ==========================================================================
-   🎵 NetEase Music Downloader Modern JavaScript Core
+   🎵 NetEase Music Downloader - App Core Engine (app.js)
    ========================================================================== */
 
 let currentPage = 1;
@@ -32,6 +32,20 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // 3. 读取 URL Hash 自动定位到指定 Tab
+    const initialHash = location.hash ? location.hash.replace('#', '') : '';
+    if (initialHash && document.getElementById('tab-' + initialHash)) {
+        switchTab(initialHash, false);
+    }
+
+    // 4. 监听 URL Hash 变化
+    window.addEventListener('hashchange', () => {
+        const hash = location.hash ? location.hash.replace('#', '') : '';
+        if (hash && document.getElementById('tab-' + hash)) {
+            switchTab(hash, false);
+        }
+    });
+
     // 自动触发一次后台任务轮询（如果有未完成任务）
     fetchDownloadTasks();
 
@@ -57,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-function switchTab(tabName) {
+function switchTab(tabName, updateHash = true) {
     const targetTabId = 'tab-' + tabName;
     const tabLinks = document.querySelectorAll(".tab-btn");
     tabLinks.forEach(button => {
@@ -71,6 +85,15 @@ function switchTab(tabName) {
     document.querySelectorAll(".tab-content").forEach(content => {
         content.style.display = (content.id === targetTabId) ? "block" : "none";
     });
+
+    if (updateHash && location.hash !== '#' + tabName) {
+        history.pushState(null, null, '#' + tabName);
+    }
+
+    if (tabName === 'download-mgr' && typeof loadDownloadHistory === 'function') {
+        loadDownloadHistory(1);
+        loadHistoryStats();
+    }
 }
 
 /* ==========================================================================
@@ -81,7 +104,6 @@ function openAccordionCard(cardId) {
     const card = document.getElementById(cardId);
     if (!card) return;
     
-    // 如果想要只保留一个展开（Accordion模式），折叠同一父级的其他Cards
     const parent = card.parentElement;
     if (parent) {
         const siblingCards = parent.querySelectorAll(".accordion-card");
@@ -110,189 +132,18 @@ function jumpToPlaylistDetail(playlistId) {
     const input = document.getElementById("playlistId");
     if (input) input.value = playlistId;
     
-    // 展开 Section 2 (歌单详情)，折叠 Section 1
     openAccordionCard("card-playlist-detail");
-    
-    // 自动请求详情
-    loadPlaylistDetail();
+    if (typeof loadPlaylistDetail === 'function') loadPlaylistDetail();
 }
 
 function jumpToSongDetail(songId) {
-    // 切换至歌单/单曲主 Tab
     switchTab('playlist');
 
     const input = document.getElementById("songId");
     if (input) input.value = songId;
     
-    // 展开 Section 3 (查看歌曲信息)
     openAccordionCard("card-song-detail");
-    
-    // 自动请求单曲信息
-    loadSongInfo();
-}
-
-/* ==========================================================================
-   🎵 歌单 & 专辑 & 搜索业务数据加载
-   ========================================================================== */
-
-function loadMyPlaylists() {
-    axios.post('/MyPlaylist')
-        .then(resp => {
-            const list = document.getElementById("playlist-list");
-            list.innerHTML = "";
-            const playlists = resp.data.data.playlists;
-            
-            playlists.forEach(pl => {
-                const li = document.createElement("li");
-                li.innerHTML = `
-                    <div>
-                        <strong>${pl.name}</strong> 
-                        <span style="color:#888; font-size:12px; margin-left:6px;">(ID: ${pl.id})</span>
-                    </div>
-                    <div>
-                        <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${pl.id}')">👉 查看详情</button>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-        })
-        .catch(err => alert("加载歌单失败：" + err));
-}
-
-function loadPlaylistDetail() {
-    const id = document.getElementById("playlistId").value;
-    if (!id) {
-        alert("请输入歌单 ID");
-        return;
-    }
-    
-    axios.post('/Playlist', new URLSearchParams({ id }))
-        .then(resp => {
-            const playlist = resp.data.data.playlist;
-            currentPlaylist = playlist;
-            allTracks = playlist.tracks || [];
-            currentPage = 1;
-
-            const infoDiv = document.getElementById("playlist-info");
-            infoDiv.innerHTML = `
-                <div style="display:flex; gap:15px; margin-top:10px;">
-                    <img src="${playlist.coverImgUrl}" alt="封面" style="width:120px; height:120px; border-radius:8px; object-fit:cover;">
-                    <div>
-                        <h4 style="margin:0 0 6px 0;">${playlist.name}</h4>
-                        <div style="font-size:13px; color:#555; margin-bottom:8px;">创建人：${playlist.creator} | 共 ${playlist.trackCount} 首歌</div>
-                        <button class="btn-primary" onclick="downloadPlaylist('${playlist.id}')">📥 下载整个歌单</button>
-                    </div>
-                </div>
-            `;
-            renderPage(currentPage);
-        })
-        .catch(err => alert("获取歌单详情失败：" + err));
-}
-
-function getValidArtistNames(track) {
-    if (!track) return '';
-    let arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
-    if (!arNames || arNames === 'null' || arNames === 'undefined' || arNames.trim() === '') {
-        return '';
-    }
-    return arNames;
-}
-
-function renderPage(page) {
-    const list = document.getElementById("playlist-tracks");
-    list.innerHTML = "";
-
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    const pageTracks = allTracks.slice(start, end);
-
-    pageTracks.forEach(track => {
-        const li = document.createElement("li");
-        const arNames = getValidArtistNames(track);
-        const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
-        li.innerHTML = `
-            <div>
-                <strong>${track.name}</strong>${artistText}
-            </div>
-            <div>
-                <button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(arNames||'').replace(/'/g, "\\'")}')">▶️ 试听</button>
-                <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🎵 详情</button>
-                <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${track.id}')">📥 下载</button>
-            </div>
-        `;
-        list.appendChild(li);
-    });
-
-    document.getElementById("page-indicator").textContent = `第 ${page} 页 / 共 ${Math.ceil(allTracks.length / pageSize)} 页`;
-    document.getElementById("prev-page").disabled = (page === 1);
-    document.getElementById("next-page").disabled = (end >= allTracks.length);
-}
-
-function changePage(offset) {
-    currentPage += offset;
-    renderPage(currentPage);
-}
-
-function loadAlbumInfo() {
-    const id = document.getElementById("albumId").value;
-    if (!id) {
-        alert("请输入专辑 ID");
-        return;
-    }
-    axios.post('/Album', new URLSearchParams({ id }))
-        .then(resp => {
-            const album = resp.data.data.album;
-            document.getElementById("album-name").textContent = album.name || '未知专辑';
-            document.getElementById("album-artist").textContent = album.artist || '群星 / 未知';
-
-            // Format Unix millisecond timestamp to readable date string YYYY-MM-DD
-            if (album.publishTime) {
-                const pubDate = new Date(Number(album.publishTime));
-                if (!isNaN(pubDate.getTime())) {
-                    const y = pubDate.getFullYear();
-                    const m = String(pubDate.getMonth() + 1).padStart(2, '0');
-                    const d = String(pubDate.getDate()).padStart(2, '0');
-                    document.getElementById("album-publish-time").textContent = `${y}-${m}-${d}`;
-                } else {
-                    document.getElementById("album-publish-time").textContent = album.publishTime;
-                }
-            } else {
-                document.getElementById("album-publish-time").textContent = '未知发行时间';
-            }
-
-            // Cover Image Fallback Fix (AlbumDTO uses coverImgUrl, fallback to picUrl)
-            const coverUrl = album.coverImgUrl || album.picUrl || '';
-            const coverImg = document.getElementById("album-cover");
-            if (coverUrl) {
-                coverImg.src = coverUrl;
-                coverImg.style.display = "block";
-            } else {
-                coverImg.style.display = "none";
-                document.getElementById("album-cover").insertAdjacentHTML('afterend', '<span style="font-size:12px; color:#888;">(暂无封面)</span>');
-            }
-
-            document.getElementById("album-download").innerHTML = `
-                <button class="btn-primary" onclick="downloadAlbum('${album.id}')">📥 下载专辑</button>
-            `;
-
-            const list = document.getElementById("album-tracks");
-            list.innerHTML = "";
-            (album.songs || []).forEach(song => {
-                const li = document.createElement("li");
-                const arNames = getValidArtistNames(song);
-                const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
-                li.innerHTML = `
-                    <div><strong>${song.name}</strong>${artistText}</div>
-                    <div>
-                        <button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arNames||'').replace(/'/g, "\\'")}')">▶️ 试听</button>
-                        <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 详情</button>
-                        <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${song.id}')">📥 下载</button>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-        })
-        .catch(err => alert("获取专辑信息失败：" + err));
+    if (typeof loadSongInfo === 'function') loadSongInfo();
 }
 
 function loadSongInfo() {
@@ -303,7 +154,6 @@ function loadSongInfo() {
         return;
     }
 
-    // Note: AnalysisController /Song_V1 endpoint expects parameter key 'id' (not 'ids')
     axios.post('/Song_V1', new URLSearchParams({ id: id, level: level, type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
@@ -342,65 +192,6 @@ function loadSongInfo() {
         .catch(err => alert("获取歌曲信息失败：" + err));
 }
 
-function searchSongs() {
-    const keywords = document.getElementById("searchKeyword").value;
-    const type = document.getElementById("searchType").value;
-    const limit = document.getElementById("searchLimit").value;
-
-    if (!keywords) {
-        alert("请输入搜索关键词");
-        return;
-    }
-
-    const offset = (searchPage - 1) * limit;
-
-    axios.post('/Search', new URLSearchParams({ keywords, type, limit, offset }))
-        .then(resp => {
-            const list = document.getElementById("search-results");
-            list.innerHTML = "";
-            const data = resp.data.data;
-
-            if (type === "1") { // 单曲
-                (data || []).forEach(song => {
-                    const li = document.createElement("li");
-                    const arNames = getValidArtistNames(song);
-                    const artistText = arNames ? ` - <span style="color:#666;">${arNames}</span>` : '';
-                    const albumText = song.al && song.al.name ? ` (专辑: ${song.al.name})` : '';
-                    li.innerHTML = `
-                        <div><strong>${song.name}</strong>${artistText}${albumText}</div>
-                        <div>
-                            <button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arNames||'').replace(/'/g, "\\'")}')">▶️ 试听</button>
-                            <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🎵 详情</button>
-                            <button class="jump-link-btn" style="background:#e6f4ea; color:#137333; border-color:#ceead6;" onclick="downloadSingle('${song.id}')">📥 下载</button>
-                        </div>
-                    `;
-                    list.appendChild(li);
-                });
-            } else if (type === "1000") { // 歌单
-                (data || []).forEach(playlist => {
-                    const li = document.createElement("li");
-                    li.innerHTML = `
-                        <div><strong>${playlist.name}</strong> <span style="color:#888; font-size:12px;">(共 ${playlist.trackCount || 0} 首)</span></div>
-                        <div>
-                            <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${playlist.id}')">👉 查看详情</button>
-                        </div>
-                    `;
-                    list.appendChild(li);
-                });
-            } else {
-                list.innerHTML = `<li>已返回结果，请在后台查看 JSON 数据</li>`;
-            }
-        })
-        .catch(err => alert("搜索失败：" + err));
-}
-
-function changeSearchPage(offset) {
-    const newPage = searchPage + offset;
-    if (newPage < 1) return;
-    searchPage = newPage;
-    searchSongs();
-}
-
 function toggleRepeat() {
     const repeatSwitch = document.getElementById('repeatSwitch');
     const isChecked = repeatSwitch.checked;
@@ -419,59 +210,27 @@ function toggleRepeat() {
 
 function downloadSingle(id) {
     axios.get(`/v2/single?id=${id}`)
-        .then(() => startProgressPolling())
+        .then(() => fetchDownloadTasks())
         .catch(err => alert("单曲下载失败：" + err));
-}
-
-function downloadPlaylist(id) {
-    axios.get(`/v2/playlist?id=${id}`)
-        .then(() => startProgressPolling())
-        .catch(err => alert("歌单下载失败：" + err));
-}
-
-function downloadAlbum(id) {
-    axios.get(`/v2/album?id=${id}`)
-        .then(() => startProgressPolling())
-        .catch(err => alert("专辑下载失败：" + err));
-}
-
-function startProgressPolling() {
-    const widget = document.getElementById('floatingMonitor');
-    if (widget) {
-        widget.style.display = 'block';
-        widget.classList.remove('minimized');
-        isMonitorMinimized = false;
-    }
-    fetchDownloadTasks();
-    if (!monitorInterval) {
-        monitorInterval = setInterval(fetchDownloadTasks, 1500);
-    }
 }
 
 function fetchDownloadTasks() {
     axios.get('/v2/tasks')
         .then(resp => {
-            if (resp.data.code === "000000") {
+            if (resp.data.code === '000000') {
                 const tasks = resp.data.data || [];
-                tasks.sort((a, b) => b.timestamp - a.timestamp);
-
-                const listContainer = document.getElementById('monitorTaskList');
-                if (!listContainer) return;
-                
-                listContainer.innerHTML = '';
-
                 const widget = document.getElementById('floatingMonitor');
+                const listContainer = document.getElementById('monitorTaskList');
+
+                if (!widget || !listContainer) return;
+
                 if (tasks.length === 0) {
-                    if (widget && widget.style.display !== 'none' && !monitorInterval) {
-                        listContainer.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:15px; font-size:12px;">暂无下载任务</div>';
-                    }
+                    widget.style.display = 'none';
                     return;
                 }
 
-                // 若有任务且挂件隐藏，自动显示
-                if (widget && widget.style.display === 'none') {
-                    widget.style.display = 'block';
-                }
+                widget.style.display = 'block';
+                listContainer.innerHTML = '';
 
                 let hasActiveTask = false;
 
@@ -512,15 +271,26 @@ function fetchDownloadTasks() {
                     badge.textContent = statusText;
                     item.appendChild(badge);
 
+                    if (task.status === 'SUCCESS' || task.status === 'SKIP') {
+                        const revealBtn = document.createElement('button');
+                        revealBtn.className = 'btn-icon';
+                        revealBtn.style.cssText = 'margin-left:6px; font-size:12px; padding:2px 6px; background:rgba(255,255,255,0.75); border:1px solid #ccc; border-radius:4px; cursor:pointer; color:#333;';
+                        revealBtn.title = '在 Finder / 资源管理器中高亮选中此文件';
+                        revealBtn.textContent = '📂 定位';
+                        revealBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            if (typeof revealFile === 'function') revealFile(task.filePath || '', task.id);
+                        };
+                        item.appendChild(revealBtn);
+                    }
+
                     listContainer.appendChild(item);
                 });
 
-                // 更新挂件标题计数
                 const activeCount = tasks.filter(t => t.status === 'DOWNLOADING' || t.status === 'PENDING').length;
                 const titleText = activeCount > 0 ? `📥 下载中 (${activeCount})` : `📥 下载完成 (${tasks.length})`;
                 document.getElementById('monitorHeaderTitle').textContent = titleText;
 
-                // 若已全部处理完，自动暂停轮询
                 if (!hasActiveTask && monitorInterval) {
                     const hasPending = tasks.some(t => t.status === 'PENDING');
                     if (!hasPending) {
@@ -557,31 +327,6 @@ function hideMonitor() {
 }
 
 /* ==========================================================================
-   🔗 联动跳转逻辑 (Interactive Navigation Engine)
-   ========================================================================== */
-
-function jumpToAlbumDetail(albumId) {
-    if (!albumId) return;
-
-    // 1. Switch to Album tab
-    switchTab('album');
-
-    // 2. Fill album ID input
-    const input = document.getElementById('albumId');
-    if (input) input.value = albumId;
-
-    // 3. Expand accordion card
-    const card = document.getElementById('card-album-detail');
-    if (card && !card.classList.contains('active')) {
-        const header = card.querySelector('.accordion-header');
-        if (header) toggleAccordionCard(header);
-    }
-
-    // 4. Trigger album data load
-    loadAlbumInfo();
-}
-
-/* ==========================================================================
    🎧 在线试听播放器控制 (Online Audio Player Controller)
    ========================================================================== */
 
@@ -590,178 +335,69 @@ let parsedLrcList = [];
 let currentLrcIndex = -1;
 let isAudioPlayerMinimized = false;
 
-function toggleMinimizeAudioPlayer() {
-    const bar = document.getElementById('globalAudioBar');
-    if (bar) {
-        bar.classList.toggle('minimized');
-        isAudioPlayerMinimized = bar.classList.contains('minimized');
-        if (isAudioPlayerMinimized) {
-            document.body.style.paddingBottom = '';
-        } else {
-            document.body.style.paddingBottom = (window.innerWidth <= 768) ? '140px' : '110px';
-        }
-    }
-}
-
-function playAudioOnline(url, title, artist, cover, lyric) {
+function playAudioOnline(url, name, artist, cover, lyric) {
     if (!url) {
-        alert("未获取到在线播放链接（可能由于版权保护或下架）");
+        alert("暂无直接播放链接，请切换音质重试或点击下载");
         return;
     }
-
     const bar = document.getElementById("globalAudioBar");
     const player = document.getElementById("globalAudioPlayer");
-    const titleEl = document.getElementById("audioBarTitle");
-    const artistEl = document.getElementById("audioBarArtist");
-    const coverEl = document.getElementById("audioBarCover");
-
+    
     if (bar && player) {
-        bar.style.display = "block";
-        if (isAudioPlayerMinimized) {
-            bar.classList.remove('minimized');
-            isAudioPlayerMinimized = false;
-        }
-
-        // Sanitize artist name string to strictly avoid displaying "null" / "undefined"
-        let validArtist = artist;
-        if (!validArtist || validArtist === 'null' || validArtist === 'undefined') {
-            validArtist = '群星 / 未知';
-        }
-
-        titleEl.textContent = title || "未知歌曲";
-        artistEl.textContent = validArtist;
-        coverEl.src = cover || "";
-        currentPlayingLyric = lyric || "暂无歌词";
+        document.getElementById("audioBarTitle").textContent = name || "未知歌曲";
+        document.getElementById("audioBarArtist").textContent = artist || "未知歌手";
+        document.getElementById("audioBarCover").src = cover || "/favicon.png";
+        
+        currentPlayingLyric = lyric || "";
         parsedLrcList = parseLrc(currentPlayingLyric);
         currentLrcIndex = -1;
 
         player.src = url;
-        player.play().catch(err => console.log("自动播放尝试被浏览器防护阻断，需手动点击播放按钮:", err));
-
-        // Bind timeupdate event
-        player.ontimeupdate = () => {
-            const time = player.currentTime;
-            for (let i = 0; i < parsedLrcList.length; i++) {
-                if (time >= parsedLrcList[i].time && (i === parsedLrcList.length - 1 || time < parsedLrcList[i + 1].time)) {
-                    if (currentLrcIndex !== i) {
-                        currentLrcIndex = i;
-                        updateLrcHighlight(i);
-                    }
-                    break;
-                }
-            }
-        };
-
-        // Prevent bottom content occlusion by adding dynamic body padding-bottom
-        document.body.style.paddingBottom = (window.innerWidth <= 768) ? '140px' : '110px';
+        bar.style.display = "block";
+        player.play();
     }
 }
 
-function playSongById(songId, songName, artistName, coverUrl) {
-    const levelSelect = document.getElementById("songLevel");
-    const level = levelSelect ? levelSelect.value : "lossless";
-    
-    axios.post('/Song_V1', new URLSearchParams({ id: songId, level: level, type: 'json' }))
+function playSongById(songId, name, artist) {
+    axios.post('/Song_V1', new URLSearchParams({ id: songId, level: 'standard', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url) {
-                const title = songName || song.name;
-                const artist = artistName || song.ar_name || "群星 / 未知";
-                const cover = coverUrl || song.pic || song.picUrl || "";
-                const lyric = song.lyric || "暂无歌词";
-                playAudioOnline(song.url, title, artist, cover, lyric);
+                playAudioOnline(song.url, name || song.name, artist || song.ar_name, song.pic, song.lyric);
             } else {
-                alert("未解析到试听 URL（可能由于无版权或许可限制）");
+                alert("获取播放链接失败");
             }
         })
-        .catch(err => alert("请求试听音频失败：" + err));
+        .catch(err => alert("播放获取失败：" + err));
 }
-
-function closeAudioPlayer() {
-    const bar = document.getElementById("globalAudioBar");
-    const player = document.getElementById("globalAudioPlayer");
-    if (player) {
-        player.pause();
-        player.src = "";
-        player.ontimeupdate = null;
-    }
-    if (bar) {
-        bar.style.display = "none";
-        bar.classList.remove('minimized');
-        isAudioPlayerMinimized = false;
-    }
-    // Restore original body padding-bottom
-    document.body.style.paddingBottom = "";
-}
-
-/* ==========================================================================
-   🎤 LRC 逐行解析与全屏沉浸式滚动引擎
-   ========================================================================== */
 
 function parseLrc(lrcText) {
     if (!lrcText) return [];
-    const result = [];
-    
-    // 支持 \r\n, \n, \r 换行处理
     const lines = lrcText.split(/\r?\n/);
-
-    lines.forEach(lineStr => {
-        if (!lineStr.trim()) return;
-
-        // 提取该行内所有的 [mm:ss.ms] 或 [mm:ss:ms] 时间戳（毫秒支持 2 位或 3 位）
-        const times = [];
-        const lineReg = /\[(\d{2}):(\d{2})[\.:](\d{2,3})\]/g;
-        let match;
-        
-        while ((match = lineReg.exec(lineStr)) !== null) {
-            const min = parseInt(match[1], 10);
-            const sec = parseInt(match[2], 10);
-            const msStr = match[3];
-            const ms = msStr.length === 2 ? parseInt(msStr, 10) * 10 : parseInt(msStr, 10);
-            const totalSeconds = min * 60 + sec + ms / 1000;
-            times.push(totalSeconds);
-        }
-
-        // 移除所有 [mm:ss.ms] 标签后，获取纯文本内容
-        const cleanText = lineStr.replace(/\[\d{2}:\d{2}[\.:]\d{2,3}\]/g, '').trim();
-
-        if (cleanText) {
-            if (times.length > 0) {
-                // 如果一行内有多个时间戳，每组时间戳都对应这个文本
-                times.forEach(t => {
-                    result.push({ time: t, text: cleanText });
-                });
-            } else {
-                // 无时间戳行（如 [00:00.000] 之后的注释行）
-                result.push({ time: -1, text: cleanText });
+    const result = [];
+    const timeReg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+    
+    lines.forEach(line => {
+        const matches = timeReg.exec(line);
+        if (matches) {
+            const min = parseInt(matches[1], 10);
+            const sec = parseInt(matches[2], 10);
+            const ms = parseInt(matches[3], 10);
+            const time = min * 60 + sec + (ms > 99 ? ms / 1000 : ms / 100);
+            const text = line.replace(timeReg, '').trim();
+            if (text) {
+                result.push({ time, text });
             }
         }
     });
-
-    // 保障机制：若整块字符串内包含多组 [mm:ss.ms] 但没有被换行符切开
-    if (result.filter(r => r.time >= 0).length === 0) {
-        const globalReg = /\[(\d{2}):(\d{2})[\.:](\d{2,3})\]([^\[]+)/g;
-        let gMatch;
-        while ((gMatch = globalReg.exec(lrcText)) !== null) {
-            const min = parseInt(gMatch[1], 10);
-            const sec = parseInt(gMatch[2], 10);
-            const msStr = gMatch[3];
-            const ms = msStr.length === 2 ? parseInt(msStr, 10) * 10 : parseInt(msStr, 10);
-            const totalSeconds = min * 60 + sec + ms / 1000;
-            const text = gMatch[4].trim();
-            if (text) {
-                result.push({ time: totalSeconds, text });
-            }
-        }
-    }
-
-    // 仅针对带合法时间的行排序
-    result.sort((a, b) => a.time - b.time);
     return result;
 }
 
 function updateLrcHighlight(index) {
-    const lines = document.querySelectorAll(".lrc-line");
+    const modalContent = document.getElementById("lyricModalContent");
+    if (!modalContent) return;
+
+    const lines = modalContent.querySelectorAll(".lrc-line");
     lines.forEach((line, idx) => {
         if (idx === index) {
             line.classList.add("active");
@@ -787,7 +423,6 @@ function openLyricModal() {
         const validTimeLrcs = parsedLrcList.filter(item => item.time >= 0);
 
         if (validTimeLrcs && validTimeLrcs.length > 0) {
-            // 有 LRC 时间戳：逐行渲染并支持点击跳转
             validTimeLrcs.forEach((item, idx) => {
                 const div = document.createElement("div");
                 div.className = "lrc-line" + (idx === currentLrcIndex ? " active" : "");
@@ -801,7 +436,6 @@ function openLyricModal() {
                 content.appendChild(div);
             });
         } else {
-            // 无 LRC 时间戳 Fallback：按行渲染居左文本
             const lines = (currentPlayingLyric || "暂无歌词").split(/\r?\n/);
             lines.forEach(lineStr => {
                 if (lineStr.trim()) {

@@ -28,6 +28,7 @@
         <button class="tab-btn active" data-tab="tab-playlist">📁 歌单模块</button>
         <button class="tab-btn" data-tab="tab-album">💽 专辑模块</button>
         <button class="tab-btn" data-tab="tab-search">🔍 搜索模块</button>
+        <button class="tab-btn" data-tab="tab-download-mgr">📥 下载管理</button>
     </div>
 
     <!-- 1. 歌单 Tab 内容 (手风琴布局) -->
@@ -149,6 +150,53 @@
         </div>
     </div>
 
+    <!-- 4. 下载管理 Tab 内容 -->
+    <div id="tab-download-mgr" class="tab-content" style="display:none;">
+        <div class="accordion-wrapper">
+            <div class="accordion-card active" id="card-download-history">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📥 本地下载历史与文件管理</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <!-- 统计数据 Bar -->
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:rgba(0,0,0,0.03); padding:12px 16px; border-radius:8px; align-items:center;">
+                        <div style="font-size:14px;"><strong>已记录下载：</strong><span id="mgr-stat-total">0</span> 首</div>
+                        <div style="font-size:14px;"><strong>占用空间：</strong><span id="mgr-stat-size">0 B</span></div>
+                        <div style="font-size:14px; color:#d9534f;" id="mgr-stat-missing-box"><strong>文件缺失：</strong><span id="mgr-stat-missing">0</span> 首</div>
+                        <div style="margin-left:auto; display:flex; gap:8px;">
+                            <button class="btn-primary" style="background:#5bc0de; border-color:#46b8da;" onclick="scanDiskFiles()">🔍 扫描对齐磁盘 (Scan)</button>
+                            <button class="btn-primary" style="background:#d9534f; border-color:#d43f3a;" onclick="cleanMissingHistory()">🧹 清理失效记录</button>
+                            <button class="btn-primary" onclick="loadDownloadHistory(1)">🔄 刷新列表</button>
+                        </div>
+                    </div>
+
+                    <!-- 搜索筛选 -->
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <input type="text" id="mgrSearchKeyword" placeholder="搜索已下载歌曲 / 歌手 / 专辑" style="flex:1;" onkeyup="if(event.key==='Enter') loadDownloadHistory(1);">
+                        <button class="btn-primary" onclick="loadDownloadHistory(1)">搜索</button>
+                    </div>
+
+                    <!-- 扫描诊断结果弹窗/框 -->
+                    <div id="scanResultBox" style="display:none; background:#fff8dc; border:1px solid #f0e68c; padding:12px; border-radius:8px; margin-bottom:15px; font-size:13px;">
+                        <h4 style="margin:0 0 8px 0; color:#8a6d3b;">🔍 磁盘对齐扫描诊断结果</h4>
+                        <div id="scanResultContent"></div>
+                    </div>
+
+                    <!-- 历史列表 -->
+                    <ul class="data-list" id="download-history-list"></ul>
+
+                    <!-- 分页 -->
+                    <div id="history-pagination" class="pagination-container" style="margin-top:15px;">
+                        <button id="history-prev" class="btn-primary" onclick="changeHistoryPage(-1)" disabled>上一页</button>
+                        <span id="history-page-indicator" style="font-size:13px; color:#666;">第 1 页 / 共 1 页</span>
+                        <button id="history-next" class="btn-primary" onclick="changeHistoryPage(1)">下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 右下角悬浮半透明下载监控卡片 (Floating Glassmorphism Widget) -->
     <div class="floating-monitor" id="floatingMonitor" style="display: none;">
         <div class="monitor-header" onclick="toggleMinimizeMonitor()">
@@ -196,7 +244,11 @@
         </div>
     </div>
 
-    <!-- JavaScript 全局控制引擎 -->
-    <script src="/js/app.js"></script>
+    <!-- JavaScript 模块化控制引擎 -->
+    <script src="/js/playlist.js?v=2.0.8"></script>
+    <script src="/js/album.js?v=2.0.8"></script>
+    <script src="/js/search.js?v=2.0.8"></script>
+    <script src="/js/download-mgr.js?v=2.0.8"></script>
+    <script src="/js/app.js?v=2.0.8"></script>
 </body>
 </html>

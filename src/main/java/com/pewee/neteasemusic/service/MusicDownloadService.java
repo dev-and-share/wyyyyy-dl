@@ -254,6 +254,9 @@ public class MusicDownloadService implements InitializingBean {
 		return respDTO;
 	}
 
+	@Resource
+	private com.pewee.neteasemusic.dao.DownloadHistoryDAO downloadHistoryDAO;
+
 	public void downloadSingleSongV2(Long id) {
 		doDownloadSingleSongV2(id, this.path, "未知歌曲");
 	}
@@ -261,7 +264,7 @@ public class MusicDownloadService implements InitializingBean {
 	public void doDownloadSingleSongV2(Long id, String path, String trackName) {
 		DownloadTaskStatus taskStatus = downloadTasks.get(id);
 		if (taskStatus == null) {
-			taskStatus = new DownloadTaskStatus(id, trackName, "PENDING", null, System.currentTimeMillis());
+			taskStatus = new DownloadTaskStatus(id, trackName, "PENDING", null, System.currentTimeMillis(), null);
 			downloadTasks.put(id, taskStatus);
 		}
 
@@ -289,9 +292,9 @@ public class MusicDownloadService implements InitializingBean {
 			String dir = path;
 			String fileName = analysisSingleMusic.getName();
 			log.info("开始将歌曲: {} 写入目录: {}", fileName, dir);
-			FileUtils.writeToFile(Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())),
-					HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
 			File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())).toFile();
+			FileUtils.writeToFile(file.toPath(),
+					HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
 			TagUtils.setTags(file, analysisSingleMusic.getName(), analysisSingleMusic.getAr_name(),
 					analysisSingleMusic.getAl_name());
 			log.info("将歌曲: {} 写入目录: {} 已完成!", fileName, dir);
@@ -306,6 +309,23 @@ public class MusicDownloadService implements InitializingBean {
 			hs.add(id);
 			queue.offer(id);
 			taskStatus.setStatus("SUCCESS");
+			taskStatus.setFilePath(file.getAbsolutePath());
+
+			// 记录到 SQLite 历史库
+			try {
+				downloadHistoryDAO.addRecord(
+						id,
+						analysisSingleMusic.getName(),
+						analysisSingleMusic.getAr_name(),
+						analysisSingleMusic.getAl_name(),
+						file.getAbsolutePath(),
+						file.length(),
+						"lossless",
+						"SUCCESS"
+				);
+			} catch (Exception ex) {
+				log.error("写入下载历史失败", ex);
+			}
 		} catch (Exception e) {
 			log.error("下载歌曲失败, id: {}", id, e);
 			taskStatus.setStatus("FAILED");
