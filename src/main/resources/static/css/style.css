@@ -591,6 +591,32 @@ ul.data-list li:last-child {
     }
 }
 
+/* 播放栏右上角控制按钮组 */
+.audio-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.audio-action-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #f8fafc;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.audio-action-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
 /* 播放器最小化胶囊状态 (Compact Capsule Mode) */
 .bottom-audio-bar.minimized {
     left: 20px;
@@ -647,10 +673,11 @@ ul.data-list li:last-child {
     color: white;
     box-shadow: none;
     overflow: hidden;
+    position: relative;
 }
 
 .lyric-modal-header {
-    padding: 20px 40px;
+    padding: 24px 40px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     justify-content: space-between;
@@ -659,10 +686,30 @@ ul.data-list li:last-child {
 }
 
 .lyric-modal-title {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 700;
     margin: 0;
     color: #f8fafc;
+}
+
+.lyric-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #94a3b8;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.lyric-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
 }
 
 .lyric-modal-body {

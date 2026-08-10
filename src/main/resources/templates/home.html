@@ -175,20 +175,20 @@
             <div class="audio-controls">
                 <audio id="globalAudioPlayer" controls style="height: 36px; outline: none; width: 100%; max-width: 450px;"></audio>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-                <button class="jump-link-btn" style="background:rgba(255,255,255,0.15); color:white; border:none; padding:6px 12px;" onclick="openLyricModal()">🎤 歌词</button>
-                <button class="btn-icon-close" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
-                <button class="btn-icon-close" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
+            <div class="audio-bar-actions">
+                <button class="audio-action-btn" onclick="openLyricModal()" title="全屏歌词">🎤 歌词</button>
+                <button class="audio-action-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
+                <button class="audio-action-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
             </div>
         </div>
     </div>
 
-    <!-- 🎤 全屏/大弹窗歌词 Modal -->
+    <!-- 🎤 全屏沉浸式 LRC 歌词 Modal -->
     <div class="lyric-modal-overlay" id="lyricModal" style="display: none;" onclick="closeLyricModal()">
         <div class="lyric-modal-card" onclick="event.stopPropagation();">
             <div class="lyric-modal-header">
                 <h3 class="lyric-modal-title" id="lyricModalTitle">🎵 歌曲歌词</h3>
-                <button class="btn-icon-close" onclick="closeLyricModal()">✕</button>
+                <button class="lyric-close-btn" onclick="closeLyricModal()" title="退出全屏歌词">✕</button>
             </div>
             <div class="lyric-modal-body" id="lyricModalContent"></div>
         </div>

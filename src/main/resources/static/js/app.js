@@ -700,25 +700,62 @@ function closeAudioPlayer() {
 
 function parseLrc(lrcText) {
     if (!lrcText) return [];
-    const lines = lrcText.split('\n');
     const result = [];
-    const timeReg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+    
+    // 支持 \r\n, \n, \r 换行处理
+    const lines = lrcText.split(/\r?\n/);
 
-    lines.forEach(line => {
-        const match = timeReg.exec(line);
-        if (match) {
+    lines.forEach(lineStr => {
+        if (!lineStr.trim()) return;
+
+        // 提取该行内所有的 [mm:ss.ms] 或 [mm:ss:ms] 时间戳（毫秒支持 2 位或 3 位）
+        const times = [];
+        const lineReg = /\[(\d{2}):(\d{2})[\.:](\d{2,3})\]/g;
+        let match;
+        
+        while ((match = lineReg.exec(lineStr)) !== null) {
             const min = parseInt(match[1], 10);
             const sec = parseInt(match[2], 10);
             const msStr = match[3];
             const ms = msStr.length === 2 ? parseInt(msStr, 10) * 10 : parseInt(msStr, 10);
             const totalSeconds = min * 60 + sec + ms / 1000;
-            const text = line.replace(timeReg, '').trim();
-            if (text) {
-                result.push({ time: totalSeconds, text });
+            times.push(totalSeconds);
+        }
+
+        // 移除所有 [mm:ss.ms] 标签后，获取纯文本内容
+        const cleanText = lineStr.replace(/\[\d{2}:\d{2}[\.:]\d{2,3}\]/g, '').trim();
+
+        if (cleanText) {
+            if (times.length > 0) {
+                // 如果一行内有多个时间戳，每组时间戳都对应这个文本
+                times.forEach(t => {
+                    result.push({ time: t, text: cleanText });
+                });
+            } else {
+                // 无时间戳行（如 [00:00.000] 之后的注释行）
+                result.push({ time: -1, text: cleanText });
             }
         }
     });
 
+    // 保障机制：若整块字符串内包含多组 [mm:ss.ms] 但没有被换行符切开
+    if (result.filter(r => r.time >= 0).length === 0) {
+        const globalReg = /\[(\d{2}):(\d{2})[\.:](\d{2,3})\]([^\[]+/g;
+        let gMatch;
+        while ((gMatch = globalReg.exec(lrcText)) !== null) {
+            const min = parseInt(gMatch[1], 10);
+            const sec = parseInt(gMatch[2], 10);
+            const msStr = gMatch[3];
+            const ms = msStr.length === 2 ? parseInt(msStr, 10) * 10 : parseInt(msStr, 10);
+            const totalSeconds = min * 60 + sec + ms / 1000;
+            const text = gMatch[4].trim();
+            if (text) {
+                result.push({ time: totalSeconds, text });
+            }
+        }
+    }
+
+    // 仅针对带合法时间的行排序
     result.sort((a, b) => a.time - b.time);
     return result;
 }
@@ -744,7 +781,38 @@ function openLyricModal() {
 
     if (modal && content) {
         title.textContent = `${playerTitle} - ${playerArtist}`;
-        content.textContent = currentPlayingLyric || "暂无歌词";
+        parsedLrcList = parseLrc(currentPlayingLyric);
+        content.innerHTML = "";
+
+        const validTimeLrcs = parsedLrcList.filter(item => item.time >= 0);
+
+        if (validTimeLrcs && validTimeLrcs.length > 0) {
+            // 有 LRC 时间戳：逐行渲染并支持点击跳转
+            validTimeLrcs.forEach((item, idx) => {
+                const div = document.createElement("div");
+                div.className = "lrc-line" + (idx === currentLrcIndex ? " active" : "");
+                div.textContent = item.text;
+                div.onclick = () => {
+                    const player = document.getElementById("globalAudioPlayer");
+                    if (player) {
+                        player.currentTime = item.time;
+                    }
+                };
+                content.appendChild(div);
+            });
+        } else {
+            // 无 LRC 时间戳 Fallback：按行渲染居左文本
+            const lines = (currentPlayingLyric || "暂无歌词").split(/\r?\n/);
+            lines.forEach(lineStr => {
+                if (lineStr.trim()) {
+                    const p = document.createElement("p");
+                    p.className = "lrc-fallback";
+                    p.textContent = lineStr;
+                    content.appendChild(p);
+                }
+            });
+        }
+
         modal.style.display = "flex";
     }
 }
