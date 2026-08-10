@@ -53,26 +53,27 @@ public class DownloadHistoryController {
             return RespEntity.apply(CommonRespInfo.NOT_LEGAL_PARAM.getCode(), "物理文件不存在: " + targetPath, null);
         }
 
-        String absPath = file.getAbsolutePath();
+        String containerAbsPath = file.getAbsolutePath();
+        String hostAbsPath = downloadHistoryDAO.toHostPath(file);
         try {
             String osName = System.getProperty("os.name").toLowerCase();
             if (osName.contains("mac")) {
-                Runtime.getRuntime().exec(new String[]{"open", "-R", absPath});
+                Runtime.getRuntime().exec(new String[]{"open", "-R", containerAbsPath});
             } else if (osName.contains("win")) {
-                Runtime.getRuntime().exec(new String[]{"explorer", "/select,", absPath});
+                Runtime.getRuntime().exec(new String[]{"explorer", "/select,", containerAbsPath});
             } else {
                 // Linux / Docker 容器环境
                 try {
                     Runtime.getRuntime().exec(new String[]{"xdg-open", file.getParent()});
                 } catch (Exception e) {
-                    log.warn("Docker / 无 GUI 环境无法唤起桌面 Finder，文件绝对路径为: {}", absPath);
-                    return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "文件存在于容器映射目录: " + absPath, absPath);
+                    log.warn("Docker / 无 GUI 环境，文件宿主机绝对路径为: {}", hostAbsPath);
+                    return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "已找到对应文件路径", hostAbsPath);
                 }
             }
-            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "定位文件成功: " + absPath, absPath);
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "定位文件成功: " + hostAbsPath, hostAbsPath);
         } catch (Exception e) {
-            log.error("定位打开文件失败, path={}", absPath, e);
-            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "文件已找到: " + absPath, absPath);
+            log.error("定位打开文件失败, path={}", hostAbsPath, e);
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "已找到对应文件路径: " + hostAbsPath, hostAbsPath);
         }
     }
 

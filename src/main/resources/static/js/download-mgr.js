@@ -33,9 +33,12 @@ function revealFile(path, taskId) {
 
     axios.get(url)
         .then(resp => {
+            const fpath = resp.data.data || rawPath;
+            if (fpath && navigator.clipboard) {
+                navigator.clipboard.writeText(fpath).catch(() => {});
+            }
             if (resp.data.code === '000000') {
-                const fpath = resp.data.data || rawPath;
-                alert(`📂 已定位成功/为您复制 Mac 宿主机物理路径到剪贴板！\n\n物理路径：\n${fpath}\n\n💡 提示：在 Mac 桌面或 Finder 中按 Cmd + Shift + G，直接粘贴即可跳转到文件所在位置！`);
+                alert(`📂 已为您复制 Mac 宿主机真实物理路径到剪贴板！\n\n物理路径：\n${fpath}\n\n💡 提示：在 Mac 桌面或 Finder 中按 Cmd + Shift + G，直接粘贴即可跳转！`);
             } else {
                 alert('定位提示：' + (resp.data.msg || resp.data.message));
             }

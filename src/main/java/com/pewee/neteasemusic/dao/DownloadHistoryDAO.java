@@ -98,6 +98,15 @@ public class DownloadHistoryDAO {
         return fullPath;
     }
 
+    public String toHostPath(File file) {
+        if (file == null) return "";
+        String rel = toRelativePath(file.getAbsolutePath());
+        if (hostDownloadPath != null && !hostDownloadPath.trim().isEmpty()) {
+            return new File(hostDownloadPath, rel).getAbsolutePath();
+        }
+        return file.getAbsolutePath();
+    }
+
     public File resolveFile(String savedPath) {
         if (savedPath == null || savedPath.isEmpty()) return new File("");
         
