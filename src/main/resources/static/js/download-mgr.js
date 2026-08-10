@@ -13,13 +13,25 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+function safeDecode(str) {
+    if (!str) return '';
+    if (str.includes('%')) {
+        try {
+            return decodeURIComponent(str);
+        } catch (e) {
+            return str;
+        }
+    }
+    return str;
+}
+
 function revealFile(path, taskId) {
     if (!path && !taskId) {
         alert('无法定位：缺少路径参数');
         return;
     }
     
-    let rawPath = path ? decodeURIComponent(path) : '';
+    let rawPath = path ? safeDecode(path) : '';
     let url = '/v2/reveal?';
     if (rawPath) {
         url += 'path=' + encodeURIComponent(rawPath);

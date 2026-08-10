@@ -107,12 +107,20 @@ public class DownloadHistoryDAO {
         return file.getAbsolutePath();
     }
 
+    public static String safeUrlDecode(String str) {
+        if (str == null || !str.contains("%")) return str;
+        try {
+            String safeStr = str.replace("+", "%2B");
+            return java.net.URLDecoder.decode(safeStr, "UTF-8");
+        } catch (Exception e) {
+            return str;
+        }
+    }
+
     public File resolveFile(String savedPath) {
         if (savedPath == null || savedPath.isEmpty()) return new File("");
         
-        try {
-            savedPath = java.net.URLDecoder.decode(savedPath, "UTF-8");
-        } catch (Exception ignored) {}
+        savedPath = safeUrlDecode(savedPath);
 
         if (hostDownloadPath != null && !hostDownloadPath.isEmpty() && savedPath.startsWith(hostDownloadPath)) {
             String sub = savedPath.substring(hostDownloadPath.length());
