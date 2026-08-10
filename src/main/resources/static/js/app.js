@@ -163,7 +163,7 @@ function renderPage(page) {
 
     pageTracks.forEach(track => {
         const li = document.createElement("li");
-        const arNames = (track.ar || []).map(a => a.name).join('/');
+        const arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
         li.innerHTML = `
             <div>
                 <strong>${track.name}</strong> - <span style="color:#666;">${arNames}</span>
@@ -207,7 +207,7 @@ function loadAlbumInfo() {
             list.innerHTML = "";
             (album.songs || []).forEach(song => {
                 const li = document.createElement("li");
-                const arNames = (song.ar || []).map(a => a.name).join('/');
+                const arNames = song.artists || (song.ar ? song.ar.map(a => a.name).join('/') : '');
                 li.innerHTML = `
                     <div><strong>${song.name}</strong> - <span style="color:#666;">${arNames}</span></div>
                     <div>
@@ -229,7 +229,7 @@ function loadSongInfo() {
         return;
     }
 
-    axios.post('/Song_V1', new URLSearchParams({ ids: id, level: level, type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams({ id: id, level: level, type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             const infoDiv = document.getElementById("song-info");
@@ -272,7 +272,7 @@ function searchSongs() {
             if (type === "1") { // 单曲
                 (data || []).forEach(song => {
                     const li = document.createElement("li");
-                    const arNames = (song.ar || []).map(a => a.name).join('/');
+                    const arNames = song.artists || (song.ar ? song.ar.map(a => a.name).join('/') : '');
                     li.innerHTML = `
                         <div><strong>${song.name}</strong> - <span style="color:#666;">${arNames}</span> (专辑: ${song.al ? song.al.name : '未知'})</div>
                         <div>
