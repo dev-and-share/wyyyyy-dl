@@ -22,6 +22,10 @@ function loadAlbumInfo() {
 
     axios.post('/Album', new URLSearchParams({ id }))
         .then(resp => {
+            if (!resp.data || !resp.data.data || !resp.data.data.album) {
+                const errMsg = (resp.data && resp.data.msg) ? resp.data.msg : "未查找到对应专辑数据或该专辑已被下架";
+                throw new Error(errMsg);
+            }
             const album = resp.data.data.album;
             currentAlbumSongs = album.songs || [];
             currentAlbumCover = album.coverImgUrl || '/favicon.png';
