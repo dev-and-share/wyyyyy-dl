@@ -2,6 +2,12 @@
    💽 NetEase Music Downloader - Album Module (album.js)
    ========================================================================== */
 
+function quickLoadAlbum(albumId) {
+    const input = document.getElementById("albumId");
+    if (input) input.value = albumId;
+    loadAlbumInfo();
+}
+
 function loadAlbumInfo() {
     const id = document.getElementById("albumId").value;
     if (!id) {
@@ -9,44 +15,66 @@ function loadAlbumInfo() {
         return;
     }
 
+    const infoDiv = document.getElementById("album-info");
+    if (infoDiv) {
+        infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">🔄 正在解析专辑数据，请稍候...</div>`;
+    }
+
     axios.post('/Album', new URLSearchParams({ id }))
         .then(resp => {
             const album = resp.data.data.album;
             currentAlbumSongs = album.songs || [];
             currentAlbumCover = album.coverImgUrl || '/favicon.png';
-            document.getElementById("album-download").innerHTML = `
-                <div class="detail-btn-group">
-                    <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">📥 下载专辑</button>
-                    <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放专辑</button>
-                </div>
-            `;
-            document.getElementById("album-name").textContent = album.name;
-            document.getElementById("album-artist").textContent = album.artist;
-            document.getElementById("album-publish-time").textContent = album.publishTime;
-            document.getElementById("album-cover").src = album.coverImgUrl;
 
-            const tracksList = document.getElementById("album-tracks");
-            tracksList.innerHTML = "";
-
+            let songsHtml = '';
             album.songs.forEach((song, idx) => {
-                const li = document.createElement("li");
                 const artistDisplay = getValidArtistNames(song);
                 const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
 
-                li.innerHTML = `
-                    <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;">
-                        <strong>${idx + 1}. ${song.name}</strong>${artistHtml}
+                songsHtml += `
+                    <li>
+                        <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            <strong>${idx + 1}. ${song.name}</strong>${artistHtml}
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+                            <button class="jump-link-btn" onclick="playOnline('${song.id}')" title="在线试听">▶️ 试听</button>
+                            <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🔍 查看</button>
+                            <button class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0;" onclick="downloadSingle('${song.id}')">📥 下载</button>
+                        </div>
+                    </li>
+                `;
+            });
+
+            infoDiv.innerHTML = `
+                <div class="detail-header-card" style="margin-bottom:15px;">
+                    <img src="${album.coverImgUrl}" alt="封面" class="detail-cover-img">
+                    <div class="detail-header-info">
+                        <h4 class="detail-header-title">${album.name}</h4>
+                        <div class="detail-header-sub">歌手：${album.artist} | 发行：${album.publishTime || '未知'}</div>
+                        <div class="detail-btn-group">
+                            <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">📥 下载专辑</button>
+                            <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放专辑</button>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <button class="jump-link-btn" onclick="playOnline('${song.id}')" title="在线试听">▶️ 试听</button>
-                        <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🔍 查看</button>
-                        <button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick="downloadSingle('${song.id}')">📥 下载</button>
+                </div>
+                <h4 style="margin:15px 0 8px 0; color:#334155;">专辑曲目列表 (${album.songs.length} 首)：</h4>
+                <ul class="data-list scrollable-list" id="album-tracks">
+                    ${songsHtml}
+                </ul>
+            `;
+        })
+        .catch(err => {
+            alert("获取专辑信息失败：" + err);
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <div class="empty-placeholder-card">
+                        <div class="empty-icon">⚠️</div>
+                        <div class="empty-title">解析专辑失败</div>
+                        <div class="empty-desc">未查找到对应的专辑信息，请检查输入的专辑 ID 是否正确</div>
                     </div>
                 `;
-                tracksList.appendChild(li);
-            });
-        })
-        .catch(err => alert("获取专辑信息失败：" + err));
+            }
+        });
 }
 
 function downloadAlbum(id) {
