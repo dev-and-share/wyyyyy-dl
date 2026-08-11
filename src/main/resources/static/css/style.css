@@ -1334,7 +1334,114 @@ ul.data-list li:last-child {
     }
 }
 
-/* 📱 移动端 SP (Smartphone) 历史管理与核心面板响应式适配 */
+/* 📋 历史记录卡片：高特异性覆盖，彻底绝杀 ul.data-list li 的水平 display: flex 冲突 */
+ul.data-list li.history-item-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #ffffff !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+}
+
+ul.data-list li.history-item-card.item-missing {
+    background: #fff0f0 !important;
+}
+
+/* 📌 第一排：歌名/文件名 100% 满宽霸屏展示 */
+ul.data-list li.history-item-card .card-title-row {
+    width: 100% !important;
+    margin-bottom: 6px !important;
+    display: block !important;
+}
+
+ul.data-list li.history-item-card .card-song-name {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    line-height: 1.4 !important;
+    word-break: break-all !important;
+    display: block !important;
+}
+
+/* 📌 第二排：底栏（左侧元数据，右侧按钮） */
+ul.data-list li.history-item-card .card-sub-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 8px !important;
+}
+
+.sub-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    font-size: 12px !important;
+    color: #64748b !important;
+}
+
+.card-artist {
+    color: #475569 !important;
+    font-weight: 500 !important;
+}
+
+.card-size {
+    color: #94a3b8 !important;
+}
+
+.status-badge {
+    padding: 1px 6px !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important;
+}
+
+.status-badge.status-ok {
+    background: #e0f2fe !important;
+    color: #0284c7 !important;
+}
+
+.status-badge.status-err {
+    background: #fee2e2 !important;
+    color: #ef4444 !important;
+    font-weight: 700 !important;
+}
+
+.sub-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+}
+
+.action-btn {
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+
+.action-btn.btn-play {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    border-color: #bfdbfe !important;
+}
+
+.action-btn.btn-del {
+    color: #dc2626 !important;
+    border-color: #fecaca !important;
+}
+
+/* 📱 SP 移动端专属微调 */
 @media (max-width: 768px) {
     .history-header-actions {
         width: 100% !important;
@@ -1372,67 +1479,21 @@ ul.data-list li:last-child {
         padding: 0 16px !important;
     }
 
-    .history-item-row {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
+    ul.data-list li.history-item-card {
         padding: 10px 12px !important;
-        gap: 6px !important;
-        border-bottom: 1px solid #e2e8f0;
     }
 
-    .history-item-header {
-        display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        width: 100% !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-    }
-
-    .history-item-name {
+    ul.data-list li.history-item-card .card-song-name {
         font-size: 14px !important;
-        font-weight: 700 !important;
-        color: #1e293b !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        max-width: none !important;
     }
 
-    .history-item-artist {
-        font-size: 12px !important;
-        color: #64748b !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        flex: 1 !important;
-    }
-
-    .history-item-footer {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        width: 100% !important;
-    }
-
-    .history-item-sub {
+    .sub-left {
         font-size: 11px !important;
-        color: #94a3b8 !important;
-    }
-
-    .history-item-actions {
-        display: flex !important;
-        align-items: center !important;
         gap: 4px !important;
-        border-top: none !important;
-        padding-top: 0 !important;
     }
 
-    .history-item-actions .jump-link-btn {
+    .action-btn {
         padding: 3px 8px !important;
         font-size: 11px !important;
-        border-radius: 12px !important;
-        margin: 0 !important;
     }
 }

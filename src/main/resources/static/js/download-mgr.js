@@ -123,29 +123,30 @@ function loadDownloadHistory(page) {
 
                 list.forEach(item => {
                     const li = document.createElement('li');
-                    li.className = 'history-item-row';
-                    li.style.cssText = 'background:' + (item.fileExists ? '#fff' : '#fff0f0') + ';';
+                    li.className = 'history-item-card' + (item.fileExists ? '' : ' item-missing');
                     
                     const fileStatusTag = item.fileExists 
-                        ? '<span class="status-tag status-ok" style="background:#e6f7ff; color:#1890ff; padding:1px 5px; border-radius:4px; font-size:11px; flex-shrink:0;">文件正常</span>'
-                        : '<span class="status-tag status-err" style="background:#fff2f0; color:#ff4d4f; padding:1px 5px; border-radius:4px; font-size:11px; flex-shrink:0; font-weight:bold;">⚠️ 失效</span>';
+                        ? '<span class="status-badge status-ok">正常</span>'
+                        : '<span class="status-badge status-err">⚠️ 失效</span>';
 
                     const hostPath = item.hostFilePath || item.filePath || '';
 
                     li.innerHTML = `
-                        <div class="history-item-header">
-                            <strong class="history-item-name">${item.songName || '未知歌曲'}</strong>
-                            <span class="history-item-artist">${item.artist ? ' - ' + item.artist : ''}</span>
-                            ${fileStatusTag}
+                        <!-- 📌 第一排：歌名/文件名 100% 满宽全显 -->
+                        <div class="card-title-row">
+                            <strong class="card-song-name">${item.songName || '未知歌曲'}</strong>
                         </div>
-                        <div class="history-item-footer">
-                            <div class="history-item-sub">
-                                <span>大小：${formatBytes(item.fileSize)}</span>
+                        <!-- 📌 第二排：左侧歌手大小状态 + 右侧按钮 -->
+                        <div class="card-sub-row">
+                            <div class="sub-left">
+                                <span class="card-artist">${item.artist || '未知歌手'}</span>
+                                <span class="card-size">${formatBytes(item.fileSize)}</span>
+                                ${fileStatusTag}
                             </div>
-                            <div class="history-item-actions">
-                                ${item.fileExists ? `<button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}')">▶️ 播放</button>` : ''}
-                                ${item.fileExists ? `<button class="jump-link-btn" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
-                                <button class="jump-link-btn" style="color:#d9534f;" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
+                            <div class="sub-right">
+                                ${item.fileExists ? `<button class="action-btn btn-play" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}')">▶ 播放</button>` : ''}
+                                ${item.fileExists ? `<button class="action-btn btn-locate" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
+                                <button class="action-btn btn-del" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
                             </div>
                         </div>
                     `;
