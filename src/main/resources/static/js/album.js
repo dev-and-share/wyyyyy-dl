@@ -15,9 +15,9 @@ function loadAlbumInfo() {
             currentAlbumSongs = album.songs || [];
             currentAlbumCover = album.coverImgUrl || '/favicon.png';
             document.getElementById("album-download").innerHTML = `
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-primary" onclick="downloadAlbum('${album.id}')">📥 下载整张专辑</button>
-                    <button class="btn-primary" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放整张专辑</button>
+                <div class="detail-btn-group">
+                    <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">📥 下载专辑</button>
+                    <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放专辑</button>
                 </div>
             `;
             document.getElementById("album-name").textContent = album.name;

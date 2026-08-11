@@ -51,14 +51,14 @@ function loadPlaylistDetail() {
 
             const infoDiv = document.getElementById("playlist-info");
             infoDiv.innerHTML = `
-                <div style="display:flex; gap:15px; margin-top:10px;">
-                    <img src="${playlist.coverImgUrl}" alt="封面" style="width:120px; height:120px; border-radius:8px; object-fit:cover;">
-                    <div>
-                        <h4 style="margin:0 0 6px 0;">${playlist.name}</h4>
-                        <div style="font-size:13px; color:#555; margin-bottom:8px;">创建人：${playlist.creator} | 共 ${playlist.trackCount} 首歌</div>
-                        <div style="display:flex; gap:10px;">
-                            <button class="btn-primary" onclick="downloadPlaylist('${playlist.id}')">📥 下载整个歌单</button>
-                            <button class="btn-primary" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放整个歌单</button>
+                <div class="detail-header-card">
+                    <img src="${playlist.coverImgUrl}" alt="封面" class="detail-cover-img">
+                    <div class="detail-header-info">
+                        <h4 class="detail-header-title">${playlist.name}</h4>
+                        <div class="detail-header-sub">创建人：${playlist.creator} | 共 ${playlist.trackCount} 首歌</div>
+                        <div class="detail-btn-group">
+                            <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">📥 下载歌单</button>
+                            <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放歌单</button>
                         </div>
                     </div>
                 </div>

@@ -253,6 +253,59 @@ ul.data-list li:last-child {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 🎼 歌单/专辑详情 Header 响应式美化卡片 */
+.detail-header-card {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.detail-cover-img {
+    width: 110px;
+    height: 110px;
+    border-radius: var(--radius-lg);
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.detail-header-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.detail-header-title {
+    margin: 0 0 6px 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.detail-header-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.detail-btn-group {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.flex-1-btn {
+    flex: 1;
+    text-align: center;
+    white-space: nowrap !important;
+    padding: 8px 12px !important;
+}
+
 .floating-monitor.minimized {
     width: 220px;
     border-radius: 30px;
@@ -474,6 +527,33 @@ ul.data-list li:last-child {
         flex-shrink: 0;
     }
 
+    .detail-header-card {
+        gap: 10px;
+    }
+
+    .detail-cover-img {
+        width: 80px;
+        height: 80px;
+    }
+
+    .detail-header-title {
+        font-size: 15px;
+    }
+
+    .detail-header-sub {
+        font-size: 11px;
+        margin-bottom: 6px;
+    }
+
+    .detail-btn-group {
+        gap: 6px;
+    }
+
+    .flex-1-btn {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+    }
+
     body {
         padding: 10px;
     }
@@ -520,22 +600,37 @@ ul.data-list li:last-child {
         box-sizing: border-box;
     }
 
-    button.btn-primary {
-        width: 100%;
-        margin-top: 4px;
+    /* 列表行项 Mobile 响应式极致美化 */
+    ul.data-list li {
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 10px 12px !important;
+        gap: 8px !important;
     }
 
-    ul.data-list li {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+    ul.data-list li > div:first-child {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     ul.data-list li > div:last-child {
-        width: 100%;
-        display: flex;
-        justify-content: flex-end;
-        gap: 6px;
+        width: auto !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 4px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .jump-link-btn, button.btn-primary {
+        width: auto !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        margin-top: 0 !important;
     }
 
     /* 右下角悬浮监控挂件移动端自适应 */
