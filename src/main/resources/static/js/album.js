@@ -23,8 +23,7 @@ function loadAlbumInfo() {
     axios.post('/Album', new URLSearchParams({ id }))
         .then(resp => {
             if (!resp.data || !resp.data.data || !resp.data.data.album) {
-                const errMsg = (resp.data && resp.data.msg) ? resp.data.msg : "未查找到对应专辑数据或该专辑已被下架";
-                throw new Error(errMsg);
+                throw new Error("未查找到对应专辑数据或该专辑 ID 不存在");
             }
             const album = resp.data.data.album;
             currentAlbumSongs = album.songs || [];
@@ -68,13 +67,13 @@ function loadAlbumInfo() {
             `;
         })
         .catch(err => {
-            alert("获取专辑信息失败：" + err);
+            const errorText = err.message || err;
             if (infoDiv) {
                 infoDiv.innerHTML = `
                     <div class="empty-placeholder-card">
                         <div class="empty-icon">⚠️</div>
-                        <div class="empty-title">解析专辑失败</div>
-                        <div class="empty-desc">未查找到对应的专辑信息，请检查输入的专辑 ID 是否正确</div>
+                        <div class="empty-title">获取专辑信息失败</div>
+                        <div class="empty-desc">${errorText}</div>
                     </div>
                 `;
             }
