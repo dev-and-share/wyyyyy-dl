@@ -463,6 +463,8 @@ function setGlobalPlaylistQueue(queue, startIndex) {
     globalPlaylistQueue = queue;
     updatePlaylistCountUI();
     playTrackInQueue(startIndex);
+    // 预载下一首播放地址
+    preloadNextSongAfter(startIndex);
 }
 
 function updatePlaylistCountUI() {
@@ -474,19 +476,59 @@ function updatePlaylistCountUI() {
     renderPlaylistDrawer();
 }
 
+/**
+ * 🚀 静默预载指定曲目的播放 URL (Pre-fetch / Pre-resolve Next Track)
+ */
+function preloadTrackStreamUrl(index) {
+    if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) return;
+    if (index < 0 || index >= globalPlaylistQueue.length) return;
+    const track = globalPlaylistQueue[index];
+    if (!track || (track.resolvedUrl && Date.now() - (track.resolvedAt || 0) < 1200000)) return; // 20分钟内有效则跳过
+
+    axios.post('/Song_V1', new URLSearchParams({ id: track.id, name: track.name || '', artist: track.artist || '', level: 'lossless', type: 'json' }))
+        .then(resp => {
+            if (resp.data && resp.data.data && resp.data.data.url) {
+                track.resolvedUrl = resp.data.data.url;
+                track.resolvedAt = Date.now(); // 记录解析时间戳
+                track.lyric = resp.data.data.lyric || '';
+            }
+        })
+        .catch(() => {});
+}
+
+function preloadNextSongAfter(index) {
+    if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) return;
+    let nextIdx = (index + 1) % globalPlaylistQueue.length;
+    preloadTrackStreamUrl(nextIdx);
+}
+
 function playTrackInQueue(index) {
     if (index < 0 || index >= globalPlaylistQueue.length) return;
     currentQueueIndex = index;
     const track = globalPlaylistQueue[index];
     savePlayerStateToStorage();
+
+    // 优先纯同步播已经预载好且未过期（20分钟内有效）的链接
+    const isResolved = track.resolvedUrl && Date.now() - (track.resolvedAt || 0) < 1200000;
+    if (isResolved) {
+        const cover = track.cover || '/favicon.png';
+        playAudioOnline(track.resolvedUrl, track.name, track.artist, cover, track.lyric || '');
+        renderPlaylistDrawer();
+        preloadNextSongAfter(currentQueueIndex);
+        return;
+    }
     
     axios.post('/Song_V1', new URLSearchParams({ id: track.id, name: track.name || '', artist: track.artist || '', level: 'lossless', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url) {
+                track.resolvedUrl = song.url;
+                track.resolvedAt = Date.now();
+                track.lyric = song.lyric || '';
                 const cover = track.cover || song.pic || '/favicon.png';
                 playAudioOnline(song.url, track.name || song.name, track.artist || song.ar_name, cover, song.lyric);
                 renderPlaylistDrawer();
+                preloadNextSongAfter(currentQueueIndex);
             } else {
                 alert(`无法播放《${track.name}》：获取播放地址失败`);
                 playNextTrack();
@@ -498,29 +540,36 @@ function playTrackInQueue(index) {
         });
 }
 
-function playNextTrack() {
+/**
+ * ⚡ iOS 锁屏纯同步无缝切歌引擎（消除异步网络请求延迟，防止 iOS 系统封锁后台 play）
+ */
+function playNextTrackSync() {
     if (globalPlaylistQueue.length === 0) return;
+    let nextIdx;
     if (playMode === 'random') {
-        let randIdx = Math.floor(Math.random() * globalPlaylistQueue.length);
-        if (globalPlaylistQueue.length > 1 && randIdx === currentQueueIndex) {
-            randIdx = (currentQueueIndex + 1) % globalPlaylistQueue.length;
+        nextIdx = Math.floor(Math.random() * globalPlaylistQueue.length);
+        if (globalPlaylistQueue.length > 1 && nextIdx === currentQueueIndex) {
+            nextIdx = (currentQueueIndex + 1) % globalPlaylistQueue.length;
         }
-        playTrackInQueue(randIdx);
     } else {
-        let nextIdx = (currentQueueIndex + 1) % globalPlaylistQueue.length;
-        playTrackInQueue(nextIdx);
+        nextIdx = (currentQueueIndex + 1) % globalPlaylistQueue.length;
     }
+    playTrackInQueue(nextIdx);
+}
+
+function playNextTrack() {
+    playNextTrackSync();
 }
 
 function playPrevTrack() {
     if (globalPlaylistQueue.length === 0) return;
+    let prevIdx;
     if (playMode === 'random') {
-        let randIdx = Math.floor(Math.random() * globalPlaylistQueue.length);
-        playTrackInQueue(randIdx);
+        prevIdx = Math.floor(Math.random() * globalPlaylistQueue.length);
     } else {
-        let prevIdx = (currentQueueIndex - 1 + globalPlaylistQueue.length) % globalPlaylistQueue.length;
-        playTrackInQueue(prevIdx);
+        prevIdx = (currentQueueIndex - 1 + globalPlaylistQueue.length) % globalPlaylistQueue.length;
     }
+    playTrackInQueue(prevIdx);
 }
 
 function togglePlayMode() {
@@ -830,9 +879,10 @@ document.addEventListener("DOMContentLoaded", function() {
         player.onended = function() {
             if (playMode === 'single') {
                 player.currentTime = 0;
-                player.play();
+                player.play().catch(e => console.warn('单曲循环 play failed:', e));
             } else {
-                playNextTrack();
+                // ⚡ 纯同步切歌：绝不在此处发起任何异步网络请求，防止 iOS 锁屏检测到"无音频空白期"而封锁后台播放
+                playNextTrackSync();
             }
         };
     }

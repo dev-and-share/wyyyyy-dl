@@ -1576,3 +1576,15 @@ ul.data-list li.history-item-card .card-sub-row {
         font-size: 11px !important;
     }
 }
+
+/* 📱 页面最底部微型版本号 Footer 样式 */
+.app-version-footer {
+    text-align: center;
+    font-size: 11px;
+    color: #94a3b8;
+    opacity: 0.65;
+    padding: 12px 0 6px 0;
+    margin-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+    user-select: none;
+    letter-spacing: 0.5px;
+}
