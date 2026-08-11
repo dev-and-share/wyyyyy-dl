@@ -10,25 +10,26 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <!-- 极简单行页头 -->
-    <div class="header-container compact-header">
-        <div class="header-left">
-            <h2 class="header-title-inline">🎵 网易云音乐下载器</h2>
-            <span class="header-sub-inline">高效无损解析工具</span>
+    <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
+    <div class="app-top-bar" id="appTopBar">
+        <div class="app-brand">
+            <span class="brand-logo">🎵</span>
+            <span class="brand-title">网易云下载器</span>
         </div>
-        <div class="repeat-switch-container">
-            <label style="cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px; margin: 0;">
-                <input type="checkbox" id="repeatSwitch" onchange="toggleRepeat()"> 允许重复下载
+        
+        <div class="app-nav-tabs">
+            <button class="nav-tab-btn active" data-tab="tab-playlist">📁 歌单</button>
+            <button class="nav-tab-btn" data-tab="tab-album">💽 专辑</button>
+            <button class="nav-tab-btn" data-tab="tab-search">🔍 搜索</button>
+            <button class="nav-tab-btn" data-tab="tab-download-mgr">📥 历史</button>
+        </div>
+
+        <div class="app-top-actions">
+            <label class="compact-switch-label" title="允许再次下载已存在的同名歌曲">
+                <input type="checkbox" id="repeatSwitch" onchange="toggleRepeat()">
+                <span>允许重复</span>
             </label>
         </div>
-    </div>
-
-    <!-- 顶栏 Tab 切换 -->
-    <div class="tabs-nav">
-        <button class="tab-btn active" data-tab="tab-playlist">📁 歌单模块</button>
-        <button class="tab-btn" data-tab="tab-album">💽 专辑模块</button>
-        <button class="tab-btn" data-tab="tab-search">🔍 搜索模块</button>
-        <button class="tab-btn" data-tab="tab-download-mgr">📥 下载管理</button>
     </div>
 
     <!-- 1. 歌单 Tab 内容 (手风琴布局) -->
@@ -300,10 +301,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.3.6"></script>
-    <script src="/js/album.js?v=2.3.6"></script>
-    <script src="/js/search.js?v=2.3.6"></script>
-    <script src="/js/download-mgr.js?v=2.3.6"></script>
-    <script src="/js/app.js?v=2.3.6"></script>
+    <script src="/js/playlist.js?v=2.4.0"></script>
+    <script src="/js/album.js?v=2.4.0"></script>
+    <script src="/js/search.js?v=2.4.0"></script>
+    <script src="/js/download-mgr.js?v=2.4.0"></script>
+    <script src="/js/app.js?v=2.4.0"></script>
 </body>
 </html>

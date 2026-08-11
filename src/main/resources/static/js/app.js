@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .catch(err => console.error("获取 repeat 标志失败:", err));
 
     // 2. 绑定 Tab 导航切换
-    const tabLinks = document.querySelectorAll(".tab-btn");
+    const tabLinks = document.querySelectorAll(".nav-tab-btn, .tab-btn");
     tabLinks.forEach(button => {
         button.addEventListener("click", () => {
             const targetTabId = button.getAttribute("data-tab");
@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function switchTab(tabName, updateHash = true) {
     const targetTabId = 'tab-' + tabName;
-    const tabLinks = document.querySelectorAll(".tab-btn");
+    const tabLinks = document.querySelectorAll(".nav-tab-btn, .tab-btn");
     tabLinks.forEach(button => {
         if (button.getAttribute("data-tab") === targetTabId) {
             button.classList.add("active");
