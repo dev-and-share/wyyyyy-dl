@@ -203,6 +203,43 @@ public class DownloadHistoryDAO {
         return null;
     }
 
+    public DownloadHistoryItem findLocalFileBySongId(Long songId) {
+        if (songId == null) return null;
+        String sql = "SELECT * FROM download_history WHERE song_id = ? AND status = 'COMPLETED' ORDER BY id DESC LIMIT 1";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, songId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    DownloadHistoryItem item = new DownloadHistoryItem();
+                    item.setId(rs.getLong("id"));
+                    item.setSongId(rs.getLong("song_id"));
+                    item.setSongName(rs.getString("song_name"));
+                    item.setArtist(rs.getString("artist"));
+                    item.setAlbum(rs.getString("album"));
+                    String fpath = rs.getString("file_path");
+                    File resolved = resolveFile(fpath);
+                    String relPath = toRelativePath(fpath);
+                    item.setFilePath(resolved.getAbsolutePath());
+                    item.setRelativePath(relPath);
+                    item.setHostFilePath(new File(hostDownloadPath, relPath).getAbsolutePath());
+                    item.setFileSize(rs.getLong("file_size"));
+                    item.setQuality(rs.getString("quality"));
+                    item.setStatus(rs.getString("status"));
+                    item.setCreatedAt(rs.getString("created_at"));
+                    item.setFileExists(resolved.exists() && resolved.isFile() && resolved.length() > 0);
+                    
+                    if (item.getFileExists()) {
+                        return item;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("根据 songId 查询本地文件失败, songId={}", songId, e);
+        }
+        return null;
+    }
+
     public List<DownloadHistoryItem> getRecords(String keyword, int page, int pageSize) {
         List<DownloadHistoryItem> list = new ArrayList<>();
         int offset = (page - 1) * pageSize;

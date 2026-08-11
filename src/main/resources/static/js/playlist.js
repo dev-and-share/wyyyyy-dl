@@ -106,7 +106,7 @@ function renderPage(page) {
                 <strong>${trackIndex}. ${track.name}</strong>${artistHtml}
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
-                <button class="jump-link-btn" onclick="playOnline('${track.id}')" title="在线试听">▶️ 试听</button>
+                <button class="jump-link-btn" onclick="playSongById('${track.id}')" title="在线试听">▶️ 试听</button>
                 <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🔍 查看</button>
                 <button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick="downloadSingle('${track.id}')">📥 下载</button>
             </div>

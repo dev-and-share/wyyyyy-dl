@@ -667,6 +667,10 @@ function playAudioOnline(url, name, artist, cover, lyric) {
     }
 }
 
+function playOnline(songId, name, artist) {
+    playSongById(songId, name, artist);
+}
+
 function playSongById(songId, name, artist) {
     if (globalPlaylistQueue.length === 0) {
         globalPlaylistQueue = [{ id: songId, name: name, artist: artist, cover: '/favicon.png' }];

@@ -17,12 +17,15 @@ import com.pewee.neteasemusic.models.dtos.TrackDTO;
 import com.pewee.neteasemusic.service.AnalysisService;
 import com.pewee.neteasemusic.service.NeteaseAPIService;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 整体api接口和https://github.com/Suxiaoqinx/Netease_url相同
  * @author pewee
  *
  */
 @RestController
+@Slf4j
 public class AnalysisController {
 	
 	@Autowired
@@ -77,12 +80,64 @@ public class AnalysisController {
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
+    @Autowired
+    private com.pewee.neteasemusic.dao.DownloadHistoryDAO downloadHistoryDAO;
+
     @RequestMapping(value = "/Song_V1", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> songV1(@RequestParam(required = true) Long id,
-                                    @RequestParam(required = true) String level,
-                                    @RequestParam(required = false, defaultValue = "json") String type) {
-    	SingleMusicAnalysisRespDTO songInfo = analysisService.analyzeSingleSong(id, level);
-        return RespEntity.apply(CommonRespInfo.SUCCESS,songInfo);
+                                @RequestParam(required = true) String level,
+                                @RequestParam(required = false, defaultValue = "json") String type) {
+        SingleMusicAnalysisRespDTO songInfo = analysisService.analyzeSingleSong(id, level);
+
+        // 🚀 优先检查本地磁盘中是否存在该音频物理文件！
+        com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongId(id);
+        if (localItem != null && Boolean.TRUE.equals(localItem.getFileExists())) {
+            if (songInfo != null) {
+                // 本地存在完整物理文件，优先返回本地秒开流链接！
+                songInfo.setUrl("/v2/stream?id=" + id);
+            }
+        }
+
+        return RespEntity.apply(CommonRespInfo.SUCCESS, songInfo);
+    }
+
+    @RequestMapping(value = "/v2/stream", method = {RequestMethod.GET})
+    public void streamAudio(@RequestParam Long id, javax.servlet.http.HttpServletRequest request, javax.servlet.http.HttpServletResponse response) {
+        com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongId(id);
+        if (localItem == null || !Boolean.TRUE.equals(localItem.getFileExists())) {
+            response.setStatus(javax.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        java.io.File file = new java.io.File(localItem.getFilePath());
+        if (!file.exists()) {
+            response.setStatus(javax.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        try {
+            String name = file.getName().toLowerCase();
+            String contentType = "audio/mpeg";
+            if (name.endsWith(".flac")) contentType = "audio/flac";
+            else if (name.endsWith(".wav")) contentType = "audio/wav";
+            else if (name.endsWith(".m4a") || name.endsWith(".aac")) contentType = "audio/mp4";
+
+            response.setContentType(contentType);
+            response.setHeader("Accept-Ranges", "bytes");
+            response.setContentLengthLong(file.length());
+
+            try (java.io.InputStream in = new java.io.FileInputStream(file);
+                 java.io.OutputStream out = response.getOutputStream()) {
+                byte[] buffer = new byte[16384];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, bytesRead);
+                }
+                out.flush();
+            }
+        } catch (Exception e) {
+            log.error("播放本地音频流异常, songId={}", id, e);
+        }
     }
     
     
