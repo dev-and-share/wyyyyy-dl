@@ -702,6 +702,51 @@ function playAudioOnline(url, name, artist, cover, lyric) {
         if (playBtn) playBtn.innerHTML = "⏸";
         player.play().catch(e => console.error("播放中断:", e));
         savePlayerStateToStorage();
+
+        // 📱 绑定原生 Media Session API（实现 iOS/Android 锁屏界面遥控、显示封面与连续后台切歌）
+        updateMediaSessionMetadata(name, artist, cover);
+    }
+}
+
+/**
+ * 📱 硬件级 Media Session 锁屏组件更新函数
+ */
+function updateMediaSessionMetadata(name, artist, cover, album) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+        const coverUrl = cover || '/favicon.png';
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: name || '网易云音乐',
+            artist: artist || '未知歌手',
+            album: album || '网易云下载器',
+            artwork: [
+                { src: coverUrl, sizes: '96x96', type: 'image/png' },
+                { src: coverUrl, sizes: '128x128', type: 'image/png' },
+                { src: coverUrl, sizes: '192x192', type: 'image/png' },
+                { src: coverUrl, sizes: '256x256', type: 'image/png' },
+                { src: coverUrl, sizes: '512x512', type: 'image/png' }
+            ]
+        });
+        
+        // 绑定 iOS / Android 锁屏与耳机遥控系统事件
+        navigator.mediaSession.setActionHandler('play', () => {
+            const player = document.getElementById("globalAudioPlayer");
+            if (player) player.play();
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+            const player = document.getElementById("globalAudioPlayer");
+            if (player) player.pause();
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => playPrevTrack());
+        navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+            const player = document.getElementById("globalAudioPlayer");
+            if (player && details.seekTime !== undefined) {
+                player.currentTime = details.seekTime;
+            }
+        });
+    } catch (e) {
+        console.warn("[MediaSession] 注册锁屏元数据失败:", e);
     }
 }
 
@@ -872,6 +917,152 @@ function openLyricModal() {
         modal.style.display = "flex";
     }
 }
+
+function closeLyricModal() {
+    const modal = document.getElementById("lyricModal");
+    if (modal) modal.style.display = "none";
+}
+
+/* ==========================================================================
+   📱 📱 手机端 Cache API 离线预取引擎 (Mobile PWA Cache Engine)
+   ========================================================================== */
+
+const PWA_CACHE_NAME = 'netease-dl-v2.9.0';
+
+/**
+ * 检查单个音频 URL 或曲目 ID 是否已存储在客户端 Cache API
+ */
+async function isUrlInCache(url) {
+    if (!('caches' in window) || !url) return false;
+    try {
+        const cache = await caches.open(PWA_CACHE_NAME);
+        const match = await cache.match(url);
+        return !!match;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * 批量获取曲目列表中在 Cache API 中已缓存的曲目数
+ */
+async function countCachedTracks(tracks) {
+    if (!tracks || tracks.length === 0 || !('caches' in window)) return 0;
+    let count = 0;
+    try {
+        const cache = await caches.open(PWA_CACHE_NAME);
+        const keys = await cache.keys();
+        const cachedUrls = keys.map(req => req.url);
+
+        for (const track of tracks) {
+            const id = track.id || track.songId;
+            if (!id) continue;
+            // 检查 Cache API 是否匹配该 id 的 stream 地址或被存入的缓存 key
+            const isMatch = cachedUrls.some(url => url.includes(`id=${id}`) || url.includes(`songId=${id}`));
+            if (isMatch) count++;
+        }
+    } catch (e) {
+        console.warn("[PWA] 统计已缓存数失败:", e);
+    }
+    return count;
+}
+
+/**
+ * 刷新某个「📱 缓存到手机」按钮的缓存计数状态
+ */
+async function refreshPhoneCacheBtn(tracks, btnId, baseText = '📱 缓存到手机') {
+    const btn = document.getElementById(btnId);
+    if (!btn || !tracks || tracks.length === 0) return;
+    const total = tracks.length;
+    const cached = await countCachedTracks(tracks);
+    btn.textContent = `${baseText} (${cached}/${total})`;
+    if (cached === total && total > 0) {
+        btn.style.background = '#0284c7'; // 亮青蓝色表示全量已缓
+    }
+}
+
+/**
+ * 📱 智能双轨预取引擎：支持后端落盘与手机 Cache API 写入
+ */
+async function cacheTracksToPhoneBatch(tracks, btnId, baseText = '📱 缓存到手机') {
+    const btn = document.getElementById(btnId);
+    if (!('caches' in window)) {
+        alert("当前浏览器不支持 Cache API 或未以 HTTPS/PWA 模式运行");
+        return;
+    }
+    if (!tracks || tracks.length === 0) {
+        alert("暂无要缓存的曲目");
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.75';
+    }
+
+    let cachedCount = await countCachedTracks(tracks);
+    const total = tracks.length;
+
+    try {
+        const cache = await caches.open(PWA_CACHE_NAME);
+        for (let i = 0; i < tracks.length; i++) {
+            const track = tracks[i];
+            const id = track.id || track.songId;
+            if (!id) continue;
+
+            if (btn) btn.textContent = `⏳ 正在解析 (${i + 1}/${total})...`;
+
+            try {
+                // 1. 调用 /Song_V1 获取后端本地无损流或网易云线上音频 URL
+                const resp = await axios.post('/Song_V1', new URLSearchParams({ id: id, level: 'lossless', type: 'json' }));
+                let audioUrl = resp.data && resp.data.data ? resp.data.data.url : null;
+
+                // 2. 如果后端本地尚无物理文件且也未解析出 URL，主动触发服务端下载落盘
+                if (!audioUrl) {
+                    if (btn) btn.textContent = `⚡ 触发服务器落盘 (${i + 1}/${total})...`;
+                    await axios.get(`/v2/single?id=${id}`).catch(() => {});
+                    // 重试获取流
+                    const retryResp = await axios.post('/Song_V1', new URLSearchParams({ id: id, level: 'lossless', type: 'json' }));
+                    audioUrl = retryResp.data && retryResp.data.data ? retryResp.data.data.url : null;
+                }
+
+                if (audioUrl) {
+                    const isCached = await isUrlInCache(audioUrl);
+                    if (!isCached) {
+                        if (btn) btn.textContent = `📥 正在下载离线流 (${i + 1}/${total})...`;
+                        const streamResp = await fetch(audioUrl);
+                        if (streamResp.ok) {
+                            await cache.put(audioUrl, streamResp);
+                            // 同时多关联一个虚拟键方便匹配
+                            const aliasUrl = `/v2/stream?id=${id}`;
+                            if (audioUrl !== aliasUrl) {
+                                const cloneResp = await fetch(audioUrl);
+                                if (cloneResp.ok) await cache.put(aliasUrl, cloneResp);
+                            }
+                            cachedCount++;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn(`[PWA] 预取失败 songId:${id}`, err);
+            }
+
+            if (btn) btn.textContent = `${baseText} (${cachedCount}/${total})`;
+        }
+    } catch (e) {
+        console.error("[PWA] 批量缓存操作异常:", e);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.textContent = `${baseText} (${cachedCount}/${total})`;
+            if (cachedCount === total && total > 0) {
+                btn.style.background = '#0284c7';
+            }
+        }
+    }
+}
+
 
 function closeLyricModal() {
     const modal = document.getElementById("lyricModal");
