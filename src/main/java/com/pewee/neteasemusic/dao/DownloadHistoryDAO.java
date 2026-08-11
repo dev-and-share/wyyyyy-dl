@@ -69,8 +69,16 @@ public class DownloadHistoryDAO {
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ")";
                 stmt.execute(sql);
+
+                String rawSql = "CREATE TABLE IF NOT EXISTS download_history_raw (" +
+                        "history_id INTEGER PRIMARY KEY, " +
+                        "raw_json TEXT, " +
+                        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY(history_id) REFERENCES download_history(id) ON DELETE CASCADE" +
+                        ")";
+                stmt.execute(rawSql);
             }
-            log.info("SQLite 数据库初始化完毕: {}", dbFile.getAbsolutePath());
+            log.info("SQLite 数据库及扩展 Raw JSON 子表初始化完毕: {}", dbFile.getAbsolutePath());
         } catch (Exception e) {
             log.error("初始化 SQLite 数据库失败!", e);
         }
@@ -139,23 +147,60 @@ public class DownloadHistoryDAO {
         return directFile.isAbsolute() ? directFile : relativeFile;
     }
 
-    public synchronized void addRecord(Long songId, String songName, String artist, String album, String filePath, Long fileSize, String quality, String status) {
+    public synchronized long addRecord(Long songId, String songName, String artist, String album, String filePath, Long fileSize, String quality, String status) {
         String sql = "INSERT INTO download_history (song_id, song_name, artist, album, file_path, file_size, quality, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         String relPath = toRelativePath(filePath);
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setObject(1, songId);
             pstmt.setString(2, songName != null ? songName : "未知歌曲");
             pstmt.setString(3, artist != null ? artist : "");
             pstmt.setString(4, album != null ? album : "");
             pstmt.setString(5, relPath);
             pstmt.setObject(6, fileSize != null ? fileSize : 0L);
-            pstmt.setString(7, quality != null ? quality : "");
+            pstmt.setString(7, quality != null ? quality : "standard");
             pstmt.setString(8, status != null ? status : "SUCCESS");
             pstmt.executeUpdate();
+            try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
         } catch (Exception e) {
-            log.error("写入下载历史记录失败!", e);
+            log.error("保存下载历史记录到 SQLite 失败!", e);
         }
+        return -1L;
+    }
+
+    public void saveRawJson(Long historyId, String rawJson) {
+        if (historyId == null || historyId <= 0 || rawJson == null || rawJson.trim().isEmpty()) return;
+        String sql = "INSERT INTO download_history_raw (history_id, raw_json) VALUES (?, ?) " +
+                     "ON CONFLICT(history_id) DO UPDATE SET raw_json=excluded.raw_json, updated_at=CURRENT_TIMESTAMP";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, historyId);
+            pstmt.setString(2, rawJson);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            log.error("保存 Raw JSON 到扩展子表失败, historyId={}", historyId, e);
+        }
+    }
+
+    public String getRawJson(Long historyId) {
+        if (historyId == null || historyId <= 0) return null;
+        String sql = "SELECT raw_json FROM download_history_raw WHERE history_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, historyId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("raw_json");
+                }
+            }
+        } catch (Exception e) {
+            log.error("查询 Raw JSON 失败, historyId={}", historyId, e);
+        }
+        return null;
     }
 
     public List<DownloadHistoryItem> getRecords(String keyword, int page, int pageSize) {

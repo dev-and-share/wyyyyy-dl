@@ -161,6 +161,18 @@ public class DownloadHistoryController {
     }
 
     /**
+     * 读取指定历史记录关联的 Raw JSON 快照
+     */
+    @GetMapping("/history/raw")
+    public RespEntity<String> getRawJson(@RequestParam("id") Long id) {
+        String rawJson = downloadHistoryDAO.getRawJson(id);
+        if (StringUtils.isBlank(rawJson)) {
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "暂无关联的 Raw JSON 离线快照", null);
+        }
+        return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "查询成功", rawJson);
+    }
+
+    /**
      * 删除单条历史记录
      */
     @DeleteMapping("/history/delete")

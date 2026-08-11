@@ -311,9 +311,9 @@ public class MusicDownloadService implements InitializingBean {
 			taskStatus.setStatus("SUCCESS");
 			taskStatus.setFilePath(file.getAbsolutePath());
 
-			// 记录到 SQLite 历史库
+			// 记录到 SQLite 历史库及扩展 Raw JSON 子表
 			try {
-				downloadHistoryDAO.addRecord(
+				long historyId = downloadHistoryDAO.addRecord(
 						id,
 						analysisSingleMusic.getName(),
 						analysisSingleMusic.getAr_name(),
@@ -323,8 +323,12 @@ public class MusicDownloadService implements InitializingBean {
 						"lossless",
 						"SUCCESS"
 				);
+				if (historyId > 0 && analysisSingleMusic != null) {
+					String rawJson = com.alibaba.fastjson.JSON.toJSONString(analysisSingleMusic);
+					downloadHistoryDAO.saveRawJson(historyId, rawJson);
+				}
 			} catch (Exception ex) {
-				log.error("写入下载历史失败", ex);
+				log.error("写入下载历史及 Raw JSON 失败", ex);
 			}
 		} catch (Exception e) {
 			log.error("下载歌曲失败, id: {}", id, e);
