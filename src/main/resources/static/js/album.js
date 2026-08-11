@@ -40,7 +40,7 @@ function loadAlbumInfo() {
                             <strong>${idx + 1}. ${song.name}</strong>${artistHtml}
                         </div>
                         <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
-                            <button class="jump-link-btn" onclick="playSongById('${song.id}')" title="在线试听">▶️ 试听</button>
+                            <button class="jump-link-btn" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>
                             <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🔍 查看</button>
                             <button class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0;" onclick="downloadSingle('${song.id}')">📥 下载</button>
                         </div>

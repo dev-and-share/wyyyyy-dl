@@ -68,7 +68,7 @@ function renderSearchPage(page) {
                     <strong>${index + 1}. ${item.name}</strong>${artistHtml}${albumHtml}
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <button class="jump-link-btn" onclick="playSongById('${item.id}')" title="在线试听">▶️ 试听</button>
+                    <button class="jump-link-btn" onclick="playSongById('${item.id}', '${(item.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>
                     <button class="jump-link-btn" onclick="jumpToSongDetail('${item.id}')">🔍 查看</button>
                     <button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick="downloadSingle('${item.id}')">📥 下载</button>
                 </div>

@@ -218,6 +218,7 @@ public class DownloadHistoryDAO {
                     if (rs.next()) {
                         DownloadHistoryItem item = mapItemFromRs(rs);
                         if (Boolean.TRUE.equals(item.getFileExists())) {
+                            log.info("🎯 按 songId 成功匹配本地文件: {}, path: {}", songId, item.getFilePath());
                             return item;
                         }
                     }
@@ -227,22 +228,28 @@ public class DownloadHistoryDAO {
             }
         }
 
-        // 2. 智能降级：根据歌名与歌手名精准比对 (避免多专辑不同 songId 问题)
+        // 2. 智能降级：按歌名+歌手全量模糊比对
         if (name != null && !name.trim().isEmpty()) {
             String cleanName = name.trim();
-            String cleanArtist = (artist != null) ? artist.trim() : "";
+            String baseName = cleanName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
+            if (baseName.isEmpty()) baseName = cleanName;
 
-            String sql = "SELECT * FROM download_history WHERE (song_name = ? OR song_name LIKE ?) AND status = 'COMPLETED' ORDER BY id DESC";
+            String sql = "SELECT * FROM download_history WHERE status = 'COMPLETED' ORDER BY id DESC";
             try (Connection conn = getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, cleanName);
-                pstmt.setString(2, "%" + cleanName + "%");
-                try (ResultSet rs = pstmt.executeQuery()) {
-                    while (rs.next()) {
-                        DownloadHistoryItem item = mapItemFromRs(rs);
-                        if (Boolean.TRUE.equals(item.getFileExists())) {
-                            String localArtist = item.getArtist() != null ? item.getArtist() : "";
-                            if (cleanArtist.isEmpty() || localArtist.contains(cleanArtist) || cleanArtist.contains(localArtist)) {
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    DownloadHistoryItem item = mapItemFromRs(rs);
+                    if (Boolean.TRUE.equals(item.getFileExists())) {
+                        String localName = item.getSongName() != null ? item.getSongName().trim() : "";
+                        String localBaseName = localName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
+
+                        if (localName.equalsIgnoreCase(cleanName) || localBaseName.equalsIgnoreCase(baseName) || localName.contains(baseName) || cleanName.contains(localName)) {
+                            String cleanArtist = (artist != null) ? artist.trim() : "";
+                            String localArtist = item.getArtist() != null ? item.getArtist().trim() : "";
+
+                            if (cleanArtist.isEmpty() || localArtist.isEmpty() || localArtist.contains(cleanArtist) || cleanArtist.contains(localArtist)) {
+                                log.info("🎯 按歌名歌手成功智能匹配本地文件: 《{}》 -> {}, path: {}", cleanName, item.getSongName(), item.getFilePath());
                                 return item;
                             }
                         }
@@ -253,6 +260,7 @@ public class DownloadHistoryDAO {
             }
         }
 
+        log.warn("⚠️ 未找到本地可用的匹配文件: songId={}, name={}, artist={}", songId, name, artist);
         return null;
     }
 

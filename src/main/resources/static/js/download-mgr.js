@@ -66,9 +66,10 @@ function revealFile(path, taskId) {
 
 function playLocalFile(path, songName, artist) {
     if (!path) return;
-    const streamUrl = '/v2/history/stream?path=' + encodeURIComponent(path);
+    const rawPath = safeDecode(path);
+    const streamUrl = '/v2/history/stream?path=' + encodeURIComponent(rawPath);
     if (typeof playAudioOnline === 'function') {
-        playAudioOnline(streamUrl, songName, artist, '/favicon.png', '本地下载音乐 (支持 HTML5 试听播放)');
+        playAudioOnline(streamUrl, songName, artist, '/favicon.png', '本地下载音乐');
     } else {
         const player = document.getElementById("globalAudioPlayer");
         if (player) {
