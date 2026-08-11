@@ -927,7 +927,37 @@ function closeLyricModal() {
    📱 📱 手机端 Cache API 离线预取引擎 (Mobile PWA Cache Engine)
    ========================================================================== */
 
-const PWA_CACHE_NAME = 'netease-dl-v2.9.0';
+const PWA_CACHE_NAME = 'netease-dl-v3.0.0';
+
+/**
+ * 🎯 静默解构音频 Blob 的真实播放时长 (Duration) 秒数
+ */
+function getAudioBlobDuration(blob) {
+    return new Promise((resolve) => {
+        if (!blob) return resolve(0);
+        try {
+            const audio = new Audio();
+            const url = URL.createObjectURL(blob);
+            audio.src = url;
+            audio.onloadedmetadata = () => {
+                const duration = audio.duration;
+                URL.revokeObjectURL(url);
+                resolve(duration || 0);
+            };
+            audio.onerror = () => {
+                URL.revokeObjectURL(url);
+                resolve(0);
+            };
+            // 超时保险：1 秒未解构出元数据则回退
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+                resolve(audio.duration || 0);
+            }, 1000);
+        } catch (e) {
+            resolve(0);
+        }
+    });
+}
 
 /**
  * 检查单个音频 URL 或曲目 ID 是否已存储在客户端 Cache API
@@ -1029,15 +1059,35 @@ async function cacheTracksToPhoneBatch(tracks, btnId, baseText = '📱 缓存到
                 if (audioUrl) {
                     const isCached = await isUrlInCache(audioUrl);
                     if (!isCached) {
-                        if (btn) btn.textContent = `📥 正在下载离线流 (${i + 1}/${total})...`;
+                        if (btn) btn.textContent = `📥 正在校验与下载 (${i + 1}/${total})...`;
                         const streamResp = await fetch(audioUrl);
                         if (streamResp.ok) {
-                            await cache.put(audioUrl, streamResp);
-                            // 同时多关联一个虚拟键方便匹配
+                            const blob = await streamResp.blob();
+                            
+                            // 🎯 核心精准过滤：双校验（文件大小 < 1.2MB 或 播放时长 < 45秒 均视为 30s VIP 试听片段，拦截不存手机 Cache）
+                            const duration = await getAudioBlobDuration(blob);
+                            if (blob.size < 1250000 || (duration > 0 && duration < 45)) {
+                                console.warn(`[PWA Filter] 🚫 自动跳过 30s 试听片段 songId:${id}, 大小:${Math.round(blob.size / 1024)}KB, 时长:${Math.round(duration)}秒`);
+                                if (btn) btn.textContent = `⚠️ 已跳过 30s 试听 (${i + 1}/${total})...`;
+                                continue;
+                            }
+
+                            const validResponse = new Response(blob, {
+                                status: streamResp.status,
+                                statusText: streamResp.statusText,
+                                headers: streamResp.headers
+                            });
+                            await cache.put(audioUrl, validResponse);
+                            
+                            // 同时关联一个别名键方便匹配
                             const aliasUrl = `/v2/stream?id=${id}`;
                             if (audioUrl !== aliasUrl) {
-                                const cloneResp = await fetch(audioUrl);
-                                if (cloneResp.ok) await cache.put(aliasUrl, cloneResp);
+                                const aliasResponse = new Response(blob, {
+                                    status: streamResp.status,
+                                    statusText: streamResp.statusText,
+                                    headers: streamResp.headers
+                                });
+                                await cache.put(aliasUrl, aliasResponse);
                             }
                             cachedCount++;
                         }

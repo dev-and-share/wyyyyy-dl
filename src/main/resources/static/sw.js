@@ -1,14 +1,14 @@
-const CACHE_NAME = 'netease-dl-v2.9.0';
+const CACHE_NAME = 'netease-dl-v3.0.0';
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
   '/favicon.png',
-  '/css/style.css?v=2.9.0',
-  '/js/app.js?v=2.9.0',
-  '/js/playlist.js?v=2.9.0',
-  '/js/album.js?v=2.9.0',
-  '/js/search.js?v=2.9.0',
-  '/js/download-mgr.js?v=2.9.0'
+  '/css/style.css?v=3.0.0',
+  '/js/app.js?v=3.0.0',
+  '/js/playlist.js?v=3.0.0',
+  '/js/album.js?v=3.0.0',
+  '/js/search.js?v=3.0.0',
+  '/js/download-mgr.js?v=3.0.0'
 ];
 
 // 1. 安装 Service Worker 并预缓存基础 App Shell
