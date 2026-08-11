@@ -295,6 +295,14 @@ public class MusicDownloadService implements InitializingBean {
 			File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())).toFile();
 			FileUtils.writeToFile(file.toPath(),
 					HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
+
+			// 🛑 核心防污染拦截：如果下载的音频文件小于 1.2MB (1,250,000 字节)，判定为 30s VIP 试听片段，拒绝落盘入库并删除临时文件
+			if (file.exists() && file.length() < 1250000) {
+				log.warn("检测到歌曲: {} 属于 30s VIP 试听片段 (大小: {} KB)，自动擦除并拒绝入库!", fileName, file.length() / 1024);
+				try { file.delete(); } catch (Exception ignored) {}
+				throw new RuntimeException("该歌曲仅为 30s VIP 试听片段，已自动阻止落盘与入库");
+			}
+
 			TagUtils.setTags(file, analysisSingleMusic.getName(), analysisSingleMusic.getAr_name(),
 					analysisSingleMusic.getAl_name());
 			log.info("将歌曲: {} 写入目录: {} 已完成!", fileName, dir);

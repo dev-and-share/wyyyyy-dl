@@ -608,7 +608,7 @@ public class DownloadHistoryDAO {
                 Long size = (Long) u.get("fileSize");
                 if (fpath == null) continue;
                 File file = new File(fpath);
-                if (!file.exists()) continue;
+                if (!file.exists() || file.length() < 1250000) continue; // 🛑 过滤小于 1.2MB 的 30s VIP 试听片段
 
                 com.pewee.neteasemusic.utils.TagUtils.TagInfo info = com.pewee.neteasemusic.utils.TagUtils.readTags(file);
                 String relPath = toRelativePath(fpath);
@@ -638,8 +638,17 @@ public class DownloadHistoryDAO {
         List<DownloadHistoryItem> all = getRecords(null, 1, 10000);
         List<Long> deleteIds = new ArrayList<>();
         for (DownloadHistoryItem item : all) {
-            if (item.getFilePath() == null || item.getFilePath().isEmpty() || !resolveFile(item.getFilePath()).exists()) {
+            if (item.getFilePath() == null || item.getFilePath().isEmpty()) {
                 deleteIds.add(item.getId());
+                continue;
+            }
+            File resolved = resolveFile(item.getFilePath());
+            if (!resolved.exists() || resolved.length() < 1250000) {
+                deleteIds.add(item.getId());
+                // 自动擦除以前残留在 Mac 硬盘的小于 1.2MB 试听垃圾文件
+                if (resolved.exists() && resolved.length() < 1250000) {
+                    try { resolved.delete(); } catch (Exception ignored) {}
+                }
             }
         }
 
