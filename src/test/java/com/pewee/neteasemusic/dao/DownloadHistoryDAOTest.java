@@ -112,4 +112,23 @@ public class DownloadHistoryDAOTest {
         assertNotNull(item, "智能比对应当成功命中扫描录入的《吻别》");
         assertEquals("吻别", item.getSongName());
     }
+
+    @Test
+    @DisplayName("测试旧版宿主机外部曲库路径可映射到容器挂载路径")
+    public void testResolveLegacyExternalLibraryPath() throws Exception {
+        File containerRoot = new File(tempDir.toFile(), "external");
+        File albumDir = new File(containerRoot, "网易云音乐");
+        albumDir.mkdirs();
+        File externalAudio = new File(albumDir, "张学友 - 吻别.mp3");
+        try (FileWriter writer = new FileWriter(externalAudio)) {
+            writer.write("dummy audio stream");
+        }
+
+        ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/Users/test/Music");
+        ReflectionTestUtils.setField(dao, "externalLibraryContainerPath", containerRoot.getAbsolutePath());
+
+        File resolved = dao.resolveFile("/Users/test/Music/网易云音乐/张学友 - 吻别.mp3");
+        assertEquals(externalAudio.getCanonicalPath(), resolved.getCanonicalPath());
+        assertTrue(resolved.exists(), "旧版宿主机绝对路径应能访问到容器挂载的音频文件");
+    }
 }

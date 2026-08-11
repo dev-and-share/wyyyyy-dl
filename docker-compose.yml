@@ -11,6 +11,12 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - HOST_DOWNLOAD_PATH=${HOST_DOWNLOAD_PATH}
+      # 外部曲库在容器内使用固定路径；真实宿主机路径只保留在本机 .env 中
+      - EXTERNAL_LIBRARY_HOST_PATH=${EXTERNAL_LIBRARY_HOST_PATH}
+      - EXTERNAL_LIBRARY_CONTAINER_PATH=${EXTERNAL_LIBRARY_CONTAINER_PATH}
+      - EXTERNAL_LIBRARY_PATHS=${EXTERNAL_LIBRARY_PATHS}
     volumes:
       # 读取 .env 配置文件中的 HOST_DOWNLOAD_PATH
       - ${HOST_DOWNLOAD_PATH}:/media/music
+      # 一个外部曲库根目录，可在其下自由增减子目录；仅以只读方式提供给容器
+      - ${EXTERNAL_LIBRARY_HOST_PATH}:${EXTERNAL_LIBRARY_CONTAINER_PATH}:ro

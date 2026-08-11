@@ -27,6 +27,14 @@ public class DownloadHistoryDAO {
     @Value("${external.library.paths:}")
     private String externalLibraryPaths;
 
+    /** 宿主机外部曲库根目录。用于兼容数据库中已经保存的宿主机绝对路径。 */
+    @Value("${external.library.host.path:}")
+    private String externalLibraryHostPath;
+
+    /** 外部曲库在容器内的固定挂载路径。 */
+    @Value("${external.library.container.path:/media/external}")
+    private String externalLibraryContainerPath;
+
     private String dbUrl;
 
     @Data
@@ -111,6 +119,10 @@ public class DownloadHistoryDAO {
 
     public String toHostPath(File file) {
         if (file == null) return "";
+        String externalHostPath = remapPathInsideRoot(file.getAbsolutePath(), externalLibraryContainerPath, externalLibraryHostPath);
+        if (!externalHostPath.equals(file.getAbsolutePath())) {
+            return externalHostPath;
+        }
         String rel = toRelativePath(file.getAbsolutePath());
         if (hostDownloadPath != null && !hostDownloadPath.trim().isEmpty()) {
             return new File(hostDownloadPath, rel).getAbsolutePath();
@@ -139,6 +151,10 @@ public class DownloadHistoryDAO {
             savedPath = sub;
         }
 
+        // 外部曲库早期会将宿主机绝对路径直接写入 SQLite。Docker 中该路径不存在，
+        // 因此按配置的根目录改写为容器挂载路径，避免历史索引被误判为“失效”。
+        savedPath = remapPathInsideRoot(savedPath, externalLibraryHostPath, externalLibraryContainerPath);
+
         File directFile = new File(savedPath);
         if (directFile.isAbsolute() && directFile.exists()) {
             return directFile;
@@ -148,6 +164,28 @@ public class DownloadHistoryDAO {
             return relativeFile;
         }
         return directFile.isAbsolute() ? directFile : relativeFile;
+    }
+
+    private String remapPathInsideRoot(String path, String sourceRoot, String targetRoot) {
+        if (path == null || sourceRoot == null || sourceRoot.trim().isEmpty()
+                || targetRoot == null || targetRoot.trim().isEmpty()) {
+            return path;
+        }
+        try {
+            String canonicalPath = new File(path).getCanonicalPath();
+            String canonicalSourceRoot = new File(sourceRoot).getCanonicalPath();
+            if (canonicalPath.equals(canonicalSourceRoot)) {
+                return new File(targetRoot).getPath();
+            }
+            String sourcePrefix = canonicalSourceRoot.endsWith(File.separator)
+                    ? canonicalSourceRoot : canonicalSourceRoot + File.separator;
+            if (canonicalPath.startsWith(sourcePrefix)) {
+                return new File(targetRoot, canonicalPath.substring(sourcePrefix.length())).getPath();
+            }
+        } catch (Exception ignored) {
+            // 路径无法规范化时按原值处理，维持原有的文件解析行为。
+        }
+        return path;
     }
 
     public synchronized long addRecord(Long songId, String songName, String artist, String album, String filePath, Long fileSize, String quality, String status) {
@@ -279,7 +317,7 @@ public class DownloadHistoryDAO {
         String relPath = toRelativePath(fpath);
         item.setFilePath(resolved.getAbsolutePath());
         item.setRelativePath(relPath);
-        item.setHostFilePath(new File(hostDownloadPath, relPath).getAbsolutePath());
+        item.setHostFilePath(toHostPath(resolved));
         item.setFileSize(rs.getLong("file_size"));
         item.setQuality(rs.getString("quality"));
         item.setStatus(rs.getString("status"));
@@ -383,11 +421,13 @@ public class DownloadHistoryDAO {
 
     private boolean isFilePathExistsInDb(String filePath) {
         String relPath = toRelativePath(filePath);
-        String sql = "SELECT COUNT(*) FROM download_history WHERE file_path = ? OR file_path = ?";
+        String legacyHostPath = remapPathInsideRoot(filePath, externalLibraryContainerPath, externalLibraryHostPath);
+        String sql = "SELECT COUNT(*) FROM download_history WHERE file_path = ? OR file_path = ? OR file_path = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, filePath);
             pstmt.setString(2, relPath);
+            pstmt.setString(3, legacyHostPath);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getInt(1) > 0;
