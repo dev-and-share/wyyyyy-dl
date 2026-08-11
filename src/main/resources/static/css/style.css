@@ -156,9 +156,23 @@ body {
 }
 
 .accordion-card.active .accordion-body {
-    max-height: 2000px; /* large enough for content */
+    max-height: 8000px; /* large enough for any full playlist */
     padding: 0 20px 20px 20px;
     transition: max-height 0.35s ease-in-out;
+}
+
+/* 📱 极顺畅滚动列表容器 (Scrollable List Container) */
+.scrollable-list {
+    max-height: 520px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 2px;
+}
+
+@media (max-width: 768px) {
+    .scrollable-list {
+        max-height: 380px; /* 移动端触控高顺畅可滑动区域 */
+    }
 }
 
 /* Form Elements & Inputs */

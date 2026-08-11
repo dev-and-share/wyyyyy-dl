@@ -42,9 +42,11 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <p style="font-size:13px; color:#666;">加载已登录账号收藏或创建的歌单列表。</p>
-                    <button class="btn-primary" onclick="loadMyPlaylists()">加载歌单列表</button>
-                    <ul class="data-list" id="playlist-list"></ul>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <span style="font-size:13px; color:#666;">加载已登录账号收藏或创建的歌单列表</span>
+                        <button class="btn-primary" onclick="loadMyPlaylists()" style="width:auto; margin:0; padding:6px 14px;">加载歌单列表</button>
+                    </div>
+                    <ul class="data-list scrollable-list" id="playlist-list"></ul>
                 </div>
             </div>
 
@@ -60,7 +62,7 @@
                         <button class="btn-primary" onclick="loadPlaylistDetail()">查看歌单详情</button>
                     </div>
                     <div id="playlist-info"></div>
-                    <ul class="data-list" id="playlist-tracks"></ul>
+                    <ul class="data-list scrollable-list" id="playlist-tracks"></ul>
                     <div id="playlist-pagination" class="pagination-container">
                         <button id="prev-page" class="btn-primary" onclick="changePage(-1)" disabled>上一页</button>
                         <span id="page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
@@ -112,7 +114,7 @@
                         <p><strong>发行时间：</strong> <span id="album-publish-time"></span></p>
                         <p><strong>封面：</strong><br><img id="album-cover" style="max-width: 150px; border-radius:8px; margin-top:5px;"></p>
                         <h4>歌曲列表：</h4>
-                        <ul class="data-list" id="album-tracks"></ul>
+                        <ul class="data-list scrollable-list" id="album-tracks"></ul>
                     </div>
                 </div>
             </div>
@@ -139,7 +141,7 @@
                         <input type="number" id="searchLimit" value="10" min="1" style="width:70px;">
                         <button class="btn-primary" onclick="searchSongs()">搜索</button>
                     </div>
-                    <ul class="data-list" id="search-results"></ul>
+                    <ul class="data-list scrollable-list" id="search-results"></ul>
                     <div id="search-pagination" class="pagination-container">
                         <button id="search-prev" class="btn-primary" onclick="changeSearchPage(-1)" disabled>上一页</button>
                         <span id="search-page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
@@ -184,7 +186,7 @@
                     </div>
 
                     <!-- 历史列表 -->
-                    <ul class="data-list" id="download-history-list"></ul>
+                    <ul class="data-list scrollable-list" id="download-history-list"></ul>
 
                     <!-- 分页 -->
                     <div id="history-pagination" class="pagination-container" style="margin-top:15px;">
@@ -294,10 +296,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.3.2"></script>
-    <script src="/js/album.js?v=2.3.2"></script>
-    <script src="/js/search.js?v=2.3.2"></script>
-    <script src="/js/download-mgr.js?v=2.3.2"></script>
-    <script src="/js/app.js?v=2.3.2"></script>
+    <script src="/js/playlist.js?v=2.3.3"></script>
+    <script src="/js/album.js?v=2.3.3"></script>
+    <script src="/js/search.js?v=2.3.3"></script>
+    <script src="/js/download-mgr.js?v=2.3.3"></script>
+    <script src="/js/app.js?v=2.3.3"></script>
 </body>
 </html>
