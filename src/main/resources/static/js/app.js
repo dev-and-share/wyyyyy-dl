@@ -417,7 +417,7 @@ function prepareTrackInUI(track, seekTime) {
 
     if (bar) bar.style.display = "flex";
 
-    axios.post('/Song_V1', new URLSearchParams({ id: track.id, level: 'standard', type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams({ id: track.id, level: 'lossless', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url && player) {
@@ -457,7 +457,7 @@ function playTrackInQueue(index) {
     const track = globalPlaylistQueue[index];
     savePlayerStateToStorage();
     
-    axios.post('/Song_V1', new URLSearchParams({ id: track.id, level: 'standard', type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams({ id: track.id, level: 'lossless', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url) {
@@ -673,7 +673,7 @@ function playSongById(songId, name, artist) {
         currentQueueIndex = 0;
         updatePlaylistCountUI();
     }
-    axios.post('/Song_V1', new URLSearchParams({ id: songId, level: 'standard', type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams({ id: songId, level: 'lossless', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url) {
