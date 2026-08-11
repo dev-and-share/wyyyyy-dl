@@ -210,7 +210,7 @@ public class DownloadHistoryDAO {
     public DownloadHistoryItem findLocalFileBySongOrName(Long songId, String name, String artist) {
         // 1. 优先根据 song_id 匹配
         if (songId != null && songId > 0) {
-            String sql = "SELECT * FROM download_history WHERE song_id = ? AND status = 'COMPLETED' ORDER BY id DESC LIMIT 1";
+            String sql = "SELECT * FROM download_history WHERE song_id = ? ORDER BY id DESC LIMIT 1";
             try (Connection conn = getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setLong(1, songId);
@@ -234,7 +234,7 @@ public class DownloadHistoryDAO {
             String baseName = cleanName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
             if (baseName.isEmpty()) baseName = cleanName;
 
-            String sql = "SELECT * FROM download_history WHERE status = 'COMPLETED' ORDER BY id DESC";
+            String sql = "SELECT * FROM download_history ORDER BY id DESC";
             try (Connection conn = getConnection();
                  Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
