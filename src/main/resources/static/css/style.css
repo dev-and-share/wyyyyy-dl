@@ -932,7 +932,11 @@ ul.data-list li:last-child {
     color: #ffffff;
     font-size: 16px;
     box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
-    padding-left: 2px;
+    padding: 0;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .ctrl-btn.play-main-btn:hover {
@@ -1090,55 +1094,62 @@ ul.data-list li:last-child {
     padding-left: 6px;
 }
 
-/* 📱 移动端 / 窄屏 (SP Device) 响应式极致精简适配 (@media max-width: 768px) */
+/* 📱 移动端 / 窄屏 (SP Device) 响应式大触控与 iOS Safari 安全区避让 */
 @media (max-width: 768px) {
     .bottom-audio-bar {
-        height: 62px;
-        padding: 0 10px;
+        height: auto !important;
+        min-height: 66px !important;
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
     }
 
     .audio-bar-inner {
-        gap: 6px;
+        gap: 8px !important;
+        align-items: center !important;
     }
 
     .audio-left-section {
-        min-width: 0;
-        max-width: 110px;
-        gap: 6px;
+        min-width: 0 !important;
+        max-width: 135px !important;
+        gap: 8px !important;
     }
 
     .vinyl-cover-wrapper, .audio-cover {
-        width: 34px;
-        height: 34px;
+        width: 44px !important;
+        height: 44px !important;
     }
 
     .audio-title {
-        font-size: 12px;
+        font-size: 13px !important;
+        font-weight: 700 !important;
     }
 
     .audio-artist {
-        font-size: 10px;
+        font-size: 11px !important;
     }
 
     .audio-center-section {
-        flex: 1;
-        gap: 2px;
+        flex: 1 !important;
+        gap: 4px !important;
     }
 
     .audio-main-controls {
-        gap: 6px;
+        gap: 8px !important;
     }
 
     .ctrl-btn.sub-btn {
-        width: 24px;
-        height: 24px;
-        font-size: 13px;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 15px !important;
     }
 
     .ctrl-btn.play-main-btn {
-        width: 30px;
-        height: 30px;
-        font-size: 13px;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 17px !important;
+        padding: 0 !important;
     }
 
     .time-stamp {

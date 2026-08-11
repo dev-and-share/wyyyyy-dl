@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=2.5.4">
+    <link rel="stylesheet" href="/css/style.css?v=2.5.6">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -202,8 +202,8 @@
                 </div>
             </div>
         </div>
-        <!-- 彻底防止底部播放器遮挡 UI 的死占位 Spacer 块 -->
-        <div style="height: 120px; width: 100%; pointer-events: none;"></div>
+        <!-- 彻底防止底部播放器遮挡 UI 的死占位 Spacer 块 (自适应移动端 Safe Area) -->
+        <div style="height: calc(140px + env(safe-area-inset-bottom, 0px)); width: 100%; pointer-events: none;"></div>
     </div>
 
     <!-- 右下角悬浮半透明下载监控卡片 (Floating Glassmorphism Widget) -->
@@ -301,10 +301,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.5.4"></script>
-    <script src="/js/album.js?v=2.5.4"></script>
-    <script src="/js/search.js?v=2.5.4"></script>
-    <script src="/js/download-mgr.js?v=2.5.4"></script>
-    <script src="/js/app.js?v=2.5.4"></script>
+    <script src="/js/playlist.js?v=2.5.5"></script>
+    <script src="/js/album.js?v=2.5.5"></script>
+    <script src="/js/search.js?v=2.5.5"></script>
+    <script src="/js/download-mgr.js?v=2.5.5"></script>
+    <script src="/js/app.js?v=2.5.5"></script>
 </body>
 </html>
