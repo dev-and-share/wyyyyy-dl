@@ -794,10 +794,31 @@ ul.data-list li:last-child {
 .audio-right-section {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex: 1;
     justify-content: flex-end;
-    min-width: 220px;
+    min-width: 180px;
+}
+
+.playlist-btn-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.badge-count {
+    position: absolute;
+    top: -3px;
+    right: -5px;
+    background: #ef4444;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 4px;
+    border-radius: 8px;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
 }
 
 .volume-container {
@@ -814,7 +835,7 @@ ul.data-list li:last-child {
 }
 
 .volume-slider {
-    width: 70px;
+    width: 60px;
     height: 4px;
     accent-color: #ef4444;
     cursor: pointer;
@@ -823,9 +844,81 @@ ul.data-list li:last-child {
 .right-action-group {
     display: flex;
     gap: 4px;
-    margin-left: 8px;
+    margin-left: 6px;
     border-left: 1px solid rgba(255, 255, 255, 0.1);
-    padding-left: 8px;
+    padding-left: 6px;
+}
+
+/* 📱 移动端 / 窄屏 (SP Device) 响应式极致精简适配 (@media max-width: 768px) */
+@media (max-width: 768px) {
+    .bottom-audio-bar {
+        height: 62px;
+        padding: 0 10px;
+    }
+
+    .audio-bar-inner {
+        gap: 6px;
+    }
+
+    .audio-left-section {
+        min-width: 0;
+        max-width: 110px;
+        gap: 6px;
+    }
+
+    .vinyl-cover-wrapper, .audio-cover {
+        width: 34px;
+        height: 34px;
+    }
+
+    .audio-title {
+        font-size: 12px;
+    }
+
+    .audio-artist {
+        font-size: 10px;
+    }
+
+    .audio-center-section {
+        flex: 1;
+        gap: 2px;
+    }
+
+    .audio-main-controls {
+        gap: 6px;
+    }
+
+    .ctrl-btn.sub-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 13px;
+    }
+
+    .ctrl-btn.play-main-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+    }
+
+    .time-stamp {
+        font-size: 9px;
+        min-width: 26px;
+    }
+
+    .volume-container {
+        display: none !important;
+    }
+
+    .audio-right-section {
+        min-width: 0;
+        flex: initial;
+        gap: 4px;
+    }
+
+    .right-action-group {
+        margin-left: 2px;
+        padding-left: 4px;
+    }
 }
 
 .audio-action-btn {

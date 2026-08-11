@@ -252,8 +252,8 @@
 
             <!-- 3. 右侧：歌词、列表、音量、最小化与关闭 -->
             <div class="audio-right-section">
-                <button class="ctrl-btn sub-btn" onclick="openLyricModal()" title="全屏沉浸歌词">🎤 词</button>
-                <button class="ctrl-btn sub-btn" onclick="togglePlaylistDrawer()" title="当前播放列表">📜 (<span id="playlistCount">0</span>)</button>
+                <button class="ctrl-btn sub-btn" onclick="openLyricModal()" title="全屏沉浸歌词">🎤</button>
+                <button class="ctrl-btn sub-btn playlist-btn-badge" onclick="togglePlaylistDrawer()" title="当前播放列表">📜<span id="playlistCount" class="badge-count">0</span></button>
                 
                 <div class="volume-container">
                     <span class="vol-icon" onclick="toggleMute()" id="volIcon">🔊</span>
@@ -294,10 +294,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.3.0"></script>
-    <script src="/js/album.js?v=2.3.0"></script>
-    <script src="/js/search.js?v=2.3.0"></script>
-    <script src="/js/download-mgr.js?v=2.3.0"></script>
-    <script src="/js/app.js?v=2.3.0"></script>
+    <script src="/js/playlist.js?v=2.3.1"></script>
+    <script src="/js/album.js?v=2.3.1"></script>
+    <script src="/js/search.js?v=2.3.1"></script>
+    <script src="/js/download-mgr.js?v=2.3.1"></script>
+    <script src="/js/app.js?v=2.3.1"></script>
 </body>
 </html>
