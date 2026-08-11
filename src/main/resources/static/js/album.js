@@ -48,6 +48,9 @@ function loadAlbumInfo() {
                 `;
             });
 
+            currentAlbum = album;
+            const albumSongs = album.songs || [];
+
             infoDiv.innerHTML = `
                 <div class="detail-header-card" style="margin-bottom:15px;">
                     <img src="${album.coverImgUrl}" alt="封面" class="detail-cover-img">
@@ -55,7 +58,8 @@ function loadAlbumInfo() {
                         <h4 class="detail-header-title">${album.name}</h4>
                         <div class="detail-header-sub">歌手：${album.artist} | 发行：${album.publishTime || '未知'}</div>
                         <div class="detail-btn-group">
-                            <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">📥 下载专辑</button>
+                            <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">🖥️ 下载到电脑</button>
+                            <button class="btn-primary flex-1-btn" id="album-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(currentAlbum ? currentAlbum.songs : [], 'album-cache-btn', '📱 缓存到手机')">📱 缓存到手机 (计算中...)</button>
                             <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放专辑</button>
                         </div>
                     </div>
@@ -65,6 +69,7 @@ function loadAlbumInfo() {
                     ${songsHtml}
                 </ul>
             `;
+            refreshPhoneCacheBtn(albumSongs, 'album-cache-btn', '📱 缓存到手机');
         })
         .catch(err => {
             const errorText = err.message || err;

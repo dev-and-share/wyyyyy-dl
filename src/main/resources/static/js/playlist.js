@@ -76,13 +76,15 @@ function loadPlaylistDetail() {
                         <h4 class="detail-header-title">${playlist.name}</h4>
                         <div class="detail-header-sub">创建人：${playlist.creator} | 共 ${playlist.trackCount} 首歌</div>
                         <div class="detail-btn-group">
-                            <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">📥 下载歌单</button>
+                            <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">🖥️ 下载到电脑</button>
+                            <button class="btn-primary flex-1-btn" id="playlist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(allTracks, 'playlist-cache-btn', '📱 缓存到手机')">📱 缓存到手机 (计算中...)</button>
                             <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放歌单</button>
                         </div>
                     </div>
                 </div>
             `;
             renderPage(currentPage);
+            refreshPhoneCacheBtn(allTracks, 'playlist-cache-btn', '📱 缓存到手机');
         })
         .catch(err => alert("获取歌单详情失败：" + err));
 }
