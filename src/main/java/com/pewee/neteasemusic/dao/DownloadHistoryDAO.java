@@ -204,38 +204,92 @@ public class DownloadHistoryDAO {
     }
 
     public DownloadHistoryItem findLocalFileBySongId(Long songId) {
-        if (songId == null) return null;
-        String sql = "SELECT * FROM download_history WHERE song_id = ? AND status = 'COMPLETED' ORDER BY id DESC LIMIT 1";
+        return findLocalFileBySongOrName(songId, null, null);
+    }
+
+    public DownloadHistoryItem findLocalFileBySongOrName(Long songId, String name, String artist) {
+        // 1. 优先根据 song_id 匹配
+        if (songId != null && songId > 0) {
+            String sql = "SELECT * FROM download_history WHERE song_id = ? AND status = 'COMPLETED' ORDER BY id DESC LIMIT 1";
+            try (Connection conn = getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setLong(1, songId);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        DownloadHistoryItem item = mapItemFromRs(rs);
+                        if (Boolean.TRUE.equals(item.getFileExists())) {
+                            return item;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("按 songId 查询本地文件失败, songId={}", songId, e);
+            }
+        }
+
+        // 2. 智能降级：根据歌名与歌手名精准比对 (避免多专辑不同 songId 问题)
+        if (name != null && !name.trim().isEmpty()) {
+            String cleanName = name.trim();
+            String cleanArtist = (artist != null) ? artist.trim() : "";
+
+            String sql = "SELECT * FROM download_history WHERE (song_name = ? OR song_name LIKE ?) AND status = 'COMPLETED' ORDER BY id DESC";
+            try (Connection conn = getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, cleanName);
+                pstmt.setString(2, "%" + cleanName + "%");
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        DownloadHistoryItem item = mapItemFromRs(rs);
+                        if (Boolean.TRUE.equals(item.getFileExists())) {
+                            String localArtist = item.getArtist() != null ? item.getArtist() : "";
+                            if (cleanArtist.isEmpty() || localArtist.contains(cleanArtist) || cleanArtist.contains(localArtist)) {
+                                return item;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("按歌名歌手匹配本地文件失败: name={}, artist={}", name, artist, e);
+            }
+        }
+
+        return null;
+    }
+
+    private DownloadHistoryItem mapItemFromRs(ResultSet rs) throws SQLException {
+        DownloadHistoryItem item = new DownloadHistoryItem();
+        item.setId(rs.getLong("id"));
+        item.setSongId(rs.getLong("song_id"));
+        item.setSongName(rs.getString("song_name"));
+        item.setArtist(rs.getString("artist"));
+        item.setAlbum(rs.getString("album"));
+        String fpath = rs.getString("file_path");
+        File resolved = resolveFile(fpath);
+        String relPath = toRelativePath(fpath);
+        item.setFilePath(resolved.getAbsolutePath());
+        item.setRelativePath(relPath);
+        item.setHostFilePath(new File(hostDownloadPath, relPath).getAbsolutePath());
+        item.setFileSize(rs.getLong("file_size"));
+        item.setQuality(rs.getString("quality"));
+        item.setStatus(rs.getString("status"));
+        item.setCreatedAt(rs.getString("created_at"));
+        item.setFileExists(resolved.exists() && resolved.isFile() && resolved.length() > 0);
+        return item;
+    }
+
+    public DownloadHistoryItem getRecordById(Long historyId) {
+        if (historyId == null || historyId <= 0) return null;
+        String sql = "SELECT * FROM download_history WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setLong(1, songId);
+            pstmt.setLong(1, historyId);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    DownloadHistoryItem item = new DownloadHistoryItem();
-                    item.setId(rs.getLong("id"));
-                    item.setSongId(rs.getLong("song_id"));
-                    item.setSongName(rs.getString("song_name"));
-                    item.setArtist(rs.getString("artist"));
-                    item.setAlbum(rs.getString("album"));
-                    String fpath = rs.getString("file_path");
-                    File resolved = resolveFile(fpath);
-                    String relPath = toRelativePath(fpath);
-                    item.setFilePath(resolved.getAbsolutePath());
-                    item.setRelativePath(relPath);
-                    item.setHostFilePath(new File(hostDownloadPath, relPath).getAbsolutePath());
-                    item.setFileSize(rs.getLong("file_size"));
-                    item.setQuality(rs.getString("quality"));
-                    item.setStatus(rs.getString("status"));
-                    item.setCreatedAt(rs.getString("created_at"));
-                    item.setFileExists(resolved.exists() && resolved.isFile() && resolved.length() > 0);
-                    
-                    if (item.getFileExists()) {
-                        return item;
-                    }
+                    return mapItemFromRs(rs);
                 }
             }
         } catch (Exception e) {
-            log.error("根据 songId 查询本地文件失败, songId={}", songId, e);
+            log.error("根据 id 查询历史记录异常, historyId={}", historyId, e);
         }
         return null;
     }

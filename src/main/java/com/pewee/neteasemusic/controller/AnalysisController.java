@@ -86,15 +86,20 @@ public class AnalysisController {
     @RequestMapping(value = "/Song_V1", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> songV1(@RequestParam(required = true) Long id,
                                 @RequestParam(required = true) String level,
+                                @RequestParam(required = false) String name,
+                                @RequestParam(required = false) String artist,
                                 @RequestParam(required = false, defaultValue = "json") String type) {
         SingleMusicAnalysisRespDTO songInfo = analysisService.analyzeSingleSong(id, level);
 
-        // 🚀 优先检查本地磁盘中是否存在该音频物理文件！
-        com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongId(id);
+        String searchName = (name != null && !name.trim().isEmpty()) ? name : (songInfo != null ? songInfo.getName() : null);
+        String searchArtist = (artist != null && !artist.trim().isEmpty()) ? artist : (songInfo != null ? songInfo.getAr_name() : null);
+
+        // 🚀 智能双重比对：优先匹配 song_id，未匹配上则比对 (歌名 + 歌手名) 本地已下载音轨！
+        com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongOrName(id, searchName, searchArtist);
         if (localItem != null && Boolean.TRUE.equals(localItem.getFileExists())) {
             if (songInfo != null) {
-                // 本地存在完整物理文件，优先返回本地秒开流链接！
-                songInfo.setUrl("/v2/stream?id=" + id);
+                // 瞬间切为本地无损秒播流！
+                songInfo.setUrl("/v2/stream?id=" + localItem.getSongId() + "&historyId=" + localItem.getId());
             }
         }
 
@@ -102,8 +107,17 @@ public class AnalysisController {
     }
 
     @RequestMapping(value = "/v2/stream", method = {RequestMethod.GET})
-    public void streamAudio(@RequestParam Long id, javax.servlet.http.HttpServletRequest request, javax.servlet.http.HttpServletResponse response) {
-        com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongId(id);
+    public void streamAudio(@RequestParam(required = false) Long id,
+                            @RequestParam(required = false) Long historyId,
+                            javax.servlet.http.HttpServletRequest request,
+                            javax.servlet.http.HttpServletResponse response) {
+        com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = null;
+        if (historyId != null && historyId > 0) {
+            localItem = downloadHistoryDAO.getRecordById(historyId);
+        }
+        if (localItem == null && id != null) {
+            localItem = downloadHistoryDAO.findLocalFileBySongId(id);
+        }
         if (localItem == null || !Boolean.TRUE.equals(localItem.getFileExists())) {
             response.setStatus(javax.servlet.http.HttpServletResponse.SC_NOT_FOUND);
             return;
@@ -116,11 +130,11 @@ public class AnalysisController {
         }
 
         try {
-            String name = file.getName().toLowerCase();
+            String fileName = file.getName().toLowerCase();
             String contentType = "audio/mpeg";
-            if (name.endsWith(".flac")) contentType = "audio/flac";
-            else if (name.endsWith(".wav")) contentType = "audio/wav";
-            else if (name.endsWith(".m4a") || name.endsWith(".aac")) contentType = "audio/mp4";
+            if (fileName.endsWith(".flac")) contentType = "audio/flac";
+            else if (fileName.endsWith(".wav")) contentType = "audio/wav";
+            else if (fileName.endsWith(".m4a") || fileName.endsWith(".aac")) contentType = "audio/mp4";
 
             response.setContentType(contentType);
             response.setHeader("Accept-Ranges", "bytes");
@@ -136,7 +150,7 @@ public class AnalysisController {
                 out.flush();
             }
         } catch (Exception e) {
-            log.error("播放本地音频流异常, songId={}", id, e);
+            log.error("播放本地音频流异常, songId={}, historyId={}", id, historyId, e);
         }
     }
     
