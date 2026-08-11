@@ -225,13 +225,31 @@
                 </div>
             </div>
             <div class="audio-controls">
-                <audio id="globalAudioPlayer" controls style="height: 36px; outline: none; width: 100%; max-width: 450px;"></audio>
+                <audio id="globalAudioPlayer" controls style="height: 36px; outline: none; width: 100%; max-width: 420px;"></audio>
             </div>
             <div class="audio-bar-actions">
+                <button class="audio-action-btn" onclick="playPrevTrack()" title="上一首">⏮️</button>
+                <button class="audio-action-btn" onclick="playNextTrack()" title="下一首">⏭️</button>
+                <button class="audio-action-btn" id="playModeBtn" onclick="togglePlayMode()" title="切换播放模式 (列表循环)">🔁 列表</button>
                 <button class="audio-action-btn" onclick="openLyricModal()" title="全屏歌词">🎤 歌词</button>
+                <button class="audio-action-btn" onclick="togglePlaylistDrawer()" title="当前播放列表">📜 列表(<span id="playlistCount">0</span>)</button>
                 <button class="audio-action-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
                 <button class="audio-action-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 📜 播放列表 Drawer 弹窗卡片 (Playlist Drawer) -->
+    <div class="playlist-drawer" id="playlistDrawer" style="display: none;">
+        <div class="playlist-drawer-header">
+            <span>📜 当前播放列表 (<span id="playlistDrawerCount">0</span> 首)</span>
+            <div style="display:flex; gap:8px;">
+                <button class="btn-icon" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️</button>
+                <button class="btn-icon" onclick="togglePlaylistDrawer()" title="关闭">✕</button>
+            </div>
+        </div>
+        <div class="playlist-drawer-body">
+            <ul class="playlist-drawer-list" id="playlistDrawerList"></ul>
         </div>
     </div>
 
@@ -247,10 +265,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.1.3"></script>
-    <script src="/js/album.js?v=2.1.3"></script>
-    <script src="/js/search.js?v=2.1.3"></script>
-    <script src="/js/download-mgr.js?v=2.1.3"></script>
-    <script src="/js/app.js?v=2.1.3"></script>
+    <script src="/js/playlist.js?v=2.2.0"></script>
+    <script src="/js/album.js?v=2.2.0"></script>
+    <script src="/js/search.js?v=2.2.0"></script>
+    <script src="/js/download-mgr.js?v=2.2.0"></script>
+    <script src="/js/app.js?v=2.2.0"></script>
 </body>
 </html>

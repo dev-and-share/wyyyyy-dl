@@ -12,7 +12,14 @@ function loadAlbumInfo() {
     axios.post('/Album', new URLSearchParams({ id }))
         .then(resp => {
             const album = resp.data.data.album;
-            document.getElementById("album-download").innerHTML = `<button class="btn-primary" onclick="downloadAlbum('${album.id}')">📥 下载整张专辑</button>`;
+            currentAlbumSongs = album.songs || [];
+            currentAlbumCover = album.coverImgUrl || '/favicon.png';
+            document.getElementById("album-download").innerHTML = `
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="downloadAlbum('${album.id}')">📥 下载整张专辑</button>
+                    <button class="btn-primary" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放整张专辑</button>
+                </div>
+            `;
             document.getElementById("album-name").textContent = album.name;
             document.getElementById("album-artist").textContent = album.artist;
             document.getElementById("album-publish-time").textContent = album.publishTime;
@@ -66,4 +73,23 @@ function jumpToAlbumDetail(albumId) {
     }
 
     loadAlbumInfo();
+}
+
+let currentAlbumSongs = [];
+let currentAlbumCover = '/favicon.png';
+
+function playFullCurrentAlbum() {
+    if (!currentAlbumSongs || currentAlbumSongs.length === 0) {
+        alert("暂无专辑歌曲数据！");
+        return;
+    }
+    const formattedQueue = currentAlbumSongs.map(s => ({
+        id: s.id,
+        name: s.name,
+        artist: getValidArtistNames(s),
+        cover: currentAlbumCover
+    }));
+    if (typeof setGlobalPlaylistQueue === 'function') {
+        setGlobalPlaylistQueue(formattedQueue, 0);
+    }
 }

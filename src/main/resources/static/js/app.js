@@ -327,13 +327,146 @@ function hideMonitor() {
 }
 
 /* ==========================================================================
-   🎧 在线试听播放器控制 (Online Audio Player Controller)
+   🎧 在线试听播放器控制与播放列表引擎 (Audio Player & Playlist Engine)
    ========================================================================== */
 
 let currentPlayingLyric = "";
 let parsedLrcList = [];
 let currentLrcIndex = -1;
 let isAudioPlayerMinimized = false;
+
+/* 全局播放队列与模式控制 ENGINE */
+let globalPlaylistQueue = [];
+let currentQueueIndex = -1;
+let playMode = 'loop'; // 'loop' | 'single' | 'random'
+
+function setGlobalPlaylistQueue(queue, startIndex) {
+    startIndex = startIndex || 0;
+    if (!queue || queue.length === 0) return;
+    globalPlaylistQueue = queue;
+    updatePlaylistCountUI();
+    playTrackInQueue(startIndex);
+}
+
+function updatePlaylistCountUI() {
+    const c1 = document.getElementById("playlistCount");
+    const c2 = document.getElementById("playlistDrawerCount");
+    const len = globalPlaylistQueue.length;
+    if (c1) c1.textContent = len;
+    if (c2) c2.textContent = len;
+    renderPlaylistDrawer();
+}
+
+function playTrackInQueue(index) {
+    if (index < 0 || index >= globalPlaylistQueue.length) return;
+    currentQueueIndex = index;
+    const track = globalPlaylistQueue[index];
+    
+    axios.post('/Song_V1', new URLSearchParams({ id: track.id, level: 'standard', type: 'json' }))
+        .then(resp => {
+            const song = resp.data.data;
+            if (song && song.url) {
+                const cover = track.cover || song.pic || '/favicon.png';
+                playAudioOnline(song.url, track.name || song.name, track.artist || song.ar_name, cover, song.lyric);
+                renderPlaylistDrawer();
+            } else {
+                alert(`无法播放《${track.name}》：获取播放地址失败`);
+                playNextTrack();
+            }
+        })
+        .catch(err => {
+            console.error("播放曲目失败:", err);
+            playNextTrack();
+        });
+}
+
+function playNextTrack() {
+    if (globalPlaylistQueue.length === 0) return;
+    if (playMode === 'random') {
+        let randIdx = Math.floor(Math.random() * globalPlaylistQueue.length);
+        if (globalPlaylistQueue.length > 1 && randIdx === currentQueueIndex) {
+            randIdx = (currentQueueIndex + 1) % globalPlaylistQueue.length;
+        }
+        playTrackInQueue(randIdx);
+    } else {
+        let nextIdx = (currentQueueIndex + 1) % globalPlaylistQueue.length;
+        playTrackInQueue(nextIdx);
+    }
+}
+
+function playPrevTrack() {
+    if (globalPlaylistQueue.length === 0) return;
+    if (playMode === 'random') {
+        let randIdx = Math.floor(Math.random() * globalPlaylistQueue.length);
+        playTrackInQueue(randIdx);
+    } else {
+        let prevIdx = (currentQueueIndex - 1 + globalPlaylistQueue.length) % globalPlaylistQueue.length;
+        playTrackInQueue(prevIdx);
+    }
+}
+
+function togglePlayMode() {
+    const btn = document.getElementById("playModeBtn");
+    if (playMode === 'loop') {
+        playMode = 'single';
+        if (btn) {
+            btn.innerHTML = '🔂 单曲';
+            btn.title = '当前模式: 单曲循环';
+        }
+    } else if (playMode === 'single') {
+        playMode = 'random';
+        if (btn) {
+            btn.innerHTML = '🔀 随机';
+            btn.title = '当前模式: 随机播放';
+        }
+    } else {
+        playMode = 'loop';
+        if (btn) {
+            btn.innerHTML = '🔁 列表';
+            btn.title = '当前模式: 列表循环';
+        }
+    }
+}
+
+function togglePlaylistDrawer() {
+    const drawer = document.getElementById("playlistDrawer");
+    if (drawer) {
+        if (drawer.style.display === 'none' || !drawer.style.display) {
+            drawer.style.display = 'block';
+            renderPlaylistDrawer();
+        } else {
+            drawer.style.display = 'none';
+        }
+    }
+}
+
+function clearPlaylistQueue() {
+    globalPlaylistQueue = [];
+    currentQueueIndex = -1;
+    updatePlaylistCountUI();
+    const drawer = document.getElementById("playlistDrawer");
+    if (drawer) drawer.style.display = 'none';
+}
+
+function renderPlaylistDrawer() {
+    const list = document.getElementById("playlistDrawerList");
+    if (!list) return;
+    list.innerHTML = "";
+    
+    globalPlaylistQueue.forEach((track, idx) => {
+        const li = document.createElement("li");
+        const isCurrent = (idx === currentQueueIndex);
+        li.className = isCurrent ? "drawer-item active" : "drawer-item";
+        li.onclick = () => playTrackInQueue(idx);
+        li.innerHTML = `
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                ${isCurrent ? '🎵 ' : ''}<strong>${idx + 1}. ${track.name}</strong> - <span style="font-size:12px; color:#888;">${track.artist}</span>
+            </div>
+            ${isCurrent ? '<span style="color:#22c55e; font-size:12px; font-weight:600;">播放中</span>' : ''}
+        `;
+        list.appendChild(li);
+    });
+}
 
 function toggleMinimizeAudioPlayer() {
     const bar = document.getElementById("globalAudioPlayerBar") || document.getElementById("globalAudioBar");
@@ -371,12 +504,18 @@ function playAudioOnline(url, name, artist, cover, lyric) {
         currentLrcIndex = -1;
 
         player.src = url;
-        bar.style.display = "block";
+        bar.style.display = "flex";
         player.play();
     }
 }
 
 function playSongById(songId, name, artist) {
+    // 如果不在队列里，构造成单曲队列
+    if (globalPlaylistQueue.length === 0) {
+        globalPlaylistQueue = [{ id: songId, name: name, artist: artist, cover: '/favicon.png' }];
+        currentQueueIndex = 0;
+        updatePlaylistCountUI();
+    }
     axios.post('/Song_V1', new URLSearchParams({ id: songId, level: 'standard', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
@@ -388,6 +527,20 @@ function playSongById(songId, name, artist) {
         })
         .catch(err => alert("播放获取失败：" + err));
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    const player = document.getElementById("globalAudioPlayer");
+    if (player) {
+        player.onended = function() {
+            if (playMode === 'single') {
+                player.currentTime = 0;
+                player.play();
+            } else {
+                playNextTrack();
+            }
+        };
+    }
+});
 
 function parseLrc(lrcText) {
     if (!lrcText) return [];

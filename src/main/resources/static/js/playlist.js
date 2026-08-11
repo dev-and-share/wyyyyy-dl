@@ -56,7 +56,10 @@ function loadPlaylistDetail() {
                     <div>
                         <h4 style="margin:0 0 6px 0;">${playlist.name}</h4>
                         <div style="font-size:13px; color:#555; margin-bottom:8px;">创建人：${playlist.creator} | 共 ${playlist.trackCount} 首歌</div>
-                        <button class="btn-primary" onclick="downloadPlaylist('${playlist.id}')">📥 下载整个歌单</button>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-primary" onclick="downloadPlaylist('${playlist.id}')">📥 下载整个歌单</button>
+                            <button class="btn-primary" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放整个歌单</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -96,6 +99,22 @@ function renderPage(page) {
     document.getElementById("page-indicator").textContent = `第 ${page} 页 / 共 ${totalPages} 页 (共 ${allTracks.length} 首)`;
     document.getElementById("prev-page").disabled = (page <= 1);
     document.getElementById("next-page").disabled = (page >= totalPages);
+}
+
+function playFullCurrentPlaylist() {
+    if (!allTracks || allTracks.length === 0) {
+        alert("暂无歌单歌曲数据！");
+        return;
+    }
+    const formattedQueue = allTracks.map(t => ({
+        id: t.id,
+        name: t.name,
+        artist: getValidArtistNames(t),
+        cover: (t.al && t.al.picUrl) ? t.al.picUrl : '/favicon.png'
+    }));
+    if (typeof setGlobalPlaylistQueue === 'function') {
+        setGlobalPlaylistQueue(formattedQueue, 0);
+    }
 }
 
 function changePage(delta) {
