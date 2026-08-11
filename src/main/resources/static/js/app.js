@@ -46,6 +46,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // 5. 注册 Service Worker (PWA 离线支持)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('[PWA] ServiceWorker 注册成功, scope:', reg.scope))
+            .catch(err => console.error('[PWA] ServiceWorker 注册失败:', err));
+    }
+
     // 自动触发一次后台任务轮询（如果有未完成任务）
     fetchDownloadTasks();
 

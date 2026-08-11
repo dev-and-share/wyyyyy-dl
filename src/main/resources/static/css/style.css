@@ -29,6 +29,13 @@ body {
     line-height: 1.6;
 }
 
+/* PWA Standalone Mode & iOS Status Bar Safe Area */
+@media all and (display-mode: standalone) {
+    body {
+        padding-top: calc(20px + env(safe-area-inset-top, 0px)) !important;
+    }
+}
+
 /* Page Header */
 /* ==========================================================================
    🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar Card)
