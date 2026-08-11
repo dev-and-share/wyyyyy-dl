@@ -15,4 +15,8 @@ public class UserPlaylistSummaryDTO {
     private Integer trackCount;
 
     private String description;
+
+    private Boolean subscribed;
+
+    private Long userId;
 }

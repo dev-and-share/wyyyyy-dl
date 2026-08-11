@@ -314,6 +314,12 @@ public class AnalysisService {
 
                         dto.setTrackCount(pl.getIntValue("trackCount"));
                         dto.setDescription(pl.getString("description"));
+                        dto.setSubscribed(pl.getBoolean("subscribed"));
+                        if (creator != null) {
+                            dto.setUserId(creator.getLong("userId"));
+                        } else {
+                            dto.setUserId(pl.getLong("userId"));
+                        }
                         allPlaylists.add(dto);
                     }
                 }

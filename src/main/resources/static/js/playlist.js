@@ -20,19 +20,21 @@ function loadMyPlaylists(filterType) {
             let playlists = resp.data.data.playlists || [];
 
             if (filterType === 'created') {
-                playlists = playlists.filter(pl => !pl.subscribed);
+                playlists = playlists.filter(pl => pl.subscribed === false || pl.subscribed === null || pl.subscribed === undefined);
             } else if (filterType === 'subscribed') {
-                playlists = playlists.filter(pl => pl.subscribed);
+                playlists = playlists.filter(pl => pl.subscribed === true);
             }
 
             if (playlists.length === 0) {
-                list.innerHTML = `<li style="color:#888; font-size:13px; padding:12px; justify-content:center;">暂无相关歌单记录</li>`;
+                const labelMap = { 'created': '创建的', 'subscribed': '收藏的', 'all': '' };
+                list.innerHTML = `<li style="color:#888; font-size:13px; padding:16px; justify-content:center;">暂无${labelMap[filterType] || ''}歌单记录</li>`;
                 return;
             }
             
             playlists.forEach(pl => {
                 const li = document.createElement("li");
-                const tag = pl.subscribed 
+                const isSubscribed = (pl.subscribed === true);
+                const tag = isSubscribed 
                     ? '<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:600; padding:2px 6px; border-radius:4px; margin-right:6px; flex-shrink:0;">收藏</span>' 
                     : '<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:600; padding:2px 6px; border-radius:4px; margin-right:6px; flex-shrink:0;">创建</span>';
                 
