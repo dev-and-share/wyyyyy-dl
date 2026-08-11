@@ -133,21 +133,20 @@ function loadDownloadHistory(page) {
                     const hostPath = item.hostFilePath || item.filePath || '';
 
                     li.innerHTML = `
-                        <div class="history-item-main">
-                            <div class="history-item-title-box">
-                                <strong class="history-item-name">${item.songName || '未知歌曲'}</strong>
-                                <span class="history-item-artist">${item.artist ? ' - ' + item.artist : ''}</span>
-                                ${fileStatusTag}
-                            </div>
+                        <div class="history-item-header">
+                            <strong class="history-item-name">${item.songName || '未知歌曲'}</strong>
+                            <span class="history-item-artist">${item.artist ? ' - ' + item.artist : ''}</span>
+                            ${fileStatusTag}
+                        </div>
+                        <div class="history-item-footer">
                             <div class="history-item-sub">
                                 <span>大小：${formatBytes(item.fileSize)}</span>
-                                <span style="margin-left:6px;">时间：${item.createdAt || ''}</span>
                             </div>
-                        </div>
-                        <div class="history-item-actions">
-                            ${item.fileExists ? `<button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}')">▶️ 播放</button>` : ''}
-                            ${item.fileExists ? `<button class="jump-link-btn" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
-                            <button class="jump-link-btn" style="color:#d9534f;" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
+                            <div class="history-item-actions">
+                                ${item.fileExists ? `<button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}')">▶️ 播放</button>` : ''}
+                                ${item.fileExists ? `<button class="jump-link-btn" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
+                                <button class="jump-link-btn" style="color:#d9534f;" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
+                            </div>
                         </div>
                     `;
                     ul.appendChild(li);
