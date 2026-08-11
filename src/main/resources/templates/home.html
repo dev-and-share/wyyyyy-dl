@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=2.5.0">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -170,16 +170,16 @@
                         <div style="font-size:14px;"><strong>已记录下载：</strong><span id="mgr-stat-total">0</span> 首</div>
                         <div style="font-size:14px;"><strong>占用空间：</strong><span id="mgr-stat-size">0 B</span></div>
                         <div style="font-size:14px; color:#d9534f;" id="mgr-stat-missing-box"><strong>文件缺失：</strong><span id="mgr-stat-missing">0</span> 首</div>
-                        <div style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn-primary" style="background:#8b5cf6; border-color:#7c3aed;" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 同步外部曲库 (.env)</button>
-                            <button class="btn-primary" style="background:#5bc0de; border-color:#46b8da;" onclick="scanDiskFiles()">🔍 扫描对齐磁盘 (Scan)</button>
-                            <button class="btn-primary" style="background:#d9534f; border-color:#d43f3a;" onclick="cleanMissingHistory()">🧹 清理失效记录</button>
-                            <button class="btn-primary" onclick="loadDownloadHistory(1)">🔄 刷新列表</button>
+                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn-primary" style="background:#8b5cf6; border-color:#7c3aed;" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部曲库</button>
+                            <button class="btn-primary" style="background:#5bc0de; border-color:#46b8da;" onclick="scanDiskFiles()">🔍 对齐磁盘</button>
+                            <button class="btn-primary" style="background:#d9534f; border-color:#d43f3a;" onclick="cleanMissingHistory()">🧹 清理失效</button>
+                            <button class="btn-primary" onclick="loadDownloadHistory(1)">🔄 刷新</button>
                         </div>
                     </div>
 
                     <!-- 搜索筛选 -->
-                    <div class="form-row" style="margin-bottom:12px;">
+                    <div class="form-row mgr-search-row" style="margin-bottom:12px;">
                         <input type="text" id="mgrSearchKeyword" placeholder="搜索已下载歌曲 / 歌手 / 专辑" style="flex:1;" onkeyup="if(event.key==='Enter') loadDownloadHistory(1);">
                         <button class="btn-primary" onclick="loadDownloadHistory(1)">搜索</button>
                     </div>
@@ -301,10 +301,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.4.9"></script>
-    <script src="/js/album.js?v=2.4.9"></script>
-    <script src="/js/search.js?v=2.4.9"></script>
-    <script src="/js/download-mgr.js?v=2.4.9"></script>
-    <script src="/js/app.js?v=2.4.9"></script>
+    <script src="/js/playlist.js?v=2.5.0"></script>
+    <script src="/js/album.js?v=2.5.0"></script>
+    <script src="/js/search.js?v=2.5.0"></script>
+    <script src="/js/download-mgr.js?v=2.5.0"></script>
+    <script src="/js/app.js?v=2.5.0"></script>
 </body>
 </html>

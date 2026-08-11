@@ -123,29 +123,31 @@ function loadDownloadHistory(page) {
 
                 list.forEach(item => {
                     const li = document.createElement('li');
-                    li.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid #eee; background:' + (item.fileExists ? '#fff' : '#fff0f0') + ';';
+                    li.className = 'history-item-row';
+                    li.style.cssText = 'background:' + (item.fileExists ? '#fff' : '#fff0f0') + ';';
                     
                     const fileStatusTag = item.fileExists 
-                        ? '<span style="background:#e6f7ff; color:#1890ff; padding:2px 6px; border-radius:4px; font-size:12px; margin-left:6px;">文件正常</span>'
-                        : '<span style="background:#fff2f0; color:#ff4d4f; padding:2px 6px; border-radius:4px; font-size:12px; margin-left:6px; font-weight:bold;">⚠️ 文件已删除或移走</span>';
+                        ? '<span class="status-tag status-ok" style="background:#e6f7ff; color:#1890ff; padding:1px 5px; border-radius:4px; font-size:11px; flex-shrink:0;">文件正常</span>'
+                        : '<span class="status-tag status-err" style="background:#fff2f0; color:#ff4d4f; padding:1px 5px; border-radius:4px; font-size:11px; flex-shrink:0; font-weight:bold;">⚠️ 失效</span>';
 
                     const hostPath = item.hostFilePath || item.filePath || '';
 
                     li.innerHTML = `
-                        <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:15px;">
-                            <strong style="font-size:14px;">${item.songName || '未知歌曲'}</strong>
-                            <span style="color:#666; font-size:13px; margin-left:8px;">${item.artist ? ' - ' + item.artist : ''}</span>
-                            <span style="color:#999; font-size:12px; margin-left:8px;">[${item.album || '专辑'}]</span>
-                            ${fileStatusTag}
-                            <div style="font-size:12px; color:#888; margin-top:3px;">
-                                大小：${formatBytes(item.fileSize)} | 时间：${item.createdAt || ''}
-                                <span style="margin-left:10px; color:#555; font-family:monospace;" title="${hostPath}">宿主机物理路径: ${hostPath}</span>
+                        <div class="history-item-main">
+                            <div class="history-item-title-box">
+                                <strong class="history-item-name">${item.songName || '未知歌曲'}</strong>
+                                <span class="history-item-artist">${item.artist ? ' - ' + item.artist : ''}</span>
+                                ${fileStatusTag}
+                            </div>
+                            <div class="history-item-sub">
+                                <span>大小：${formatBytes(item.fileSize)}</span>
+                                <span style="margin-left:6px;">时间：${item.createdAt || ''}</span>
                             </div>
                         </div>
-                        <div style="display:flex; gap:6px; flex-shrink:0;">
+                        <div class="history-item-actions">
                             ${item.fileExists ? `<button class="jump-link-btn" style="background:#e8f0fe; color:#1a73e8; border-color:#d2e3fc;" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}')">▶️ 播放</button>` : ''}
-                            ${item.fileExists ? `<button class="jump-link-btn" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位/复制路径</button>` : ''}
-                            <button class="jump-link-btn" style="color:#d9534f;" onclick="deleteHistoryItem(${item.id})">🗑 删除记录</button>
+                            ${item.fileExists ? `<button class="jump-link-btn" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
+                            <button class="jump-link-btn" style="color:#d9534f;" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
                         </div>
                     `;
                     ul.appendChild(li);
