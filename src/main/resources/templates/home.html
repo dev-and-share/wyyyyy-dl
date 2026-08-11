@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=2.5.6">
+    <link rel="stylesheet" href="/css/style.css?v=2.6.0">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -233,7 +233,10 @@
                     <img id="audioBarCover" src="/favicon.png" class="audio-cover vinyl-disk" alt="封面">
                 </div>
                 <div class="audio-text">
-                    <div id="audioBarTitle" class="audio-title">未在播放</div>
+                    <div class="audio-title-row">
+                        <div id="audioBarTitle" class="audio-title">未在播放</div>
+                        <span id="audioSourceBadge" class="audio-source-badge badge-local" style="display: none;">⚡ 本地</span>
+                    </div>
                     <div id="audioBarArtist" class="audio-artist">未知歌手</div>
                 </div>
             </div>
@@ -301,10 +304,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.5.5"></script>
-    <script src="/js/album.js?v=2.5.5"></script>
-    <script src="/js/search.js?v=2.5.5"></script>
-    <script src="/js/download-mgr.js?v=2.5.5"></script>
-    <script src="/js/app.js?v=2.5.5"></script>
+    <script src="/js/playlist.js?v=2.6.0"></script>
+    <script src="/js/album.js?v=2.6.0"></script>
+    <script src="/js/search.js?v=2.6.0"></script>
+    <script src="/js/download-mgr.js?v=2.6.0"></script>
+    <script src="/js/app.js?v=2.6.0"></script>
 </body>
 </html>

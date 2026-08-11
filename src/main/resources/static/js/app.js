@@ -422,6 +422,22 @@ function prepareTrackInUI(track, seekTime) {
             const song = resp.data.data;
             if (song && song.url && player) {
                 player.src = song.url;
+                
+                const sourceBadge = document.getElementById("audioSourceBadge");
+                if (sourceBadge) {
+                    if (song.url.includes("/v2/stream") || song.url.includes("/v2/history/stream") || song.url.includes("/history/stream")) {
+                        sourceBadge.className = "audio-source-badge badge-local";
+                        sourceBadge.innerHTML = "⚡ 本地";
+                        sourceBadge.title = "⚡ 当前播放的是本地音轨";
+                        sourceBadge.style.display = "inline-flex";
+                    } else {
+                        sourceBadge.className = "audio-source-badge badge-online";
+                        sourceBadge.innerHTML = "🌐 线上";
+                        sourceBadge.title = "🌐 当前播放的是网络解析音频";
+                        sourceBadge.style.display = "inline-flex";
+                    }
+                }
+
                 currentPlayingLyric = song.lyric || "";
                 parsedLrcList = parseLrc(currentPlayingLyric);
                 renderPlaylistDrawer();
@@ -655,6 +671,21 @@ function playAudioOnline(url, name, artist, cover, lyric) {
             coverImg.classList.add("playing");
         }
         
+        const sourceBadge = document.getElementById("audioSourceBadge");
+        if (sourceBadge) {
+            if (url && (url.includes("/v2/stream") || url.includes("/v2/history/stream") || url.includes("/history/stream"))) {
+                sourceBadge.className = "audio-source-badge badge-local";
+                sourceBadge.innerHTML = "⚡ 本地";
+                sourceBadge.title = "⚡ 当前播放的是本地音轨";
+                sourceBadge.style.display = "inline-flex";
+            } else {
+                sourceBadge.className = "audio-source-badge badge-online";
+                sourceBadge.innerHTML = "🌐 线上";
+                sourceBadge.title = "🌐 当前播放的是网络解析音频";
+                sourceBadge.style.display = "inline-flex";
+            }
+        }
+
         currentPlayingLyric = lyric || "";
         parsedLrcList = parseLrc(currentPlayingLyric);
         currentLrcIndex = -1;
