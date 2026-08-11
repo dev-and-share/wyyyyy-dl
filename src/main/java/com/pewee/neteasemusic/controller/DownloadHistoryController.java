@@ -133,6 +133,15 @@ public class DownloadHistoryController {
     }
 
     /**
+     * 触发多目录外部曲库一键扫描与索引导入 (.env EXTERNAL_LIBRARY_PATHS)
+     */
+    @PostMapping("/history/scan_external")
+    public RespEntity<Map<String, Object>> scanExternalLibraries() {
+        Map<String, Object> result = downloadHistoryDAO.scanExternalLibraries();
+        return RespEntity.apply(CommonRespInfo.SUCCESS, result);
+    }
+
+    /**
      * 本地已下载音频播放/流传输接口
      */
     @GetMapping("/history/stream")

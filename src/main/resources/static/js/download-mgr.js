@@ -162,6 +162,35 @@ function changeHistoryPage(delta) {
     }
 }
 
+function scanExternalLibrariesUI() {
+    const box = document.getElementById("scanResultBox");
+    const content = document.getElementById("scanResultContent");
+    if (box) box.style.display = 'block';
+    if (content) content.innerHTML = '<div style="color:#666;">🔄 正在扫描并同步 `.env` 中配置的所有外部本地曲库目录，请稍候...</div>';
+
+    axios.post('/v2/history/scan_external')
+        .then(resp => {
+            if (resp.data.code === '000000') {
+                const res = resp.data.data || {};
+                const dirs = res.configuredDirs || [];
+                content.innerHTML = `
+                    <div style="color:#22c55e; font-weight:bold; margin-bottom:6px;">✅ 多目录外部曲库扫描同步完成！</div>
+                    <div>• 配置扫描目录列表: <code style="background:#eef; padding:2px 6px; border-radius:4px;">${dirs.join(' ; ')}</code></div>
+                    <div>• 累计扫描物理音频文件: <strong>${res.scannedFiles || 0}</strong> 首</div>
+                    <div>• 本次成功新录入索引: <strong style="color:#2563eb;">${res.addedCount || 0}</strong> 首</div>
+                    <div style="margin-top:8px; font-size:12px; color:#666;">💡 提示：现在在线搜索或播放歌单时，凡在上述目录中的音乐，系统均会自动 0 延迟秒播本地文件！</div>
+                `;
+                loadHistoryStats();
+                loadDownloadHistory(1);
+            } else {
+                if (content) content.innerHTML = `<div style="color:#ef4444;">⚠️ 扫描失败: ${resp.data.msg}</div>`;
+            }
+        })
+        .catch(err => {
+            if (content) content.innerHTML = `<div style="color:#ef4444;">⚠️ 请求扫描接口异常: ${err}</div>`;
+        });
+}
+
 function scanDiskFiles() {
     axios.post('/v2/history/scan')
         .then(resp => {

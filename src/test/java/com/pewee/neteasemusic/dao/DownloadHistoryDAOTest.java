@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,11 +32,7 @@ public class DownloadHistoryDAOTest {
     @AfterEach
     public void tearDown() throws Exception {
         if (tempDir != null && Files.exists(tempDir)) {
-            File[] files = tempDir.toFile().listFiles();
-            if (files != null) {
-                for (File f : files) f.delete();
-            }
-            Files.deleteIfExists(tempDir);
+            org.springframework.util.FileSystemUtils.deleteRecursively(tempDir);
         }
     }
 
@@ -92,5 +89,27 @@ public class DownloadHistoryDAOTest {
 
         DownloadHistoryDAO.DownloadHistoryItem matched = dao.findLocalFileBySongOrName(9999L, "不存在的歌", "匿名");
         assertNull(matched, "当物理文件不存在时，不应命中为本地可播放路径");
+    }
+
+    @Test
+    @DisplayName("测试 .env 多路径外部曲库递归扫描与索引录入")
+    public void testScanExternalLibraries() throws Exception {
+        File subDir = new File(tempDir.toFile(), "官方曲库");
+        subDir.mkdirs();
+        File externalAudio = new File(subDir, "张学友 - 吻别.mp3");
+        try (FileWriter writer = new FileWriter(externalAudio)) {
+            writer.write("dummy audio stream");
+        }
+
+        ReflectionTestUtils.setField(dao, "externalLibraryPaths", tempDir.toAbsolutePath().toString());
+
+        Map<String, Object> result = dao.scanExternalLibraries();
+        assertNotNull(result);
+        assertTrue((int) result.get("scannedFiles") >= 1, "扫描到的文件数应当大于等于 1");
+        assertTrue((int) result.get("addedCount") >= 1, "成功录入数据库的新索引数应当大于等于 1");
+
+        DownloadHistoryDAO.DownloadHistoryItem item = dao.findLocalFileBySongOrName(null, "吻别", "张学友");
+        assertNotNull(item, "智能比对应当成功命中扫描录入的《吻别》");
+        assertEquals("吻别", item.getSongName());
     }
 }

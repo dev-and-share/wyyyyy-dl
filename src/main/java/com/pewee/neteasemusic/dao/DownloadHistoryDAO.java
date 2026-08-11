@@ -24,6 +24,9 @@ public class DownloadHistoryDAO {
     @Value("${host.download.path:}")
     private String hostDownloadPath;
 
+    @Value("${external.library.paths:}")
+    private String externalLibraryPaths;
+
     private String dbUrl;
 
     @Data
@@ -300,6 +303,100 @@ public class DownloadHistoryDAO {
             log.error("根据 id 查询历史记录异常, historyId={}", historyId, e);
         }
         return null;
+    }
+
+    public synchronized Map<String, Object> scanExternalLibraries() {
+        int scannedFiles = 0;
+        int addedCount = 0;
+        List<String> targetDirs = new ArrayList<>();
+
+        if (externalLibraryPaths != null && !externalLibraryPaths.trim().isEmpty()) {
+            String[] parts = externalLibraryPaths.split("[,;]");
+            for (String p : parts) {
+                if (p != null && !p.trim().isEmpty()) {
+                    targetDirs.add(p.trim());
+                }
+            }
+        }
+
+        if (targetDirs.isEmpty()) {
+            targetDirs.add(downloadPath);
+        }
+
+        for (String dirPath : targetDirs) {
+            File dirFile = new File(dirPath);
+            if (!dirFile.exists() || !dirFile.isDirectory()) {
+                log.warn("⚠️ 跳过不存在的外部曲库目录: {}", dirPath);
+                continue;
+            }
+
+            List<File> audioFiles = new ArrayList<>();
+            collectAudioFiles(dirFile, audioFiles);
+            scannedFiles += audioFiles.size();
+
+            for (File file : audioFiles) {
+                String absPath = file.getAbsolutePath();
+                if (!isFilePathExistsInDb(absPath)) {
+                    String fileName = file.getName();
+                    int lastDot = fileName.lastIndexOf('.');
+                    String nameWithoutExt = (lastDot > 0) ? fileName.substring(0, lastDot) : fileName;
+
+                    String songName = nameWithoutExt;
+                    String artist = "未知歌手";
+
+                    if (nameWithoutExt.contains("-")) {
+                        String[] segments = nameWithoutExt.split("-", 2);
+                        artist = segments[0].trim();
+                        songName = segments[1].trim();
+                    }
+
+                    long newId = addRecord(null, songName, artist, "外部导入曲库", absPath, file.length(), "lossless", "SUCCESS");
+                    if (newId > 0) {
+                        addedCount++;
+                    }
+                }
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("scannedFiles", scannedFiles);
+        result.put("addedCount", addedCount);
+        result.put("configuredDirs", targetDirs);
+        log.info("📂 多目录外部曲库扫描完成: 扫描 {} 个文件，成功新录入 {} 首到 SQLite", scannedFiles, addedCount);
+        return result;
+    }
+
+    private void collectAudioFiles(File dir, List<File> list) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) {
+                collectAudioFiles(f, list);
+            } else if (f.isFile()) {
+                String name = f.getName().toLowerCase();
+                if (name.endsWith(".mp3") || name.endsWith(".flac") || name.endsWith(".m4a") || name.endsWith(".wav") || name.endsWith(".aac") || name.endsWith(".ogg")) {
+                    list.add(f);
+                }
+            }
+        }
+    }
+
+    private boolean isFilePathExistsInDb(String filePath) {
+        String relPath = toRelativePath(filePath);
+        String sql = "SELECT COUNT(*) FROM download_history WHERE file_path = ? OR file_path = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, filePath);
+            pstmt.setString(2, relPath);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (Exception e) {
+            log.error("检查文件路径是否已存在失败", e);
+        }
+        return false;
     }
 
     public List<DownloadHistoryItem> getRecords(String keyword, int page, int pageSize) {
