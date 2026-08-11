@@ -43,8 +43,12 @@
                 </div>
                 <div class="accordion-body">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                        <span style="font-size:13px; color:#666;">加载已登录账号收藏或创建的歌单列表</span>
-                        <button class="btn-primary" onclick="loadMyPlaylists()" style="width:auto; margin:0; padding:6px 14px;">加载歌单列表</button>
+                        <span style="font-size:13px; color:#666;">账号歌单快捷加载：</span>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="loadMyPlaylists('created')" style="width:auto; margin:0; padding:5px 10px; font-size:12px;">📂 创建的歌单</button>
+                            <button class="btn-primary" style="background:#8b5cf6;" onclick="loadMyPlaylists('subscribed')">⭐ 收藏的歌单</button>
+                            <button class="btn-primary" style="background:#64748b;" onclick="loadMyPlaylists('all')">📋 全部</button>
+                        </div>
                     </div>
                     <ul class="data-list scrollable-list" id="playlist-list"></ul>
                 </div>
@@ -296,10 +300,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.3.3"></script>
-    <script src="/js/album.js?v=2.3.3"></script>
-    <script src="/js/search.js?v=2.3.3"></script>
-    <script src="/js/download-mgr.js?v=2.3.3"></script>
-    <script src="/js/app.js?v=2.3.3"></script>
+    <script src="/js/playlist.js?v=2.3.4"></script>
+    <script src="/js/album.js?v=2.3.4"></script>
+    <script src="/js/search.js?v=2.3.4"></script>
+    <script src="/js/download-mgr.js?v=2.3.4"></script>
+    <script src="/js/app.js?v=2.3.4"></script>
 </body>
 </html>
