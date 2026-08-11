@@ -214,27 +214,56 @@
         </div>
     </div>
 
-    <!-- 底部固定在线试听播放器 (Global Audio Player Bar) -->
+    <!-- 🎬 现代暗黑极简三段式音频播放器 (Modern Dark Audio Player Bar) -->
     <div class="bottom-audio-bar" id="globalAudioBar" style="display: none;">
+        <!-- 隐藏的原生 audio 标签引擎 -->
+        <audio id="globalAudioPlayer" style="display: none;"></audio>
+
         <div class="audio-bar-inner">
-            <div class="audio-track-info">
-                <img id="audioBarCover" src="" class="audio-cover" alt="封面">
+            <!-- 1. 左侧：封面与歌名信息 -->
+            <div class="audio-left-section">
+                <div class="vinyl-cover-wrapper">
+                    <img id="audioBarCover" src="/favicon.png" class="audio-cover vinyl-disk" alt="封面">
+                </div>
                 <div class="audio-text">
                     <div id="audioBarTitle" class="audio-title">未在播放</div>
                     <div id="audioBarArtist" class="audio-artist">未知歌手</div>
                 </div>
             </div>
-            <div class="audio-controls">
-                <audio id="globalAudioPlayer" controls style="height: 36px; outline: none; width: 100%; max-width: 420px;"></audio>
+
+            <!-- 2. 中间：核心控制 + 自定义进度条 -->
+            <div class="audio-center-section">
+                <div class="audio-main-controls">
+                    <button class="ctrl-btn sub-btn" id="playModeBtn" onclick="togglePlayMode()" title="切换播放模式 (列表循环)">🔁</button>
+                    <button class="ctrl-btn sub-btn" onclick="playPrevTrack()" title="上一首">⏮</button>
+                    <button class="ctrl-btn play-main-btn" id="audioPlayPauseBtn" onclick="togglePlayPause()" title="播放 / 暂停">▶</button>
+                    <button class="ctrl-btn sub-btn" onclick="playNextTrack()" title="下一首">⏭</button>
+                </div>
+                <div class="audio-progress-container">
+                    <span id="audioCurrentTime" class="time-stamp">00:00</span>
+                    <div class="progress-bar-wrapper" id="progressBarWrapper" onclick="seekAudio(event)">
+                        <div class="progress-bar-bg"></div>
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                        <div class="progress-bar-handle" id="progressBarHandle"></div>
+                    </div>
+                    <span id="audioTotalTime" class="time-stamp">00:00</span>
+                </div>
             </div>
-            <div class="audio-bar-actions">
-                <button class="audio-action-btn" onclick="playPrevTrack()" title="上一首">⏮️</button>
-                <button class="audio-action-btn" onclick="playNextTrack()" title="下一首">⏭️</button>
-                <button class="audio-action-btn" id="playModeBtn" onclick="togglePlayMode()" title="切换播放模式 (列表循环)">🔁 列表</button>
-                <button class="audio-action-btn" onclick="openLyricModal()" title="全屏歌词">🎤 歌词</button>
-                <button class="audio-action-btn" onclick="togglePlaylistDrawer()" title="当前播放列表">📜 列表(<span id="playlistCount">0</span>)</button>
-                <button class="audio-action-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
-                <button class="audio-action-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
+
+            <!-- 3. 右侧：歌词、列表、音量、最小化与关闭 -->
+            <div class="audio-right-section">
+                <button class="ctrl-btn sub-btn" onclick="openLyricModal()" title="全屏沉浸歌词">🎤 词</button>
+                <button class="ctrl-btn sub-btn" onclick="togglePlaylistDrawer()" title="当前播放列表">📜 (<span id="playlistCount">0</span>)</button>
+                
+                <div class="volume-container">
+                    <span class="vol-icon" onclick="toggleMute()" id="volIcon">🔊</span>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.8" oninput="changeVolume(this.value)" class="volume-slider">
+                </div>
+
+                <div class="right-action-group">
+                    <button class="ctrl-btn mini-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
+                    <button class="ctrl-btn mini-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
+                </div>
             </div>
         </div>
     </div>
@@ -265,10 +294,10 @@
     </div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=2.2.0"></script>
-    <script src="/js/album.js?v=2.2.0"></script>
-    <script src="/js/search.js?v=2.2.0"></script>
-    <script src="/js/download-mgr.js?v=2.2.0"></script>
-    <script src="/js/app.js?v=2.2.0"></script>
+    <script src="/js/playlist.js?v=2.3.0"></script>
+    <script src="/js/album.js?v=2.3.0"></script>
+    <script src="/js/search.js?v=2.3.0"></script>
+    <script src="/js/download-mgr.js?v=2.3.0"></script>
+    <script src="/js/app.js?v=2.3.0"></script>
 </body>
 </html>
