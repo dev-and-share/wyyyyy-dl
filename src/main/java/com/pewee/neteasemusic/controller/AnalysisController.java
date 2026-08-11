@@ -66,12 +66,15 @@ public class AnalysisController {
      * @throws Exception
      */
     @RequestMapping(value = "/Search", method = {RequestMethod.GET, RequestMethod.POST})
-    public RespEntity<?> search(@RequestParam(required = true) String keywords,
-                                    @RequestParam(required = false, defaultValue = "50") int limit,
-                                    @RequestParam(required = false, defaultValue = "0") int offset,@RequestParam(required = false) Integer type) {
-    	List<?> result = analysisService.searchMusic(keywords, limit,offset,type);
-            return RespEntity.apply(CommonRespInfo.SUCCESS,result);
-       
+    public RespEntity<?> search(@RequestParam(required = false) String keywords,
+                                @RequestParam(required = false) String keyword,
+                                @RequestParam(required = false, defaultValue = "50") int limit,
+                                @RequestParam(required = false, defaultValue = "0") int offset,
+                                @RequestParam(required = false) Integer type) {
+        String queryKey = (keywords != null && !keywords.trim().isEmpty()) ? keywords : keyword;
+        if (queryKey == null) queryKey = "";
+        List<?> result = analysisService.searchMusic(queryKey, limit, offset, type);
+        return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
     @RequestMapping(value = "/Song_V1", method = {RequestMethod.GET, RequestMethod.POST})

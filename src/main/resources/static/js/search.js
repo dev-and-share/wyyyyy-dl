@@ -5,29 +5,54 @@
 let searchResultsData = [];
 
 function searchSongs() {
-    const keyword = document.getElementById("searchKeyword").value;
+    const keywords = document.getElementById("searchKeyword").value;
     const type = document.getElementById("searchType").value;
     const limit = document.getElementById("searchLimit").value || 10;
 
-    if (!keyword) {
+    if (!keywords) {
         alert("请输入搜索关键词");
         return;
     }
 
-    axios.post('/Search', new URLSearchParams({ keyword, type, limit }))
+    const list = document.getElementById("search-results");
+    if (list) {
+        list.innerHTML = `<li style="color:#666; padding:16px; justify-content:center;">🔍 正在搜索《${keywords}》，请稍候...</li>`;
+    }
+
+    axios.post('/Search', new URLSearchParams({ keywords, type, limit }))
         .then(resp => {
-            searchResultsData = resp.data.data || [];
+            let rawData = resp.data ? resp.data.data : [];
+            
+            if (Array.isArray(rawData)) {
+                searchResultsData = rawData;
+            } else if (rawData && typeof rawData === 'object') {
+                searchResultsData = rawData.result || rawData.songs || rawData.playlists || rawData.albums || rawData.artists || [];
+            } else {
+                searchResultsData = [];
+            }
+
             searchPage = 1;
             renderSearchPage(searchPage);
         })
-        .catch(err => alert("搜索失败：" + err));
+        .catch(err => {
+            alert("搜索失败：" + err);
+            if (list) list.innerHTML = `<li style="color:#ef4444; padding:16px; justify-content:center;">⚠️ 搜索失败，请稍后重试</li>`;
+        });
 }
 
 function renderSearchPage(page) {
     const list = document.getElementById("search-results");
+    if (!list) return;
     list.innerHTML = "";
 
     const type = document.getElementById("searchType").value;
+
+    if (!Array.isArray(searchResultsData) || searchResultsData.length === 0) {
+        list.innerHTML = `<li style="color:#888; font-size:13px; padding:16px; justify-content:center;">未查找到相关的搜索结果，请尝试更换关键词</li>`;
+        const indicator = document.getElementById("search-page-indicator");
+        if (indicator) indicator.textContent = `共 0 条结果`;
+        return;
+    }
 
     searchResultsData.forEach((item, index) => {
         const li = document.createElement("li");
