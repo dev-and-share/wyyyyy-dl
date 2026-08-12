@@ -64,12 +64,13 @@ function revealFile(path, taskId) {
         });
 }
 
-function playLocalFile(path, songName, artist) {
+function playLocalFile(path, songName, artist, cover) {
     if (!path) return;
     const rawPath = safeDecode(path);
     const streamUrl = '/v2/history/stream?path=' + encodeURIComponent(rawPath);
+    const coverUrl = (cover && cover !== '/favicon.png') ? cover : '';
     if (typeof playAudioOnline === 'function') {
-        playAudioOnline(streamUrl, songName, artist, '/favicon.png', '本地下载音乐');
+        playAudioOnline(streamUrl, songName, artist, coverUrl, '本地下载音乐');
     } else {
         const player = document.getElementById("globalAudioPlayer");
         if (player) {
@@ -144,7 +145,7 @@ function loadDownloadHistory(page) {
                                 ${fileStatusTag}
                             </div>
                             <div class="sub-right">
-                                ${item.fileExists ? `<button class="action-btn btn-play" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}')">▶ 播放</button>` : ''}
+                                ${item.fileExists ? `<button class="action-btn btn-play" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}', '${item.cover || ''}')">▶ 播放</button>` : ''}
                                 ${item.fileExists ? `<button class="action-btn btn-locate" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
                                 <button class="action-btn btn-del" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
                             </div>

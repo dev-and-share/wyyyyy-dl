@@ -399,16 +399,23 @@ function restorePlayerStateFromStorage() {
 
 function updatePlayModeBtnUI() {
     const btn = document.getElementById("playModeBtn");
-    if (!btn) return;
+    const fullBtn = document.getElementById("fullscreenPlayModeBtn");
+    let icon = '🔁';
+    let title = '当前模式: 列表循环';
     if (playMode === 'single') {
-        btn.innerHTML = '🔂';
-        btn.title = '当前模式: 单曲循环';
+        icon = '🔂';
+        title = '当前模式: 单曲循环';
     } else if (playMode === 'random') {
-        btn.innerHTML = '🔀';
-        btn.title = '当前模式: 随机播放';
-    } else {
-        btn.innerHTML = '🔁';
-        btn.title = '当前模式: 列表循环';
+        icon = '🔀';
+        title = '当前模式: 随机播放';
+    }
+    if (btn) {
+        btn.innerHTML = icon;
+        btn.title = title;
+    }
+    if (fullBtn) {
+        fullBtn.innerHTML = icon;
+        fullBtn.title = title;
     }
 }
 
@@ -525,7 +532,9 @@ function playTrackInQueue(index) {
                 track.resolvedUrl = song.url;
                 track.resolvedAt = Date.now();
                 track.lyric = song.lyric || '';
-                const cover = track.cover || song.pic || '/favicon.png';
+                const realPic = song.pic || song.picUrl || (song.al && song.al.picUrl);
+                if (realPic) track.cover = realPic;
+                const cover = track.cover || '/favicon.png';
                 playAudioOnline(song.url, track.name || song.name, track.artist || song.ar_name, cover, song.lyric);
                 renderPlaylistDrawer();
                 preloadNextSongAfter(currentQueueIndex);
@@ -605,21 +614,75 @@ function clearPlaylistQueue() {
     if (drawer) drawer.style.display = 'none';
 }
 
+function removeFromPlaylistQueue(index, event) {
+    if (event) event.stopPropagation();
+    if (!globalPlaylistQueue || index < 0 || index >= globalPlaylistQueue.length) return;
+
+    if (globalPlaylistQueue.length === 1) {
+        clearPlaylistQueue();
+        return;
+    }
+
+    const isCurrentPlaying = (index === currentQueueIndex);
+
+    // 从队列中移除指定曲目
+    globalPlaylistQueue.splice(index, 1);
+
+    if (index < currentQueueIndex) {
+        // 若删除的是当前播放曲目之前的项，索引减 1
+        currentQueueIndex--;
+    } else if (isCurrentPlaying) {
+        // 若删除的是当前正在播放的曲目
+        if (currentQueueIndex >= globalPlaylistQueue.length) {
+            currentQueueIndex = 0;
+        }
+        // 自动播放新索引对应的曲目
+        playTrackInQueue(currentQueueIndex);
+        return;
+    }
+
+    updatePlaylistCountUI();
+    savePlayerStateToStorage();
+    renderPlaylistDrawer();
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function renderPlaylistDrawer() {
     const list = document.getElementById("playlistDrawerList");
     if (!list) return;
     list.innerHTML = "";
     
+    if (globalPlaylistQueue.length === 0) {
+        list.innerHTML = `<li style="padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;">播放列表为空</li>`;
+        return;
+    }
+
     globalPlaylistQueue.forEach((track, idx) => {
         const li = document.createElement("li");
         const isCurrent = (idx === currentQueueIndex);
         li.className = isCurrent ? "drawer-item active" : "drawer-item";
         li.onclick = () => playTrackInQueue(idx);
+        
+        const trackTitle = escapeHtml(track.name || '未知歌曲');
+        const trackArtist = escapeHtml(track.artist || '未知歌手');
+
         li.innerHTML = `
-            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                ${isCurrent ? '🎵 ' : ''}<strong>${idx + 1}. ${track.name}</strong> - <span style="font-size:12px; color:#888;">${track.artist}</span>
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;" title="${trackTitle} - ${trackArtist}">
+                ${isCurrent ? '🎵 ' : ''}<strong>${idx + 1}. ${trackTitle}</strong> - <span style="font-size:12px; color:#888;">${trackArtist}</span>
             </div>
-            ${isCurrent ? '<span style="color:#22c55e; font-size:12px; font-weight:600;">播放中</span>' : ''}
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                ${isCurrent ? '<span style="color:#22c55e; font-size:12px; font-weight:600;">播放中</span>' : ''}
+                <button class="drawer-item-del-btn" onclick="removeFromPlaylistQueue(${idx}, event)" title="从列表中移除">✕</button>
+            </div>
         `;
         list.appendChild(li);
     });
@@ -665,6 +728,8 @@ function togglePlayPause() {
         player.pause();
         if (btn) btn.innerHTML = "▶";
         if (cover) cover.classList.remove("playing");
+        if (fullBtn) fullBtn.innerHTML = "▶";
+        if (fullCover) fullCover.classList.remove("playing");
     }
 }
 
@@ -719,15 +784,33 @@ function playAudioOnline(url, name, artist, cover, lyric) {
     const playBtn = document.getElementById("audioPlayPauseBtn");
     const coverImg = document.getElementById("audioBarCover");
     
+    const fullTitle = document.getElementById("fullscreenTitle");
+    const fullArtist = document.getElementById("fullscreenArtist");
+    const fullCover = document.getElementById("fullscreenVinylCover");
+    const fullPlayBtn = document.getElementById("fullscreenPlayPauseBtn");
+    
     if (bar && player) {
-        document.getElementById("audioBarTitle").textContent = name || "未知歌曲";
-        document.getElementById("audioBarArtist").textContent = artist || "未知歌手";
+        const titleText = name || "未知歌曲";
+        const artistText = artist || "未知歌手";
+        const coverSrc = cover && cover !== '/favicon.png' ? cover : '/favicon.png';
+
+        document.getElementById("audioBarTitle").textContent = titleText;
+        document.getElementById("audioBarArtist").textContent = artistText;
+        if (fullTitle) fullTitle.textContent = titleText;
+        if (fullArtist) fullArtist.textContent = artistText;
+
         if (coverImg) {
-            coverImg.src = cover || "/favicon.png";
+            coverImg.src = coverSrc;
             coverImg.classList.add("playing");
+        }
+        if (fullCover) {
+            fullCover.src = coverSrc;
+            fullCover.classList.add("playing");
         }
         
         const sourceBadge = document.getElementById("audioSourceBadge");
+        const fullBadge = document.getElementById("fullscreenBadge");
+        
         if (sourceBadge) {
             if (url && (url.includes("/v2/stream") || url.includes("/v2/history/stream") || url.includes("/history/stream"))) {
                 sourceBadge.className = "audio-source-badge badge-local";
@@ -928,12 +1011,38 @@ function updateLrcHighlight(index) {
 function openLyricModal() {
     const modal = document.getElementById("lyricModal");
     const content = document.getElementById("lyricModalContent");
-    const title = document.getElementById("lyricModalTitle");
+    
     const playerTitle = document.getElementById("audioBarTitle").textContent;
     const playerArtist = document.getElementById("audioBarArtist").textContent;
+    const coverSrc = document.getElementById("audioBarCover").src;
+    const sourceBadge = document.getElementById("audioSourceBadge");
+
+    const fullTitle = document.getElementById("fullscreenTitle");
+    const fullArtist = document.getElementById("fullscreenArtist");
+    const fullCover = document.getElementById("fullscreenVinylCover");
+    const fullBadge = document.getElementById("fullscreenBadge");
+
+    if (fullTitle) fullTitle.textContent = playerTitle || "未在播放";
+    if (fullArtist) fullArtist.textContent = playerArtist || "未知歌手";
+    if (fullCover) {
+        fullCover.src = coverSrc || "/favicon.png";
+        const player = document.getElementById("globalAudioPlayer");
+        if (player && !player.paused) {
+            fullCover.classList.add("playing");
+        } else {
+            fullCover.classList.remove("playing");
+        }
+    }
+    if (fullBadge && sourceBadge) {
+        fullBadge.className = sourceBadge.className;
+        fullBadge.innerHTML = sourceBadge.innerHTML;
+        fullBadge.title = sourceBadge.title;
+        fullBadge.style.display = sourceBadge.style.display;
+    }
+
+    updatePlayModeBtnUI();
 
     if (modal && content) {
-        title.textContent = `${playerTitle} - ${playerArtist}`;
         parsedLrcList = parseLrc(currentPlayingLyric);
         content.innerHTML = "";
 

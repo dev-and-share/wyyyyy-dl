@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.1.0">
+    <link rel="stylesheet" href="/css/style.css?v=3.1.3">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -233,10 +233,10 @@
         <audio id="globalAudioPlayer" style="display: none;"></audio>
 
         <div class="audio-bar-inner">
-            <!-- 1. 左侧：封面与歌名信息 -->
-            <div class="audio-left-section">
+            <!-- 1. 左侧：封面与歌名信息 (点击调起全屏黑胶播放器) -->
+            <div class="audio-left-section" onclick="openLyricModal()" style="cursor: pointer;" title="点击展开全屏播放器与歌词">
                 <div class="vinyl-cover-wrapper">
-                    <img id="audioBarCover" src="/favicon.png" class="audio-cover vinyl-disk" alt="封面">
+                    <img id="audioBarCover" src="/favicon.png" class="audio-cover vinyl-disk" alt="封面" onerror="this.src='/favicon.png'">
                 </div>
                 <div class="audio-text">
                     <div class="audio-title-row">
@@ -298,14 +298,57 @@
         </div>
     </div>
 
-    <!-- 🎤 全屏沉浸式 LRC 歌词 Modal -->
+    <!-- 🎤 全屏沉浸式现代大黑胶音乐播放器 Modal -->
     <div class="lyric-modal-overlay" id="lyricModal" style="display: none;" onclick="closeLyricModal()">
         <div class="lyric-modal-card" onclick="event.stopPropagation();">
             <div class="lyric-modal-header">
-                <h3 class="lyric-modal-title" id="lyricModalTitle">🎵 歌曲歌词</h3>
-                <button class="lyric-close-btn" onclick="closeLyricModal()" title="退出全屏歌词">✕</button>
+                <button class="lyric-close-btn" onclick="closeLyricModal()" title="收起全屏播放器">🔽</button>
+                <h3 class="lyric-modal-title" id="lyricModalTitle">🎵 全屏沉浸播放</h3>
+                <button class="lyric-close-btn" onclick="closeLyricModal()" title="关闭全屏">✕</button>
             </div>
-            <div class="lyric-modal-body" id="lyricModalContent"></div>
+            
+            <div class="fullscreen-player-body">
+                <!-- 左侧 / 上方：大黑胶唱片与歌曲元信息 -->
+                <div class="fullscreen-cover-column">
+                    <div class="fullscreen-vinyl-container">
+                        <div class="fullscreen-vinyl-disk-wrapper">
+                            <img id="fullscreenVinylCover" src="/favicon.png" class="fullscreen-cover-img vinyl-disk" alt="大图封面" onerror="this.src='/favicon.png'">
+                        </div>
+                    </div>
+                    <div class="fullscreen-meta-info">
+                        <div class="fullscreen-title-wrap">
+                            <div id="fullscreenTitle" class="fullscreen-title">未在播放</div>
+                            <span id="fullscreenBadge" class="audio-source-badge badge-local" style="display: none;">⚡ 本地</span>
+                        </div>
+                        <div id="fullscreenArtist" class="fullscreen-artist">未知歌手</div>
+                    </div>
+                </div>
+
+                <!-- 右侧 / 下方：滚动歌词展示面板 -->
+                <div class="fullscreen-lyrics-column">
+                    <div class="lyric-modal-body" id="lyricModalContent"></div>
+                </div>
+            </div>
+
+            <!-- 底部：全屏沉浸播放控制条 -->
+            <div class="fullscreen-controls-bar">
+                <div class="audio-progress-container" style="width: 100%; max-width: 650px; margin: 0 auto 10px auto;">
+                    <span id="fullscreenCurrentTime" class="time-stamp">00:00</span>
+                    <div class="progress-bar-wrapper" onclick="seekAudio(event)">
+                        <div class="progress-bar-bg"></div>
+                        <div class="progress-bar-fill" id="fullscreenProgressBarFill"></div>
+                        <div class="progress-bar-handle" id="fullscreenProgressBarHandle"></div>
+                    </div>
+                    <span id="fullscreenTotalTime" class="time-stamp">00:00</span>
+                </div>
+                <div class="fullscreen-main-controls">
+                    <button class="ctrl-btn sub-btn" id="fullscreenPlayModeBtn" onclick="togglePlayMode()" title="切换播放模式">🔁</button>
+                    <button class="ctrl-btn sub-btn" onclick="playPrevTrack()" title="上一首">⏮</button>
+                    <button class="ctrl-btn play-main-btn" id="fullscreenPlayPauseBtn" onclick="togglePlayPause()" title="播放 / 暂停">▶</button>
+                    <button class="ctrl-btn sub-btn" onclick="playNextTrack()" title="下一首">⏭</button>
+                    <button class="ctrl-btn sub-btn" onclick="togglePlaylistDrawer()" title="播放列表">📜</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -313,10 +356,10 @@
     <div class="app-version-footer">网易云下载器 · PWA v3.1.0</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=3.1.0"></script>
-    <script src="/js/album.js?v=3.1.0"></script>
-    <script src="/js/search.js?v=3.1.0"></script>
-    <script src="/js/download-mgr.js?v=3.1.0"></script>
-    <script src="/js/app.js?v=3.1.0"></script>
+    <script src="/js/playlist.js?v=3.1.3"></script>
+    <script src="/js/album.js?v=3.1.3"></script>
+    <script src="/js/search.js?v=3.1.3"></script>
+    <script src="/js/download-mgr.js?v=3.1.3"></script>
+    <script src="/js/app.js?v=3.1.3"></script>
 </body>
 </html>

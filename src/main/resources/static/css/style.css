@@ -540,6 +540,26 @@ ul.data-list li:last-child {
     color: #4ade80;
 }
 
+.drawer-item-del-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.drawer-item-del-btn:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.2);
+}
+
 .monitor-header {
     background: linear-gradient(135deg, #1e293b, #334155);
     color: white;
@@ -1162,82 +1182,151 @@ ul.data-list li:last-child {
     padding-left: 6px;
 }
 
-/* 📱 移动端 / 窄屏 (SP Device) 响应式大触控与 iOS Safari 安全区避让 */
+/* 📱 移动端 / 窄屏 (SP Device) 响应式大触控双排 Grid 布局与 iOS Safari 安全区避让 */
 @media (max-width: 768px) {
     .bottom-audio-bar {
         height: auto !important;
-        min-height: 66px !important;
+        min-height: 106px !important;
         bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
-        padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px !important;
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px !important;
         border-radius: 20px !important;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55) !important;
     }
 
     .audio-bar-inner {
-        gap: 8px !important;
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-rows: auto auto !important;
+        grid-template-areas:
+            "left right"
+            "center center" !important;
+        gap: 8px 10px !important;
         align-items: center !important;
     }
 
+    /* 1. 左侧：封面与歌名/歌手 (独占整排 1fr 弹性宽度) */
     .audio-left-section {
+        grid-area: left !important;
         min-width: 0 !important;
-        max-width: 135px !important;
-        gap: 8px !important;
+        max-width: 100% !important;
+        flex: 1 !important;
+        gap: 10px !important;
+        overflow: hidden !important;
     }
 
     .vinyl-cover-wrapper, .audio-cover {
-        width: 44px !important;
-        height: 44px !important;
+        width: 42px !important;
+        height: 42px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .audio-text {
+        min-width: 0 !important;
+        flex: 1 !important;
+        overflow: hidden !important;
+    }
+
+    .audio-title-row {
+        gap: 6px !important;
+        align-items: center !important;
+        overflow: hidden !important;
+        display: flex !important;
     }
 
     .audio-title {
-        font-size: 13px !important;
+        font-size: 14px !important;
         font-weight: 700 !important;
+        color: #ffffff !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.3 !important;
     }
 
     .audio-artist {
         font-size: 11px !important;
+        color: #94a3b8 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        margin-top: 1px !important;
     }
 
-    .audio-center-section {
-        flex: 1 !important;
-        gap: 4px !important;
+    .audio-source-badge {
+        padding: 1px 5px !important;
+        font-size: 9px !important;
+        height: 16px !important;
+        line-height: 1.2 !important;
     }
 
-    .audio-main-controls {
-        gap: 8px !important;
-    }
-
-    .ctrl-btn.sub-btn {
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 15px !important;
-    }
-
-    .ctrl-btn.play-main-btn {
-        width: 38px !important;
-        height: 38px !important;
-        font-size: 17px !important;
-        padding: 0 !important;
-    }
-
-    .time-stamp {
-        font-size: 9px;
-        min-width: 26px;
+    /* 2. 右侧：全屏歌词、播放列表、最小化与关闭按钮 */
+    .audio-right-section {
+        grid-area: right !important;
+        min-width: 0 !important;
+        flex: initial !important;
+        gap: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
     }
 
     .volume-container {
         display: none !important;
     }
 
-    .audio-right-section {
-        min-width: 0;
-        flex: initial;
-        gap: 4px;
+    .right-action-group {
+        margin-left: 4px !important;
+        padding-left: 6px !important;
+        border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+        display: flex !important;
+        gap: 4px !important;
     }
 
-    .right-action-group {
-        margin-left: 2px;
-        padding-left: 4px;
+    /* 3. 第二排：核心控制按键与全宽进度条 */
+    .audio-center-section {
+        grid-area: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+        margin-top: 2px !important;
+    }
+
+    .audio-main-controls {
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .audio-progress-container {
+        flex: 1 !important;
+        width: 100% !important;
+        gap: 6px !important;
+    }
+
+    .ctrl-btn.sub-btn {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 14px !important;
+    }
+
+    .ctrl-btn.play-main-btn {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 16px !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .time-stamp {
+        font-size: 10px !important;
+        min-width: 28px !important;
+        color: #94a3b8 !important;
     }
 }
 
@@ -1286,7 +1375,7 @@ ul.data-list li:last-child {
 }
 
 /* ==========================================================================
-   🎤 全屏沉浸式 LRC 歌词 Modal (True Fullscreen LRC Overlay)
+   🎤 全屏沉浸式现代大黑胶音乐播放器 Modal (Fullscreen Dynamic Player)
    ========================================================================== */
 .lyric-modal-overlay {
     position: fixed;
@@ -1294,9 +1383,9 @@ ul.data-list li:last-child {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(10, 15, 29, 0.96);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 70%, #090d16 100%);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
     z-index: 10000;
     display: flex;
     justify-content: center;
@@ -1320,16 +1409,16 @@ ul.data-list li:last-child {
 }
 
 .lyric-modal-header {
-    padding: 24px 40px;
+    padding: 16px 28px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(15, 23, 42, 0.4);
 }
 
 .lyric-modal-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     margin: 0;
     color: #f8fafc;
@@ -1342,7 +1431,7 @@ ul.data-list li:last-child {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1355,9 +1444,105 @@ ul.data-list li:last-child {
     color: #ffffff;
 }
 
+.fullscreen-player-body {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    padding: 20px 40px;
+    gap: 40px;
+    max-width: 1300px;
+    width: 100%;
+    margin: 0 auto;
+    align-items: center;
+}
+
+/* 左侧 / 上方：大黑胶唱片与歌曲元信息 */
+.fullscreen-cover-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    max-width: 480px;
+}
+
+.fullscreen-vinyl-container {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fullscreen-vinyl-disk-wrapper {
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: #0f172a;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 10px rgba(255, 255, 255, 0.05);
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fullscreen-cover-img {
+    width: 244px;
+    height: 244px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.fullscreen-cover-img.playing {
+    animation: spin 20s linear infinite;
+}
+
+.fullscreen-meta-info {
+    text-align: center;
+    max-width: 100%;
+}
+
+.fullscreen-title-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.fullscreen-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.3;
+}
+
+.fullscreen-artist {
+    font-size: 15px;
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+/* 右侧 / 下方：滚动歌词展示面板 */
+.fullscreen-lyrics-column {
+    flex: 1.4;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+}
+
 .lyric-modal-body {
     flex: 1;
-    padding: 40px 10% 120px 10%;
+    padding: 60px 20px;
     overflow-y: auto;
     font-family: system-ui, -apple-system, sans-serif;
     scroll-behavior: smooth;
@@ -1389,6 +1574,78 @@ ul.data-list li:last-child {
 
 /* 无时间戳纯文本歌词 Fallback 样式 */
 .lrc-fallback {
+    font-size: 16px;
+    color: #94a3b8;
+    line-height: 1.8;
+    margin: 8px 0;
+}
+
+/* 底部全屏播放控制条 */
+.fullscreen-controls-bar {
+    padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px)) 24px;
+    background: rgba(15, 23, 42, 0.6);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.fullscreen-main-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* 📱 移动端下自适应变为单列上下布局 */
+@media (max-width: 768px) {
+    .fullscreen-player-body {
+        flex-direction: column !important;
+        padding: 10px 16px !important;
+        gap: 12px !important;
+    }
+
+    .fullscreen-cover-column {
+        gap: 8px !important;
+        max-width: 100% !important;
+    }
+
+    .fullscreen-vinyl-container, .fullscreen-vinyl-disk-wrapper {
+        width: 160px !important;
+        height: 160px !important;
+    }
+
+    .fullscreen-cover-img {
+        width: 146px !important;
+        height: 146px !important;
+    }
+
+    .fullscreen-title {
+        font-size: 16px !important;
+    }
+
+    .fullscreen-artist {
+        font-size: 12px !important;
+    }
+
+    .fullscreen-lyrics-column {
+        flex: 1 !important;
+        width: 100% !important;
+    }
+
+    .lyric-modal-body {
+        padding: 20px 10px !important;
+    }
+
+    .lrc-line {
+        font-size: 15px !important;
+        text-align: center !important;
+    }
+
+    .lrc-line.active {
+        font-size: 19px !important;
+        transform: scale(1.05) !important;
+    }
+}
     text-align: left;
     font-size: 16px;
     line-height: 2;
@@ -1584,7 +1841,7 @@ ul.data-list li.history-item-card .card-sub-row {
     color: #94a3b8;
     opacity: 0.65;
     padding: 12px 0 6px 0;
-    margin-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     user-select: none;
     letter-spacing: 0.5px;
 }
