@@ -27,7 +27,7 @@ function loadMyPlaylists(filterType) {
 
             if (playlists.length === 0) {
                 const labelMap = { 'created': '创建的', 'subscribed': '收藏的', 'all': '' };
-                list.innerHTML = `<li style="color:#888; font-size:13px; padding:16px; justify-content:center;">暂无${labelMap[filterType] || ''}歌单记录</li>`;
+                list.innerHTML = `<li style="color:var(--text-muted); font-size:13px; padding:16px; justify-content:center;">暂无${labelMap[filterType] || ''}歌单记录</li>`;
                 return;
             }
             
@@ -35,14 +35,14 @@ function loadMyPlaylists(filterType) {
                 const li = document.createElement("li");
                 const isSubscribed = (pl.subscribed === true);
                 const tag = isSubscribed 
-                    ? '<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:600; padding:2px 6px; border-radius:4px; margin-right:6px; flex-shrink:0;">收藏</span>' 
-                    : '<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:600; padding:2px 6px; border-radius:4px; margin-right:6px; flex-shrink:0;">创建</span>';
+                    ? '<span class="status-badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.25); font-weight:600; margin-right:6px;">收藏</span>' 
+                    : '<span class="status-badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.25); font-weight:600; margin-right:6px;">创建</span>';
                 
                 li.innerHTML = `
                     <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center;">
                         ${tag}
-                        <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${pl.name}</strong> 
-                        <span style="color:#888; font-size:11px; margin-left:4px; flex-shrink:0;">(${pl.trackCount || 0}首)</span>
+                        <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-main);">${pl.name}</strong> 
+                        <span style="color:var(--text-muted); font-size:11px; margin-left:4px; flex-shrink:0;">(${pl.trackCount || 0}首)</span>
                     </div>
                     <div style="flex-shrink:0;">
                         <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${pl.id}')">👉 查看详情</button>

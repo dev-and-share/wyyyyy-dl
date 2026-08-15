@@ -40,6 +40,80 @@ function showToast(message, type = 'info', duration = 3500) {
 }
 window.showToast = showToast;
 
+/* ==========================================================================
+   🌓 现代主题管理引擎 (Theme Engine: Dark / Light / Auto)
+   ========================================================================== */
+
+const THEME_STORAGE_KEY = 'theme_mode';
+
+function getPreferredThemeMode() {
+    return localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+}
+
+function applyTheme(mode, persist = true) {
+    if (!mode) mode = 'dark';
+    if (persist) {
+        localStorage.setItem(THEME_STORAGE_KEY, mode);
+    }
+    
+    let activeTheme = mode;
+    if (mode === 'auto') {
+        const isSystemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        activeTheme = isSystemDark ? 'dark' : 'light';
+    }
+
+    document.documentElement.setAttribute('data-theme', activeTheme);
+    document.documentElement.setAttribute('data-theme-mode', mode);
+
+    // 同步更新顶栏 theme-color
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', activeTheme === 'dark' ? '#0a0e1a' : '#f1f5f9');
+    }
+
+    // 更新按钮 UI
+    updateThemeBtnUI(mode);
+}
+
+function updateThemeBtnUI(mode) {
+    const iconEl = document.getElementById('themeIcon');
+    const textEl = document.getElementById('themeText');
+    const btn = document.getElementById('themeToggleBtn');
+    if (!iconEl || !textEl) return;
+
+    if (mode === 'dark') {
+        iconEl.textContent = '🌙';
+        textEl.textContent = '深色';
+        if (btn) btn.title = '当前模式: 深色 (点击切换为 浅色)';
+    } else if (mode === 'light') {
+        iconEl.textContent = '☀️';
+        textEl.textContent = '浅色';
+        if (btn) btn.title = '当前模式: 浅色 (点击切换为 自动)';
+    } else if (mode === 'auto') {
+        iconEl.textContent = '💻';
+        textEl.textContent = '自动';
+        if (btn) btn.title = '当前模式: 跟随系统 (点击切换为 深色)';
+    }
+}
+
+function toggleThemeMode() {
+    const currentMode = getPreferredThemeMode();
+    let nextMode = 'dark';
+    if (currentMode === 'dark') {
+        nextMode = 'light';
+    } else if (currentMode === 'light') {
+        nextMode = 'auto';
+    } else {
+        nextMode = 'dark';
+    }
+    applyTheme(nextMode);
+    
+    const labelMap = { 'dark': '🌙 已切换为深色模式', 'light': '☀️ 已切换为浅色模式', 'auto': '💻 已切换为跟随系统模式' };
+    showToast(labelMap[nextMode], 'info', 2000);
+}
+window.toggleThemeMode = toggleThemeMode;
+window.applyTheme = applyTheme;
+
 let currentPage = 1;
 let currentPlaylist = null;
 let allTracks = [];
@@ -50,6 +124,17 @@ let monitorInterval = null;
 let isMonitorMinimized = false;
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 0. 初始化主题状态与系统监听
+    applyTheme(getPreferredThemeMode(), false);
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            const currentMode = getPreferredThemeMode();
+            if (currentMode === 'auto') {
+                applyTheme('auto', false);
+            }
+        });
+    }
+
     // 1. 初始化切换“重复下载”开关
     axios.get('/v2/getRepeat')
         .then(resp => {
@@ -212,29 +297,31 @@ function loadSongInfo() {
             const sizeText = song.size || '未知大小';
             const levelText = song.level || level;
             const imgSrc = song.pic || song.picUrl || '';
-            const imgHtml = imgSrc ? `<img src="${imgSrc}" style="width:100px; height:100px; border-radius:8px; object-fit:cover;">` : '';
-            const albumBtn = song.al_id ? `<button class="btn-primary" style="background:#8b5cf6; margin-right:6px;" onclick="jumpToAlbumDetail('${song.al_id}')">💽 查看专辑</button>` : '';
+            const imgHtml = imgSrc ? `<img src="${imgSrc}" style="width:100px; height:100px; border-radius:8px; object-fit:cover; border:1px solid var(--border-color);">` : '';
+            const albumBtn = song.al_id ? `<button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed); margin-right:6px;" onclick="jumpToAlbumDetail('${song.al_id}')">💽 查看专辑</button>` : '';
 
             infoDiv.innerHTML = `
-                <div style="display:flex; gap:15px; margin-top:10px;">
+                <div class="detail-header-card" style="margin-top:10px;">
                     ${imgHtml}
-                    <div>
-                        <h4 style="margin:0 0 6px 0;">${song.name}</h4>
-                        <div style="font-size:13px; color:#555;">歌手：${arText} | 专辑：${alText}</div>
-                        <div style="font-size:12px; color:#777; margin-bottom:8px;">大小：${sizeText} | 音质：${levelText}</div>
-                        <button class="btn-primary" style="background:#10b981; margin-right:6px;" onclick="playAudioOnline('${song.url}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arText||'').replace(/'/g, "\\'")}', '${imgSrc}', '${(song.lyric||'').replace(/'/g, "\\'")}')">▶️ 在线试听</button>
-                        ${albumBtn}
-                        <button class="btn-primary" onclick="downloadSingle('${song.id}')">📥 下载单曲</button>
+                    <div style="flex:1; min-width:0;">
+                        <h4 style="margin:0 0 6px 0; color:var(--text-main); font-size:16px;">${song.name}</h4>
+                        <div style="font-size:13px; color:var(--text-secondary);">歌手：${arText} | 专辑：${alText}</div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">大小：${sizeText} | 音质：${levelText}</div>
+                        <div class="detail-btn-group">
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); margin-right:6px;" onclick="playAudioOnline('${song.url}', '${(song.name||'').replace(/'/g, "\\'")}', '${(arText||'').replace(/'/g, "\\'")}', '${imgSrc}', '${(song.lyric||'').replace(/'/g, "\\'")}')">▶️ 在线试听</button>
+                            ${albumBtn}
+                            <button class="btn-primary" onclick="downloadSingle('${song.id}')">📥 下载单曲</button>
+                        </div>
                     </div>
                 </div>
                 <div style="margin-top:10px;">
-                    <details style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; background: #f8fafc;">
-                        <summary style="font-size:12px; color:#007bff; cursor:pointer; font-weight:600; outline:none;">📄 查看 Raw JSON 响应数据</summary>
-                        <pre style="background:#1e293b; color:#38bdf8; padding:10px; border-radius:6px; font-size:11px; max-height:200px; overflow-y:auto; margin-top:6px; font-family:Consolas, monospace;">${JSON.stringify(song.rawData || song, null, 2)}</pre>
+                    <details style="border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; background: var(--tag-btn-bg);">
+                        <summary style="font-size:12px; color:var(--primary-color); cursor:pointer; font-weight:600; outline:none;">📄 查看 Raw JSON 响应数据</summary>
+                        <pre style="background:#0f172a; color:#38bdf8; padding:10px; border-radius:6px; font-size:11px; max-height:200px; overflow-y:auto; margin-top:6px; font-family:Consolas, monospace; border:1px solid rgba(255,255,255,0.06);">${JSON.stringify(song.rawData || song, null, 2)}</pre>
                     </details>
                 </div>
-                <div style="margin-top:10px; font-size:12px; color:#444; max-height:150px; overflow-y:auto; background:#f8f9fa; padding:8px; border-radius:4px;">
-                    <pre style="margin:0; font-family:inherit;">${song.lyric || '暂无歌词'}</pre>
+                <div style="margin-top:10px; font-size:12px; color:var(--text-secondary); max-height:150px; overflow-y:auto; background:var(--tag-btn-bg); padding:8px 12px; border-radius:6px; border:1px solid var(--border-subtle);">
+                    <pre style="margin:0; font-family:inherit; white-space:pre-wrap;">${song.lyric || '暂无歌词'}</pre>
                 </div>
             `;
         })

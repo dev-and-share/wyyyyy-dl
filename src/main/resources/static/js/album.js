@@ -64,7 +64,7 @@ function loadAlbumInfo() {
                         </div>
                     </div>
                 </div>
-                <h4 style="margin:15px 0 8px 0; color:#334155;">专辑曲目列表 (${album.songs.length} 首)：</h4>
+                <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">专辑曲目列表 (${album.songs.length} 首)：</h4>
                 <ul class="data-list scrollable-list" id="album-tracks">
                     ${songsHtml}
                 </ul>

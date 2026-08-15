@@ -2,25 +2,129 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>网易云音乐二维码登录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网易云音乐 · 扫码登录</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <meta name="theme-color" content="#0a0e1a">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #0a0e1a;
+            background-image: radial-gradient(ellipse at 50% 30%, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+            color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            box-sizing: border-box;
+        }
+
+        .login-card {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            border-radius: 20px;
+            padding: 36px 28px;
+            max-width: 380px;
+            width: 100%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .brand-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .login-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            color: #f8fafc;
+        }
+
+        .login-sub {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+        }
+
+        .qr-wrapper {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .qr-img {
+            width: 180px;
+            height: 180px;
+            display: block;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            margin-bottom: 20px;
+            animation: pulse-ring 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-ring {
+            from { opacity: 0.75; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .repo-link {
+            font-size: 12px;
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .repo-link:hover {
+            color: #94a3b8;
+        }
+    </style>
 </head>
 <body>
-    <h2 id="title">请使用网易云音乐APP扫码登录</h2>
-    <div id="repo-link">项目地址:https://github.com/dev-and-share/wyyyyy-dl</div>
-    
-    <input type="hidden" id="unikey-value" th:value="${unikey}">
+    <div class="login-card">
+        <div class="brand-icon">🎵</div>
+        <h2 class="login-title" id="title">网易云音乐扫码登录</h2>
+        <div class="login-sub">请使用网易云音乐 APP 扫码确认</div>
+        
+        <input type="hidden" id="unikey-value" th:value="${unikey}">
 
-    <!-- 二维码图片，仅在未登录时显示 -->
-    <img id="qrImage" th:src="${qrImageBase64}" alt="二维码加载失败" />
+        <!-- 二维码图片 -->
+        <div class="qr-wrapper">
+            <img id="qrImage" class="qr-img" th:src="${qrImageBase64}" alt="二维码加载失败" />
+        </div>
 
-    <div id="status">正在检查登录状态...</div>
+        <div class="status-badge" id="status">⏳ 正在检查登录状态...</div>
+
+        <a class="repo-link" href="https://github.com/dev-and-share/wyyyyy-dl" target="_blank" id="repo-link">网易云音乐下载器</a>
+    </div>
 
     <script type="text/javascript">
-       const unikey = document.getElementById("unikey-value").value;
+        const unikey = document.getElementById("unikey-value").value;
         const statusDiv = document.getElementById("status");
-        const qrImg = document.getElementById("qrImage");
-        const title = document.getElementById("title");
 
         function checkAlreadyLogin() {
             axios.get('/login/status')
@@ -28,27 +132,27 @@
                     if (response.data.data === true) {
                         window.location.href = "/home";
                     } else {
-                        startQrPolling(); // 如果没登录，开始轮询二维码
+                        startQrPolling();
                     }
                 })
                 .catch(error => {
-                    statusDiv.innerText = "检查登录状态失败: " + error;
+                    statusDiv.innerText = "⚠️ 检查登录状态失败: " + error;
                 });
         }
 
         function startQrPolling() {
-            statusDiv.innerText = "请使用网易云音乐APP扫码登录";
+            statusDiv.innerText = "📱 请使用网易云音乐APP扫码";
             let intervalId = setInterval(() => {
                 axios.get('/qr/status', {
                     params: { unikey: unikey }
                 }).then(response => {
                     if (response.data.data === true) {
                         clearInterval(intervalId);
-                        statusDiv.innerText = "登录成功，正在跳转...";
+                        statusDiv.innerText = "✅ 登录成功，正在跳转...";
                         window.location.href = "/home";
                     }
                 }).catch(error => {
-                    statusDiv.innerText = "扫码状态获取失败：" + error;
+                    statusDiv.innerText = "⚠️ 扫码状态获取失败：" + error;
                 });
             }, 2000);
         }

@@ -169,7 +169,7 @@ function scanExternalLibrariesUI() {
     const box = document.getElementById("scanResultBox");
     const content = document.getElementById("scanResultContent");
     if (box) box.style.display = 'block';
-    if (content) content.innerHTML = '<div style="color:#666;">🔄 正在扫描并同步 `.env` 中配置的所有外部本地曲库目录，请稍候...</div>';
+    if (content) content.innerHTML = '<div style="color:var(--text-secondary);">🔄 正在扫描并同步 `.env` 中配置的所有外部本地曲库目录，请稍候...</div>';
 
     axios.post('/v2/history/scan_external')
         .then(resp => {
@@ -178,10 +178,10 @@ function scanExternalLibrariesUI() {
                 const dirs = res.configuredDirs || [];
                 content.innerHTML = `
                     <div style="color:#22c55e; font-weight:bold; margin-bottom:6px;">✅ 多目录外部曲库扫描同步完成！</div>
-                    <div>• 配置扫描目录列表: <code style="background:#eef; padding:2px 6px; border-radius:4px;">${dirs.join(' ; ')}</code></div>
-                    <div>• 累计扫描物理音频文件: <strong>${res.scannedFiles || 0}</strong> 首</div>
-                    <div>• 本次成功新录入索引: <strong style="color:#2563eb;">${res.addedCount || 0}</strong> 首</div>
-                    <div style="margin-top:8px; font-size:12px; color:#666;">💡 提示：现在在线搜索或播放歌单时，凡在上述目录中的音乐，系统均会自动 0 延迟秒播本地文件！</div>
+                    <div style="color:var(--text-main);">• 配置扫描目录列表: <code style="background:var(--tag-btn-bg); padding:2px 6px; border-radius:4px; border:1px solid var(--border-color);">${dirs.join(' ; ')}</code></div>
+                    <div style="color:var(--text-main);">• 累计扫描物理音频文件: <strong>${res.scannedFiles || 0}</strong> 首</div>
+                    <div style="color:var(--text-main);">• 本次成功新录入索引: <strong style="color:#38bdf8;">${res.addedCount || 0}</strong> 首</div>
+                    <div style="margin-top:8px; font-size:12px; color:var(--text-secondary);">💡 提示：现在在线搜索或播放歌单时，凡在上述目录中的音乐，系统均会自动 0 延迟秒播本地文件！</div>
                 `;
                 loadHistoryStats();
                 loadDownloadHistory(1);
@@ -202,30 +202,30 @@ function scanDiskFiles() {
                 const box = document.getElementById('scanResultBox');
                 const content = document.getElementById('scanResultContent');
                 
-                let html = `<p><strong>数据库记录总数：</strong>${d.totalRecords} | <strong>物理文件存在记录：</strong>${d.validRecordsCount} | <strong>文件缺失记录：</strong><span style="color:red;">${d.missingCount}</span> | <strong>未录入音频文件 (含子目录)：</strong><span style="color:#31708f;">${d.untrackedCount}</span></p>`;
+                let html = `<p style="color:var(--text-main);"><strong>数据库记录总数：</strong>${d.totalRecords} | <strong>物理文件存在记录：</strong>${d.validRecordsCount} | <strong>文件缺失记录：</strong><span style="color:#ef4444; font-weight:600;">${d.missingCount}</span> | <strong>未录入音频文件 (含子目录)：</strong><span style="color:#38bdf8; font-weight:600;">${d.untrackedCount}</span></p>`;
 
                 if (d.missingRecords && d.missingRecords.length > 0) {
-                    html += `<p style="color:#d9534f; margin-bottom:4px;"><strong>以下记录文件已不存在：</strong></p><ul style="padding-left:20px; margin:0 0 10px 0;">`;
+                    html += `<p style="color:#ef4444; margin-bottom:4px; font-weight:600;"><strong>以下记录文件已不存在：</strong></p><ul style="padding-left:20px; margin:0 0 10px 0; color:var(--text-secondary); font-size:12px;">`;
                     d.missingRecords.slice(0, 5).forEach(m => {
-                        html += `<li>${m.songName} (${m.artist}) - <code>${m.filePath}</code></li>`;
+                        html += `<li>${m.songName} (${m.artist}) - <code style="background:var(--tag-btn-bg); padding:1px 4px; border-radius:3px;">${m.filePath}</code></li>`;
                     });
                     if (d.missingRecords.length > 5) html += `<li>...及更多共 ${d.missingRecords.length} 项</li>`;
                     html += `</ul>`;
                 }
 
                 if (d.untrackedFiles && d.untrackedFiles.length > 0) {
-                    html += `<div style="margin:10px 0; padding:10px; background:#e6f7ff; border:1px solid #91d5ff; border-radius:6px; display:flex; align-items:center; justify-content:space-between;">
-                        <span>💡 搜寻到 <strong>${d.untrackedCount}</strong> 首本地已有物理音频文件未记录在数据库中，是否一键导入？</span>
-                        <button class="btn-primary" style="background:#52c41a; border-color:#389e0d; padding:4px 12px;" onclick="importUntrackedToDB()">📥 一键导入这 ${d.untrackedCount} 首音频至数据库</button>
+                    html += `<div style="margin:10px 0; padding:10px; background:var(--untracked-box-bg); border:1px solid var(--untracked-box-border); border-radius:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                        <span style="color:var(--text-main); font-size:13px;">💡 搜寻到 <strong>${d.untrackedCount}</strong> 首本地已有物理音频文件未记录在数据库中，是否一键导入？</span>
+                        <button class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); padding:4px 12px; font-size:12px;" onclick="importUntrackedToDB()">📥 一键导入这 ${d.untrackedCount} 首音频至数据库</button>
                     </div>`;
-                    html += `<p style="color:#31708f; margin-bottom:4px;"><strong>磁盘物理存在但未录入数据库的音频文件 (全深度搜寻预览)：</strong></p><ul style="padding-left:20px; margin:0;">`;
+                    html += `<p style="color:var(--text-main); margin-bottom:4px; font-weight:600;"><strong>磁盘物理存在但未录入数据库的音频文件 (全深度搜寻预览)：</strong></p><ul style="padding-left:20px; margin:0; color:var(--text-secondary); font-size:12px;">`;
                     d.untrackedFiles.slice(0, 10).forEach(u => {
-                        html += `<li>${u.fileName} (${formatBytes(u.fileSize)}) - <code style="font-size:11px; color:#777;">${u.filePath}</code></li>`;
+                        html += `<li>${u.fileName} (${formatBytes(u.fileSize)}) - <code style="font-size:11px; background:var(--tag-btn-bg); padding:1px 4px; border-radius:3px;">${u.filePath}</code></li>`;
                     });
                     if (d.untrackedFiles.length > 10) html += `<li>...及更多共 ${d.untrackedFiles.length} 项</li>`;
                     html += `</ul>`;
                 } else {
-                    html += `<p style="color:#5cb85c;">✅ 所有磁盘物理音频文件均已与数据库完全映射对齐！</p>`;
+                    html += `<p style="color:#22c55e; font-weight:600;">✅ 所有磁盘物理音频文件均已与数据库完全映射对齐！</p>`;
                 }
 
                 content.innerHTML = html;

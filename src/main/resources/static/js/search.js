@@ -48,7 +48,7 @@ function renderSearchPage(page) {
     const type = document.getElementById("searchType").value;
 
     if (!Array.isArray(searchResultsData) || searchResultsData.length === 0) {
-        list.innerHTML = `<li style="color:#888; font-size:13px; padding:16px; justify-content:center;">未查找到相关的搜索结果，请尝试更换关键词</li>`;
+        list.innerHTML = `<li style="color:var(--text-muted); font-size:13px; padding:16px; justify-content:center;">未查找到相关的搜索结果，请尝试更换关键词</li>`;
         const indicator = document.getElementById("search-page-indicator");
         if (indicator) indicator.textContent = `共 0 条结果`;
         return;
@@ -61,7 +61,7 @@ function renderSearchPage(page) {
             // 单曲
             const artistDisplay = getValidArtistNames(item);
             const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
-            const albumHtml = item.album ? ` <span style="color:#888; font-size:12px;">[专辑: ${item.album}]</span>` : '';
+            const albumHtml = item.album ? ` <span style="color:var(--text-muted); font-size:12px;">[专辑: ${item.album}]</span>` : '';
 
             li.innerHTML = `
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;">
@@ -77,7 +77,7 @@ function renderSearchPage(page) {
             // 歌单
             li.innerHTML = `
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <strong>${item.name}</strong> <span style="color:#888; font-size:12px;">(ID: ${item.id})</span>
+                    <strong>${item.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
                 <div>
                     <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${item.id}')">👉 查看歌单详情</button>
@@ -87,7 +87,7 @@ function renderSearchPage(page) {
             // 专辑
             li.innerHTML = `
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <strong>${item.name}</strong> - ${item.artist || ''} <span style="color:#888; font-size:12px;">(ID: ${item.id})</span>
+                    <strong>${item.name}</strong> - ${item.artist || ''} <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
                 <div>
                     <button class="jump-link-btn" onclick="jumpToAlbumDetail('${item.id}')">👉 查看专辑详情</button>
@@ -97,7 +97,7 @@ function renderSearchPage(page) {
             // 歌手
             li.innerHTML = `
                 <div>
-                    <strong>${item.name}</strong> <span style="color:#888; font-size:12px;">(ID: ${item.id})</span>
+                    <strong>${item.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
             `;
         }

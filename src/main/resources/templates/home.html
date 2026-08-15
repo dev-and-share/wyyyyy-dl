@@ -4,8 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>网易云音乐下载器 · 现代体验版</title>
+    <script>
+        // ⚡ 防白屏闪烁主题预初始化
+        (function() {
+            var mode = localStorage.getItem('theme_mode') || 'dark';
+            var activeTheme = mode;
+            if (mode === 'auto') {
+                activeTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', activeTheme);
+            document.documentElement.setAttribute('data-theme-mode', mode);
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#0a0e1a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="网易云下载器">
@@ -13,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.1.6">
+    <link rel="stylesheet" href="/css/style.css?v=3.2.0">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -31,6 +43,12 @@
         </div>
 
         <div class="app-top-actions">
+            <!-- 🌓 三态主题模式切换 (深色 / 浅色 / 自动) -->
+            <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleThemeMode()" title="切换主题模式 (深色 / 浅色 / 跟随系统)">
+                <span id="themeIcon">🌙</span>
+                <span class="theme-text" id="themeText">深色</span>
+            </button>
+
             <label class="compact-switch-label" title="允许再次下载已存在的同名歌曲">
                 <input type="checkbox" id="repeatSwitch" onchange="toggleRepeat()">
                 <span>允许重复</span>
@@ -50,11 +68,11 @@
                 </div>
                 <div class="accordion-body">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                        <span style="font-size:13px; color:#666;">账号歌单快捷加载：</span>
+                        <span style="font-size:13px; color:var(--text-secondary);">账号歌单快捷加载：</span>
                         <div style="display:flex; gap:6px; flex-wrap:wrap;">
                             <button class="btn-primary" onclick="loadMyPlaylists('created')" style="width:auto; margin:0; padding:5px 10px; font-size:12px;">📂 创建的歌单</button>
-                            <button class="btn-primary" style="background:#8b5cf6;" onclick="loadMyPlaylists('subscribed')">⭐ 收藏的歌单</button>
-                            <button class="btn-primary" style="background:#64748b;" onclick="loadMyPlaylists('all')">📋 全部</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow:0 2px 8px rgba(139,92,246,0.3);" onclick="loadMyPlaylists('subscribed')">⭐ 收藏的歌单</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #64748b, #475569); box-shadow:0 2px 8px rgba(100,116,139,0.3);" onclick="loadMyPlaylists('all')">📋 全部</button>
                         </div>
                     </div>
                     <ul class="data-list scrollable-list" id="playlist-list"></ul>
@@ -76,7 +94,7 @@
                     <ul class="data-list scrollable-list" id="playlist-tracks"></ul>
                     <div id="playlist-pagination" class="pagination-container">
                         <button id="prev-page" class="btn-primary" onclick="changePage(-1)" disabled>上一页</button>
-                        <span id="page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
+                        <span id="page-indicator" style="font-size:13px; color:var(--text-secondary);">第 1 页</span>
                         <button id="next-page" class="btn-primary" onclick="changePage(1)">下一页</button>
                     </div>
                 </div>
@@ -154,7 +172,7 @@
                     <ul class="data-list scrollable-list" id="search-results"></ul>
                     <div id="search-pagination" class="pagination-container">
                         <button id="search-prev" class="btn-primary" onclick="changeSearchPage(-1)" disabled>上一页</button>
-                        <span id="search-page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
+                        <span id="search-page-indicator" style="font-size:13px; color:var(--text-secondary);">第 1 页</span>
                         <button id="search-next" class="btn-primary" onclick="changeSearchPage(1)">下一页</button>
                     </div>
                 </div>
@@ -172,14 +190,14 @@
                 </div>
                 <div class="accordion-body">
                     <!-- 统计数据 Bar -->
-                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:rgba(0,0,0,0.03); padding:12px 16px; border-radius:8px; align-items:center;">
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
                         <div style="font-size:14px;"><strong>已记录下载：</strong><span id="mgr-stat-total">0</span> 首</div>
                         <div style="font-size:14px;"><strong>占用空间：</strong><span id="mgr-stat-size">0 B</span></div>
-                        <div style="font-size:14px; color:#d9534f;" id="mgr-stat-missing-box"><strong>文件缺失：</strong><span id="mgr-stat-missing">0</span> 首</div>
+                        <div style="font-size:14px; color:#ef4444;" id="mgr-stat-missing-box"><strong>文件缺失：</strong><span id="mgr-stat-missing">0</span> 首</div>
                         <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn-primary" style="background:#8b5cf6; border-color:#7c3aed;" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部曲库</button>
-                            <button class="btn-primary" style="background:#5bc0de; border-color:#46b8da;" onclick="scanDiskFiles()">🔍 对齐磁盘</button>
-                            <button class="btn-primary" style="background:#d9534f; border-color:#d43f3a;" onclick="cleanMissingHistory()">🧹 清理失效</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部曲库</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #06b6d4, #0891b2);" onclick="scanDiskFiles()">🔍 对齐磁盘</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="cleanMissingHistory()">🧹 清理失效</button>
                             <button class="btn-primary" onclick="loadDownloadHistory(1)">🔄 刷新</button>
                         </div>
                     </div>
@@ -191,8 +209,8 @@
                     </div>
 
                     <!-- 扫描诊断结果弹窗/框 -->
-                    <div id="scanResultBox" style="display:none; background:#fff8dc; border:1px solid #f0e68c; padding:12px; border-radius:8px; margin-bottom:15px; font-size:13px;">
-                        <h4 style="margin:0 0 8px 0; color:#8a6d3b;">🔍 磁盘对齐扫描诊断结果</h4>
+                    <div id="scanResultBox" style="display:none; background:var(--scan-box-bg); border:1px solid var(--scan-box-border); padding:12px; border-radius:8px; margin-bottom:15px; font-size:13px;">
+                        <h4 style="margin:0 0 8px 0; color:#f59e0b;">🔍 磁盘对齐扫描诊断结果</h4>
                         <div id="scanResultContent"></div>
                     </div>
 
@@ -202,7 +220,7 @@
                     <!-- 分页 -->
                     <div id="history-pagination" class="pagination-container" style="margin-top:15px;">
                         <button id="history-prev" class="btn-primary" onclick="changeHistoryPage(-1)" disabled>上一页</button>
-                        <span id="history-page-indicator" style="font-size:13px; color:#666;">第 1 页 / 共 1 页</span>
+                        <span id="history-page-indicator" style="font-size:13px; color:var(--text-secondary);">第 1 页 / 共 1 页</span>
                         <button id="history-next" class="btn-primary" onclick="changeHistoryPage(1)">下一页</button>
                     </div>
                 </div>
@@ -353,13 +371,13 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v3.1.0</div>
+    <div class="app-version-footer">网易云下载器 · PWA v3.2.0</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=3.1.6"></script>
-    <script src="/js/album.js?v=3.1.6"></script>
-    <script src="/js/search.js?v=3.1.6"></script>
-    <script src="/js/download-mgr.js?v=3.1.6"></script>
-    <script src="/js/app.js?v=3.1.6"></script>
+    <script src="/js/playlist.js?v=3.2.0"></script>
+    <script src="/js/album.js?v=3.2.0"></script>
+    <script src="/js/search.js?v=3.2.0"></script>
+    <script src="/js/download-mgr.js?v=3.2.0"></script>
+    <script src="/js/app.js?v=3.2.0"></script>
 </body>
 </html>
