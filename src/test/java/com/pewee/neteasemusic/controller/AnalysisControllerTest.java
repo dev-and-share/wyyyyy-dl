@@ -85,4 +85,30 @@ public class AnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"));
     }
+
+    @Test
+    @DisplayName("测试 /Song_V1: 试听歌曲在无本地匹配时保留 freeTrial=true，有本地匹配时 freeTrial 置为 false")
+    public void testSongV1FreeTrialHandling() throws Exception {
+        SingleMusicAnalysisRespDTO mockSong = new SingleMusicAnalysisRespDTO();
+        mockSong.setId(12345L);
+        mockSong.setName("Chupee");
+        mockSong.setAr_name("Eric Hutchinson");
+        mockSong.setUrl("http://music.163.com/trial.mp3");
+        mockSong.setFreeTrial(true);
+        mockSong.setFreeTrialDuration(30);
+
+        Mockito.when(analysisService.analyzeSingleSong(eq(12345L), anyString())).thenReturn(mockSong);
+        Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(12345L), eq("Chupee"), eq("Eric Hutchinson")))
+                .thenReturn(null);
+
+        mockMvc.perform(post("/Song_V1")
+                .param("id", "12345")
+                .param("name", "Chupee")
+                .param("artist", "Eric Hutchinson")
+                .param("level", "lossless"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.freeTrial").value(true))
+                .andExpect(jsonPath("$.data.freeTrialDuration").value(30));
+    }
 }

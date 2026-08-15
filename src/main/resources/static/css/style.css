@@ -1646,29 +1646,6 @@ ul.data-list li:last-child {
         transform: scale(1.05) !important;
     }
 }
-    text-align: left;
-    font-size: 16px;
-    line-height: 2;
-    color: #cbd5e1;
-    white-space: pre-wrap;
-    font-family: inherit;
-    margin: 0;
-}
-
-@media (max-width: 768px) {
-    .lyric-modal-header {
-        padding: 15px 20px;
-    }
-    .lyric-modal-body {
-        padding: 20px 20px 100px 20px;
-    }
-    .lrc-line {
-        font-size: 16px;
-    }
-    .lrc-line.active {
-        font-size: 20px;
-    }
-}
 
 /* 📋 历史记录卡片：高特异性覆盖，彻底绝杀 ul.data-list li 的水平 display: flex 冲突 */
 ul.data-list li.history-item-card {
@@ -1845,3 +1822,135 @@ ul.data-list li.history-item-card .card-sub-row {
     user-select: none;
     letter-spacing: 0.5px;
 }
+
+/* ==========================================================================
+   🍞 全局现代化 Toast 提示组件 (Modern Glassmorphic Toast System - Top Right)
+   ========================================================================== */
+.toast-container {
+    position: fixed;
+    top: calc(18px + env(safe-area-inset-top, 0px));
+    right: calc(18px + env(safe-area-inset-right, 0px));
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;
+    width: auto;
+    max-width: min(420px, 90vw);
+}
+
+.toast-item {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 50px;
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    animation: toast-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transition: all 0.25s ease;
+    word-break: break-all;
+    user-select: none;
+}
+
+.toast-item.toast-out {
+    animation: toast-fade-out 0.25s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+.toast-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-text {
+    color: inherit;
+}
+
+/* 🟡 Warning Toast (Amber Gold) */
+.toast-item.toast-warning,
+.toast-item.toast-warn {
+    background: rgba(254, 243, 199, 0.94);
+    color: #92400e;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+/* 🔵 Info Toast (Ocean Blue) */
+.toast-item.toast-info {
+    background: rgba(224, 242, 254, 0.94);
+    color: #0369a1;
+    border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
+/* 🟢 Success Toast (Emerald Green) */
+.toast-item.toast-success {
+    background: rgba(220, 252, 231, 0.94);
+    color: #15803d;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+/* 🔴 Error Toast (Rose Red) */
+.toast-item.toast-error {
+    background: rgba(254, 226, 226, 0.94);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+/* Dark Mode Toast Support */
+@media (prefers-color-scheme: dark) {
+    .toast-item.toast-warning,
+    .toast-item.toast-warn {
+        background: rgba(45, 30, 10, 0.92);
+        color: #fde68a;
+        border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .toast-item.toast-info {
+        background: rgba(12, 36, 60, 0.92);
+        color: #bae6fd;
+        border-color: rgba(56, 189, 248, 0.45);
+    }
+
+    .toast-item.toast-success {
+        background: rgba(6, 44, 24, 0.92);
+        color: #bbf7d0;
+        border-color: rgba(34, 197, 94, 0.45);
+    }
+
+    .toast-item.toast-error {
+        background: rgba(50, 15, 15, 0.92);
+        color: #fecaca;
+        border-color: rgba(239, 68, 68, 0.45);
+    }
+}
+
+@keyframes toast-fade-in {
+    from {
+        opacity: 0;
+        transform: translateX(16px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes toast-fade-out {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(16px) scale(0.96);
+    }
+}
+

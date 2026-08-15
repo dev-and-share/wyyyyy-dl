@@ -124,10 +124,10 @@ public class DownloadHistoryDAOTest {
             writer.write("dummy audio stream");
         }
 
-        ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/Users/test/Music");
+        ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/mock/user/Music");
         ReflectionTestUtils.setField(dao, "externalLibraryContainerPath", containerRoot.getAbsolutePath());
 
-        File resolved = dao.resolveFile("/Users/test/Music/网易云音乐/张学友 - 吻别.mp3");
+        File resolved = dao.resolveFile("/mock/user/Music/网易云音乐/张学友 - 吻别.mp3");
         assertEquals(externalAudio.getCanonicalPath(), resolved.getCanonicalPath());
         assertTrue(resolved.exists(), "旧版宿主机绝对路径应能访问到容器挂载的音频文件");
     }

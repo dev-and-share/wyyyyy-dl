@@ -68,9 +68,9 @@
 
 ```bash
 # 1. 克隆项目(如果你不想自己build可以直接到release下载后至第4步)
-git clone https://github.com/pewee-live/netease-dl.git
+git clone https://github.com/dev-and-share/wyyyyy-dl.git
 #切换到项目目录
-cd netease-dl
+cd wyyyyy-dl
 
 # 2. 修改配置(可选)
 # 打开 src/main/resources/application.properties，修改：

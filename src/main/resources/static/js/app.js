@@ -2,6 +2,44 @@
    🎵 NetEase Music Downloader - App Core Engine (app.js)
    ========================================================================== */
 
+/**
+ * 🍞 全局通用现代化 Toast 提示组件
+ * @param {string} message 提示信息文本
+ * @param {'info'|'warning'|'warn'|'success'|'error'} [type='info'] 提示类型
+ * @param {number} [duration=3500] 显示时长 (ms)
+ */
+function showToast(message, type = 'info', duration = 3500) {
+    if (!message) return;
+    let container = document.getElementById("globalToastContainer");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "globalToastContainer";
+        container.className = "toast-container";
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = `toast-item toast-${type}`;
+    
+    let icon = "ℹ️";
+    if (type === "warning" || type === "warn") icon = "⚠️";
+    else if (type === "error") icon = "❌";
+    else if (type === "success") icon = "✅";
+
+    toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-text">${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add("toast-out");
+        toast.addEventListener("animationend", () => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        });
+    }, duration);
+}
+window.showToast = showToast;
+
 let currentPage = 1;
 let currentPlaylist = null;
 let allTracks = [];
@@ -157,13 +195,17 @@ function loadSongInfo() {
     const id = document.getElementById("songId").value;
     const level = document.getElementById("songLevel").value;
     if (!id) {
-        alert("请输入歌曲 ID");
+        showToast("请输入歌曲 ID", "warning");
         return;
     }
 
     axios.post('/Song_V1', new URLSearchParams({ id: id, level: level, type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
+            if (!song) {
+                showToast("获取歌曲信息失败：无可用歌曲数据", "warning");
+                return;
+            }
             const infoDiv = document.getElementById("song-info");
             const arText = song.ar_name || '群星 / 未知';
             const alText = song.al_name || '暂无专辑';
@@ -196,7 +238,7 @@ function loadSongInfo() {
                 </div>
             `;
         })
-        .catch(err => alert("获取歌曲信息失败：" + err));
+        .catch(err => showToast("获取歌曲信息失败：" + err, "warning"));
 }
 
 function toggleRepeat() {
@@ -498,6 +540,8 @@ function preloadTrackStreamUrl(index) {
                 track.resolvedUrl = resp.data.data.url;
                 track.resolvedAt = Date.now(); // 记录解析时间戳
                 track.lyric = resp.data.data.lyric || '';
+                track.freeTrial = resp.data.data.freeTrial === true;
+                track.freeTrialDuration = resp.data.data.freeTrialDuration;
             }
         })
         .catch(() => {});
@@ -520,6 +564,10 @@ function playTrackInQueue(index) {
     if (isResolved) {
         const cover = track.cover || '/favicon.png';
         playAudioOnline(track.resolvedUrl, track.name, track.artist, cover, track.lyric || '');
+        if (track.freeTrial) {
+            const durText = track.freeTrialDuration ? `（${track.freeTrialDuration}秒）` : '';
+            showToast(`🎵 正在播放《${track.name}》试听版本${durText}`, 'info', 4000);
+        }
         renderPlaylistDrawer();
         preloadNextSongAfter(currentQueueIndex);
         return;
@@ -532,19 +580,27 @@ function playTrackInQueue(index) {
                 track.resolvedUrl = song.url;
                 track.resolvedAt = Date.now();
                 track.lyric = song.lyric || '';
+                track.freeTrial = song.freeTrial === true;
+                track.freeTrialDuration = song.freeTrialDuration;
                 const realPic = song.pic || song.picUrl || (song.al && song.al.picUrl);
                 if (realPic) track.cover = realPic;
                 const cover = track.cover || '/favicon.png';
                 playAudioOnline(song.url, track.name || song.name, track.artist || song.ar_name, cover, song.lyric);
+                if (song.freeTrial) {
+                    const durText = song.freeTrialDuration ? `（${song.freeTrialDuration}秒）` : '';
+                    showToast(`🎵 正在播放《${track.name || song.name}》试听版本${durText}`, 'info', 4000);
+                }
                 renderPlaylistDrawer();
                 preloadNextSongAfter(currentQueueIndex);
             } else {
-                alert(`无法播放《${track.name}》：获取播放地址失败`);
+                const reason = (song && song.unplayableReason) ? song.unplayableReason : "获取播放地址失败";
+                showToast(`无法播放《${track.name}》：${reason}`, 'warning', 4500);
                 playNextTrack();
             }
         })
         .catch(err => {
             console.error("播放曲目失败:", err);
+            showToast(`无法播放《${track.name}》：网络或解析异常`, 'warning');
             playNextTrack();
         });
 }
@@ -776,7 +832,7 @@ function toggleMute() {
 
 function playAudioOnline(url, name, artist, cover, lyric) {
     if (!url) {
-        alert("暂无直接播放链接，请切换音质重试或点击下载");
+        showToast("暂无直接播放链接，请切换音质重试或点击下载", "warning");
         return;
     }
     const bar = document.getElementById("globalAudioBar");
@@ -897,11 +953,16 @@ function playSongById(songId, name, artist) {
             const song = resp.data.data;
             if (song && song.url) {
                 playAudioOnline(song.url, name || song.name, artist || song.ar_name, song.pic, song.lyric);
+                if (song.freeTrial) {
+                    const durText = song.freeTrialDuration ? `（${song.freeTrialDuration}秒）` : '';
+                    showToast(`🎵 正在播放《${name || song.name}》试听版本${durText}`, 'info', 4000);
+                }
             } else {
-                alert("获取播放链接失败");
+                const reason = (song && song.unplayableReason) ? song.unplayableReason : "获取播放地址失败";
+                showToast(`无法播放《${name || (song ? song.name : '当前歌曲')}》：${reason}`, 'warning', 4500);
             }
         })
-        .catch(err => alert("播放获取失败：" + err));
+        .catch(err => showToast(`播放获取失败：${err}`, 'warning'));
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -917,6 +978,15 @@ document.addEventListener("DOMContentLoaded", function() {
     restorePlayerStateFromStorage();
 
     if (player) {
+        player.onerror = function() {
+            if (player.src && player.src !== window.location.href && player.src !== 'about:blank') {
+                const track = globalPlaylistQueue[currentQueueIndex];
+                const songTitle = track ? track.name : (document.getElementById("audioBarTitle") ? document.getElementById("audioBarTitle").textContent : '音频');
+                showToast(`《${songTitle}》音频加载异常，尝试播放下一首`, 'warning');
+                playNextTrack();
+            }
+        };
+
         player.onplay = function() {
             if (playBtn) playBtn.innerHTML = "⏸";
             if (coverImg) coverImg.classList.add("playing");

@@ -48,13 +48,14 @@ public class AnalysisService {
             JSONObject nameJson = JSON.parseObject(nameJsonStr);
             JSONObject lyricJson = JSON.parseObject(lyricJsonStr);
 
-            JSONArray dataArray = urlJson.getJSONArray("data");
-            if (dataArray.isEmpty() || dataArray.getJSONObject(0).get("url") == null) {
+            JSONArray dataArray = urlJson != null ? urlJson.getJSONArray("data") : null;
+            JSONObject songUrlData = (dataArray != null && !dataArray.isEmpty()) ? dataArray.getJSONObject(0) : null;
+            
+            JSONArray songsArray = nameJson != null ? nameJson.getJSONArray("songs") : null;
+            if (songsArray == null || songsArray.isEmpty()) {
                 return null;
             }
-
-            JSONObject songUrlData = dataArray.getJSONObject(0);
-            JSONObject songInfo = nameJson.getJSONArray("songs").getJSONObject(0);
+            JSONObject songInfo = songsArray.getJSONObject(0);
 
             SingleMusicAnalysisRespDTO dto = new SingleMusicAnalysisRespDTO();
             dto.setName(songInfo.getString("name"));
@@ -111,12 +112,50 @@ public class AnalysisService {
                     dto.setAr_name(parsedAr);
                 }
             }
-            dto.setLyric(lyricJson.getJSONObject("lrc") != null ? lyricJson.getJSONObject("lrc").getString("lyric") : "");
-            dto.setTlyric(lyricJson.containsKey("tlyric") ? lyricJson.getJSONObject("tlyric").getString("lyric") : null);
-            dto.setUrl(songUrlData.getString("url").replace("http://", "https://"));
-            dto.setSize(formatSize(songUrlData.getLongValue("size")));
+            dto.setLyric(lyricJson != null && lyricJson.getJSONObject("lrc") != null ? lyricJson.getJSONObject("lrc").getString("lyric") : "");
+            dto.setTlyric(lyricJson != null && lyricJson.containsKey("tlyric") && lyricJson.getJSONObject("tlyric") != null ? lyricJson.getJSONObject("tlyric").getString("lyric") : null);
             dto.setId(id);
-            dto.setStatus(200);
+
+            if (songUrlData != null && songUrlData.getString("url") != null) {
+                dto.setUrl(songUrlData.getString("url").replace("http://", "https://"));
+                dto.setSize(formatSize(songUrlData.getLongValue("size")));
+                dto.setStatus(200);
+
+                // 🎵 检查是否为试听片段 (Check if track is a free trial preview)
+                if (songUrlData.containsKey("freeTrialInfo") && songUrlData.get("freeTrialInfo") != null) {
+                    dto.setFreeTrial(true);
+                    JSONObject fti = songUrlData.getJSONObject("freeTrialInfo");
+                    if (fti != null && fti.containsKey("end") && fti.containsKey("start")) {
+                        int duration = fti.getIntValue("end") - fti.getIntValue("start");
+                        dto.setFreeTrialDuration(duration > 0 ? duration : null);
+                    }
+                } else if (songUrlData.containsKey("freeTimeTrialPrivilege") && songUrlData.getJSONObject("freeTimeTrialPrivilege") != null && songUrlData.getJSONObject("freeTimeTrialPrivilege").getIntValue("type") != 0) {
+                    dto.setFreeTrial(true);
+                } else {
+                    dto.setFreeTrial(false);
+                }
+            } else {
+                dto.setUrl(null);
+                dto.setStatus(404);
+                String reason = "因版权保护或所在地区限制暂时无法播放";
+                if (songUrlData != null) {
+                    int code = songUrlData.getIntValue("code");
+                    int fee = songUrlData.getIntValue("fee");
+                    JSONObject ftp = songUrlData.getJSONObject("freeTrialPrivilege");
+                    if (ftp != null && ftp.getIntValue("cannotListenReason") == 1) {
+                        reason = "因版权保护或所在地区限制暂时无法播放";
+                    } else if (code == 404) {
+                        reason = "因版权保护或所在地区限制暂时无法播放";
+                    } else if (fee == 1 || fee == 4) {
+                        reason = "VIP 或付费专享曲目，暂无播放权限";
+                    } else if (StringUtils.isNotBlank(songUrlData.getString("message"))) {
+                        reason = songUrlData.getString("message");
+                    }
+                }
+                dto.setUnplayableReason(reason);
+                dto.setFreeTrial(false);
+            }
+
             return dto;
         } catch (Exception e) {
             e.printStackTrace();

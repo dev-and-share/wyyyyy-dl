@@ -27,5 +27,13 @@ public class SingleMusicAnalysisRespDTO {
 	
 	private String url;
 	
+	private Boolean freeTrial;
+	
+	private Integer freeTrialDuration;
+	
+	private String unplayableReason;
+	
 	private Object rawData;
 }
+
+

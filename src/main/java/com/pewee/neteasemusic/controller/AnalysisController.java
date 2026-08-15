@@ -100,6 +100,10 @@ public class AnalysisController {
             if (songInfo != null) {
                 // 瞬间切为本地无损秒播流！
                 songInfo.setUrl("/v2/stream?id=" + localItem.getSongId() + "&historyId=" + localItem.getId());
+                songInfo.setFreeTrial(false);
+                songInfo.setFreeTrialDuration(null);
+                songInfo.setUnplayableReason(null);
+                songInfo.setStatus(200);
             }
         }
 
