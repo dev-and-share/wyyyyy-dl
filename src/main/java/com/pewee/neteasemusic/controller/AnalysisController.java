@@ -41,14 +41,32 @@ public class AnalysisController {
 	
 	@RequestMapping(value = "/Album", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> album(@RequestParam(required = true) Long id) {
-		AlbumAnalysisRespDTO  result = analysisService.analyzeAlbum(id);
-        return RespEntity.apply(CommonRespInfo.SUCCESS,result);
+		AlbumAnalysisRespDTO result = analysisService.analyzeAlbum(id);
+		if (result != null && result.getAlbum() != null && result.getAlbum().getSongs() != null) {
+			for (TrackDTO track : result.getAlbum().getSongs()) {
+				if (track != null) {
+					com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = 
+							downloadHistoryDAO.findLocalFileBySongOrName(track.getId(), track.getName(), track.getArtists());
+					track.setIsLocal(localItem != null && Boolean.TRUE.equals(localItem.getFileExists()));
+				}
+			}
+		}
+        return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
     @RequestMapping(value = "/Playlist", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> playlist(@RequestParam(required = true) Long id) {
-    	PlaylistAnalysisRespDTO  result = analysisService.analyzePlaylist(id);
-            return RespEntity.apply(CommonRespInfo.SUCCESS,result);
+    	PlaylistAnalysisRespDTO result = analysisService.analyzePlaylist(id);
+    	if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
+			for (TrackDTO track : result.getPlaylist().getTracks()) {
+				if (track != null) {
+					com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = 
+							downloadHistoryDAO.findLocalFileBySongOrName(track.getId(), track.getName(), track.getArtists());
+					track.setIsLocal(localItem != null && Boolean.TRUE.equals(localItem.getFileExists()));
+				}
+			}
+		}
+        return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
     
     
@@ -104,6 +122,11 @@ public class AnalysisController {
                 songInfo.setFreeTrialDuration(null);
                 songInfo.setUnplayableReason(null);
                 songInfo.setStatus(200);
+                songInfo.setIsLocal(true);
+            }
+        } else {
+            if (songInfo != null) {
+                songInfo.setIsLocal(false);
             }
         }
 

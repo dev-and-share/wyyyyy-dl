@@ -102,13 +102,22 @@ function renderPage(page) {
         const trackIndex = start + index + 1;
         const artistDisplay = getValidArtistNames(track);
         const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
+        const isLocalTrack = (track.isLocal === true);
+
+        const localBadge = isLocalTrack 
+            ? '<span class="status-badge status-ok" style="font-size:9.5px; padding:1px 5px; margin-left:6px; flex-shrink:0;">⚡ 本地</span>' 
+            : '';
+
+        const playBtnHtml = isLocalTrack
+            ? `<button class="jump-link-btn" style="background:rgba(34,197,94,0.18); color:#4ade80; border-color:rgba(34,197,94,0.35);" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="本地无损秒播">▶️ 播放</button>`
+            : `<button class="jump-link-btn" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>`;
 
         li.innerHTML = `
-            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;">
-                <strong>${trackIndex}. ${track.name}</strong>${artistHtml}
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
+                <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${trackIndex}. ${track.name}</strong>${artistHtml}${localBadge}
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <button class="jump-link-btn" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>
+            <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+                ${playBtnHtml}
                 <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🔍 查看</button>
                 <button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick="downloadSingle('${track.id}')">📥 下载</button>
             </div>
@@ -131,7 +140,8 @@ function playFullCurrentPlaylist() {
         id: t.id,
         name: t.name,
         artist: getValidArtistNames(t),
-        cover: (t.al && t.al.picUrl) ? t.al.picUrl : '/favicon.png'
+        cover: (t.al && t.al.picUrl) ? t.al.picUrl : '/favicon.png',
+        isLocal: (t.isLocal === true)
     }));
     if (typeof setGlobalPlaylistQueue === 'function') {
         setGlobalPlaylistQueue(formattedQueue, 0);

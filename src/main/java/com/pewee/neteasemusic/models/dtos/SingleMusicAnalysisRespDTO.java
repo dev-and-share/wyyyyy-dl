@@ -33,6 +33,8 @@ public class SingleMusicAnalysisRespDTO {
 	
 	private String unplayableReason;
 	
+	private Boolean isLocal;
+	
 	private Object rawData;
 }
 

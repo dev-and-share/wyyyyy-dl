@@ -629,6 +629,10 @@ function preloadTrackStreamUrl(index) {
                 track.lyric = resp.data.data.lyric || '';
                 track.freeTrial = resp.data.data.freeTrial === true;
                 track.freeTrialDuration = resp.data.data.freeTrialDuration;
+                if (resp.data.data.isLocal === true || (resp.data.data.url && resp.data.data.url.includes('/v2/stream'))) {
+                    track.isLocal = true;
+                }
+                renderPlaylistDrawer();
             }
         })
         .catch(() => {});
@@ -672,6 +676,9 @@ function playTrackInQueue(index) {
                 const realPic = song.pic || song.picUrl || (song.al && song.al.picUrl);
                 if (realPic) track.cover = realPic;
                 const cover = track.cover || '/favicon.png';
+                if (song.isLocal === true || (song.url && (song.url.includes('/v2/stream') || song.url.includes('/history/stream')))) {
+                    track.isLocal = true;
+                }
                 playAudioOnline(song.url, track.name || song.name, track.artist || song.ar_name, cover, song.lyric);
                 if (song.freeTrial) {
                     const durText = song.freeTrialDuration ? `（${song.freeTrialDuration}秒）` : '';
@@ -817,10 +824,15 @@ function renderPlaylistDrawer() {
         
         const trackTitle = escapeHtml(track.name || '未知歌曲');
         const trackArtist = escapeHtml(track.artist || '未知歌手');
+        const isLocalTrack = (track.isLocal === true) || (track.resolvedUrl && (track.resolvedUrl.includes('/v2/stream') || track.resolvedUrl.includes('/history/stream')));
+        const localTag = isLocalTrack ? '<span class="status-badge status-ok" style="font-size:9px; padding:0 4px; margin-left:4px; flex-shrink:0;">⚡ 本地</span>' : '';
 
         li.innerHTML = `
-            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;" title="${trackTitle} - ${trackArtist}">
-                ${isCurrent ? '🎵 ' : ''}<strong>${idx + 1}. ${trackTitle}</strong> - <span style="font-size:12px; color:#888;">${trackArtist}</span>
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px; display:flex; align-items:center;" title="${trackTitle} - ${trackArtist}">
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${isCurrent ? '🎵 ' : ''}<strong>${idx + 1}. ${trackTitle}</strong> - <span style="font-size:12px; color:#888;">${trackArtist}</span>
+                </span>
+                ${localTag}
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
                 ${isCurrent ? '<span style="color:#22c55e; font-size:12px; font-weight:600;">播放中</span>' : ''}
