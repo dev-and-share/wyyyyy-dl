@@ -1512,6 +1512,7 @@ function playAudioOnline(url, name, artist, cover, lyric, album) {
         currentPlayingLyric = lyric || "";
         parsedLrcList = parseLrc(currentPlayingLyric);
         currentLrcIndex = -1;
+        renderLyricLinesDOM();
 
         // 🎯 核心修复：强制切歌从 0 秒开始播放，并重置进度条 UI
         if (fill) fill.style.width = "0%";
@@ -1754,13 +1755,53 @@ function updateLrcHighlight(index) {
     });
 }
 
+/**
+ * 🎵 渲染歌词行 DOM 节点并重置滚动位置
+ */
+function renderLyricLinesDOM() {
+    const content = document.getElementById("lyricModalContent");
+    if (!content) return;
+
+    parsedLrcList = parseLrc(currentPlayingLyric);
+    currentLrcIndex = -1;
+    content.innerHTML = "";
+    content.scrollTop = 0;
+
+    const validTimeLrcs = parsedLrcList.filter(item => item.time >= 0);
+
+    if (validTimeLrcs && validTimeLrcs.length > 0) {
+        validTimeLrcs.forEach((item, idx) => {
+            const div = document.createElement("div");
+            div.className = "lrc-line" + (idx === 0 ? " active" : "");
+            div.textContent = item.text;
+            div.onclick = () => {
+                const player = document.getElementById("globalAudioPlayer");
+                if (player) {
+                    player.currentTime = item.time;
+                }
+            };
+            content.appendChild(div);
+        });
+    } else {
+        const lines = (currentPlayingLyric || "暂无歌词").split(/\r?\n/);
+        lines.forEach(lineStr => {
+            if (lineStr.trim()) {
+                const p = document.createElement("p");
+                p.className = "lrc-fallback";
+                p.textContent = lineStr;
+                content.appendChild(p);
+            }
+        });
+    }
+}
+
 function openLyricModal() {
     const modal = document.getElementById("lyricModal");
-    const content = document.getElementById("lyricModalContent");
+    if (!modal) return;
     
-    const playerTitle = document.getElementById("audioBarTitle").textContent;
-    const playerArtist = document.getElementById("audioBarArtist").textContent;
-    const coverSrc = document.getElementById("audioBarCover").src;
+    const playerTitle = document.getElementById("audioBarTitle") ? document.getElementById("audioBarTitle").textContent : "";
+    const playerArtist = document.getElementById("audioBarArtist") ? document.getElementById("audioBarArtist").textContent : "";
+    const coverSrc = document.getElementById("audioBarCover") ? document.getElementById("audioBarCover").src : "/favicon.png";
     const sourceBadge = document.getElementById("audioSourceBadge");
 
     const fullTitle = document.getElementById("fullscreenTitle");
@@ -1787,40 +1828,9 @@ function openLyricModal() {
     }
 
     updatePlayModeBtnUI();
+    renderLyricLinesDOM();
 
-    if (modal && content) {
-        parsedLrcList = parseLrc(currentPlayingLyric);
-        content.innerHTML = "";
-
-        const validTimeLrcs = parsedLrcList.filter(item => item.time >= 0);
-
-        if (validTimeLrcs && validTimeLrcs.length > 0) {
-            validTimeLrcs.forEach((item, idx) => {
-                const div = document.createElement("div");
-                div.className = "lrc-line" + (idx === currentLrcIndex ? " active" : "");
-                div.textContent = item.text;
-                div.onclick = () => {
-                    const player = document.getElementById("globalAudioPlayer");
-                    if (player) {
-                        player.currentTime = item.time;
-                    }
-                };
-                content.appendChild(div);
-            });
-        } else {
-            const lines = (currentPlayingLyric || "暂无歌词").split(/\r?\n/);
-            lines.forEach(lineStr => {
-                if (lineStr.trim()) {
-                    const p = document.createElement("p");
-                    p.className = "lrc-fallback";
-                    p.textContent = lineStr;
-                    content.appendChild(p);
-                }
-            });
-        }
-
-        modal.style.display = "flex";
-    }
+    modal.style.display = "flex";
 }
 
 function closeLyricModal() {
