@@ -34,7 +34,10 @@ public class DownloadHistoryController {
     @GetMapping("/reveal")
     public RespEntity<String> revealFile(
             @RequestParam(value = "path", required = false) String path,
-            @RequestParam(value = "taskId", required = false) Long taskId) {
+            @RequestParam(value = "taskId", required = false) Long taskId,
+            @RequestParam(value = "id", required = false) Long songId,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "artist", required = false) String artist) {
         
         String targetPath = path;
         if (StringUtils.isBlank(targetPath) && taskId != null) {
@@ -44,13 +47,18 @@ public class DownloadHistoryController {
             }
         }
 
-        if (StringUtils.isBlank(targetPath)) {
-            return RespEntity.apply(CommonRespInfo.NOT_LEGAL_PARAM.getCode(), "未找到有效的指定文件路径", null);
+        File file = null;
+        if (StringUtils.isNotBlank(targetPath)) {
+            file = downloadHistoryDAO.resolveFile(targetPath);
+        } else if ((songId != null && songId > 0) || StringUtils.isNotBlank(name)) {
+            DownloadHistoryDAO.DownloadHistoryItem found = downloadHistoryDAO.findLocalFileBySongOrName(songId, name, artist);
+            if (found != null && StringUtils.isNotBlank(found.getFilePath())) {
+                file = downloadHistoryDAO.resolveFile(found.getFilePath());
+            }
         }
 
-        File file = downloadHistoryDAO.resolveFile(targetPath);
-        if (!file.exists()) {
-            return RespEntity.apply(CommonRespInfo.NOT_LEGAL_PARAM.getCode(), "物理文件不存在: " + targetPath, null);
+        if (file == null || !file.exists()) {
+            return RespEntity.apply(CommonRespInfo.NOT_LEGAL_PARAM.getCode(), "物理文件不存在: " + (targetPath != null ? targetPath : (name != null ? name : "id=" + songId)), null);
         }
 
         String containerAbsPath = file.getAbsolutePath();

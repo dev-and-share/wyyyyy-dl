@@ -117,20 +117,29 @@ public class DownloadHistoryDAO {
                 return rel;
             }
         } catch (Exception ignored) {}
-        return fullPath;
+        return "";
     }
 
     public String toHostPath(File file) {
         if (file == null) return "";
-        String externalHostPath = remapPathInsideRoot(file.getAbsolutePath(), externalLibraryContainerPath, externalLibraryHostPath);
-        if (!externalHostPath.equals(file.getAbsolutePath())) {
-            return externalHostPath;
+        String absPath = file.getAbsolutePath();
+
+        // 1. 优先尝试外部曲库映射 (如 /media/external/... -> /Users/houtokki/Music/...)
+        if (externalLibraryContainerPath != null && !externalLibraryContainerPath.trim().isEmpty()
+                && externalLibraryHostPath != null && !externalLibraryHostPath.trim().isEmpty()) {
+            String externalHostPath = remapPathInsideRoot(absPath, externalLibraryContainerPath, externalLibraryHostPath);
+            if (!externalHostPath.equals(absPath)) {
+                return externalHostPath;
+            }
         }
-        String rel = toRelativePath(file.getAbsolutePath());
-        if (hostDownloadPath != null && !hostDownloadPath.trim().isEmpty()) {
+
+        // 2. 检查是否在下载主目录 (downloadPath)
+        String rel = toRelativePath(absPath);
+        if (!rel.isEmpty() && hostDownloadPath != null && !hostDownloadPath.trim().isEmpty()) {
             return new File(hostDownloadPath, rel).getAbsolutePath();
         }
-        return file.getAbsolutePath();
+
+        return absPath;
     }
 
     public static String safeUrlDecode(String str) {
@@ -147,6 +156,14 @@ public class DownloadHistoryDAO {
         if (savedPath == null || savedPath.isEmpty()) return new File("");
         
         savedPath = safeUrlDecode(savedPath);
+
+        // 如果路径中错误拼接了 hostDownloadPath 与 external 路径 (如 /Users/.../media/external/...)，提取真实外部路径
+        if (externalLibraryContainerPath != null && !externalLibraryContainerPath.trim().isEmpty()) {
+            int extIdx = savedPath.indexOf(externalLibraryContainerPath);
+            if (extIdx > 0) {
+                savedPath = savedPath.substring(extIdx);
+            }
+        }
 
         if (hostDownloadPath != null && !hostDownloadPath.isEmpty() && savedPath.startsWith(hostDownloadPath)) {
             String sub = savedPath.substring(hostDownloadPath.length());

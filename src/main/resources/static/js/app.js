@@ -1342,12 +1342,16 @@ async function renderPlaylistDrawer() {
         const trackArtist = escapeHtml(track.artist || '未知歌手');
 
         let badgeHtml = '';
+        const trackIdSafe = track.id || track.songId || '';
+        const trackNameSafe = (track.name || '').replace(/'/g, "\\'");
+        const trackArtistSafe = (track.artist || '').replace(/'/g, "\\'");
+
         if (isServer && isBrowser) {
-            badgeHtml = `<span class="status-badge status-both icon-only" title="✨ 服务器与本机浏览器均有缓存" style="margin-left:4px;">✨</span>`;
+            badgeHtml = `<span class="status-badge status-both icon-only" title="✨ 服务器与本机浏览器均有缓存 (点击查看物理路径)" style="margin-left:4px; cursor:pointer;" onclick="handleStatusBadgeClick(event, '${trackIdSafe}', '${trackNameSafe}', '${trackArtistSafe}', true, true)">✨</span>`;
         } else if (isServer) {
-            badgeHtml = `<span class="status-badge status-server icon-only" title="🖥️ 已在服务器磁盘" style="margin-left:4px;">🖥️</span>`;
+            badgeHtml = `<span class="status-badge status-server icon-only" title="🖥️ 已在服务器磁盘 (点击查看物理路径)" style="margin-left:4px; cursor:pointer;" onclick="handleStatusBadgeClick(event, '${trackIdSafe}', '${trackNameSafe}', '${trackArtistSafe}', true, false)">🖥️</span>`;
         } else if (isBrowser) {
-            badgeHtml = `<span class="status-badge status-browser icon-only" title="📲 已在当前设备浏览器缓存" style="margin-left:4px;">📲</span>`;
+            badgeHtml = `<span class="status-badge status-browser icon-only" title="📲 已在当前设备浏览器缓存 (点击查看详情)" style="margin-left:4px; cursor:pointer;" onclick="handleStatusBadgeClick(event, '${trackIdSafe}', '${trackNameSafe}', '${trackArtistSafe}', false, true)">📲</span>`;
         }
 
         li.innerHTML = `
@@ -2147,6 +2151,63 @@ async function getAllCacheKeys() {
 }
 
 /**
+ * 📂 定位歌曲物理文件并弹出非阻塞 Modal
+ */
+function revealSong(id, name = '', artist = '', path = '', taskId = null) {
+    let url = '/v2/reveal?';
+    const params = [];
+    if (path) params.push('path=' + encodeURIComponent(path));
+    if (taskId) params.push('taskId=' + encodeURIComponent(taskId));
+    if (id) params.push('id=' + encodeURIComponent(id));
+    if (name) params.push('name=' + encodeURIComponent(name));
+    if (artist) params.push('artist=' + encodeURIComponent(artist));
+    url += params.join('&');
+
+    axios.get(url)
+        .then(resp => {
+            if (resp.data.code === '000000') {
+                const hostPath = resp.data.data;
+                showRevealModal(hostPath, path, '📂 已为您定位宿主机真实物理路径！');
+            } else {
+                showRevealModal(path || resp.data.data, path, resp.data.msg || '定位提示');
+            }
+        })
+        .catch(err => {
+            if (path) {
+                showRevealModal(path, path, '📂 物理路径');
+            } else {
+                showToast('定位文件失败: ' + err, 'error');
+            }
+        });
+}
+window.revealSong = revealSong;
+
+/**
+ * 💡 点击状态 Badge 触发交互
+ */
+function handleStatusBadgeClick(e, trackId, trackName, trackArtist, isServer, isBrowser) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    
+    if (isServer) {
+        revealSong(trackId, trackName, trackArtist);
+    } else if (isBrowser) {
+        showAppModal({
+            title: '手机/浏览器离线缓存',
+            icon: '📲',
+            content: `
+                <div style="font-weight:600; font-size:14px; margin-bottom:8px; color:var(--text-main);">${escapeHtml(trackName || '该曲目')}</div>
+                <div style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
+                    该歌曲已通过 <b>PWA Cache API</b> 完整缓存在当前设备的本地存储空间中。<br><br>
+                    💡 <b>离线畅听提示</b>：无论是在地铁、飞行模式还是断网无信号环境，您均可随时 0 流量秒开播放！
+                </div>
+            `,
+            confirmText: '我知道了'
+        });
+    }
+}
+window.handleStatusBadgeClick = handleStatusBadgeClick;
+
+/**
  * 异步批量更新歌曲列表的缓存状态 Badge，避免阻塞主线程渲染
  */
 async function asyncUpdateListBadges(pageTracks, badgePrefix = 'badge-track-') {
@@ -2168,20 +2229,27 @@ async function asyncUpdateListBadges(pageTracks, badgePrefix = 'badge-track-') {
         if (isServer && isBrowser) {
             badgeEl.className = "status-badge status-both icon-only";
             badgeEl.innerHTML = "✨";
-            badgeEl.title = "✨ 服务器与本机浏览器均有缓存";
+            badgeEl.title = "✨ 服务器与本机浏览器均有缓存 (点击查看物理路径)";
             badgeEl.style.display = "inline-flex";
+            badgeEl.style.cursor = "pointer";
+            badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, track.name, getValidArtistNames(track), true, true);
         } else if (isServer) {
             badgeEl.className = "status-badge status-server icon-only";
             badgeEl.innerHTML = "🖥️";
-            badgeEl.title = "🖥️ 已存在服务器磁盘";
+            badgeEl.title = "🖥️ 已存在服务器磁盘 (点击查看物理路径)";
             badgeEl.style.display = "inline-flex";
+            badgeEl.style.cursor = "pointer";
+            badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, track.name, getValidArtistNames(track), true, false);
         } else if (isBrowser) {
             badgeEl.className = "status-badge status-browser icon-only";
             badgeEl.innerHTML = "📲";
-            badgeEl.title = "📲 已缓存于当前设备浏览器";
+            badgeEl.title = "📲 已缓存于当前设备浏览器 (点击查看详情)";
             badgeEl.style.display = "inline-flex";
+            badgeEl.style.cursor = "pointer";
+            badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, track.name, getValidArtistNames(track), false, true);
         } else {
             badgeEl.style.display = "none";
+            badgeEl.onclick = null;
         }
     });
 }
