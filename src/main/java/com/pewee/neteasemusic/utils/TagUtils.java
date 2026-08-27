@@ -60,9 +60,24 @@ public class TagUtils {
             String[] parts = defaultTitle.split(" - ", 2);
             defaultArtist = parts[0].trim();
             defaultTitle = parts[1].trim();
+        } else if (defaultTitle.contains("-")) {
+            String[] parts = defaultTitle.split("-", 2);
+            defaultArtist = parts[0].trim();
+            defaultTitle = parts[1].trim();
         }
 
-        String defaultAlbum = file.getParentFile() != null ? file.getParentFile().getName() : "";
+        File parent = file.getParentFile();
+        String defaultAlbum = (parent != null) ? parent.getName() : "外部导入曲库";
+
+        // 如果歌手为空，尝试从上级目录层级中探测（例如 /media/external/王菲/唱游/01.flac 或 /media/external/王菲/01.flac）
+        if (defaultArtist.isEmpty() && parent != null) {
+            File grandParent = parent.getParentFile();
+            if (grandParent != null && !isGenericDir(grandParent.getName())) {
+                defaultArtist = grandParent.getName();
+            } else if (!isGenericDir(parent.getName())) {
+                defaultArtist = parent.getName();
+            }
+        }
 
         try {
             AudioFile audioFile = AudioFileIO.read(file);
@@ -74,12 +89,19 @@ public class TagUtils {
 
                 return new TagInfo(
                         (t != null && !t.trim().isEmpty()) ? t.trim() : defaultTitle,
-                        (a != null && !a.trim().isEmpty()) ? a.trim() : defaultArtist,
+                        (a != null && !a.trim().isEmpty()) ? a.trim() : (defaultArtist.isEmpty() ? "未知歌手" : defaultArtist),
                         (al != null && !al.trim().isEmpty()) ? al.trim() : defaultAlbum
                 );
             }
         } catch (Exception ignored) {}
 
-        return new TagInfo(defaultTitle, defaultArtist, defaultAlbum);
+        return new TagInfo(defaultTitle, defaultArtist.isEmpty() ? "未知歌手" : defaultArtist, defaultAlbum);
+    }
+
+    private static boolean isGenericDir(String name) {
+        if (name == null) return true;
+        String lower = name.toLowerCase().trim();
+        return lower.equals("media") || lower.equals("music") || lower.equals("external") || 
+               lower.equals("downloads") || lower.equals("下载音乐") || lower.equals("external_music");
     }
 }

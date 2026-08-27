@@ -489,25 +489,21 @@ public class DownloadHistoryDAO {
             scannedFiles += audioFiles.size();
 
             for (File file : audioFiles) {
+                if (file.length() == 0) continue; // 过滤 0 字节空文件
                 String absPath = file.getAbsolutePath();
+                com.pewee.neteasemusic.utils.TagUtils.TagInfo info = com.pewee.neteasemusic.utils.TagUtils.readTags(file);
+                String songName = (info.getTitle() != null && !info.getTitle().isEmpty()) ? info.getTitle() : file.getName();
+                String artist = (info.getArtist() != null && !info.getArtist().isEmpty()) ? info.getArtist() : "未知歌手";
+                String album = (info.getAlbum() != null && !info.getAlbum().isEmpty()) ? info.getAlbum() : "外部导入曲库";
+
                 if (!isFilePathExistsInDb(absPath)) {
-                    String fileName = file.getName();
-                    int lastDot = fileName.lastIndexOf('.');
-                    String nameWithoutExt = (lastDot > 0) ? fileName.substring(0, lastDot) : fileName;
-
-                    String songName = nameWithoutExt;
-                    String artist = "未知歌手";
-
-                    if (nameWithoutExt.contains("-")) {
-                        String[] segments = nameWithoutExt.split("-", 2);
-                        artist = segments[0].trim();
-                        songName = segments[1].trim();
-                    }
-
-                    long newId = addRecord(null, songName, artist, "外部导入曲库", absPath, file.length(), "lossless", "SUCCESS");
+                    long newId = addRecord(null, songName, artist, album, absPath, file.length(), "lossless", "SUCCESS");
                     if (newId > 0) {
                         addedCount++;
                     }
+                } else {
+                    // 若已存在但在早期导入时未能识别歌手/专辑，自动修复补全！
+                    updateMissingMetadataIfPresent(absPath, songName, artist, album);
                 }
             }
         }
@@ -518,6 +514,27 @@ public class DownloadHistoryDAO {
         result.put("configuredDirs", targetDirs);
         log.info("📂 多目录外部曲库扫描完成: 扫描 {} 个文件，成功新录入 {} 首到 SQLite", scannedFiles, addedCount);
         return result;
+    }
+
+    private void updateMissingMetadataIfPresent(String filePath, String songName, String artist, String album) {
+        if ("未知歌手".equals(artist) || artist == null || artist.trim().isEmpty()) {
+            return;
+        }
+        String relPath = toRelativePath(filePath);
+        String sql = "UPDATE download_history SET song_name = ?, artist = ?, album = ? " +
+                     "WHERE (artist = '未知歌手' OR artist = '' OR artist IS NULL OR album = '外部导入曲库' OR album = '' OR album IS NULL) " +
+                     "AND (file_path = ? OR file_path = ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, songName);
+            pstmt.setString(2, artist);
+            pstmt.setString(3, album);
+            pstmt.setString(4, filePath);
+            pstmt.setString(5, relPath);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            log.warn("更新历史元数据失败: filePath={}", filePath, e);
+        }
     }
 
     private void collectAudioFiles(File dir, List<File> list) {
@@ -560,7 +577,7 @@ public class DownloadHistoryDAO {
         int offset = (page - 1) * pageSize;
         boolean hasSearch = keyword != null && !keyword.trim().isEmpty();
         String sql = "SELECT * FROM download_history " +
-                (hasSearch ? "WHERE song_name LIKE ? OR artist LIKE ? OR album LIKE ? " : "") +
+                (hasSearch ? "WHERE song_name LIKE ? OR artist LIKE ? OR album LIKE ? OR file_path LIKE ? " : "") +
                 "ORDER BY id DESC LIMIT ? OFFSET ?";
 
         try (Connection conn = getConnection();
@@ -568,6 +585,7 @@ public class DownloadHistoryDAO {
             int paramIndex = 1;
             if (hasSearch) {
                 String kw = "%" + keyword.trim() + "%";
+                pstmt.setString(paramIndex++, kw);
                 pstmt.setString(paramIndex++, kw);
                 pstmt.setString(paramIndex++, kw);
                 pstmt.setString(paramIndex++, kw);
@@ -607,7 +625,7 @@ public class DownloadHistoryDAO {
     public int countRecords(String keyword) {
         boolean hasSearch = keyword != null && !keyword.trim().isEmpty();
         String sql = "SELECT COUNT(*) FROM download_history " +
-                (hasSearch ? "WHERE song_name LIKE ? OR artist LIKE ? OR album LIKE ?" : "");
+                (hasSearch ? "WHERE song_name LIKE ? OR artist LIKE ? OR album LIKE ? OR file_path LIKE ?" : "");
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -616,6 +634,7 @@ public class DownloadHistoryDAO {
                 pstmt.setString(1, kw);
                 pstmt.setString(2, kw);
                 pstmt.setString(3, kw);
+                pstmt.setString(4, kw);
             }
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
