@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.6.0">
+    <link rel="stylesheet" href="/css/style.css?v=3.6.1">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -328,8 +328,8 @@
         <div class="playlist-drawer-header">
             <span>📜 播放队列 (<span id="playlistDrawerCount">0</span> 首)</span>
             <div style="display:flex; gap:6px; align-items:center;">
-                <button class="drawer-header-btn" onclick="applyQueueTrim()" title="将当前筛选结果裁剪为新队列">✂️ 裁剪</button>
-                <button class="drawer-header-btn" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️</button>
+                <button id="btnQueueTrim" class="drawer-header-btn" style="display:none; color:#38bdf8; border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.12);" onclick="applyQueueTrim()" title="将当前筛选结果保留为新播放列表">✂️ 仅保留筛选曲目</button>
+                <button class="drawer-header-btn" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️ 清空</button>
                 <button class="drawer-header-btn" onclick="togglePlaylistDrawer()" title="关闭">✕</button>
             </div>
         </div>
@@ -422,13 +422,13 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v3.6.0</div>
+    <div class="app-version-footer">网易云下载器 · PWA v3.6.1</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=3.6.0"></script>
-    <script src="/js/album.js?v=3.6.0"></script>
-    <script src="/js/search.js?v=3.6.0"></script>
-    <script src="/js/download-mgr.js?v=3.6.0"></script>
-    <script src="/js/app.js?v=3.6.0"></script>
+    <script src="/js/playlist.js?v=3.6.1"></script>
+    <script src="/js/album.js?v=3.6.1"></script>
+    <script src="/js/search.js?v=3.6.1"></script>
+    <script src="/js/download-mgr.js?v=3.6.1"></script>
+    <script src="/js/app.js?v=3.6.1"></script>
 </body>
 </html>

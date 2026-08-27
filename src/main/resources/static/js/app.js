@@ -1002,6 +1002,18 @@ async function renderPlaylistDrawer() {
         filteredItems.push({ track, originalIndex, isServer, isBrowser, isReady });
     });
 
+    // 控制【✂️ 仅保留筛选曲目】按钮的显隐：只有在处于非全部筛选/搜索且筛选出部分曲目时才动态显示
+    const trimBtn = document.getElementById("btnQueueTrim");
+    const hasActiveFilter = (drawerFilterType !== 'all') || (drawerSearchQuery !== '');
+    if (trimBtn) {
+        if (hasActiveFilter && filteredItems.length > 0 && filteredItems.length < globalPlaylistQueue.length) {
+            trimBtn.style.display = 'inline-flex';
+            trimBtn.innerHTML = `✂️ 仅保留这 ${filteredItems.length} 首`;
+        } else {
+            trimBtn.style.display = 'none';
+        }
+    }
+
     list.innerHTML = "";
     if (filteredItems.length === 0) {
         list.innerHTML = `
