@@ -106,6 +106,8 @@ function renderPlaylistDetailUI(playlist) {
     `;
     renderPage(currentPage);
     refreshPhoneCacheBtn(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器');
+    const pagination = document.getElementById("playlist-pagination");
+    if (pagination) pagination.style.display = allTracks.length > 0 ? "flex" : "none";
 }
 
 function loadPlaylistDetail() {
@@ -116,28 +118,32 @@ function loadPlaylistDetail() {
     }
 
     const infoDiv = document.getElementById("playlist-info");
+    const tracksList = document.getElementById("playlist-tracks");
+    const pagination = document.getElementById("playlist-pagination");
 
     // ⚡ 1. SWR 优先从本地缓存秒开渲染
     const cacheKey = 'playlist_' + id;
     const cached = typeof getApiCache === 'function' ? getApiCache(cacheKey) : null;
     let hasRenderedCache = false;
 
-    if (cached && cached.data && cached.data.playlist) {
+    if (cached && cached.data && cached.data.playlist && cached.data.playlist.tracks && cached.data.playlist.tracks.length > 0) {
         renderPlaylistDetailUI(cached.data.playlist);
         hasRenderedCache = true;
     } else {
         if (infoDiv) {
-            infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">🔄 正在解析歌单数据，请稍候...</div>`;
+            infoDiv.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-secondary); font-size:14px;"><span style="display:inline-block; animation:spin 1s linear infinite; margin-right:8px;">🔄</span>正在连接网易云服务器解析歌单曲目，请稍候...</div>`;
         }
+        if (tracksList) tracksList.innerHTML = "";
+        if (pagination) pagination.style.display = "none";
     }
     
     // 🔄 2. 并行后台请求最新数据
     axios.post('/Playlist', new URLSearchParams({ id }))
         .then(resp => {
             const playlist = resp.data && resp.data.data ? resp.data.data.playlist : null;
-            if (!playlist) {
+            if (!playlist || !playlist.tracks || playlist.tracks.length === 0) {
                 if (!hasRenderedCache && infoDiv) {
-                    infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">未找到歌单数据或歌单为空</div>`;
+                    infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">未找到歌单数据或歌单为空（ID: ${id}）</div>`;
                 }
                 return;
             }
@@ -154,6 +160,9 @@ function loadPlaylistDetail() {
         })
         .catch(err => {
             if (!hasRenderedCache) {
+                if (infoDiv) {
+                    infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">获取歌单详情失败：${err}</div>`;
+                }
                 showToast("获取歌单详情失败：" + err, "error");
             }
         });

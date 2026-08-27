@@ -417,6 +417,10 @@ function toggleAccordionCard(headerElement) {
    ========================================================================== */
 
 function jumpToPlaylistDetail(playlistId) {
+    if (!playlistId) return;
+
+    switchTab('playlist');
+
     const input = document.getElementById("playlistId");
     if (input) input.value = playlistId;
     
