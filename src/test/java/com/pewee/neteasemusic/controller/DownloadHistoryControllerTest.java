@@ -103,4 +103,25 @@ public class DownloadHistoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"));
     }
+
+    @Test
+    @DisplayName("测试 /v2/reveal: 物理文件定位查询与智能查找")
+    public void testRevealFile() throws Exception {
+        java.io.File mockFile = java.io.File.createTempFile("mock_track", ".mp3");
+        mockFile.deleteOnExit();
+
+        DownloadHistoryDAO.DownloadHistoryItem mockItem = new DownloadHistoryDAO.DownloadHistoryItem();
+        mockItem.setFilePath(mockFile.getAbsolutePath());
+
+        Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(18915L), any(), any())).thenReturn(mockItem);
+        Mockito.when(downloadHistoryDAO.resolveFile(anyString())).thenReturn(mockFile);
+        Mockito.when(downloadHistoryDAO.toHostPath(any())).thenReturn("/Users/houtokki/Downloads/fast_sr/周杰伦 - 晴天.flac");
+
+        mockMvc.perform(get("/v2/reveal")
+                .param("id", "18915")
+                .param("name", "晴天"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data").value("/Users/houtokki/Downloads/fast_sr/周杰伦 - 晴天.flac"));
+    }
 }

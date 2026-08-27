@@ -172,24 +172,15 @@ function renderPage(page) {
         const trackIndex = start + index + 1;
         const artistDisplay = getValidArtistNames(track);
         const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
-        const isLocalTrack = (track.isLocal === true);
 
-        const localBadge = `<span id="badge-track-${track.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
-
-        const playBtnHtml = isLocalTrack
-            ? `<button class="jump-link-btn" style="background:rgba(34,197,94,0.18); color:#4ade80; border-color:rgba(34,197,94,0.35);" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="本地无损秒播">▶️ 播放</button>`
-            : `<button class="jump-link-btn" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>`;
+        const localBadge = `<span id="badge-pl-${track.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
+        const slotsHtml = renderTrackCapsuleSlotsHtml(track, 'pl-');
 
         li.innerHTML = `
             <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
-                <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${trackIndex}. ${track.name}</strong>${artistHtml}${localBadge}
+                <strong class="clickable-track-title" onclick="jumpToSongDetail('${track.id}')" title="点击查看单曲详细信息" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${trackIndex}. ${track.name}</strong>${artistHtml}${localBadge}
             </div>
-            <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
-                ${playBtnHtml}
-                <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🔍 查看</button>
-                <button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick="downloadSingle('${track.id}')">📥 下载</button>
-                <button id="pl-cache-btn-${track.id}" class="btn-primary" style="padding:4px 8px; font-size:12px; background:#0284c7; margin-left:4px;" onclick="cacheTracksToPhoneBatch([{id: '${track.id}', songId: '${track.id}'}], 'pl-cache-btn-${track.id}', '📲 缓存')">📲 缓存</button>
-            </div>
+            ${slotsHtml}
         `;
         list.appendChild(li);
     });
@@ -199,7 +190,7 @@ function renderPage(page) {
     document.getElementById("prev-page").disabled = (page <= 1);
     document.getElementById("next-page").disabled = (page >= totalPages);
 
-    asyncUpdateListBadges(pageTracks);
+    asyncUpdateListBadges(pageTracks, 'pl-');
 }
 
 function playFullCurrentPlaylist() {

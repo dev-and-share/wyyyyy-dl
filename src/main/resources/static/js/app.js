@@ -2208,9 +2208,41 @@ function handleStatusBadgeClick(e, trackId, trackName, trackArtist, isServer, is
 window.handleStatusBadgeClick = handleStatusBadgeClick;
 
 /**
- * 异步批量更新歌曲列表的缓存状态 Badge，避免阻塞主线程渲染
+ * 🎵 生成标准固定三槽位操作胶囊 HTML（播放/试听 | 下载/定位 | 离线缓存/已离线）
+ * @param {object} track 歌曲对象
+ * @param {string} [prefix='track-'] 标识前缀 (pl- / al- / sr-)
  */
-async function asyncUpdateListBadges(pageTracks, badgePrefix = 'badge-track-') {
+function renderTrackCapsuleSlotsHtml(track, prefix = 'track-') {
+    const id = track.id || track.songId;
+    const nameSafe = (track.name || '').replace(/'/g, "\\'");
+    const artistSafe = (getValidArtistNames(track) || '').replace(/'/g, "\\'");
+    const isLocal = (track.isLocal === true);
+
+    const playBtnText = isLocal ? '▶️ 播放' : '▶️ 试听';
+    const playBtnClass = isLocal ? 'track-btn-slot slot-play-ready' : 'track-btn-slot slot-play-preview';
+    const playBtnTitle = isLocal ? '0延迟本地无损秒播' : '在线试听';
+
+    const serverBtnText = isLocal ? '📂 定位' : '📥 下载';
+    const serverBtnClass = isLocal ? 'track-btn-slot slot-server-locate' : 'track-btn-slot slot-server-download';
+    const serverBtnTitle = isLocal ? '定位 Mac 宿主机物理音频文件' : '下载到电脑磁盘';
+    const serverBtnAction = isLocal
+        ? `revealSong('${id}', '${nameSafe}', '${artistSafe}')`
+        : `downloadSingle('${id}')`;
+
+    return `
+        <div class="track-action-group">
+            <button id="${prefix}play-btn-${id}" class="${playBtnClass}" onclick="playSongById('${id}', '${nameSafe}', '${artistSafe}')" title="${playBtnTitle}">${playBtnText}</button>
+            <button id="${prefix}server-btn-${id}" class="${serverBtnClass}" onclick="${serverBtnAction}" title="${serverBtnTitle}">${serverBtnText}</button>
+            <button id="${prefix}cache-btn-${id}" class="track-btn-slot slot-browser-cache" onclick="cacheTracksToPhoneBatch([{id: '${id}', songId: '${id}'}], '${prefix}cache-btn-${id}', '📲 缓存')" title="缓存至手机/浏览器离线播放">📲 缓存</button>
+        </div>
+    `;
+}
+window.renderTrackCapsuleSlotsHtml = renderTrackCapsuleSlotsHtml;
+
+/**
+ * 异步批量更新歌曲列表的缓存状态 Badge 以及固定三槽位按钮状态
+ */
+async function asyncUpdateListBadges(pageTracks, prefix = 'track-') {
     if (!pageTracks || pageTracks.length === 0) return;
     
     // 异步查询所有 cache URLs
@@ -2220,36 +2252,85 @@ async function asyncUpdateListBadges(pageTracks, badgePrefix = 'badge-track-') {
         const id = track.id || track.songId;
         if (!id) return;
         
-        const badgeEl = document.getElementById(`${badgePrefix}${id}`);
-        if (!badgeEl) return;
-        
+        const trackName = track.name || '';
+        const trackArtist = getValidArtistNames(track) || '';
         const isServer = track.isLocal === true;
         const isBrowser = cachedUrls.some(url => url.includes(`id=${id}`) || url.includes(`songId=${id}`));
-        
-        if (isServer && isBrowser) {
-            badgeEl.className = "status-badge status-both icon-only";
-            badgeEl.innerHTML = "✨";
-            badgeEl.title = "✨ 服务器与本机浏览器均有缓存 (点击查看物理路径)";
-            badgeEl.style.display = "inline-flex";
-            badgeEl.style.cursor = "pointer";
-            badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, track.name, getValidArtistNames(track), true, true);
-        } else if (isServer) {
-            badgeEl.className = "status-badge status-server icon-only";
-            badgeEl.innerHTML = "🖥️";
-            badgeEl.title = "🖥️ 已存在服务器磁盘 (点击查看物理路径)";
-            badgeEl.style.display = "inline-flex";
-            badgeEl.style.cursor = "pointer";
-            badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, track.name, getValidArtistNames(track), true, false);
-        } else if (isBrowser) {
-            badgeEl.className = "status-badge status-browser icon-only";
-            badgeEl.innerHTML = "📲";
-            badgeEl.title = "📲 已缓存于当前设备浏览器 (点击查看详情)";
-            badgeEl.style.display = "inline-flex";
-            badgeEl.style.cursor = "pointer";
-            badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, track.name, getValidArtistNames(track), false, true);
-        } else {
-            badgeEl.style.display = "none";
-            badgeEl.onclick = null;
+
+        // 1. 更新 Badge 图标
+        const badgeEl = document.getElementById(`badge-${prefix}${id}`) || document.getElementById(`badge-track-${id}`);
+        if (badgeEl) {
+            if (isServer && isBrowser) {
+                badgeEl.className = "status-badge status-both icon-only";
+                badgeEl.innerHTML = "✨";
+                badgeEl.title = "✨ 服务器与本机浏览器均有缓存 (点击查看物理路径)";
+                badgeEl.style.display = "inline-flex";
+                badgeEl.style.cursor = "pointer";
+                badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, trackName, trackArtist, true, true);
+            } else if (isServer) {
+                badgeEl.className = "status-badge status-server icon-only";
+                badgeEl.innerHTML = "🖥️";
+                badgeEl.title = "🖥️ 已存在服务器磁盘 (点击查看物理路径)";
+                badgeEl.style.display = "inline-flex";
+                badgeEl.style.cursor = "pointer";
+                badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, trackName, trackArtist, true, false);
+            } else if (isBrowser) {
+                badgeEl.className = "status-badge status-browser icon-only";
+                badgeEl.innerHTML = "📲";
+                badgeEl.title = "📲 已缓存于当前设备浏览器 (点击查看详情)";
+                badgeEl.style.display = "inline-flex";
+                badgeEl.style.cursor = "pointer";
+                badgeEl.onclick = (e) => handleStatusBadgeClick(e, id, trackName, trackArtist, false, true);
+            } else {
+                badgeEl.style.display = "none";
+                badgeEl.onclick = null;
+            }
+        }
+
+        // 2. 动态同步 槽位 1 (播放/试听)
+        const playBtn = document.getElementById(`${prefix}play-btn-${id}`);
+        if (playBtn) {
+            if (isServer || isBrowser) {
+                playBtn.className = "track-btn-slot slot-play-ready";
+                playBtn.innerHTML = "▶️ 播放";
+                playBtn.title = isBrowser ? "离线就绪秒播" : "本地无损秒播";
+            } else {
+                playBtn.className = "track-btn-slot slot-play-preview";
+                playBtn.innerHTML = "▶️ 试听";
+                playBtn.title = "在线试听";
+            }
+        }
+
+        // 3. 动态同步 槽位 2 (下载/定位)
+        const serverBtn = document.getElementById(`${prefix}server-btn-${id}`);
+        if (serverBtn) {
+            if (isServer) {
+                serverBtn.className = "track-btn-slot slot-server-locate";
+                serverBtn.innerHTML = "📂 定位";
+                serverBtn.title = "定位 Mac 宿主机物理音频文件";
+                serverBtn.onclick = () => revealSong(id, trackName, trackArtist);
+            } else {
+                serverBtn.className = "track-btn-slot slot-server-download";
+                serverBtn.innerHTML = "📥 下载";
+                serverBtn.title = "下载到电脑磁盘";
+                serverBtn.onclick = () => downloadSingle(id);
+            }
+        }
+
+        // 4. 动态同步 槽位 3 (缓存/已离线)
+        const cacheBtn = document.getElementById(`${prefix}cache-btn-${id}`);
+        if (cacheBtn) {
+            if (isBrowser) {
+                cacheBtn.className = "track-btn-slot slot-browser-cached";
+                cacheBtn.innerHTML = "✅ 已离线";
+                cacheBtn.title = "已存储于当前设备离线存储空间 (点击查看详情)";
+                cacheBtn.onclick = (e) => handleStatusBadgeClick(e, id, trackName, trackArtist, isServer, true);
+            } else {
+                cacheBtn.className = "track-btn-slot slot-browser-cache";
+                cacheBtn.innerHTML = "📲 缓存";
+                cacheBtn.title = "缓存至手机/浏览器离线播放";
+                cacheBtn.onclick = () => cacheTracksToPhoneBatch([{id: id, songId: id}], `${prefix}cache-btn-${id}`, '📲 缓存');
+            }
         }
     });
 }
