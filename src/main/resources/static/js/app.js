@@ -781,12 +781,83 @@ function togglePlaylistDrawer() {
     }
 }
 
+const STORAGE_DRAWER_BOUNDS_KEY = "wyyyy_drawer_bounds";
+
+function saveDrawerBoundsToStorage() {
+    const drawer = document.getElementById("playlistDrawer");
+    if (!drawer) return;
+    try {
+        const rect = drawer.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            const bounds = {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height
+            };
+            localStorage.setItem(STORAGE_DRAWER_BOUNDS_KEY, JSON.stringify(bounds));
+        }
+    } catch (e) {
+        console.warn("保存播放列表窗口位置尺寸失败:", e);
+    }
+}
+
+function restoreDrawerBoundsFromStorage() {
+    const drawer = document.getElementById("playlistDrawer");
+    if (!drawer) return;
+    try {
+        const saved = localStorage.getItem(STORAGE_DRAWER_BOUNDS_KEY);
+        if (!saved) return;
+        const bounds = JSON.parse(saved);
+        if (bounds && typeof bounds.left === 'number' && typeof bounds.top === 'number') {
+            const minLeft = 10;
+            const maxLeft = Math.max(10, window.innerWidth - (bounds.width || 320) - 10);
+            const minTop = 10;
+            const maxTop = Math.max(10, window.innerHeight - 60);
+
+            const clampedLeft = Math.max(minLeft, Math.min(bounds.left, maxLeft));
+            const clampedTop = Math.max(minTop, Math.min(bounds.top, maxTop));
+
+            drawer.style.bottom = 'auto';
+            drawer.style.right = 'auto';
+            drawer.style.left = clampedLeft + 'px';
+            drawer.style.top = clampedTop + 'px';
+
+            if (bounds.width && bounds.width >= 280) {
+                drawer.style.width = Math.min(bounds.width, window.innerWidth - 20) + 'px';
+            }
+            if (bounds.height && bounds.height >= 200) {
+                drawer.style.height = Math.min(bounds.height, window.innerHeight - 80) + 'px';
+            }
+        }
+    } catch (e) {
+        console.warn("恢复播放列表窗口位置尺寸失败:", e);
+    }
+}
+
 /**
- * 🖐️ 为播放列表 Drawer 绑定平滑拖拽移动引擎（支持 Mouse 与 Touch，基于 PointerEvent）
+ * 🖐️ 为播放列表 Drawer 绑定平滑拖拽移动与位置/尺寸 LocalStorage 记忆引擎
  */
 function initDraggablePlaylistDrawer() {
     const drawer = document.getElementById("playlistDrawer");
     if (!drawer) return;
+
+    // 恢复历史位置与尺寸
+    restoreDrawerBoundsFromStorage();
+
+    // 监听拖拽缩放并自动记忆尺寸
+    if (window.ResizeObserver && !drawer._resizeObserved) {
+        drawer._resizeObserved = true;
+        let resizeTimer = null;
+        const ro = new ResizeObserver(() => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                saveDrawerBoundsToStorage();
+            }, 300);
+        });
+        ro.observe(drawer);
+    }
+
     const header = drawer.querySelector(".playlist-drawer-header");
     if (!header || header._dragBound) return;
     header._dragBound = true;
@@ -848,6 +919,8 @@ function initDraggablePlaylistDrawer() {
                     header.releasePointerCapture(e.pointerId);
                 }
             } catch (err) {}
+            // 拖拽完成后持久化记录位置
+            saveDrawerBoundsToStorage();
         }
     };
 

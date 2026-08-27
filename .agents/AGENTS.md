@@ -255,6 +255,10 @@ src/test/java/com/pewee/neteasemusic/
 2. **CSS Resizable 规范**：
    - 浮动卡片支持缩放时，使用 `resize: both; overflow: hidden;`，并设定合理的 `min-width` / `min-height` / `max-width` / `max-height`。
 
+3. **位置与尺寸 LocalStorage 记忆持久化与自适应恢复**：
+   - 用户拖拽移动与缩放窗口后，应自动将 `{left, top, width, height}` 存入 `localStorage`（缩放利用 `ResizeObserver` 防抖捕获）；
+   - 页面重新载入时自动恢复历史位置与尺寸，并执行视口边界安全校准（`Math.min(savedPos, maxViewportPos)`），防止屏幕旋转或窗口缩小时发生越界遮挡。
+
 ---
 
 ## ⚠️ 11. 新增功能必查清单
