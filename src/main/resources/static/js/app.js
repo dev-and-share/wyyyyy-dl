@@ -780,6 +780,77 @@ function togglePlaylistDrawer() {
     }
 }
 
+/**
+ * 🖐️ 为播放列表 Drawer 绑定平滑拖拽移动引擎（支持 Mouse 与 Touch）
+ */
+function initDraggablePlaylistDrawer() {
+    const drawer = document.getElementById("playlistDrawer");
+    if (!drawer) return;
+    const header = drawer.querySelector(".playlist-drawer-header");
+    if (!header) return;
+
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let initialLeft = 0, initialTop = 0;
+
+    const onPointerDown = (e) => {
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'INPUT') return;
+        
+        isDragging = true;
+        const rect = drawer.getBoundingClientRect();
+        
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        drawer.style.bottom = 'auto';
+        drawer.style.right = 'auto';
+        drawer.style.left = initialLeft + 'px';
+        drawer.style.top = initialTop + 'px';
+        
+        startX = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0].clientX);
+        startY = (e.clientY !== undefined) ? e.clientY : (e.touches && e.touches[0].clientY);
+
+        document.addEventListener('mousemove', onPointerMove);
+        document.addEventListener('mouseup', onPointerUp);
+        document.addEventListener('touchmove', onPointerMove, { passive: false });
+        document.addEventListener('touchend', onPointerUp);
+    };
+
+    const onPointerMove = (e) => {
+        if (!isDragging) return;
+        if (e.cancelable) e.preventDefault();
+        
+        const clientX = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0].clientX);
+        const clientY = (e.clientY !== undefined) ? e.clientY : (e.touches && e.touches[0].clientY);
+        if (clientX === undefined || clientY === undefined) return;
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        let newLeft = initialLeft + deltaX;
+        let newTop = initialTop + deltaY;
+
+        const maxLeft = Math.max(10, window.innerWidth - drawer.offsetWidth - 10);
+        const maxTop = Math.max(10, window.innerHeight - 60);
+
+        newLeft = Math.max(10, Math.min(newLeft, maxLeft));
+        newTop = Math.max(10, Math.min(newTop, maxTop));
+
+        drawer.style.left = newLeft + 'px';
+        drawer.style.top = newTop + 'px';
+    };
+
+    const onPointerUp = () => {
+        isDragging = false;
+        document.removeEventListener('mousemove', onPointerMove);
+        document.removeEventListener('mouseup', onPointerUp);
+        document.removeEventListener('touchmove', onPointerMove);
+        document.removeEventListener('touchend', onPointerUp);
+    };
+
+    header.addEventListener('mousedown', onPointerDown);
+    header.addEventListener('touchstart', onPointerDown, { passive: true });
+}
+
 function toggleAutoSkipTrial(checked) {
     autoSkipTrial = checked;
     localStorage.setItem(STORAGE_AUTO_SKIP_KEY, checked ? 'true' : 'false');
@@ -1335,6 +1406,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // 尝试恢复 LocalStorage 记忆
     restorePlayerStateFromStorage();
+
+    // 初始化播放列表窗口拖拽移动能力
+    initDraggablePlaylistDrawer();
 
     if (player) {
         player.onerror = function() {
