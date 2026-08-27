@@ -218,11 +218,52 @@ src/test/java/com/pewee/neteasemusic/
 
 ---
 
-## ⚠️ 7. 新增功能必查清单
+---
+
+## ⚡ 8. SWR 秒开缓存与 PWA 离线存储规范
+
+1. **SWR (Stale-While-Revalidate) 本地优先加载机制**：
+   - 歌单列表、歌单详情、专辑详情等频繁访问的页面，统一采用 `getApiCache(key)` 先行 0ms 渲染本地已缓存数据；
+   - 随后后台静默发起 API 请求，利用 `isFastDataEqual(cached, fresh)` 深度对比：若无变动静默返回，有变动则平滑热更新并写入 `setApiCache(key, fresh)`。
+
+2. **PWA & Cache API 音频离线持久化**：
+   - 音频缓存统一写入独立 Cache 容器 `netease-music-audio-v1`；
+   - 在 `app.js` 初始化时调用 `navigator.storage.persist()` 申请永久存储权限，防止移动端系统因存储策略自动清理音频缓存；
+   - 查询缓存列表统一使用 `getAllCacheKeys()` 获取全部缓存请求 URL。
+
+---
+
+## 🌳 9. 超大歌单全量突破与内存级索引树
+
+1. **突破官方 1000 首限制**：
+   - 网易云 `/api/v6/playlist/detail` 的 `playlist.tracks` 固定仅返回前 1000 项，但 `playlist.trackIds` 包含全量歌曲 ID；
+   - `AnalysisService.analyzePlaylist` 会检测 `trackIds.size() > tracks.size()`，分批（每批 500 首）自动调用 `neteaseAPIService.songDetail(chunk)` 补齐剩余全部曲目，确保 1600+ 超大歌单完整解析与下载。
+
+2. **批量内存索引树 (`DownloadHistoryDAO.markLocalStatusBatch`)**：
+   - 面对 1600+ 首歌曲的本地下载状态匹配，**严禁在循环中执行单条 SQLite SQL 查询**（会造成连接耗尽与磁盘 I/O 阻塞）；
+   - 必须通过 `markLocalStatusBatch()` 一次性读取数据库有效记录，在 Java 堆内存中构建 `Set<Long> songIds` 与 `Map<String, LocalTrackRef> fuzzyMap` 索引树，在数十毫秒内完成全量比对与状态标记。
+
+---
+
+## 🖐️ 10. 现代 Web 交互与窗口拖拽/缩放规范
+
+1. **全平台平滑拖拽与边界保护 (`PointerEvent`)**：
+   - 窗口拖拽一律使用现代 `PointerEvent`（`pointerdown`, `pointermove`, `pointerup`）配合 `header.setPointerCapture(e.pointerId)`，确保鼠标快速移动出窗口或多点触控时事件不丢帧；
+   - 拖拽手柄元素必须显式配置 `touch-action: none;` 与 `user-select: none;`，防止 iOS Safari / Android Chrome 拦截为页面手势滚动。
+   - 拖拽计算必须包含视口边界限制（`Math.max(10, Math.min(newPos, maxPos))`），防止窗口被拖拽移出可视区域。
+
+2. **CSS Resizable 规范**：
+   - 浮动卡片支持缩放时，使用 `resize: both; overflow: hidden;`，并设定合理的 `min-width` / `min-height` / `max-width` / `max-height`。
+
+---
+
+## ⚠️ 11. 新增功能必查清单
 
 每次新增功能时，请对照以下清单逐项确认：
 
 - [ ] SQL 查询中不出现 `status = 'COMPLETED'`（参见第 2 章）
+- [ ] 大数据量匹配使用 `markLocalStatusBatch` 内存索引树，不写循环 SQL（参见第 9 章）
+- [ ] 拖拽元素配置 `touch-action: none;` 与 `setPointerCapture`（参见第 10 章）
 - [ ] 新 Controller/DAO 方法修改后，同步更新并运行对应 UT
 - [ ] 修改任何 `static/css/` 或 `static/js/` 文件后，递增 `home.html` 中资源 `?v=` 版本号
 - [ ] 文件路径操作均通过 `resolveFile()` / `toRelativePath()`，不手动拼接路径
