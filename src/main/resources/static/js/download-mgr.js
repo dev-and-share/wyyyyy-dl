@@ -288,3 +288,259 @@ function deleteHistoryItem(id) {
         })
         .catch(err => alert("删除失败: " + err));
 }
+
+/* ==========================================================================
+   📱 浏览器离线缓存管理 (Browser Cache API Management)
+   ========================================================================== */
+
+async function loadBrowserCacheList() {
+    if (!('caches' in window)) {
+        alert('当前浏览器不支持 Cache API 或未在 HTTPS/PWA 环境下运行');
+        return;
+    }
+    
+    const list = document.getElementById("browser-cache-list");
+    if (list) list.innerHTML = '<li style="padding:15px; text-align:center; color:#888;">正在扫描浏览器缓存...</li>';
+    
+    try {
+        const cacheNames = await caches.keys();
+        let allRequests = [];
+        for (const cName of cacheNames) {
+            const cache = await caches.open(cName);
+            const reqs = await cache.keys();
+            allRequests.push(...reqs);
+        }
+        
+        // 过滤仅提取音频流缓存
+        const rawUrls = allRequests.map(r => r.url).filter(url => 
+            url.includes('/v2/stream') || url.includes('/history/stream') || url.includes('/v2/history/stream')
+        );
+
+        // 统一转为相对路径并去重，同时智能合并别名（优先保留含 historyId 或更长参数的真实流地址）
+        const urlMap = new Map();
+        for (const fullUrl of rawUrls) {
+            const relUrl = fullUrl.replace(window.location.origin, '');
+            const idMatch = relUrl.match(/[?&]id=(\d+)/);
+            const historyIdMatch = relUrl.match(/[?&]historyId=(\d+)/);
+            
+            const historyId = historyIdMatch ? parseInt(historyIdMatch[1], 10) : null;
+            const songId = idMatch ? parseInt(idMatch[1], 10) : null;
+
+            // 构造去重唯一标识：优先使用 historyId，其次 songId，最后 fallback 为完整 relUrl
+            let dedupeKey = relUrl;
+            if (historyId && historyId > 0) {
+                dedupeKey = `history_${historyId}`;
+            } else if (songId && songId > 0) {
+                dedupeKey = `song_${songId}`;
+            }
+
+            if (!urlMap.has(dedupeKey) || relUrl.length > urlMap.get(dedupeKey).relUrl.length) {
+                urlMap.set(dedupeKey, {
+                    fullUrl: fullUrl,
+                    relUrl: relUrl,
+                    songId: songId,
+                    historyId: historyId
+                });
+            }
+        }
+
+        const uniqueItems = Array.from(urlMap.values());
+        document.getElementById('cache-stat-total').textContent = uniqueItems.length;
+
+        if (uniqueItems.length === 0) {
+            if (list) list.innerHTML = '<li style="padding:15px; text-align:center; color:#888;">当前设备浏览器暂无离线音乐缓存</li>';
+            estimateBrowserCacheSize();
+            return;
+        }
+
+        // 读取本地元数据
+        const metaMap = typeof getCachedTrackMetaMap === 'function' ? getCachedTrackMetaMap() : {};
+
+        // 收集需要从后端数据库异步批量补充元数据的 historyIds 与 songIds
+        const needHistoryIds = [];
+        const needSongIds = [];
+
+        uniqueItems.forEach(item => {
+            const meta = metaMap[item.relUrl] || metaMap[item.fullUrl] || {};
+            if (!meta.songName || meta.songName === '未知歌曲') {
+                if (item.historyId && item.historyId > 0) {
+                    needHistoryIds.push(item.historyId);
+                } else if (item.songId && item.songId > 0) {
+                    needSongIds.push(item.songId);
+                }
+            }
+        });
+
+        // 如果有缺失信息，批量调用后端 API 补全
+        if (needHistoryIds.length > 0 || needSongIds.length > 0) {
+            try {
+                const batchResp = await axios.post('/v2/history/batch_detail', {
+                    historyIds: [...new Set(needHistoryIds)],
+                    songIds: [...new Set(needSongIds)]
+                });
+
+                if (batchResp.data && batchResp.data.code === '000000' && batchResp.data.data) {
+                    const byHistory = batchResp.data.data.byHistoryId || [];
+                    const bySong = batchResp.data.data.bySongId || [];
+
+                    byHistory.forEach(record => {
+                        const recHistoryId = record.id;
+                        uniqueItems.forEach(it => {
+                            if (it.historyId === recHistoryId) {
+                                const newMeta = {
+                                    id: record.songId || it.songId,
+                                    songName: record.songName,
+                                    artist: record.artist,
+                                    album: record.album,
+                                    fileSize: record.fileSize
+                                };
+                                if (typeof saveCachedTrackMeta === 'function') {
+                                    saveCachedTrackMeta(it.relUrl, newMeta);
+                                }
+                                metaMap[it.relUrl] = { ...(metaMap[it.relUrl] || {}), ...newMeta };
+                            }
+                        });
+                    });
+
+                    bySong.forEach(record => {
+                        const recSongId = record.songId;
+                        uniqueItems.forEach(it => {
+                            if (it.songId === recSongId && !metaMap[it.relUrl]?.songName) {
+                                const newMeta = {
+                                    id: record.songId,
+                                    songName: record.songName,
+                                    artist: record.artist,
+                                    album: record.album,
+                                    fileSize: record.fileSize
+                                };
+                                if (typeof saveCachedTrackMeta === 'function') {
+                                    saveCachedTrackMeta(it.relUrl, newMeta);
+                                }
+                                metaMap[it.relUrl] = { ...(metaMap[it.relUrl] || {}), ...newMeta };
+                            }
+                        });
+                    });
+                }
+            } catch (err) {
+                console.warn("[PWA] 批量获取缓存曲目信息失败:", err);
+            }
+        }
+
+        // 渲染列表
+        let html = '';
+        uniqueItems.forEach(item => {
+            const meta = metaMap[item.relUrl] || metaMap[item.fullUrl] || {};
+            let songName = meta.songName;
+            let artist = meta.artist;
+            let fileSize = meta.fileSize || 0;
+            let cover = meta.cover || '/favicon.png';
+            let album = meta.album || '';
+
+            // 兜底智能降级：从 URL 文件名中提炼歌名
+            if (!songName || songName === '未知歌曲') {
+                if (item.historyId) {
+                    songName = `离线音轨 #${item.historyId}`;
+                } else if (item.songId && item.songId > 0) {
+                    songName = `离线单曲 #${item.songId}`;
+                } else {
+                    songName = item.relUrl.split('/').pop().split('?')[0] || '本地缓存音频';
+                }
+            }
+
+            if (!artist) {
+                artist = '浏览器已离线';
+            }
+
+            const sizeText = fileSize > 0 ? formatBytes(fileSize) : '离线存储';
+            const safeName = (songName || '').replace(/'/g, "\\'");
+            const safeArtist = (artist || '').replace(/'/g, "\\'");
+            const safeCover = (cover || '').replace(/'/g, "\\'");
+            const safeAlbum = (album || '').replace(/'/g, "\\'");
+
+            html += `
+                <li class="history-item-card">
+                    <!-- 📌 第一排：歌名 100% 满宽全显 -->
+                    <div class="card-title-row">
+                        <strong class="card-song-name">${typeof escapeHtml === 'function' ? escapeHtml(songName) : songName}</strong>
+                    </div>
+                    <!-- 📌 第二排：左侧歌手大小状态 + 右侧按钮 -->
+                    <div class="card-sub-row">
+                        <div class="sub-left">
+                            <span class="card-artist">${typeof escapeHtml === 'function' ? escapeHtml(artist) : artist}</span>
+                            <span class="card-size">${sizeText}</span>
+                            <span class="status-badge status-browser" title="已存储在当前设备浏览器，支持断网秒播">📲 离线</span>
+                        </div>
+                        <div class="sub-right">
+                            <button class="action-btn btn-play" onclick="playAudioOnline('${encodeURI(item.relUrl)}', '${safeName}', '${safeArtist}', '${safeCover}', '${safeAlbum}')">▶ 播放</button>
+                            <button class="action-btn btn-del" onclick="deleteBrowserCacheItem('${encodeURI(item.relUrl)}')">🗑 删除</button>
+                        </div>
+                    </div>
+                </li>
+            `;
+        });
+
+        if (list) list.innerHTML = html;
+        estimateBrowserCacheSize();
+        
+    } catch(e) {
+        if (list) list.innerHTML = `<li style="padding:15px; text-align:center; color:#ef4444;">扫描缓存失败: ${e.message}</li>`;
+    }
+}
+
+async function deleteBrowserCacheItem(url) {
+    if (!confirm('确定要从当前浏览器的离线缓存中删除此首歌曲吗？（删除后断网将无法播放）')) return;
+    try {
+        const decodedUrl = decodeURI(url);
+        const cacheNames = await caches.keys();
+        for (const cName of cacheNames) {
+            const cache = await caches.open(cName);
+            await cache.delete(decodedUrl);
+            if (decodedUrl.startsWith('/')) {
+                await cache.delete(window.location.origin + decodedUrl);
+            } else {
+                await cache.delete(decodedUrl.replace(window.location.origin, ''));
+            }
+        }
+        if (typeof removeCachedTrackMeta === 'function') {
+            removeCachedTrackMeta(decodedUrl);
+        }
+        loadBrowserCacheList();
+    } catch(e) {
+        alert("删除缓存失败: " + e.message);
+    }
+}
+
+async function clearAllBrowserCache() {
+    if (!confirm('确定要清空本浏览器的所有离线音乐吗？\n\n⚠️ 此操作仅删除您设备上的缓存，不会影响服务器端的文件。')) return;
+    try {
+        const cacheNames = await caches.keys();
+        for (const cName of cacheNames) {
+            const cache = await caches.open(cName);
+            const reqs = await cache.keys();
+            for (const req of reqs) {
+                if (req.url.includes('/v2/stream') || req.url.includes('/history/stream')) {
+                    await cache.delete(req);
+                }
+            }
+        }
+        localStorage.removeItem('pwa_cached_tracks_meta_v1');
+        loadBrowserCacheList();
+        alert("✅ 已清空当前浏览器的所有离线音乐缓存！");
+    } catch(e) {
+        alert("清空失败: " + e.message);
+    }
+}
+
+async function estimateBrowserCacheSize() {
+    if ('storage' in navigator && 'estimate' in navigator.storage) {
+        try {
+            const estimate = await navigator.storage.estimate();
+            const usage = estimate.usage || 0;
+            document.getElementById('cache-stat-size').textContent = formatBytes(usage);
+        } catch(e) {
+            console.warn("估算存储空间失败", e);
+        }
+    } else {
+        document.getElementById('cache-stat-size').textContent = "当前浏览器不支持估算";
+    }
+}

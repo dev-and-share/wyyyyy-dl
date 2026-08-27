@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.2.0">
+    <link rel="stylesheet" href="/css/style.css?v=3.4.0">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -183,7 +183,28 @@
     <!-- 4. 下载管理 Tab 内容 -->
     <div id="tab-download-mgr" class="tab-content" style="display:none;">
         <div class="accordion-wrapper">
-            <div class="accordion-card active" id="card-download-history">
+            <!-- 浏览器缓存管理 Card -->
+            <div class="accordion-card active" id="card-browser-cache">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📲 浏览器离线缓存管理</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
+                        <div style="font-size:14px;"><strong>已缓存歌曲：</strong><span id="cache-stat-total">0</span> 首</div>
+                        <div style="font-size:14px;"><strong>估算大小：</strong><span id="cache-stat-size">0 B</span></div>
+                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="loadBrowserCacheList()">🔄 扫描/刷新缓存</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除所有缓存</button>
+                        </div>
+                    </div>
+                    <ul class="data-list scrollable-list" id="browser-cache-list">
+                        <li style="padding:15px; text-align:center; color:#888;">点击“扫描/刷新缓存”查看已缓存在本浏览器的歌曲</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="accordion-card" id="card-download-history">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
                     <h3 class="accordion-title">📥 本地下载历史与文件管理</h3>
                     <span class="accordion-icon">▼</span>
@@ -259,7 +280,7 @@
                 <div class="audio-text">
                     <div class="audio-title-row">
                         <div id="audioBarTitle" class="audio-title">未在播放</div>
-                        <span id="audioSourceBadge" class="audio-source-badge badge-local" style="display: none;">⚡ 本地</span>
+                        <span id="audioSourceBadge" class="audio-source-badge icon-only badge-server" style="display: none;" title="🖥️ 已存在服务器磁盘">🖥️</span>
                     </div>
                     <div id="audioBarArtist" class="audio-artist">未知歌手</div>
                 </div>
@@ -336,7 +357,7 @@
                     <div class="fullscreen-meta-info">
                         <div class="fullscreen-title-wrap">
                             <div id="fullscreenTitle" class="fullscreen-title">未在播放</div>
-                            <span id="fullscreenBadge" class="audio-source-badge badge-local" style="display: none;">⚡ 本地</span>
+                            <span id="fullscreenBadge" class="audio-source-badge icon-only badge-server" style="display: none;" title="🖥️ 已存在服务器磁盘">🖥️</span>
                         </div>
                         <div id="fullscreenArtist" class="fullscreen-artist">未知歌手</div>
                     </div>
@@ -371,13 +392,13 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v3.2.1</div>
+    <div class="app-version-footer">网易云下载器 · PWA v3.4.0</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=3.2.1"></script>
-    <script src="/js/album.js?v=3.2.1"></script>
-    <script src="/js/search.js?v=3.2.1"></script>
-    <script src="/js/download-mgr.js?v=3.2.1"></script>
-    <script src="/js/app.js?v=3.2.1"></script>
+    <script src="/js/playlist.js?v=3.4.0"></script>
+    <script src="/js/album.js?v=3.4.0"></script>
+    <script src="/js/search.js?v=3.4.0"></script>
+    <script src="/js/download-mgr.js?v=3.4.0"></script>
+    <script src="/js/app.js?v=3.4.0"></script>
 </body>
 </html>

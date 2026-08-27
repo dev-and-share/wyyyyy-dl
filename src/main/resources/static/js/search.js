@@ -63,14 +63,17 @@ function renderSearchPage(page) {
             const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
             const albumHtml = item.album ? ` <span style="color:var(--text-muted); font-size:12px;">[专辑: ${item.album}]</span>` : '';
 
+            const localBadge = `<span id="badge-search-${item.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
+
             li.innerHTML = `
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;">
-                    <strong>${index + 1}. ${item.name}</strong>${artistHtml}${albumHtml}
+                    <strong>${index + 1}. ${item.name}</strong>${artistHtml}${albumHtml}${localBadge}
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <button class="jump-link-btn" onclick="playSongById('${item.id}', '${(item.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>
                     <button class="jump-link-btn" onclick="jumpToSongDetail('${item.id}')">🔍 查看</button>
                     <button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick="downloadSingle('${item.id}')">📥 下载</button>
+                    <button id="search-cache-btn-${item.id}" class="btn-primary" style="padding:4px 8px; font-size:12px; background:#0284c7; margin-left:4px;" onclick="cacheTracksToPhoneBatch([{id: '${item.id}', songId: '${item.id}'}], 'search-cache-btn-${item.id}', '📲 缓存')">📲 缓存</button>
                 </div>
             `;
         } else if (type === "1000") {

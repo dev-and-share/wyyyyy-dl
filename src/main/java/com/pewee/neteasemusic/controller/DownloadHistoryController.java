@@ -99,6 +99,41 @@ public class DownloadHistoryController {
     }
 
     /**
+     * 根据 historyId 或 songId 获取单条历史记录详情 (用于匹配离线缓存元数据)
+     */
+    @GetMapping("/history/detail")
+    public RespEntity<DownloadHistoryDAO.DownloadHistoryItem> getHistoryDetail(
+            @RequestParam(value = "historyId", required = false) Long historyId,
+            @RequestParam(value = "songId", required = false) Long songId) {
+        DownloadHistoryDAO.DownloadHistoryItem item = null;
+        if (historyId != null && historyId > 0) {
+            item = downloadHistoryDAO.getRecordById(historyId);
+        }
+        if (item == null && songId != null && songId > 0) {
+            item = downloadHistoryDAO.findLocalFileBySongId(songId);
+        }
+        return RespEntity.apply(CommonRespInfo.SUCCESS, item);
+    }
+
+    /**
+     * 批量获取历史记录详情 (用于前端批量匹配浏览器离线缓存歌曲信息)
+     */
+    @PostMapping("/history/batch_detail")
+    public RespEntity<Map<String, Object>> getBatchHistoryDetail(@RequestBody Map<String, List<Long>> requestBody) {
+        List<Long> historyIds = requestBody != null ? requestBody.get("historyIds") : null;
+        List<Long> songIds = requestBody != null ? requestBody.get("songIds") : null;
+
+        Map<String, Object> result = new HashMap<>();
+        if (historyIds != null && !historyIds.isEmpty()) {
+            result.put("byHistoryId", downloadHistoryDAO.getRecordsByIds(historyIds));
+        }
+        if (songIds != null && !songIds.isEmpty()) {
+            result.put("bySongId", downloadHistoryDAO.getRecordsBySongIds(songIds));
+        }
+        return RespEntity.apply(CommonRespInfo.SUCCESS, result);
+    }
+
+    /**
      * 获取统计数据
      */
     @GetMapping("/history/stats")

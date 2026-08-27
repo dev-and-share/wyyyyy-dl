@@ -74,4 +74,33 @@ public class DownloadHistoryControllerTest {
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.totalCount").value(5));
     }
+
+    @Test
+    @DisplayName("测试 /v2/history/detail: 单条详情获取")
+    public void testGetHistoryDetail() throws Exception {
+        DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
+        item.setId(10L);
+        item.setSongName("用心良苦");
+        item.setArtist("张宇");
+
+        Mockito.when(downloadHistoryDAO.getRecordById(10L)).thenReturn(item);
+
+        mockMvc.perform(get("/v2/history/detail").param("historyId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.songName").value("用心良苦"));
+    }
+
+    @Test
+    @DisplayName("测试 /v2/history/batch_detail: 批量详情获取")
+    public void testGetBatchHistoryDetail() throws Exception {
+        Mockito.when(downloadHistoryDAO.getRecordsByIds(any())).thenReturn(new ArrayList<>());
+        Mockito.when(downloadHistoryDAO.getRecordsBySongIds(any())).thenReturn(new ArrayList<>());
+
+        mockMvc.perform(post("/v2/history/batch_detail")
+                .contentType("application/json")
+                .content("{\"historyIds\":[1,2], \"songIds\":[100,200]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"));
+    }
 }

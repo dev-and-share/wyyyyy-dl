@@ -35,9 +35,7 @@ function loadAlbumInfo() {
                 const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
                 const isLocalTrack = (song.isLocal === true);
 
-                const localBadge = isLocalTrack 
-                    ? '<span class="status-badge status-ok" style="font-size:9.5px; padding:1px 5px; margin-left:6px; flex-shrink:0;">⚡ 本地</span>' 
-                    : '';
+                const localBadge = `<span id="badge-track-${song.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
 
                 const playBtnHtml = isLocalTrack
                     ? `<button class="jump-link-btn" style="background:rgba(34,197,94,0.18); color:#4ade80; border-color:rgba(34,197,94,0.35);" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="本地无损秒播">▶️ 播放</button>`
@@ -52,6 +50,7 @@ function loadAlbumInfo() {
                             ${playBtnHtml}
                             <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🔍 查看</button>
                             <button class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0;" onclick="downloadSingle('${song.id}')">📥 下载</button>
+                            <button id="al-cache-btn-${song.id}" class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0; margin-left:4px; background:#0284c7;" onclick="cacheTracksToPhoneBatch([{id: '${song.id}', songId: '${song.id}'}], 'al-cache-btn-${song.id}', '📲 缓存')">📲 缓存</button>
                         </div>
                     </li>
                 `;
@@ -68,7 +67,7 @@ function loadAlbumInfo() {
                         <div class="detail-header-sub">歌手：${album.artist} | 发行：${album.publishTime || '未知'}</div>
                         <div class="detail-btn-group">
                             <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">🖥️ 下载到电脑</button>
-                            <button class="btn-primary flex-1-btn" id="album-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(currentAlbum ? currentAlbum.songs : [], 'album-cache-btn', '📱 缓存到手机')">📱 缓存到手机 (计算中...)</button>
+                            <button class="btn-primary flex-1-btn" id="album-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(currentAlbum ? currentAlbum.songs : [], 'album-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
                             <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放专辑</button>
                         </div>
                     </div>
@@ -78,7 +77,8 @@ function loadAlbumInfo() {
                     ${songsHtml}
                 </ul>
             `;
-            refreshPhoneCacheBtn(albumSongs, 'album-cache-btn', '📱 缓存到手机');
+            refreshPhoneCacheBtn(albumSongs, 'album-cache-btn', '📲 缓存到浏览器');
+            asyncUpdateListBadges(albumSongs);
         })
         .catch(err => {
             const errorText = err.message || err;

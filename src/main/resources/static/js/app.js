@@ -169,11 +169,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 5. 注册 Service Worker (PWA 离线支持)
+    // 5. 注册 Service Worker (PWA 离线支持) 与申请永久存储配额
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
             .then(reg => console.log('[PWA] ServiceWorker 注册成功, scope:', reg.scope))
             .catch(err => console.error('[PWA] ServiceWorker 注册失败:', err));
+    }
+    if ('storage' in navigator && 'persist' in navigator.storage) {
+        navigator.storage.persist().then(persistent => {
+            console.log('[Storage] 浏览器持久化存储状态:', persistent ? '✅ 已持久化 (Chrome不会自动清理)' : '⚠️ 临时配额 (系统存储紧张时可能被清理)');
+        });
     }
 
     // 自动触发一次后台任务轮询（如果有未完成任务）
@@ -410,7 +415,7 @@ function fetchDownloadTasks() {
                     if (task.status === 'SUCCESS' || task.status === 'SKIP') {
                         const revealBtn = document.createElement('button');
                         revealBtn.className = 'btn-icon';
-                        revealBtn.style.cssText = 'margin-left:6px; font-size:12px; padding:2px 6px; background:rgba(255,255,255,0.75); border:1px solid #ccc; border-radius:4px; cursor:pointer; color:#333;';
+                        revealBtn.style.cssText = 'margin-left:6px; font-size:12px; padding:2px 6px; background:rgba(255,255,255,0.75); border:1px solid #ccc; border-radius:4px; cursor:pointer; color:#333; white-space:nowrap; flex-shrink:0;';
                         revealBtn.title = '在 Finder / 资源管理器中高亮选中此文件';
                         revealBtn.textContent = '📂 定位';
                         revealBtn.onclick = (e) => {
@@ -566,20 +571,7 @@ function prepareTrackInUI(track, seekTime) {
             if (song && song.url && player) {
                 player.src = song.url;
                 
-                const sourceBadge = document.getElementById("audioSourceBadge");
-                if (sourceBadge) {
-                    if (song.url.includes("/v2/stream") || song.url.includes("/v2/history/stream") || song.url.includes("/history/stream")) {
-                        sourceBadge.className = "audio-source-badge badge-local";
-                        sourceBadge.innerHTML = "⚡ 本地";
-                        sourceBadge.title = "⚡ 当前播放的是本地音轨";
-                        sourceBadge.style.display = "inline-flex";
-                    } else {
-                        sourceBadge.className = "audio-source-badge badge-online";
-                        sourceBadge.innerHTML = "🌐 线上";
-                        sourceBadge.title = "🌐 当前播放的是网络解析音频";
-                        sourceBadge.style.display = "inline-flex";
-                    }
-                }
+                updatePlayerBadges(song.url);
 
                 currentPlayingLyric = song.lyric || "";
                 parsedLrcList = parseLrc(currentPlayingLyric);
@@ -824,8 +816,7 @@ function renderPlaylistDrawer() {
         
         const trackTitle = escapeHtml(track.name || '未知歌曲');
         const trackArtist = escapeHtml(track.artist || '未知歌手');
-        const isLocalTrack = (track.isLocal === true) || (track.resolvedUrl && (track.resolvedUrl.includes('/v2/stream') || track.resolvedUrl.includes('/history/stream')));
-        const localTag = isLocalTrack ? '<span class="status-badge status-ok" style="font-size:9px; padding:0 4px; margin-left:4px; flex-shrink:0;">⚡ 本地</span>' : '';
+        const localTag = `<span id="badge-drawer-${track.id}" class="status-badge icon-only" style="margin-left:4px; display:none;"></span>`;
 
         li.innerHTML = `
             <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px; display:flex; align-items:center;" title="${trackTitle} - ${trackArtist}">
@@ -841,6 +832,8 @@ function renderPlaylistDrawer() {
         `;
         list.appendChild(li);
     });
+
+    asyncUpdateListBadges(globalPlaylistQueue, 'badge-drawer-');
 }
 
 function toggleMinimizeAudioPlayer() {
@@ -963,21 +956,15 @@ function playAudioOnline(url, name, artist, cover, lyric) {
             fullCover.classList.add("playing");
         }
         
-        const sourceBadge = document.getElementById("audioSourceBadge");
-        const fullBadge = document.getElementById("fullscreenBadge");
-        
-        if (sourceBadge) {
-            if (url && (url.includes("/v2/stream") || url.includes("/v2/history/stream") || url.includes("/history/stream"))) {
-                sourceBadge.className = "audio-source-badge badge-local";
-                sourceBadge.innerHTML = "⚡ 本地";
-                sourceBadge.title = "⚡ 当前播放的是本地音轨";
-                sourceBadge.style.display = "inline-flex";
-            } else {
-                sourceBadge.className = "audio-source-badge badge-online";
-                sourceBadge.innerHTML = "🌐 线上";
-                sourceBadge.title = "🌐 当前播放的是网络解析音频";
-                sourceBadge.style.display = "inline-flex";
-            }
+        updatePlayerBadges(url);
+
+        if (url && name && typeof saveCachedTrackMeta === 'function') {
+            saveCachedTrackMeta(url, {
+                songName: titleText,
+                artist: artistText,
+                cover: coverSrc,
+                album: album || ''
+            });
         }
 
         currentPlayingLyric = lyric || "";
@@ -1255,7 +1242,7 @@ function closeLyricModal() {
    📱 📱 手机端 Cache API 离线预取引擎 (Mobile PWA Cache Engine)
    ========================================================================== */
 
-const PWA_CACHE_NAME = 'netease-dl-v3.0.0';
+const PWA_CACHE_NAME = 'netease-music-audio-v1';
 
 /**
  * 🎯 静默解构音频 Blob 的真实播放时长 (Duration) 秒数
@@ -1326,9 +1313,9 @@ async function countCachedTracks(tracks) {
 }
 
 /**
- * 刷新某个「📱 缓存到手机」按钮的缓存计数状态
+ * 刷新某个「📲 缓存到浏览器」按钮的缓存计数状态
  */
-async function refreshPhoneCacheBtn(tracks, btnId, baseText = '📱 缓存到手机') {
+async function refreshPhoneCacheBtn(tracks, btnId, baseText = '📲 缓存到浏览器') {
     const btn = document.getElementById(btnId);
     if (!btn || !tracks || tracks.length === 0) return;
     const total = tracks.length;
@@ -1339,10 +1326,52 @@ async function refreshPhoneCacheBtn(tracks, btnId, baseText = '📱 缓存到手
     }
 }
 
+const PWA_TRACK_META_KEY = 'pwa_cached_tracks_meta_v1';
+
+/**
+ * 📱 获取已存储在本地的缓存曲目元数据映射
+ */
+function getCachedTrackMetaMap() {
+    try {
+        return JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
+    } catch(e) {
+        return {};
+    }
+}
+
+/**
+ * 📱 保存单首歌曲的离线缓存元数据
+ */
+function saveCachedTrackMeta(url, meta) {
+    if (!url || !meta) return;
+    try {
+        const map = getCachedTrackMetaMap();
+        const cleanUrl = url.replace(window.location.origin, '');
+        map[cleanUrl] = { ...(map[cleanUrl] || {}), ...meta, updatedAt: Date.now() };
+        localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(map));
+    } catch(e) {
+        console.warn("[PWA] 保存歌曲缓存元数据失败", e);
+    }
+}
+
+/**
+ * 📱 删除单首歌曲的离线缓存元数据
+ */
+function removeCachedTrackMeta(url) {
+    if (!url) return;
+    try {
+        const map = getCachedTrackMetaMap();
+        const cleanUrl = url.replace(window.location.origin, '');
+        delete map[cleanUrl];
+        delete map[url];
+        localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(map));
+    } catch(e) {}
+}
+
 /**
  * 📱 智能双轨预取引擎：支持后端落盘与手机 Cache API 写入
  */
-async function cacheTracksToPhoneBatch(tracks, btnId, baseText = '📱 缓存到手机') {
+async function cacheTracksToPhoneBatch(tracks, btnId, baseText = '📲 缓存到浏览器') {
     const btn = document.getElementById(btnId);
     if (!('caches' in window)) {
         alert("当前浏览器不支持 Cache API 或未以 HTTPS/PWA 模式运行");
@@ -1374,6 +1403,7 @@ async function cacheTracksToPhoneBatch(tracks, btnId, baseText = '📱 缓存到
                 // 1. 调用 /Song_V1 获取后端本地无损流或网易云线上音频 URL
                 const resp = await axios.post('/Song_V1', new URLSearchParams({ id: id, level: 'lossless', type: 'json' }));
                 let audioUrl = resp.data && resp.data.data ? resp.data.data.url : null;
+                const songData = resp.data && resp.data.data ? resp.data.data : {};
 
                 // 2. 如果后端本地尚无物理文件且也未解析出 URL，主动触发服务端下载落盘
                 if (!audioUrl) {
@@ -1407,15 +1437,34 @@ async function cacheTracksToPhoneBatch(tracks, btnId, baseText = '📱 缓存到
                             });
                             await cache.put(audioUrl, validResponse);
                             
-                            // 同时关联一个别名键方便匹配
-                            const aliasUrl = `/v2/stream?id=${id}`;
-                            if (audioUrl !== aliasUrl) {
-                                const aliasResponse = new Response(blob, {
-                                    status: streamResp.status,
-                                    statusText: streamResp.statusText,
-                                    headers: streamResp.headers
-                                });
-                                await cache.put(aliasUrl, aliasResponse);
+                            const sName = songData.name || track.name || '未知歌曲';
+                            const sArtist = songData.ar_name || (typeof getValidArtistNames === 'function' ? getValidArtistNames(track) : track.artist) || '未知歌手';
+                            const sCover = songData.al_pic_url || track.cover || '/favicon.png';
+                            const sAlbum = songData.al_name || track.album || '';
+
+                            const trackMeta = {
+                                id: id,
+                                songName: sName,
+                                artist: sArtist,
+                                cover: sCover,
+                                album: sAlbum,
+                                fileSize: blob.size,
+                                duration: duration
+                            };
+                            saveCachedTrackMeta(audioUrl, trackMeta);
+
+                            // 同时关联一个别名键方便匹配 (注意避免 id=0 冲突)
+                            if (id && String(id) !== '0') {
+                                const aliasUrl = `/v2/stream?id=${id}`;
+                                if (audioUrl !== aliasUrl) {
+                                    const aliasResponse = new Response(blob, {
+                                        status: streamResp.status,
+                                        statusText: streamResp.statusText,
+                                        headers: streamResp.headers
+                                    });
+                                    await cache.put(aliasUrl, aliasResponse);
+                                    saveCachedTrackMeta(aliasUrl, trackMeta);
+                                }
                             }
                             cachedCount++;
                         }
@@ -1447,4 +1496,110 @@ function closeLyricModal() {
     if (modal) {
         modal.style.display = "none";
     }
+}
+
+/**
+ * 异步更新播放器底部及全屏界面的缓存状态 Badge
+ */
+async function updatePlayerBadges(url) {
+    const sourceBadge = document.getElementById("audioSourceBadge");
+    const fullBadge = document.getElementById("fullscreenBadge");
+    
+    if (!sourceBadge) return;
+    
+    const isServer = url && (url.includes("/v2/stream") || url.includes("/v2/history/stream") || url.includes("/history/stream"));
+    const isBrowser = await isUrlInCache(url);
+    
+    let className = "audio-source-badge icon-only";
+    let icon = "";
+    let title = "";
+    
+    if (isServer && isBrowser) {
+        className += " badge-both";
+        icon = "✨";
+        title = "✨ 服务器与本机浏览器均有缓存";
+    } else if (isServer) {
+        className += " badge-server";
+        icon = "🖥️";
+        title = "🖥️ 已存在服务器磁盘";
+    } else if (isBrowser) {
+        className += " badge-browser";
+        icon = "📲";
+        title = "📲 已缓存于当前设备浏览器";
+    } else {
+        className += " badge-online";
+        icon = "🌐";
+        title = "🌐 当前通过网络流式获取";
+    }
+    
+    sourceBadge.className = className;
+    sourceBadge.innerHTML = icon;
+    sourceBadge.title = title;
+    sourceBadge.style.display = "inline-flex";
+    
+    if (fullBadge) {
+        fullBadge.className = className;
+        fullBadge.innerHTML = icon;
+        fullBadge.title = title;
+        fullBadge.style.display = "inline-flex";
+    }
+}
+
+/**
+ * 获取所有已缓存的 URL 列表
+ */
+async function getAllCacheKeys() {
+    if (!('caches' in window)) return [];
+    try {
+        const cacheNames = await caches.keys();
+        let allRequests = [];
+        for (const cName of cacheNames) {
+            const cache = await caches.open(cName);
+            const reqs = await cache.keys();
+            allRequests.push(...reqs);
+        }
+        return allRequests.map(r => r.url);
+    } catch (e) {
+        return [];
+    }
+}
+
+/**
+ * 异步批量更新歌曲列表的缓存状态 Badge，避免阻塞主线程渲染
+ */
+async function asyncUpdateListBadges(pageTracks, badgePrefix = 'badge-track-') {
+    if (!pageTracks || pageTracks.length === 0) return;
+    
+    // 异步查询所有 cache URLs
+    const cachedUrls = await getAllCacheKeys();
+    
+    pageTracks.forEach(track => {
+        const id = track.id || track.songId;
+        if (!id) return;
+        
+        const badgeEl = document.getElementById(`${badgePrefix}${id}`);
+        if (!badgeEl) return;
+        
+        const isServer = track.isLocal === true;
+        const isBrowser = cachedUrls.some(url => url.includes(`id=${id}`) || url.includes(`songId=${id}`));
+        
+        if (isServer && isBrowser) {
+            badgeEl.className = "status-badge status-both icon-only";
+            badgeEl.innerHTML = "✨";
+            badgeEl.title = "✨ 服务器与本机浏览器均有缓存";
+            badgeEl.style.display = "inline-flex";
+        } else if (isServer) {
+            badgeEl.className = "status-badge status-server icon-only";
+            badgeEl.innerHTML = "🖥️";
+            badgeEl.title = "🖥️ 已存在服务器磁盘";
+            badgeEl.style.display = "inline-flex";
+        } else if (isBrowser) {
+            badgeEl.className = "status-badge status-browser icon-only";
+            badgeEl.innerHTML = "📲";
+            badgeEl.title = "📲 已缓存于当前设备浏览器";
+            badgeEl.style.display = "inline-flex";
+        } else {
+            badgeEl.style.display = "none";
+        }
+    });
 }

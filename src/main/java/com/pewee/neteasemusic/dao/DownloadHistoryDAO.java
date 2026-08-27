@@ -343,6 +343,56 @@ public class DownloadHistoryDAO {
         return null;
     }
 
+    public List<DownloadHistoryItem> getRecordsByIds(List<Long> ids) {
+        List<DownloadHistoryItem> result = new ArrayList<>();
+        if (ids == null || ids.isEmpty()) return result;
+        StringBuilder sql = new StringBuilder("SELECT * FROM download_history WHERE id IN (");
+        for (int i = 0; i < ids.size(); i++) {
+            if (i > 0) sql.append(",");
+            sql.append("?");
+        }
+        sql.append(")");
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < ids.size(); i++) {
+                pstmt.setLong(i + 1, ids.get(i));
+            }
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(mapItemFromRs(rs));
+                }
+            }
+        } catch (Exception e) {
+            log.error("批量查询历史记录失败, ids={}", ids, e);
+        }
+        return result;
+    }
+
+    public List<DownloadHistoryItem> getRecordsBySongIds(List<Long> songIds) {
+        List<DownloadHistoryItem> result = new ArrayList<>();
+        if (songIds == null || songIds.isEmpty()) return result;
+        StringBuilder sql = new StringBuilder("SELECT * FROM download_history WHERE song_id IN (");
+        for (int i = 0; i < songIds.size(); i++) {
+            if (i > 0) sql.append(",");
+            sql.append("?");
+        }
+        sql.append(")");
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < songIds.size(); i++) {
+                pstmt.setLong(i + 1, songIds.get(i));
+            }
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(mapItemFromRs(rs));
+                }
+            }
+        } catch (Exception e) {
+            log.error("批量按 songId 查询历史记录失败, songIds={}", songIds, e);
+        }
+        return result;
+    }
+
     public synchronized Map<String, Object> scanExternalLibraries() {
         int scannedFiles = 0;
         int addedCount = 0;

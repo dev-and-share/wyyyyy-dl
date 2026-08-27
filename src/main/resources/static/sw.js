@@ -1,14 +1,15 @@
-const CACHE_NAME = 'netease-dl-v3.1.0';
+const CACHE_NAME = 'netease-dl-v3.4.0';
+const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
   '/favicon.png',
-  '/css/style.css?v=3.1.0',
-  '/js/app.js?v=3.1.0',
-  '/js/playlist.js?v=3.1.0',
-  '/js/album.js?v=3.1.0',
-  '/js/search.js?v=3.1.0',
-  '/js/download-mgr.js?v=3.1.0'
+  '/css/style.css?v=3.4.0',
+  '/js/app.js?v=3.4.0',
+  '/js/playlist.js?v=3.4.0',
+  '/js/album.js?v=3.4.0',
+  '/js/search.js?v=3.4.0',
+  '/js/download-mgr.js?v=3.4.0'
 ];
 
 // 1. 安装 Service Worker 并预缓存基础 App Shell
@@ -20,14 +21,15 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. 激活并清理旧版本的 Cache
+// 2. 激活并清理旧版本的静态资源 Cache（保护音频离线缓存不受 SW 升级影响）
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('[SW] 清除旧缓存:', cacheName);
+          // 保护当前版本 assets cache 以及离线曲库永久缓存
+          if (cacheName !== CACHE_NAME && cacheName !== AUDIO_CACHE_NAME && cacheName !== 'netease-dl-v3.0.0') {
+            console.log('[SW] 清除旧版本静态资源缓存:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -55,7 +57,7 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (response && response.status === 200) {
             const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
+            caches.open(AUDIO_CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
             });
           }
@@ -63,7 +65,9 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           console.log('[SW] 断网降级：从 Cache 读取音频', event.request.url);
-          return caches.match(event.request);
+          return caches.open(AUDIO_CACHE_NAME).then(c => c.match(event.request)).then(res => {
+            return res || caches.match(event.request);
+          });
         })
     );
   } else {

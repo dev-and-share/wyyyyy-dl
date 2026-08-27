@@ -77,14 +77,14 @@ function loadPlaylistDetail() {
                         <div class="detail-header-sub">创建人：${playlist.creator} | 共 ${playlist.trackCount} 首歌</div>
                         <div class="detail-btn-group">
                             <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">🖥️ 下载到电脑</button>
-                            <button class="btn-primary flex-1-btn" id="playlist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(allTracks, 'playlist-cache-btn', '📱 缓存到手机')">📱 缓存到手机 (计算中...)</button>
+                            <button class="btn-primary flex-1-btn" id="playlist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
                             <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放歌单</button>
                         </div>
                     </div>
                 </div>
             `;
             renderPage(currentPage);
-            refreshPhoneCacheBtn(allTracks, 'playlist-cache-btn', '📱 缓存到手机');
+            refreshPhoneCacheBtn(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器');
         })
         .catch(err => alert("获取歌单详情失败：" + err));
 }
@@ -104,9 +104,7 @@ function renderPage(page) {
         const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
         const isLocalTrack = (track.isLocal === true);
 
-        const localBadge = isLocalTrack 
-            ? '<span class="status-badge status-ok" style="font-size:9.5px; padding:1px 5px; margin-left:6px; flex-shrink:0;">⚡ 本地</span>' 
-            : '';
+        const localBadge = `<span id="badge-track-${track.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
 
         const playBtnHtml = isLocalTrack
             ? `<button class="jump-link-btn" style="background:rgba(34,197,94,0.18); color:#4ade80; border-color:rgba(34,197,94,0.35);" onclick="playSongById('${track.id}', '${(track.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="本地无损秒播">▶️ 播放</button>`
@@ -120,6 +118,7 @@ function renderPage(page) {
                 ${playBtnHtml}
                 <button class="jump-link-btn" onclick="jumpToSongDetail('${track.id}')">🔍 查看</button>
                 <button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick="downloadSingle('${track.id}')">📥 下载</button>
+                <button id="pl-cache-btn-${track.id}" class="btn-primary" style="padding:4px 8px; font-size:12px; background:#0284c7; margin-left:4px;" onclick="cacheTracksToPhoneBatch([{id: '${track.id}', songId: '${track.id}'}], 'pl-cache-btn-${track.id}', '📲 缓存')">📲 缓存</button>
             </div>
         `;
         list.appendChild(li);
@@ -129,6 +128,8 @@ function renderPage(page) {
     document.getElementById("page-indicator").textContent = `第 ${page} 页 / 共 ${totalPages} 页 (共 ${allTracks.length} 首)`;
     document.getElementById("prev-page").disabled = (page <= 1);
     document.getElementById("next-page").disabled = (page >= totalPages);
+
+    asyncUpdateListBadges(pageTracks);
 }
 
 function playFullCurrentPlaylist() {

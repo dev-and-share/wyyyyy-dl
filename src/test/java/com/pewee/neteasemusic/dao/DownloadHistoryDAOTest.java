@@ -131,4 +131,22 @@ public class DownloadHistoryDAOTest {
         assertEquals(externalAudio.getCanonicalPath(), resolved.getCanonicalPath());
         assertTrue(resolved.exists(), "旧版宿主机绝对路径应能访问到容器挂载的音频文件");
     }
+
+    @Test
+    @DisplayName("测试批量查询记录 getRecordsByIds 与 getRecordsBySongIds")
+    public void testBatchQueryRecords() throws Exception {
+        File mockMusic1 = new File(tempDir.toFile(), "song1.mp3");
+        File mockMusic2 = new File(tempDir.toFile(), "song2.mp3");
+        try (FileWriter w = new FileWriter(mockMusic1)) { w.write("1"); }
+        try (FileWriter w = new FileWriter(mockMusic2)) { w.write("2"); }
+
+        long id1 = dao.addRecord(101L, "歌曲1", "歌手1", "专辑1", mockMusic1.getAbsolutePath(), mockMusic1.length(), "lossless", "SUCCESS");
+        long id2 = dao.addRecord(102L, "歌曲2", "歌手2", "专辑2", mockMusic2.getAbsolutePath(), mockMusic2.length(), "lossless", "SUCCESS");
+
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> byIds = dao.getRecordsByIds(java.util.Arrays.asList(id1, id2));
+        assertEquals(2, byIds.size());
+
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> bySongIds = dao.getRecordsBySongIds(java.util.Arrays.asList(101L, 102L));
+        assertEquals(2, bySongIds.size());
+    }
 }
