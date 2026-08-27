@@ -134,15 +134,13 @@ function downloadAlbum(id) {
 function jumpToAlbumDetail(albumId) {
     if (!albumId) return;
 
-    switchTab('album');
+    switchTab('search');
 
     const input = document.getElementById('albumId');
     if (input) input.value = albumId;
 
-    const card = document.getElementById('card-album-detail');
-    if (card && !card.classList.contains('active')) {
-        const header = card.querySelector('.accordion-header');
-        if (header) toggleAccordionCard(header);
+    if (typeof openAccordionCard === 'function') {
+        openAccordionCard('card-album-detail');
     }
 
     loadAlbumInfo();

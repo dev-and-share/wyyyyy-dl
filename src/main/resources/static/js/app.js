@@ -355,6 +355,11 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function switchTab(tabName, updateHash = true) {
+    if (tabName === 'album') {
+        switchTab('search', updateHash);
+        openAccordionCard('card-album-detail');
+        return;
+    }
     const targetTabId = 'tab-' + tabName;
     const tabLinks = document.querySelectorAll(".nav-tab-btn, .tab-btn");
     tabLinks.forEach(button => {

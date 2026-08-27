@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.6.4">
+    <link rel="stylesheet" href="/css/style.css?v=3.6.5">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -37,7 +37,6 @@
         
         <div class="app-nav-tabs">
             <button class="nav-tab-btn active" data-tab="tab-playlist">📁 歌单</button>
-            <button class="nav-tab-btn" data-tab="tab-album">💽 专辑</button>
             <button class="nav-tab-btn" data-tab="tab-search">🔍 搜索</button>
             <button class="nav-tab-btn" data-tab="tab-download-mgr">📥 历史</button>
         </div>
@@ -123,57 +122,54 @@
         </div>
     </div>
 
-    <!-- 2. 专辑 Tab 内容 -->
-    <div id="tab-album" class="tab-content" style="display:none;">
-        <div class="accordion-wrapper">
-            <div class="accordion-card active" id="card-album-detail">
-                <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">💽 查看专辑信息</h3>
-                    <span class="accordion-icon">▼</span>
-                </div>
-                <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="albumId" placeholder="输入专辑 ID (如 32311)" style="flex:1;">
-                        <button class="btn-primary" onclick="loadAlbumInfo()">查看专辑</button>
-                    </div>
-                    <div id="album-info">
-                        <!-- 🎨 默认优雅空状态 (Empty State Placeholder) -->
-                        <div class="empty-placeholder-card">
-                            <div class="empty-icon">💽</div>
-                            <div class="empty-title">请输入专辑 ID 查看详情</div>
-                            <div class="empty-desc">支持输入网易云专辑数字 ID 解析专辑信息与一键打包下载</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. 搜索 Tab 内容 -->
+    <!-- 2. 搜索 Tab 内容 (全网综合搜索 + 专辑解析) -->
     <div id="tab-search" class="tab-content" style="display:none;">
         <div class="accordion-wrapper">
+            <!-- Section 1: 关键词与全网综合搜索 -->
             <div class="accordion-card active" id="card-search">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">🔍 关键词搜索</h3>
+                    <h3 class="accordion-title">🔍 1. 关键词综合搜索</h3>
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
                     <div class="form-row">
-                        <input type="text" id="searchKeyword" placeholder="输入关键词 (歌曲 / 歌手 / 歌单)" style="flex:1;">
+                        <input type="text" id="searchKeyword" placeholder="输入关键词 (歌曲 / 歌手 / 专辑 / 歌单)" style="flex:1;" onkeyup="if(event.key==='Enter') searchSongs();">
                         <select id="searchType">
                             <option value="1">单曲</option>
-                            <option value="1000">歌单</option>
                             <option value="10">专辑</option>
+                            <option value="1000">歌单</option>
                             <option value="100">歌手</option>
                         </select>
-                        <input type="number" id="searchLimit" value="10" min="1" style="width:70px;">
+                        <input type="number" id="searchLimit" value="10" min="1" max="100" style="width:70px;">
                         <button class="btn-primary" onclick="searchSongs()">搜索</button>
                     </div>
                     <ul class="data-list scrollable-list" id="search-results"></ul>
                     <div id="search-pagination" class="pagination-container">
                         <button id="search-prev" class="btn-primary" onclick="changeSearchPage(-1)" disabled>上一页</button>
-                        <span id="search-page-indicator" style="font-size:13px; color:var(--text-secondary);">第 1 页</span>
-                        <button id="search-next" class="btn-primary" onclick="changeSearchPage(1)">下一页</button>
+                        <span id="search-page-indicator" style="font-size:13px; color:var(--text-secondary);">共 0 条结果</span>
+                        <button id="search-next" class="btn-primary" onclick="changeSearchPage(1)" disabled>下一页</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: 专辑详情解析与整辑下载 -->
+            <div class="accordion-card" id="card-album-detail">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">💽 2. 专辑解析与整辑下载</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <input type="text" id="albumId" placeholder="输入专辑 ID (如 32311)" style="flex:1;" onkeyup="if(event.key==='Enter') loadAlbumInfo();">
+                        <button class="btn-primary" onclick="loadAlbumInfo()">解析专辑</button>
+                    </div>
+                    <div id="album-info">
+                        <!-- 🎨 默认优雅空状态 (Empty State Placeholder) -->
+                        <div class="empty-placeholder-card">
+                            <div class="empty-icon">💽</div>
+                            <div class="empty-title">在上方搜索专辑或输入专辑 ID 解析</div>
+                            <div class="empty-desc">支持解析整张专辑全部曲目、批量打包下载或手机端离线随身听缓存</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -425,13 +421,13 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v3.6.4</div>
+    <div class="app-version-footer">网易云下载器 · PWA v3.6.5</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=3.6.4"></script>
-    <script src="/js/album.js?v=3.6.4"></script>
-    <script src="/js/search.js?v=3.6.4"></script>
-    <script src="/js/download-mgr.js?v=3.6.4"></script>
-    <script src="/js/app.js?v=3.6.4"></script>
+    <script src="/js/playlist.js?v=3.6.5"></script>
+    <script src="/js/album.js?v=3.6.5"></script>
+    <script src="/js/search.js?v=3.6.5"></script>
+    <script src="/js/download-mgr.js?v=3.6.5"></script>
+    <script src="/js/app.js?v=3.6.5"></script>
 </body>
 </html>
