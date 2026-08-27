@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.6.3">
+    <link rel="stylesheet" href="/css/style.css?v=3.6.4">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -231,7 +231,10 @@
 
                     <!-- 扫描诊断结果弹窗/框 -->
                     <div id="scanResultBox" style="display:none; background:var(--scan-box-bg); border:1px solid var(--scan-box-border); padding:12px; border-radius:8px; margin-bottom:15px; font-size:13px;">
-                        <h4 style="margin:0 0 8px 0; color:#f59e0b;">🔍 磁盘对齐扫描诊断结果</h4>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <h4 style="margin:0; color:#f59e0b; font-size:14px;">🔍 磁盘对齐扫描诊断结果</h4>
+                            <button class="btn-icon" style="background:transparent; border:none; color:var(--text-muted); font-size:14px; cursor:pointer; padding:2px 6px;" onclick="document.getElementById('scanResultBox').style.display='none';" title="关闭">✕</button>
+                        </div>
                         <div id="scanResultContent"></div>
                     </div>
 
@@ -422,13 +425,13 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v3.6.3</div>
+    <div class="app-version-footer">网易云下载器 · PWA v3.6.4</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=3.6.3"></script>
-    <script src="/js/album.js?v=3.6.3"></script>
-    <script src="/js/search.js?v=3.6.3"></script>
-    <script src="/js/download-mgr.js?v=3.6.3"></script>
-    <script src="/js/app.js?v=3.6.3"></script>
+    <script src="/js/playlist.js?v=3.6.4"></script>
+    <script src="/js/album.js?v=3.6.4"></script>
+    <script src="/js/search.js?v=3.6.4"></script>
+    <script src="/js/download-mgr.js?v=3.6.4"></script>
+    <script src="/js/app.js?v=3.6.4"></script>
 </body>
 </html>

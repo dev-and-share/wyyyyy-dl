@@ -70,7 +70,7 @@ function renderAlbumDetailUI(album) {
 function loadAlbumInfo() {
     const id = document.getElementById("albumId").value;
     if (!id) {
-        alert("请输入专辑 ID");
+        showToast("请输入专辑 ID", "warning");
         return;
     }
 
@@ -125,10 +125,10 @@ function loadAlbumInfo() {
 function downloadAlbum(id) {
     axios.get(`/v2/album?id=${id}`)
         .then(resp => {
-            alert("已提交专辑下载任务！已在右下角开启监控面板...");
+            showToast("已提交专辑下载任务！已在右下角开启监控面板...", "success", 3000);
             fetchDownloadTasks();
         })
-        .catch(err => alert("提交专辑下载失败：" + err));
+        .catch(err => showToast("提交专辑下载失败：" + err, "error"));
 }
 
 function jumpToAlbumDetail(albumId) {
@@ -153,7 +153,7 @@ let currentAlbumCover = '/favicon.png';
 
 function playFullCurrentAlbum() {
     if (!currentAlbumSongs || currentAlbumSongs.length === 0) {
-        alert("暂无专辑歌曲数据！");
+        showToast("暂无专辑歌曲数据！", "warning");
         return;
     }
     const formattedQueue = currentAlbumSongs.map(s => ({

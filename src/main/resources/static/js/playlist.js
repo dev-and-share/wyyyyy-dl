@@ -76,7 +76,7 @@ function loadMyPlaylists(filterType) {
         })
         .catch(err => {
             if (!cached) {
-                alert("加载歌单失败：" + err);
+                showToast("加载歌单失败：" + err, "error");
             }
         });
 }
@@ -111,7 +111,7 @@ function renderPlaylistDetailUI(playlist) {
 function loadPlaylistDetail() {
     const id = document.getElementById("playlistId").value;
     if (!id) {
-        alert("请输入歌单 ID");
+        showToast("请输入歌单 ID", "warning");
         return;
     }
 
@@ -154,7 +154,7 @@ function loadPlaylistDetail() {
         })
         .catch(err => {
             if (!hasRenderedCache) {
-                alert("获取歌单详情失败：" + err);
+                showToast("获取歌单详情失败：" + err, "error");
             }
         });
 }
@@ -204,7 +204,7 @@ function renderPage(page) {
 
 function playFullCurrentPlaylist() {
     if (!allTracks || allTracks.length === 0) {
-        alert("暂无歌单歌曲数据！");
+        showToast("暂无歌单歌曲数据！", "warning");
         return;
     }
     const formattedQueue = allTracks.map(t => ({
@@ -231,8 +231,8 @@ function changePage(delta) {
 function downloadPlaylist(id) {
     axios.get(`/v2/playlist?id=${id}`)
         .then(resp => {
-            alert("已提交歌单下载任务！已在右下角开启监控面板...");
+            showToast("已提交歌单下载任务！已在右下角开启监控面板...", "success", 3000);
             fetchDownloadTasks();
         })
-        .catch(err => alert("提交歌单下载失败：" + err));
+        .catch(err => showToast("提交歌单下载失败：" + err, "error"));
 }

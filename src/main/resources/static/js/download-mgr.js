@@ -27,7 +27,7 @@ function safeDecode(str) {
 
 function revealFile(path, taskId) {
     if (!path && !taskId) {
-        alert('无法定位：缺少路径参数');
+        showToast('无法定位：缺少路径参数', 'warning');
         return;
     }
     
@@ -50,16 +50,16 @@ function revealFile(path, taskId) {
                 navigator.clipboard.writeText(fpath).catch(() => {});
             }
             if (resp.data.code === '000000') {
-                alert(`📂 已为您复制 Mac 宿主机真实物理路径到剪贴板！\n\n物理路径：\n${fpath}\n\n💡 提示：在 Mac 桌面或 Finder 中按 Cmd + Shift + G，直接粘贴即可跳转！`);
+                showRevealModal(fpath, rawPath, '📂 已为您复制 Mac 宿主机真实物理路径到剪贴板！');
             } else {
-                alert('定位提示：' + (resp.data.msg || resp.data.message));
+                showRevealModal(fpath, rawPath, '定位提示：' + (resp.data.msg || resp.data.message));
             }
         })
         .catch(err => {
             if (rawPath) {
-                alert(`📂 已复制物理路径到剪贴板！\n\n${rawPath}`);
+                showRevealModal(rawPath, rawPath, '📂 已复制物理路径到剪贴板！');
             } else {
-                alert('请求定位接口失败：' + err);
+                showToast('请求定位接口失败：' + err, 'error');
             }
         });
 }
@@ -238,8 +238,9 @@ function scanDiskFiles() {
         .catch(err => alert("扫描失败: " + err));
 }
 
-function importUntrackedToDB() {
-    if (!confirm('确定要将所有扫描出的本地物理音频文件同步导入至数据库吗？')) return;
+async function importUntrackedToDB() {
+    const ok = await showConfirm('确定要将所有扫描出的本地物理音频文件同步导入至数据库吗？', '导入未录入音频', { icon: '📥' });
+    if (!ok) return;
 
     const box = document.getElementById('scanResultBox');
     if (box) box.style.opacity = '0.5';
@@ -247,46 +248,49 @@ function importUntrackedToDB() {
     axios.post('/v2/history/importUntracked')
         .then(resp => {
             if (resp.data.code === '000000') {
-                alert(`🎉 成功将 ${resp.data.data} 首本地物理音频文件导入至数据库历史列表！`);
+                showToast(`🎉 成功将 ${resp.data.data} 首本地物理音频文件导入至数据库历史列表！`, 'success', 4000);
                 document.getElementById('scanResultBox').style.display = 'none';
                 loadHistoryStats();
                 loadDownloadHistory(1);
             } else {
-                alert('导入失败：' + resp.data.msg);
+                showAlert('导入失败：' + resp.data.msg, '导入异常', '⚠️');
             }
         })
-        .catch(err => alert("批量导入失败: " + err))
+        .catch(err => showToast("批量导入失败: " + err, 'error'))
         .finally(() => {
             if (box) box.style.opacity = '1';
         });
 }
 
-function cleanMissingHistory() {
-    if (!confirm('确定要从数据库中清理所有文件已不存在的失效记录吗？')) return;
+async function cleanMissingHistory() {
+    const ok = await showConfirm('确定要从数据库中清理所有文件已不存在的失效记录吗？', '清理失效记录', { icon: '🧹', danger: true, confirmText: '立即清理' });
+    if (!ok) return;
 
     axios.post('/v2/history/cleanMissing')
         .then(resp => {
             if (resp.data.code === '000000') {
-                alert(`✅ 已清理 ${resp.data.data} 条失效记录！`);
+                showToast(`✅ 已清理 ${resp.data.data} 条失效记录！`, 'success', 3500);
                 document.getElementById('scanResultBox').style.display = 'none';
                 loadHistoryStats();
                 loadDownloadHistory(1);
             }
         })
-        .catch(err => alert("清理失败: " + err));
+        .catch(err => showToast("清理失败: " + err, 'error'));
 }
 
-function deleteHistoryItem(id) {
-    if (!confirm('确定要删除此条下载历史记录吗？')) return;
+async function deleteHistoryItem(id) {
+    const ok = await showConfirm('确定要删除此条下载历史记录吗？', '删除历史记录', { icon: '🗑️', danger: true, confirmText: '删除' });
+    if (!ok) return;
 
     axios.delete(`/v2/history/delete?id=${id}`)
         .then(resp => {
             if (resp.data.code === '000000') {
+                showToast('已删除该条历史记录', 'info', 2000);
                 loadHistoryStats();
                 loadDownloadHistory(historyCurrentPage);
             }
         })
-        .catch(err => alert("删除失败: " + err));
+        .catch(err => showToast("删除失败: " + err, 'error'));
 }
 
 /* ==========================================================================
@@ -488,7 +492,8 @@ async function loadBrowserCacheList() {
 }
 
 async function deleteBrowserCacheItem(url) {
-    if (!confirm('确定要从当前浏览器的离线缓存中删除此首歌曲吗？（删除后断网将无法播放）')) return;
+    const ok = await showConfirm('确定要从当前浏览器的离线缓存中删除此首歌曲吗？（删除后断网将无法播放）', '删除离线缓存', { icon: '📲', danger: true, confirmText: '删除缓存' });
+    if (!ok) return;
     try {
         const decodedUrl = decodeURI(url);
         const cacheNames = await caches.keys();
@@ -505,13 +510,15 @@ async function deleteBrowserCacheItem(url) {
             removeCachedTrackMeta(decodedUrl);
         }
         loadBrowserCacheList();
+        showToast("已删除该首离线歌曲缓存", "info", 2000);
     } catch(e) {
-        alert("删除缓存失败: " + e.message);
+        showToast("删除缓存失败: " + e.message, "error");
     }
 }
 
 async function clearAllBrowserCache() {
-    if (!confirm('确定要清空本浏览器的所有离线音乐吗？\n\n⚠️ 此操作仅删除您设备上的缓存，不会影响服务器端的文件。')) return;
+    const ok = await showConfirm('确定要清空本浏览器的所有离线音乐吗？\n\n⚠️ 此操作仅删除您当前设备上的缓存，不会影响服务器端的文件。', '清空离线音乐', { icon: '🗑️', danger: true, confirmText: '清空所有缓存' });
+    if (!ok) return;
     try {
         const cacheNames = await caches.keys();
         for (const cName of cacheNames) {
@@ -525,9 +532,9 @@ async function clearAllBrowserCache() {
         }
         localStorage.removeItem('pwa_cached_tracks_meta_v1');
         loadBrowserCacheList();
-        alert("✅ 已清空当前浏览器的所有离线音乐缓存！");
+        showToast("✅ 已清空当前浏览器的所有离线音乐缓存！", "success", 3000);
     } catch(e) {
-        alert("清空失败: " + e.message);
+        showToast("清空失败: " + e.message, "error");
     }
 }
 

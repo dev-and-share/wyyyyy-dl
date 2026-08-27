@@ -650,6 +650,215 @@ ul.data-list li:last-child {
     display: none;
 }
 
+/* ==========================================================================
+   🖼️ 全局现代化通用 Modal 弹窗组件 (Glassmorphism Modal System)
+   ========================================================================== */
+.app-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    animation: modalBackdropFadeIn 0.2s ease forwards;
+}
+
+@keyframes modalBackdropFadeIn {
+    to { opacity: 1; }
+}
+
+.app-modal-card {
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    width: 100%;
+    max-width: 460px;
+    color: #ffffff;
+    overflow: hidden;
+    transform: scale(0.95) translateY(10px);
+    animation: modalScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+[data-theme="light"] .app-modal-card {
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #0f172a;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+@keyframes modalScaleIn {
+    to { transform: scale(1) translateY(0); }
+}
+
+.app-modal-header {
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+[data-theme="light"] .app-modal-header {
+    background: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.app-modal-close-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+[data-theme="light"] .app-modal-close-btn {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.app-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+[data-theme="light"] .app-modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #000000;
+}
+
+.app-modal-body {
+    padding: 18px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #cbd5e1;
+    max-height: calc(85vh - 120px);
+    overflow-y: auto;
+    word-break: break-word;
+}
+
+[data-theme="light"] .app-modal-body {
+    color: #334155;
+}
+
+.app-modal-path-box {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 12px 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    color: #38bdf8;
+    word-break: break-all;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+[data-theme="light"] .app-modal-path-box {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #0284c7;
+}
+
+.app-modal-tip {
+    background: rgba(56, 189, 248, 0.1);
+    border-left: 3px solid #38bdf8;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 10px;
+}
+
+[data-theme="light"] .app-modal-tip {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.app-modal-footer {
+    padding: 12px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+[data-theme="light"] .app-modal-footer {
+    background: rgba(0, 0, 0, 0.02);
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.app-modal-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.app-modal-btn-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+}
+
+[data-theme="light"] .app-modal-btn-cancel {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+.app-modal-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+.app-modal-btn-confirm {
+    background: var(--primary-color, #e11d48);
+    color: #ffffff;
+}
+
+.app-modal-btn-confirm:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.app-modal-btn-danger {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.app-modal-btn-copy {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+}
+
+[data-theme="light"] .app-modal-btn-copy {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0284c7;
+}
+
 /* 📜 播放列表 Drawer (Glassmorphism Modal) */
 .playlist-drawer {
     position: fixed;

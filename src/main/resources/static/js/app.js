@@ -40,6 +40,154 @@ function showToast(message, type = 'info', duration = 3500) {
 }
 window.showToast = showToast;
 
+/**
+ * 🖼️ 全局现代化通用 Modal 弹窗系统（纯异步非阻塞，绝不中断正在播放的音频）
+ */
+function showAppModal(options = {}) {
+    return new Promise((resolve) => {
+        const {
+            title = '提示',
+            icon = 'ℹ️',
+            content = '',
+            confirmText = '确定',
+            cancelText = '取消',
+            showCancel = false,
+            danger = false,
+            copyText = null
+        } = options;
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'app-modal-backdrop';
+
+        const card = document.createElement('div');
+        card.className = 'app-modal-card';
+
+        const confirmBtnClass = danger ? 'app-modal-btn app-modal-btn-danger' : 'app-modal-btn app-modal-btn-confirm';
+
+        card.innerHTML = `
+            <div class="app-modal-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span>${icon}</span>
+                    <span>${title}</span>
+                </div>
+                <button class="app-modal-close-btn" id="modalCloseBtn">✕</button>
+            </div>
+            <div class="app-modal-body">
+                <div>${content}</div>
+                ${copyText ? `
+                    <div class="app-modal-path-box" id="modalPathBox">${escapeHtml(copyText)}</div>
+                ` : ''}
+            </div>
+            <div class="app-modal-footer">
+                ${copyText ? `
+                    <button class="app-modal-btn app-modal-btn-copy" id="modalCopyBtn">📋 复制路径</button>
+                ` : ''}
+                ${showCancel ? `
+                    <button class="app-modal-btn app-modal-btn-cancel" id="modalCancelBtn">${cancelText}</button>
+                ` : ''}
+                <button class="${confirmBtnClass}" id="modalConfirmBtn">${confirmText}</button>
+            </div>
+        `;
+
+        backdrop.appendChild(card);
+        document.body.appendChild(backdrop);
+
+        const closeModal = (result) => {
+            backdrop.style.opacity = '0';
+            backdrop.style.transition = 'opacity 0.15s ease';
+            card.style.transform = 'scale(0.95) translateY(10px)';
+            card.style.transition = 'transform 0.15s ease';
+            setTimeout(() => {
+                if (backdrop.parentNode) {
+                    backdrop.parentNode.removeChild(backdrop);
+                }
+                resolve(result);
+            }, 150);
+        };
+
+        const closeBtn = card.querySelector('#modalCloseBtn');
+        const confirmBtn = card.querySelector('#modalConfirmBtn');
+        const cancelBtn = card.querySelector('#modalCancelBtn');
+        const copyBtn = card.querySelector('#modalCopyBtn');
+
+        if (closeBtn) closeBtn.onclick = () => closeModal(false);
+        if (confirmBtn) confirmBtn.onclick = () => closeModal(true);
+        if (cancelBtn) cancelBtn.onclick = () => closeModal(false);
+
+        if (copyBtn && copyText) {
+            copyBtn.onclick = () => {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(copyText)
+                        .then(() => {
+                            copyBtn.innerHTML = '✅ 已复制！';
+                            showToast('📋 路径已成功复制到剪贴板！', 'success', 2000);
+                            setTimeout(() => { copyBtn.innerHTML = '📋 复制路径'; }, 2500);
+                        })
+                        .catch(() => {
+                            showToast('已复制（若未成功请长按选择）', 'info');
+                        });
+                }
+            };
+        }
+
+        // 点击遮罩空白处关闭
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal(false);
+        };
+
+        // 按 ESC 键关闭
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                document.removeEventListener('keydown', onKeyDown);
+                closeModal(false);
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+    });
+}
+
+function showAlert(message, title = '提示', icon = 'ℹ️') {
+    return showAppModal({ title, content: message, icon, showCancel: false });
+}
+
+function showConfirm(message, title = '确认操作', options = {}) {
+    return showAppModal({
+        title,
+        content: message,
+        icon: options.icon || '⚠️',
+        showCancel: true,
+        danger: options.danger || false,
+        confirmText: options.confirmText || '确定',
+        cancelText: options.cancelText || '取消'
+    });
+}
+
+function showRevealModal(hostPath, containerPath, msg) {
+    const targetPath = hostPath || containerPath;
+    const isSuccess = msg && msg.includes('成功');
+    const icon = isSuccess ? '🚀' : '📂';
+    const statusHtml = msg ? `<div style="margin-bottom:8px; font-weight:600; color:${isSuccess ? '#4ade80' : '#38bdf8'};">${msg}</div>` : '';
+    
+    return showAppModal({
+        title: '文件物理定位',
+        icon: icon,
+        content: `
+            ${statusHtml}
+            <div style="font-size:12.5px; color:var(--text-secondary);">文件已在磁盘就绪：</div>
+            <div class="app-modal-tip">
+                💡 <b>快速跳转提示</b>：在 Mac 桌面或 Finder 中按下快捷键 <code>Cmd + Shift + G</code>，直接粘贴即可秒级直达该音频文件！
+            </div>
+        `,
+        copyText: targetPath,
+        confirmText: '我知道了'
+    });
+}
+
+window.showAppModal = showAppModal;
+window.showAlert = showAlert;
+window.showConfirm = showConfirm;
+window.showRevealModal = showRevealModal;
+
 /* ==========================================================================
    🌓 现代主题管理引擎 (Theme Engine: Dark / Light / Auto)
    ========================================================================== */
@@ -352,7 +500,7 @@ function toggleRepeat() {
 function downloadSingle(id) {
     axios.get(`/v2/single?id=${id}`)
         .then(() => fetchDownloadTasks())
-        .catch(err => alert("单曲下载失败：" + err));
+        .catch(err => showToast("单曲下载失败：" + err, "error"));
 }
 
 function fetchDownloadTasks() {
@@ -455,7 +603,7 @@ function toggleMinimizeMonitor() {
 function clearMonitorTasks() {
     axios.post('/v2/tasks/clear')
         .then(() => fetchDownloadTasks())
-        .catch(err => alert("清空失败：" + err));
+        .catch(err => showToast("清空失败：" + err, "error"));
 }
 
 function hideMonitor() {
@@ -989,7 +1137,7 @@ function getFilteredDrawerQueue() {
     });
 }
 
-function applyQueueTrim() {
+async function applyQueueTrim() {
     if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) {
         showToast("当前播放队列为空，无需裁剪", "warning");
         return;
@@ -1006,24 +1154,29 @@ function applyQueueTrim() {
         return;
     }
 
-    if (confirm(`确定将当前筛选出的 ${filteredTracks.length} 首曲目裁剪为新的播放列表吗？（其余 ${globalPlaylistQueue.length - filteredTracks.length} 首将被移除）`)) {
-        const currentPlayingTrack = globalPlaylistQueue[currentQueueIndex];
-        globalPlaylistQueue = filteredTracks;
-        
-        if (currentPlayingTrack) {
-            const newIdx = globalPlaylistQueue.findIndex(t => t.id === currentPlayingTrack.id);
-            currentQueueIndex = newIdx >= 0 ? newIdx : 0;
-        } else {
-            currentQueueIndex = 0;
-        }
-        
-        clearDrawerSearch();
-        setDrawerFilter('all');
-        updatePlaylistCountUI();
-        savePlayerStateToStorage();
-        renderPlaylistDrawer();
-        showToast(`✂️ 裁剪完成，当前队列剩余 ${globalPlaylistQueue.length} 首`, "success");
+    const ok = await showConfirm(
+        `确定将当前筛选出的 <b>${filteredTracks.length}</b> 首曲目保留为唯一播放列表吗？<br><span style="font-size:12px; color:var(--text-muted);">（其余 ${globalPlaylistQueue.length - filteredTracks.length} 首将被移出当前队列）</span>`,
+        '裁剪播放列表',
+        { icon: '✂️', confirmText: '确认保留' }
+    );
+    if (!ok) return;
+
+    const currentPlayingTrack = globalPlaylistQueue[currentQueueIndex];
+    globalPlaylistQueue = filteredTracks;
+    
+    if (currentPlayingTrack) {
+        const newIdx = globalPlaylistQueue.findIndex(t => t.id === currentPlayingTrack.id);
+        currentQueueIndex = newIdx >= 0 ? newIdx : 0;
+    } else {
+        currentQueueIndex = 0;
     }
+    
+    clearDrawerSearch();
+    setDrawerFilter('all');
+    updatePlaylistCountUI();
+    savePlayerStateToStorage();
+    renderPlaylistDrawer();
+    showToast(`✂️ 裁剪完成，当前队列剩余 ${globalPlaylistQueue.length} 首`, "success");
 }
 
 function clearPlaylistQueue() {
@@ -1798,11 +1951,11 @@ function removeCachedTrackMeta(url) {
 async function cacheTracksToPhoneBatch(tracks, btnId, baseText = '📲 缓存到浏览器') {
     const btn = document.getElementById(btnId);
     if (!('caches' in window)) {
-        alert("当前浏览器不支持 Cache API 或未以 HTTPS/PWA 模式运行");
+        showToast("当前浏览器不支持 Cache API 或未以 HTTPS/PWA 模式运行", "warning");
         return;
     }
     if (!tracks || tracks.length === 0) {
-        alert("暂无要缓存的曲目");
+        showToast("暂无要缓存的曲目", "warning");
         return;
     }
 

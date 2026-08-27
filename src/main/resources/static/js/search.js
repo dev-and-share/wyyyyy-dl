@@ -10,7 +10,7 @@ function searchSongs() {
     const limit = document.getElementById("searchLimit").value || 10;
 
     if (!keywords) {
-        alert("请输入搜索关键词");
+        showToast("请输入搜索关键词", "warning");
         return;
     }
 
@@ -35,7 +35,7 @@ function searchSongs() {
             renderSearchPage(searchPage);
         })
         .catch(err => {
-            alert("搜索失败：" + err);
+            showToast("搜索失败：" + err, "error");
             if (list) list.innerHTML = `<li style="color:#ef4444; padding:16px; justify-content:center;">⚠️ 搜索失败，请稍后重试</li>`;
         });
 }
