@@ -59,6 +59,7 @@ function renderSearchPage(page) {
 
         if (type === "1") {
             // 单曲
+            li.className = "track-item-card";
             const artistDisplay = getValidArtistNames(item);
             const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
             const albumHtml = item.album ? ` <span style="color:var(--text-muted); font-size:12px;">[专辑: ${item.album}]</span>` : '';
@@ -67,7 +68,7 @@ function renderSearchPage(page) {
             const slotsHtml = renderTrackCapsuleSlotsHtml(item, 'sr-');
 
             li.innerHTML = `
-                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
+                <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
                     <strong class="clickable-track-title" onclick="jumpToSongDetail('${item.id}')" title="点击查看单曲详细信息" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${index + 1}. ${item.name}</strong>${artistHtml}${albumHtml}${localBadge}
                 </div>
                 ${slotsHtml}

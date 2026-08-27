@@ -169,6 +169,7 @@ function renderPage(page) {
 
     pageTracks.forEach((track, index) => {
         const li = document.createElement("li");
+        li.className = "track-item-card";
         const trackIndex = start + index + 1;
         const artistDisplay = getValidArtistNames(track);
         const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
@@ -177,7 +178,7 @@ function renderPage(page) {
         const slotsHtml = renderTrackCapsuleSlotsHtml(track, 'pl-');
 
         li.innerHTML = `
-            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
+            <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
                 <strong class="clickable-track-title" onclick="jumpToSongDetail('${track.id}')" title="点击查看单曲详细信息" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${trackIndex}. ${track.name}</strong>${artistHtml}${localBadge}
             </div>
             ${slotsHtml}

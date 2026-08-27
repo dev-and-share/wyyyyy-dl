@@ -26,8 +26,8 @@ function renderAlbumDetailUI(album) {
         const slotsHtml = renderTrackCapsuleSlotsHtml(song, 'al-');
 
         songsHtml += `
-            <li>
-                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
+            <li class="track-item-card">
+                <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
                     <strong class="clickable-track-title" onclick="jumpToSongDetail('${song.id}')" title="点击查看单曲详细信息" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${idx + 1}. ${song.name}</strong>${artistHtml}${localBadge}
                 </div>
                 ${slotsHtml}

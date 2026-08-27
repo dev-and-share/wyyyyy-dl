@@ -1377,29 +1377,50 @@ ul.data-list li:last-child {
     }
 
     /* 列表行项 Mobile 响应式极致美化 */
+    /* 列表行项 Mobile 响应式两排物理分立结构：歌名 100% 满宽霸屏，操作按钮整齐居右下移 */
     ul.data-list li {
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 10px 12px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        padding: 12px 14px !important;
         gap: 8px !important;
     }
 
-    ul.data-list li > div:first-child {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    ul.data-list li > div:last-child {
-        width: auto !important;
+    ul.data-list li > div:first-child,
+    .track-title-row {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-right: 0 !important;
+        overflow: visible !important;
+        white-space: normal !important;
+        word-break: break-all !important;
         display: flex !important;
-        flex-direction: row !important;
+        flex-wrap: wrap !important;
         align-items: center !important;
         gap: 4px !important;
+        font-size: 14px !important;
+        line-height: 1.4 !important;
+    }
+
+    ul.data-list li > div:last-child,
+    .track-action-group {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 8px !important;
         flex-shrink: 0 !important;
+        margin-top: 2px !important;
+    }
+
+    .track-btn-slot {
+        flex: 1 1 0 !important;
+        max-width: 120px !important;
+        min-width: 0 !important;
+        height: 30px !important;
+        font-size: 12px !important;
+        padding: 0 6px !important;
     }
 
     .jump-link-btn, button.btn-primary {
