@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
+
+import com.google.common.collect.Lists;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -391,6 +394,38 @@ public class DownloadHistoryDAO {
             log.error("批量按 songId 查询历史记录失败, songIds={}", songIds, e);
         }
         return result;
+    }
+
+    public void markLocalStatusBatch(List<com.pewee.neteasemusic.models.dtos.TrackDTO> tracks) {
+        if (tracks == null || tracks.isEmpty()) return;
+        List<Long> songIds = tracks.stream()
+                .map(com.pewee.neteasemusic.models.dtos.TrackDTO::getId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toList());
+
+        Map<Long, Boolean> localMap = new HashMap<>();
+        List<List<Long>> chunks = Lists.partition(songIds, 500);
+        for (List<Long> chunk : chunks) {
+            List<DownloadHistoryItem> records = getRecordsBySongIds(chunk);
+            for (DownloadHistoryItem item : records) {
+                if (Boolean.TRUE.equals(item.getFileExists())) {
+                    localMap.put(item.getSongId(), true);
+                }
+            }
+        }
+
+        for (com.pewee.neteasemusic.models.dtos.TrackDTO track : tracks) {
+            if (track != null) {
+                if (localMap.containsKey(track.getId())) {
+                    track.setIsLocal(true);
+                } else if (tracks.size() <= 100) {
+                    DownloadHistoryItem localItem = findLocalFileBySongOrName(track.getId(), track.getName(), track.getArtists());
+                    track.setIsLocal(localItem != null && Boolean.TRUE.equals(localItem.getFileExists()));
+                } else {
+                    track.setIsLocal(false);
+                }
+            }
+        }
     }
 
     public synchronized Map<String, Object> scanExternalLibraries() {

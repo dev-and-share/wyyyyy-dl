@@ -43,13 +43,7 @@ public class AnalysisController {
     public RespEntity<?> album(@RequestParam(required = true) Long id) {
 		AlbumAnalysisRespDTO result = analysisService.analyzeAlbum(id);
 		if (result != null && result.getAlbum() != null && result.getAlbum().getSongs() != null) {
-			for (TrackDTO track : result.getAlbum().getSongs()) {
-				if (track != null) {
-					com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = 
-							downloadHistoryDAO.findLocalFileBySongOrName(track.getId(), track.getName(), track.getArtists());
-					track.setIsLocal(localItem != null && Boolean.TRUE.equals(localItem.getFileExists()));
-				}
-			}
+			downloadHistoryDAO.markLocalStatusBatch(result.getAlbum().getSongs());
 		}
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
@@ -58,13 +52,7 @@ public class AnalysisController {
     public RespEntity<?> playlist(@RequestParam(required = true) Long id) {
     	PlaylistAnalysisRespDTO result = analysisService.analyzePlaylist(id);
     	if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
-			for (TrackDTO track : result.getPlaylist().getTracks()) {
-				if (track != null) {
-					com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = 
-							downloadHistoryDAO.findLocalFileBySongOrName(track.getId(), track.getName(), track.getArtists());
-					track.setIsLocal(localItem != null && Boolean.TRUE.equals(localItem.getFileExists()));
-				}
-			}
+			downloadHistoryDAO.markLocalStatusBatch(result.getPlaylist().getTracks());
 		}
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
