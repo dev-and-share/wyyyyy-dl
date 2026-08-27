@@ -398,33 +398,64 @@ public class DownloadHistoryDAO {
 
     public void markLocalStatusBatch(List<com.pewee.neteasemusic.models.dtos.TrackDTO> tracks) {
         if (tracks == null || tracks.isEmpty()) return;
-        List<Long> songIds = tracks.stream()
-                .map(com.pewee.neteasemusic.models.dtos.TrackDTO::getId)
-                .filter(id -> id != null && id > 0)
-                .collect(Collectors.toList());
 
-        Map<Long, Boolean> localMap = new HashMap<>();
-        List<List<Long>> chunks = Lists.partition(songIds, 500);
-        for (List<Long> chunk : chunks) {
-            List<DownloadHistoryItem> records = getRecordsBySongIds(chunk);
-            for (DownloadHistoryItem item : records) {
+        // 1. 一次性从数据库读取所有有效本地文件记录，避免数千次循环 SQL 和重复磁盘 I/O
+        Map<Long, DownloadHistoryItem> songIdMap = new HashMap<>();
+        List<DownloadHistoryItem> validRecords = new ArrayList<>();
+
+        String sql = "SELECT * FROM download_history ORDER BY id DESC";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                DownloadHistoryItem item = mapItemFromRs(rs);
                 if (Boolean.TRUE.equals(item.getFileExists())) {
-                    localMap.put(item.getSongId(), true);
+                    if (item.getSongId() != null && item.getSongId() > 0 && !songIdMap.containsKey(item.getSongId())) {
+                        songIdMap.put(item.getSongId(), item);
+                    }
+                    validRecords.add(item);
                 }
             }
+        } catch (Exception e) {
+            log.error("批量标记本地状态时加载数据库记录失败", e);
         }
 
+        // 2. 内存极速比对（ID 优先，降级歌名+歌手全量模糊匹配）
         for (com.pewee.neteasemusic.models.dtos.TrackDTO track : tracks) {
-            if (track != null) {
-                if (localMap.containsKey(track.getId())) {
-                    track.setIsLocal(true);
-                } else if (tracks.size() <= 100) {
-                    DownloadHistoryItem localItem = findLocalFileBySongOrName(track.getId(), track.getName(), track.getArtists());
-                    track.setIsLocal(localItem != null && Boolean.TRUE.equals(localItem.getFileExists()));
-                } else {
-                    track.setIsLocal(false);
+            if (track == null) continue;
+
+            // Step 1: ID 精确匹配
+            if (track.getId() != null && songIdMap.containsKey(track.getId())) {
+                track.setIsLocal(true);
+                continue;
+            }
+
+            // Step 2: 歌名 + 歌手降级内存匹配
+            String trackName = track.getName() != null ? track.getName().trim() : "";
+            if (trackName.isEmpty()) {
+                track.setIsLocal(false);
+                continue;
+            }
+
+            String trackBaseName = trackName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
+            if (trackBaseName.isEmpty()) trackBaseName = trackName;
+            String trackArtist = track.getArtists() != null ? track.getArtists().trim() : "";
+
+            boolean matched = false;
+            for (DownloadHistoryItem local : validRecords) {
+                String localName = local.getSongName() != null ? local.getSongName().trim() : "";
+                String localBaseName = localName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
+
+                if (localName.equalsIgnoreCase(trackName) || localBaseName.equalsIgnoreCase(trackBaseName) 
+                        || localName.contains(trackBaseName) || trackName.contains(localName)) {
+                    String localArtist = local.getArtist() != null ? local.getArtist().trim() : "";
+                    if (trackArtist.isEmpty() || localArtist.isEmpty() || localArtist.contains(trackArtist) || trackArtist.contains(localArtist)) {
+                        matched = true;
+                        break;
+                    }
                 }
             }
+            track.setIsLocal(matched);
         }
     }
 
