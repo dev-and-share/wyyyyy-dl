@@ -27,7 +27,10 @@ import com.pewee.neteasemusic.models.dtos.TrackDTO;
 import com.pewee.neteasemusic.models.dtos.UserPlaylistListRespDTO;
 import com.pewee.neteasemusic.models.dtos.UserPlaylistSummaryDTO;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class AnalysisService {
 	
 	@Autowired
@@ -266,22 +269,74 @@ public class AnalysisService {
 
             JSONArray tracks = playlist.getJSONArray("tracks");
             List<TrackDTO> trackList = new ArrayList<>();
-            for (int i = 0; i < tracks.size(); i++) {
-                JSONObject track = tracks.getJSONObject(i);
-                TrackDTO dto = new TrackDTO();
-                dto.setId(track.getLong("id"));
-                dto.setName(track.getString("name"));
-                dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
-                dto.setAlbum(track.getJSONObject("al").getString("name"));
-                dto.setArtists(track.getJSONArray("ar").stream()
-                    .map(ar -> ((JSONObject) ar).getString("name"))
-                    .collect(Collectors.joining("/")));
-                trackList.add(dto);
+            if (tracks != null) {
+                for (int i = 0; i < tracks.size(); i++) {
+                    JSONObject track = tracks.getJSONObject(i);
+                    TrackDTO dto = new TrackDTO();
+                    dto.setId(track.getLong("id"));
+                    dto.setName(track.getString("name"));
+                    if (track.getJSONObject("al") != null) {
+                        dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
+                        dto.setAlbum(track.getJSONObject("al").getString("name"));
+                    }
+                    if (track.getJSONArray("ar") != null) {
+                        dto.setArtists(track.getJSONArray("ar").stream()
+                            .map(ar -> ((JSONObject) ar).getString("name"))
+                            .collect(Collectors.joining("/")));
+                    }
+                    trackList.add(dto);
+                }
             }
+
+            // 🚀 突破网易云 1000 首限制：若 trackIds 总数大于 tracks (1000)，自动批量请求 /song/detail 补齐剩余全部歌曲！
+            JSONArray trackIds = playlist.getJSONArray("trackIds");
+            if (trackIds != null && trackIds.size() > trackList.size()) {
+                log.info("歌单总数超出 1000 首 (trackCount={}, trackIds={}), 正在批量补充后续歌曲详情...", playlistInfo.getTrackCount(), trackIds.size());
+                List<Long> remainingIds = new ArrayList<>();
+                for (int i = trackList.size(); i < trackIds.size(); i++) {
+                    JSONObject item = trackIds.getJSONObject(i);
+                    if (item != null && item.containsKey("id")) {
+                        remainingIds.add(item.getLong("id"));
+                    }
+                }
+                
+                // 每次 500 首批量获取歌曲详情
+                List<List<Long>> chunks = Lists.partition(remainingIds, 500);
+                for (List<Long> chunk : chunks) {
+                    try {
+                        String detailJsonStr = neteaseAPIService.songDetail(chunk);
+                        JSONObject detailJson = JSON.parseObject(detailJsonStr);
+                        JSONArray songs = detailJson != null ? detailJson.getJSONArray("songs") : null;
+                        if (songs != null) {
+                            for (int i = 0; i < songs.size(); i++) {
+                                JSONObject song = songs.getJSONObject(i);
+                                TrackDTO dto = new TrackDTO();
+                                dto.setId(song.getLong("id"));
+                                dto.setName(song.getString("name"));
+                                if (song.getJSONObject("al") != null) {
+                                    dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
+                                    dto.setAlbum(song.getJSONObject("al").getString("name"));
+                                }
+                                if (song.getJSONArray("ar") != null) {
+                                    dto.setArtists(song.getJSONArray("ar").stream()
+                                        .map(ar -> ((JSONObject) ar).getString("name"))
+                                        .collect(Collectors.joining("/")));
+                                }
+                                trackList.add(dto);
+                            }
+                        }
+                    } catch (Exception ex) {
+                        log.error("批量补全歌单剩余歌曲详情失败, size={}", chunk.size(), ex);
+                    }
+                }
+                log.info("歌单详情全量解析完毕, 实际获得歌曲数: {}", trackList.size());
+            }
+
             playlistInfo.setTracks(trackList);
             result.setPlaylist(playlistInfo);
             result.setStatus(200);
         } catch (Exception e) {
+            log.error("解析歌单失败, id={}", playlistId, e);
             result.setStatus(500);
         }
         return result;

@@ -922,7 +922,7 @@ function toggleMute() {
     }
 }
 
-function playAudioOnline(url, name, artist, cover, lyric) {
+function playAudioOnline(url, name, artist, cover, lyric, album) {
     if (!url) {
         showToast("暂无直接播放链接，请切换音质重试或点击下载", "warning");
         return;
@@ -936,6 +936,10 @@ function playAudioOnline(url, name, artist, cover, lyric) {
     const fullArtist = document.getElementById("fullscreenArtist");
     const fullCover = document.getElementById("fullscreenVinylCover");
     const fullPlayBtn = document.getElementById("fullscreenPlayPauseBtn");
+
+    const fill = document.getElementById("progressBarFill");
+    const handle = document.getElementById("progressBarHandle");
+    const curTime = document.getElementById("audioCurrentTime");
     
     if (bar && player) {
         const titleText = name || "未知歌曲";
@@ -971,14 +975,31 @@ function playAudioOnline(url, name, artist, cover, lyric) {
         parsedLrcList = parseLrc(currentPlayingLyric);
         currentLrcIndex = -1;
 
+        // 🎯 核心修复：强制切歌从 0 秒开始播放，并重置进度条 UI
+        if (fill) fill.style.width = "0%";
+        if (handle) handle.style.left = "0%";
+        if (curTime) curTime.textContent = "00:00";
+
         player.src = url;
+        player.currentTime = 0;
         bar.style.display = "flex";
         if (playBtn) playBtn.innerHTML = "⏸";
-        player.play().catch(e => console.error("播放中断:", e));
+        if (fullPlayBtn) fullPlayBtn.innerHTML = "⏸";
+
+        const playPromise = player.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                player.currentTime = 0;
+            }).catch(e => {
+                console.warn("自动播放受阻或中断:", e);
+                if (playBtn) playBtn.innerHTML = "▶";
+                if (fullPlayBtn) fullPlayBtn.innerHTML = "▶";
+            });
+        }
         savePlayerStateToStorage();
 
         // 📱 绑定原生 Media Session API（实现 iOS/Android 锁屏界面遥控、显示封面与连续后台切歌）
-        updateMediaSessionMetadata(name, artist, cover);
+        updateMediaSessionMetadata(name, artist, cover, album);
     }
 }
 
@@ -1029,16 +1050,44 @@ function playOnline(songId, name, artist) {
 }
 
 function playSongById(songId, name, artist) {
-    if (globalPlaylistQueue.length === 0) {
+    // 智能定位或更新全局队列
+    if (typeof allTracks !== 'undefined' && Array.isArray(allTracks) && allTracks.length > 0) {
+        const foundIdx = allTracks.findIndex(t => String(t.id) === String(songId));
+        if (foundIdx >= 0) {
+            globalPlaylistQueue = allTracks.map(t => ({
+                id: t.id,
+                name: t.name,
+                artist: typeof getValidArtistNames === 'function' ? getValidArtistNames(t) : t.artist,
+                cover: (t.al && t.al.picUrl) ? t.al.picUrl : '/favicon.png',
+                isLocal: (t.isLocal === true)
+            }));
+            currentQueueIndex = foundIdx;
+            updatePlaylistCountUI();
+        }
+    } else if (typeof currentAlbumSongs !== 'undefined' && Array.isArray(currentAlbumSongs) && currentAlbumSongs.length > 0) {
+        const foundIdx = currentAlbumSongs.findIndex(t => String(t.id) === String(songId));
+        if (foundIdx >= 0) {
+            globalPlaylistQueue = currentAlbumSongs.map(t => ({
+                id: t.id,
+                name: t.name,
+                artist: typeof getValidArtistNames === 'function' ? getValidArtistNames(t) : t.artist,
+                cover: (t.al && t.al.picUrl) ? t.al.picUrl : (typeof currentAlbumCover !== 'undefined' ? currentAlbumCover : '/favicon.png'),
+                isLocal: (t.isLocal === true)
+            }));
+            currentQueueIndex = foundIdx;
+            updatePlaylistCountUI();
+        }
+    } else if (globalPlaylistQueue.length === 0) {
         globalPlaylistQueue = [{ id: songId, name: name, artist: artist, cover: '/favicon.png' }];
         currentQueueIndex = 0;
         updatePlaylistCountUI();
     }
+
     axios.post('/Song_V1', new URLSearchParams({ id: songId, name: name || '', artist: artist || '', level: 'lossless', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url) {
-                playAudioOnline(song.url, name || song.name, artist || song.ar_name, song.pic, song.lyric);
+                playAudioOnline(song.url, name || song.name, artist || song.ar_name, song.pic, song.lyric, song.al_name);
                 if (song.freeTrial) {
                     const durText = song.freeTrialDuration ? `（${song.freeTrialDuration}秒）` : '';
                     showToast(`🎵 正在播放《${name || song.name}》试听版本${durText}`, 'info', 4000);
