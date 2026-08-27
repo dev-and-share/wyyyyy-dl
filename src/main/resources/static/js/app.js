@@ -774,6 +774,7 @@ function togglePlaylistDrawer() {
         if (drawer.style.display === 'none' || !drawer.style.display) {
             drawer.style.display = 'flex';
             renderPlaylistDrawer();
+            initDraggablePlaylistDrawer();
         } else {
             drawer.style.display = 'none';
         }
@@ -781,74 +782,77 @@ function togglePlaylistDrawer() {
 }
 
 /**
- * 🖐️ 为播放列表 Drawer 绑定平滑拖拽移动引擎（支持 Mouse 与 Touch）
+ * 🖐️ 为播放列表 Drawer 绑定平滑拖拽移动引擎（支持 Mouse 与 Touch，基于 PointerEvent）
  */
 function initDraggablePlaylistDrawer() {
     const drawer = document.getElementById("playlistDrawer");
     if (!drawer) return;
     const header = drawer.querySelector(".playlist-drawer-header");
-    if (!header) return;
+    if (!header || header._dragBound) return;
+    header._dragBound = true;
 
     let isDragging = false;
     let startX = 0, startY = 0;
-    let initialLeft = 0, initialTop = 0;
+    let startLeft = 0, startTop = 0;
 
-    const onPointerDown = (e) => {
-        if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'INPUT') return;
+    header.addEventListener('pointerdown', (e) => {
+        // 排除按钮和输入框点击
+        if (e.target.closest('button') || e.target.closest('input')) return;
         
         isDragging = true;
+        try {
+            header.setPointerCapture(e.pointerId);
+        } catch (err) {}
+
         const rect = drawer.getBoundingClientRect();
-        
-        initialLeft = rect.left;
-        initialTop = rect.top;
+        startLeft = rect.left;
+        startTop = rect.top;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        // 切换为基于 top/left 定位
         drawer.style.bottom = 'auto';
         drawer.style.right = 'auto';
-        drawer.style.left = initialLeft + 'px';
-        drawer.style.top = initialTop + 'px';
-        
-        startX = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0].clientX);
-        startY = (e.clientY !== undefined) ? e.clientY : (e.touches && e.touches[0].clientY);
+        drawer.style.left = startLeft + 'px';
+        drawer.style.top = startTop + 'px';
+    });
 
-        document.addEventListener('mousemove', onPointerMove);
-        document.addEventListener('mouseup', onPointerUp);
-        document.addEventListener('touchmove', onPointerMove, { passive: false });
-        document.addEventListener('touchend', onPointerUp);
-    };
-
-    const onPointerMove = (e) => {
+    header.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-        if (e.cancelable) e.preventDefault();
-        
-        const clientX = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0].clientX);
-        const clientY = (e.clientY !== undefined) ? e.clientY : (e.touches && e.touches[0].clientY);
-        if (clientX === undefined || clientY === undefined) return;
+        e.preventDefault();
 
-        const deltaX = clientX - startX;
-        const deltaY = clientY - startY;
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
 
-        let newLeft = initialLeft + deltaX;
-        let newTop = initialTop + deltaY;
+        let newLeft = startLeft + deltaX;
+        let newTop = startTop + deltaY;
 
+        // 视口边界保护
+        const minLeft = 10;
         const maxLeft = Math.max(10, window.innerWidth - drawer.offsetWidth - 10);
+        const minTop = 10;
         const maxTop = Math.max(10, window.innerHeight - 60);
 
-        newLeft = Math.max(10, Math.min(newLeft, maxLeft));
-        newTop = Math.max(10, Math.min(newTop, maxTop));
+        newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+        newTop = Math.max(minTop, Math.min(newTop, maxTop));
 
         drawer.style.left = newLeft + 'px';
         drawer.style.top = newTop + 'px';
+    });
+
+    const stopDrag = (e) => {
+        if (isDragging) {
+            isDragging = false;
+            try {
+                if (e && e.pointerId !== undefined) {
+                    header.releasePointerCapture(e.pointerId);
+                }
+            } catch (err) {}
+        }
     };
 
-    const onPointerUp = () => {
-        isDragging = false;
-        document.removeEventListener('mousemove', onPointerMove);
-        document.removeEventListener('mouseup', onPointerUp);
-        document.removeEventListener('touchmove', onPointerMove);
-        document.removeEventListener('touchend', onPointerUp);
-    };
-
-    header.addEventListener('mousedown', onPointerDown);
-    header.addEventListener('touchstart', onPointerDown, { passive: true });
+    header.addEventListener('pointerup', stopDrag);
+    header.addEventListener('pointercancel', stopDrag);
 }
 
 function toggleAutoSkipTrial(checked) {
