@@ -1603,3 +1603,64 @@ async function asyncUpdateListBadges(pageTracks, badgePrefix = 'badge-track-') {
         }
     });
 }
+
+/* ==========================================================================
+   ⚡ SWR (Stale-While-Revalidate) 本地 API 缓存引擎
+   ========================================================================== */
+
+const API_CACHE_PREFIX = 'pwa_api_cache_';
+
+function getApiCache(key) {
+    try {
+        const raw = localStorage.getItem(API_CACHE_PREFIX + key);
+        return raw ? JSON.parse(raw) : null;
+    } catch(e) {
+        return null;
+    }
+}
+
+function setApiCache(key, data) {
+    try {
+        localStorage.setItem(API_CACHE_PREFIX + key, JSON.stringify({
+            data: data,
+            timestamp: Date.now()
+        }));
+    } catch(e) {
+        // 如果存储空间满了，清理较早的 API 缓存
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith(API_CACHE_PREFIX)) {
+                    keysToRemove.push(k);
+                }
+            }
+            keysToRemove.slice(0, Math.ceil(keysToRemove.length / 2)).forEach(k => localStorage.removeItem(k));
+            localStorage.setItem(API_CACHE_PREFIX + key, JSON.stringify({
+                data: data,
+                timestamp: Date.now()
+            }));
+        } catch(err) {
+            console.warn("[SWR] 写入缓存失败:", err);
+        }
+    }
+}
+
+function isFastDataEqual(oldObj, newObj) {
+    if (!oldObj || !newObj) return false;
+    if (oldObj.id !== newObj.id) return false;
+    if (oldObj.trackCount !== newObj.trackCount) return false;
+    if (oldObj.coverImgUrl !== newObj.coverImgUrl) return false;
+    if (oldObj.name !== newObj.name) return false;
+    
+    const oldTracks = oldObj.tracks || oldObj.songs || [];
+    const newTracks = newObj.tracks || newObj.songs || [];
+    if (oldTracks.length !== newTracks.length) return false;
+    
+    for (let i = 0; i < oldTracks.length; i++) {
+        if (oldTracks[i].id !== newTracks[i].id || oldTracks[i].isLocal !== newTracks[i].isLocal) {
+            return false;
+        }
+    }
+    return true;
+}

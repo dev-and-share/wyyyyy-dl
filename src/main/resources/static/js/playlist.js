@@ -11,47 +11,101 @@ function getValidArtistNames(track) {
     return arNames;
 }
 
+function renderMyPlaylistsDOM(playlists, filterType) {
+    const list = document.getElementById("playlist-list");
+    if (!list) return;
+    list.innerHTML = "";
+    
+    let filtered = playlists || [];
+    if (filterType === 'created') {
+        filtered = filtered.filter(pl => pl.subscribed === false || pl.subscribed === null || pl.subscribed === undefined);
+    } else if (filterType === 'subscribed') {
+        filtered = filtered.filter(pl => pl.subscribed === true);
+    }
+
+    if (filtered.length === 0) {
+        const labelMap = { 'created': '创建的', 'subscribed': '收藏的', 'all': '' };
+        list.innerHTML = `<li style="color:var(--text-muted); font-size:13px; padding:16px; justify-content:center;">暂无${labelMap[filterType] || ''}歌单记录</li>`;
+        return;
+    }
+    
+    filtered.forEach(pl => {
+        const li = document.createElement("li");
+        const isSubscribed = (pl.subscribed === true);
+        const tag = isSubscribed 
+            ? '<span class="status-badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.25); font-weight:600; margin-right:6px;">收藏</span>' 
+            : '<span class="status-badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.25); font-weight:600; margin-right:6px;">创建</span>';
+        
+        li.innerHTML = `
+            <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center;">
+                ${tag}
+                <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-main);">${pl.name}</strong> 
+                <span style="color:var(--text-muted); font-size:11px; margin-left:4px; flex-shrink:0;">(${pl.trackCount || 0}首)</span>
+            </div>
+            <div style="flex-shrink:0;">
+                <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${pl.id}')">👉 查看详情</button>
+            </div>
+        `;
+        list.appendChild(li);
+    });
+}
+
 function loadMyPlaylists(filterType) {
     filterType = filterType || 'created';
+    
+    // ⚡ 1. SWR 优先从本地缓存秒开渲染
+    const cached = typeof getApiCache === 'function' ? getApiCache('my_playlists') : null;
+    if (cached && cached.data && cached.data.playlists) {
+        renderMyPlaylistsDOM(cached.data.playlists, filterType);
+    }
+
+    // 🔄 2. 并行后台请求最新数据
     axios.post('/MyPlaylist?limit=100')
         .then(resp => {
-            const list = document.getElementById("playlist-list");
-            list.innerHTML = "";
-            let playlists = resp.data.data.playlists || [];
-
-            if (filterType === 'created') {
-                playlists = playlists.filter(pl => pl.subscribed === false || pl.subscribed === null || pl.subscribed === undefined);
-            } else if (filterType === 'subscribed') {
-                playlists = playlists.filter(pl => pl.subscribed === true);
-            }
-
-            if (playlists.length === 0) {
-                const labelMap = { 'created': '创建的', 'subscribed': '收藏的', 'all': '' };
-                list.innerHTML = `<li style="color:var(--text-muted); font-size:13px; padding:16px; justify-content:center;">暂无${labelMap[filterType] || ''}歌单记录</li>`;
-                return;
-            }
+            const newPlaylists = (resp.data && resp.data.data && resp.data.data.playlists) || [];
+            const oldPlaylists = (cached && cached.data && cached.data.playlists) || [];
             
-            playlists.forEach(pl => {
-                const li = document.createElement("li");
-                const isSubscribed = (pl.subscribed === true);
-                const tag = isSubscribed 
-                    ? '<span class="status-badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.25); font-weight:600; margin-right:6px;">收藏</span>' 
-                    : '<span class="status-badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.25); font-weight:600; margin-right:6px;">创建</span>';
-                
-                li.innerHTML = `
-                    <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center;">
-                        ${tag}
-                        <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-main);">${pl.name}</strong> 
-                        <span style="color:var(--text-muted); font-size:11px; margin-left:4px; flex-shrink:0;">(${pl.trackCount || 0}首)</span>
-                    </div>
-                    <div style="flex-shrink:0;">
-                        <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${pl.id}')">👉 查看详情</button>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
+            const isChanged = !cached || JSON.stringify(newPlaylists.map(p => p.id + '_' + p.trackCount)) !== JSON.stringify(oldPlaylists.map(p => p.id + '_' + p.trackCount));
+            
+            if (isChanged) {
+                if (typeof setApiCache === 'function') {
+                    setApiCache('my_playlists', resp.data.data);
+                }
+                renderMyPlaylistsDOM(newPlaylists, filterType);
+            }
         })
-        .catch(err => alert("加载歌单失败：" + err));
+        .catch(err => {
+            if (!cached) {
+                alert("加载歌单失败：" + err);
+            }
+        });
+}
+
+function renderPlaylistDetailUI(playlist) {
+    if (!playlist) return;
+    currentPlaylist = playlist;
+    allTracks = playlist.tracks || [];
+    currentPage = 1;
+
+    const infoDiv = document.getElementById("playlist-info");
+    if (!infoDiv) return;
+
+    infoDiv.innerHTML = `
+        <div class="detail-header-card">
+            <img src="${playlist.coverImgUrl || '/favicon.png'}" alt="封面" class="detail-cover-img">
+            <div class="detail-header-info">
+                <h4 class="detail-header-title">${playlist.name || '未知歌单'}</h4>
+                <div class="detail-header-sub">创建人：${playlist.creator || '未知'} | 共 ${playlist.trackCount || allTracks.length} 首歌</div>
+                <div class="detail-btn-group">
+                    <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">🖥️ 下载到电脑</button>
+                    <button class="btn-primary flex-1-btn" id="playlist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
+                    <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放歌单</button>
+                </div>
+            </div>
+        </div>
+    `;
+    renderPage(currentPage);
+    refreshPhoneCacheBtn(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器');
 }
 
 function loadPlaylistDetail() {
@@ -60,33 +114,49 @@ function loadPlaylistDetail() {
         alert("请输入歌单 ID");
         return;
     }
+
+    const infoDiv = document.getElementById("playlist-info");
+
+    // ⚡ 1. SWR 优先从本地缓存秒开渲染
+    const cacheKey = 'playlist_' + id;
+    const cached = typeof getApiCache === 'function' ? getApiCache(cacheKey) : null;
+    let hasRenderedCache = false;
+
+    if (cached && cached.data && cached.data.playlist) {
+        renderPlaylistDetailUI(cached.data.playlist);
+        hasRenderedCache = true;
+    } else {
+        if (infoDiv) {
+            infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">🔄 正在解析歌单数据，请稍候...</div>`;
+        }
+    }
     
+    // 🔄 2. 并行后台请求最新数据
     axios.post('/Playlist', new URLSearchParams({ id }))
         .then(resp => {
-            const playlist = resp.data.data.playlist;
-            currentPlaylist = playlist;
-            allTracks = playlist.tracks || [];
-            currentPage = 1;
+            const playlist = resp.data && resp.data.data ? resp.data.data.playlist : null;
+            if (!playlist) {
+                if (!hasRenderedCache && infoDiv) {
+                    infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">未找到歌单数据或歌单为空</div>`;
+                }
+                return;
+            }
 
-            const infoDiv = document.getElementById("playlist-info");
-            infoDiv.innerHTML = `
-                <div class="detail-header-card">
-                    <img src="${playlist.coverImgUrl}" alt="封面" class="detail-cover-img">
-                    <div class="detail-header-info">
-                        <h4 class="detail-header-title">${playlist.name}</h4>
-                        <div class="detail-header-sub">创建人：${playlist.creator} | 共 ${playlist.trackCount} 首歌</div>
-                        <div class="detail-btn-group">
-                            <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">🖥️ 下载到电脑</button>
-                            <button class="btn-primary flex-1-btn" id="playlist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
-                            <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放歌单</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            renderPage(currentPage);
-            refreshPhoneCacheBtn(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器');
+            const oldPlaylist = cached ? cached.data.playlist : null;
+            const isChanged = !hasRenderedCache || !isFastDataEqual(oldPlaylist, playlist);
+
+            if (isChanged) {
+                if (typeof setApiCache === 'function') {
+                    setApiCache(cacheKey, resp.data.data);
+                }
+                renderPlaylistDetailUI(playlist);
+            }
         })
-        .catch(err => alert("获取歌单详情失败：" + err));
+        .catch(err => {
+            if (!hasRenderedCache) {
+                alert("获取歌单详情失败：" + err);
+            }
+        });
 }
 
 function renderPage(page) {

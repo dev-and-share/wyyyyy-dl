@@ -8,6 +8,65 @@ function quickLoadAlbum(albumId) {
     loadAlbumInfo();
 }
 
+function renderAlbumDetailUI(album) {
+    if (!album) return;
+    currentAlbum = album;
+    currentAlbumSongs = album.songs || [];
+    currentAlbumCover = album.coverImgUrl || '/favicon.png';
+    const albumSongs = currentAlbumSongs;
+
+    const infoDiv = document.getElementById("album-info");
+    if (!infoDiv) return;
+
+    let songsHtml = '';
+    album.songs.forEach((song, idx) => {
+        const artistDisplay = getValidArtistNames(song);
+        const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
+        const isLocalTrack = (song.isLocal === true);
+
+        const localBadge = `<span id="badge-track-${song.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
+
+        const playBtnHtml = isLocalTrack
+            ? `<button class="jump-link-btn" style="background:rgba(34,197,94,0.18); color:#4ade80; border-color:rgba(34,197,94,0.35);" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="本地无损秒播">▶️ 播放</button>`
+            : `<button class="jump-link-btn" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>`;
+
+        songsHtml += `
+            <li>
+                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center;">
+                    <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${idx + 1}. ${song.name}</strong>${artistHtml}${localBadge}
+                </div>
+                <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+                    ${playBtnHtml}
+                    <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🔍 查看</button>
+                    <button class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0;" onclick="downloadSingle('${song.id}')">📥 下载</button>
+                    <button id="al-cache-btn-${song.id}" class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0; margin-left:4px; background:#0284c7;" onclick="cacheTracksToPhoneBatch([{id: '${song.id}', songId: '${song.id}'}], 'al-cache-btn-${song.id}', '📲 缓存')">📲 缓存</button>
+                </div>
+            </li>
+        `;
+    });
+
+    infoDiv.innerHTML = `
+        <div class="detail-header-card" style="margin-bottom:15px;">
+            <img src="${album.coverImgUrl || '/favicon.png'}" alt="封面" class="detail-cover-img">
+            <div class="detail-header-info">
+                <h4 class="detail-header-title">${album.name || '未知专辑'}</h4>
+                <div class="detail-header-sub">歌手：${album.artist || '未知歌手'} | 发行：${album.publishTime || '未知'}</div>
+                <div class="detail-btn-group">
+                    <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">🖥️ 下载到电脑</button>
+                    <button class="btn-primary flex-1-btn" id="album-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(currentAlbum ? currentAlbum.songs : [], 'album-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
+                    <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放专辑</button>
+                </div>
+            </div>
+        </div>
+        <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">专辑曲目列表 (${album.songs ? album.songs.length : 0} 首)：</h4>
+        <ul class="data-list scrollable-list" id="album-tracks">
+            ${songsHtml}
+        </ul>
+    `;
+    refreshPhoneCacheBtn(albumSongs, 'album-cache-btn', '📲 缓存到浏览器');
+    asyncUpdateListBadges(albumSongs);
+}
+
 function loadAlbumInfo() {
     const id = document.getElementById("albumId").value;
     if (!id) {
@@ -16,73 +75,42 @@ function loadAlbumInfo() {
     }
 
     const infoDiv = document.getElementById("album-info");
-    if (infoDiv) {
-        infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">🔄 正在解析专辑数据，请稍候...</div>`;
+
+    // ⚡ 1. SWR 优先从本地缓存秒开渲染
+    const cacheKey = 'album_' + id;
+    const cached = typeof getApiCache === 'function' ? getApiCache(cacheKey) : null;
+    let hasRenderedCache = false;
+
+    if (cached && cached.data && cached.data.album) {
+        renderAlbumDetailUI(cached.data.album);
+        hasRenderedCache = true;
+    } else {
+        if (infoDiv) {
+            infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">🔄 正在解析专辑数据，请稍候...</div>`;
+        }
     }
 
+    // 🔄 2. 并行后台请求最新数据
     axios.post('/Album', new URLSearchParams({ id }))
         .then(resp => {
             if (!resp.data || !resp.data.data || !resp.data.data.album) {
-                throw new Error("未查找到对应专辑数据或该专辑 ID 不存在");
+                if (!hasRenderedCache) throw new Error("未查找到对应专辑数据或该专辑 ID 不存在");
+                return;
             }
             const album = resp.data.data.album;
-            currentAlbumSongs = album.songs || [];
-            currentAlbumCover = album.coverImgUrl || '/favicon.png';
+            const oldAlbum = cached ? cached.data.album : null;
+            const isChanged = !hasRenderedCache || !isFastDataEqual(oldAlbum, album);
 
-            let songsHtml = '';
-            album.songs.forEach((song, idx) => {
-                const artistDisplay = getValidArtistNames(song);
-                const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
-                const isLocalTrack = (song.isLocal === true);
-
-                const localBadge = `<span id="badge-track-${song.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
-
-                const playBtnHtml = isLocalTrack
-                    ? `<button class="jump-link-btn" style="background:rgba(34,197,94,0.18); color:#4ade80; border-color:rgba(34,197,94,0.35);" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="本地无损秒播">▶️ 播放</button>`
-                    : `<button class="jump-link-btn" onclick="playSongById('${song.id}', '${(song.name||'').replace(/'/g, "\\'")}', '${(artistDisplay||'').replace(/'/g, "\\'")}')" title="在线试听">▶️ 试听</button>`;
-
-                songsHtml += `
-                    <li>
-                        <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center;">
-                            <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${idx + 1}. ${song.name}</strong>${artistHtml}${localBadge}
-                        </div>
-                        <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
-                            ${playBtnHtml}
-                            <button class="jump-link-btn" onclick="jumpToSongDetail('${song.id}')">🔍 查看</button>
-                            <button class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0;" onclick="downloadSingle('${song.id}')">📥 下载</button>
-                            <button id="al-cache-btn-${song.id}" class="btn-primary" style="padding:4px 8px; font-size:12px; margin:0; margin-left:4px; background:#0284c7;" onclick="cacheTracksToPhoneBatch([{id: '${song.id}', songId: '${song.id}'}], 'al-cache-btn-${song.id}', '📲 缓存')">📲 缓存</button>
-                        </div>
-                    </li>
-                `;
-            });
-
-            currentAlbum = album;
-            const albumSongs = album.songs || [];
-
-            infoDiv.innerHTML = `
-                <div class="detail-header-card" style="margin-bottom:15px;">
-                    <img src="${album.coverImgUrl}" alt="封面" class="detail-cover-img">
-                    <div class="detail-header-info">
-                        <h4 class="detail-header-title">${album.name}</h4>
-                        <div class="detail-header-sub">歌手：${album.artist} | 发行：${album.publishTime || '未知'}</div>
-                        <div class="detail-btn-group">
-                            <button class="btn-primary flex-1-btn" onclick="downloadAlbum('${album.id}')">🖥️ 下载到电脑</button>
-                            <button class="btn-primary flex-1-btn" id="album-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(currentAlbum ? currentAlbum.songs : [], 'album-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
-                            <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentAlbum()">▶️ 播放专辑</button>
-                        </div>
-                    </div>
-                </div>
-                <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">专辑曲目列表 (${album.songs.length} 首)：</h4>
-                <ul class="data-list scrollable-list" id="album-tracks">
-                    ${songsHtml}
-                </ul>
-            `;
-            refreshPhoneCacheBtn(albumSongs, 'album-cache-btn', '📲 缓存到浏览器');
-            asyncUpdateListBadges(albumSongs);
+            if (isChanged) {
+                if (typeof setApiCache === 'function') {
+                    setApiCache(cacheKey, resp.data.data);
+                }
+                renderAlbumDetailUI(album);
+            }
         })
         .catch(err => {
-            const errorText = err.message || err;
-            if (infoDiv) {
+            if (!hasRenderedCache && infoDiv) {
+                const errorText = err.message || err;
                 infoDiv.innerHTML = `
                     <div class="empty-placeholder-card">
                         <div class="empty-icon">⚠️</div>
