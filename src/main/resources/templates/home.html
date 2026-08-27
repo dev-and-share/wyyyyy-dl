@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=3.5.1">
+    <link rel="stylesheet" href="/css/style.css?v=3.6.0">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -326,12 +326,42 @@
     <!-- 📜 播放列表 Drawer 弹窗卡片 (Playlist Drawer) -->
     <div class="playlist-drawer" id="playlistDrawer" style="display: none;">
         <div class="playlist-drawer-header">
-            <span>📜 当前播放列表 (<span id="playlistDrawerCount">0</span> 首)</span>
-            <div style="display:flex; gap:8px;">
-                <button class="btn-icon" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️</button>
-                <button class="btn-icon" onclick="togglePlaylistDrawer()" title="关闭">✕</button>
+            <span>📜 播放队列 (<span id="playlistDrawerCount">0</span> 首)</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button class="drawer-header-btn" onclick="applyQueueTrim()" title="将当前筛选结果裁剪为新队列">✂️ 裁剪</button>
+                <button class="drawer-header-btn" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️</button>
+                <button class="drawer-header-btn" onclick="togglePlaylistDrawer()" title="关闭">✕</button>
             </div>
         </div>
+
+        <!-- 🔍 队列内搜索与快速过滤栏 -->
+        <div class="playlist-drawer-filter-bar">
+            <div class="drawer-search-wrap">
+                <input type="text" id="drawerSearchInput" class="drawer-search-input" placeholder="🔍 筛选当前列表 (歌名 / 歌手)..." oninput="onDrawerFilterChange()">
+                <button id="drawerSearchClear" class="drawer-search-clear-btn" style="display:none;" onclick="clearDrawerSearch()">✕</button>
+            </div>
+            
+            <!-- 🏷️ 筛选 Tab 按钮组 -->
+            <div class="drawer-filter-tabs">
+                <button class="drawer-tab-btn active" id="tab-q-all" onclick="setDrawerFilter('all')">全部 <span id="qCountAll">0</span></button>
+                <button class="drawer-tab-btn" id="tab-q-ready" onclick="setDrawerFilter('ready')" title="服务器或本机浏览器已有的曲目">✨ 离线就绪 <span id="qCountReady">0</span></button>
+                <button class="drawer-tab-btn" id="tab-q-server" onclick="setDrawerFilter('server')" title="已在服务器磁盘">🖥️ 本地 <span id="qCountServer">0</span></button>
+                <button class="drawer-tab-btn" id="tab-q-browser" onclick="setDrawerFilter('browser')" title="已在当前浏览器缓存">📲 缓存 <span id="qCountBrowser">0</span></button>
+            </div>
+
+            <!-- ⚙️ 智能跳过与播放策略开关 -->
+            <div class="drawer-switches-row">
+                <label class="drawer-switch-label" title="播放遇到 30 秒试听曲目时，自动跳过并播放下一首完整歌曲">
+                    <input type="checkbox" id="chkAutoSkipTrial" onchange="toggleAutoSkipTrial(this.checked)">
+                    <span>🛡️ 自动跳过试听</span>
+                </label>
+                <label class="drawer-switch-label" title="仅播放服务器或本机已缓存的歌曲，完全无需消耗外网流量">
+                    <input type="checkbox" id="chkOfflineOnly" onchange="toggleOfflineOnlyMode(this.checked)">
+                    <span>📴 纯离线模式</span>
+                </label>
+            </div>
+        </div>
+
         <div class="playlist-drawer-body">
             <ul class="playlist-drawer-list" id="playlistDrawerList"></ul>
         </div>
@@ -392,13 +422,13 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v3.5.1</div>
+    <div class="app-version-footer">网易云下载器 · PWA v3.6.0</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/playlist.js?v=3.5.1"></script>
-    <script src="/js/album.js?v=3.5.1"></script>
-    <script src="/js/search.js?v=3.5.1"></script>
-    <script src="/js/download-mgr.js?v=3.5.1"></script>
-    <script src="/js/app.js?v=3.5.1"></script>
+    <script src="/js/playlist.js?v=3.6.0"></script>
+    <script src="/js/album.js?v=3.6.0"></script>
+    <script src="/js/search.js?v=3.6.0"></script>
+    <script src="/js/download-mgr.js?v=3.6.0"></script>
+    <script src="/js/app.js?v=3.6.0"></script>
 </body>
 </html>

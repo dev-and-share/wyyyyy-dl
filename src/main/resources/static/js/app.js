@@ -475,6 +475,8 @@ const STORAGE_QUEUE_KEY = "wyyyy_player_queue";
 const STORAGE_INDEX_KEY = "wyyyy_player_index";
 const STORAGE_MODE_KEY = "wyyyy_player_mode";
 const STORAGE_TIME_KEY = "wyyyy_player_time";
+const STORAGE_AUTO_SKIP_KEY = "wyyyy_player_auto_skip_trial";
+const STORAGE_OFFLINE_ONLY_KEY = "wyyyy_player_offline_only";
 
 let currentPlayingLyric = "";
 let parsedLrcList = [];
@@ -485,6 +487,11 @@ let isAudioPlayerMinimized = false;
 let globalPlaylistQueue = [];
 let currentQueueIndex = -1;
 let playMode = 'loop'; // 'loop' (列表) | 'single' (单曲) | 'random' (随机)
+let autoSkipTrial = localStorage.getItem(STORAGE_AUTO_SKIP_KEY) === 'true';
+let offlineOnlyMode = localStorage.getItem(STORAGE_OFFLINE_ONLY_KEY) === 'true';
+let drawerFilterType = 'all'; // 'all', 'ready', 'server', 'browser'
+let drawerSearchQuery = '';
+let lastCachedUrlsForDrawer = [];
 
 function savePlayerStateToStorage() {
     try {
@@ -642,9 +649,27 @@ function playTrackInQueue(index) {
     const track = globalPlaylistQueue[index];
     savePlayerStateToStorage();
 
+    // 📴 纯离线模式：只播放本地/浏览器缓存曲目，遇到线上未缓存歌曲自动寻找下一首
+    if (offlineOnlyMode) {
+        const id = track.id || track.songId;
+        const isServer = track.isLocal === true;
+        const isBrowser = lastCachedUrlsForDrawer && lastCachedUrlsForDrawer.some(u => u.includes(`id=${id}`) || u.includes(`songId=${id}`));
+        if (!isServer && !isBrowser) {
+            showToast(`📴 纯离线模式：跳过未缓存曲目《${track.name}》`, "info", 1500);
+            playNextTrackSync();
+            return;
+        }
+    }
+
     // 优先纯同步播已经预载好且未过期（20分钟内有效）的链接
     const isResolved = track.resolvedUrl && Date.now() - (track.resolvedAt || 0) < 1200000;
     if (isResolved) {
+        // 🛡️ 自动跳过试听
+        if (autoSkipTrial && track.freeTrial) {
+            showToast(`🛡️ 《${track.name}》为试听曲目，已根据设置自动跳过`, 'info', 1800);
+            playNextTrackSync();
+            return;
+        }
         const cover = track.cover || '/favicon.png';
         playAudioOnline(track.resolvedUrl, track.name, track.artist, cover, track.lyric || '');
         if (track.freeTrial) {
@@ -671,6 +696,14 @@ function playTrackInQueue(index) {
                 if (song.isLocal === true || (song.url && (song.url.includes('/v2/stream') || song.url.includes('/history/stream')))) {
                     track.isLocal = true;
                 }
+
+                // 🛡️ 自动跳过试听
+                if (autoSkipTrial && track.freeTrial) {
+                    showToast(`🛡️ 《${track.name || song.name}》为试听曲目，已根据设置自动跳过`, 'info', 1800);
+                    playNextTrackSync();
+                    return;
+                }
+
                 playAudioOnline(song.url, track.name || song.name, track.artist || song.ar_name, cover, song.lyric);
                 if (song.freeTrial) {
                     const durText = song.freeTrialDuration ? `（${song.freeTrialDuration}秒）` : '';
@@ -747,6 +780,104 @@ function togglePlaylistDrawer() {
     }
 }
 
+function toggleAutoSkipTrial(checked) {
+    autoSkipTrial = checked;
+    localStorage.setItem(STORAGE_AUTO_SKIP_KEY, checked ? 'true' : 'false');
+    showToast(checked ? "🛡️ 已开启自动跳过试听曲目" : "已关闭自动跳过试听", "info", 2000);
+}
+
+function toggleOfflineOnlyMode(checked) {
+    offlineOnlyMode = checked;
+    localStorage.setItem(STORAGE_OFFLINE_ONLY_KEY, checked ? 'true' : 'false');
+    showToast(checked ? "📴 已开启纯离线模式 (仅播放本地/已缓存音频)" : "已退出纯离线模式", "info", 2000);
+    renderPlaylistDrawer();
+}
+
+function setDrawerFilter(type) {
+    drawerFilterType = type || 'all';
+    document.querySelectorAll('.drawer-tab-btn').forEach(btn => btn.classList.remove('active'));
+    const activeTab = document.getElementById('tab-q-' + type);
+    if (activeTab) activeTab.classList.add('active');
+    renderPlaylistDrawer();
+}
+
+function onDrawerFilterChange() {
+    const input = document.getElementById("drawerSearchInput");
+    const clearBtn = document.getElementById("drawerSearchClear");
+    drawerSearchQuery = input ? input.value.trim().toLowerCase() : '';
+    if (clearBtn) clearBtn.style.display = drawerSearchQuery ? 'block' : 'none';
+    renderPlaylistDrawer();
+}
+
+function clearDrawerSearch() {
+    const input = document.getElementById("drawerSearchInput");
+    const clearBtn = document.getElementById("drawerSearchClear");
+    if (input) input.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    drawerSearchQuery = '';
+    renderPlaylistDrawer();
+}
+
+function getFilteredDrawerQueue() {
+    if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) return [];
+    return globalPlaylistQueue.filter(track => {
+        const id = track.id || track.songId;
+        const isServer = track.isLocal === true;
+        const isBrowser = lastCachedUrlsForDrawer && lastCachedUrlsForDrawer.some(u => u.includes(`id=${id}`) || u.includes(`songId=${id}`));
+        const isReady = isServer || isBrowser;
+
+        if (drawerFilterType === 'ready' && !isReady) return false;
+        if (drawerFilterType === 'server' && !isServer) return false;
+        if (drawerFilterType === 'browser' && !isBrowser) return false;
+
+        if (drawerSearchQuery) {
+            const name = (track.name || '').toLowerCase();
+            const artist = (track.artist || '').toLowerCase();
+            if (!name.includes(drawerSearchQuery) && !artist.includes(drawerSearchQuery)) {
+                return false;
+            }
+        }
+        return true;
+    });
+}
+
+function applyQueueTrim() {
+    if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) {
+        showToast("当前播放队列为空，无需裁剪", "warning");
+        return;
+    }
+    
+    const filteredTracks = getFilteredDrawerQueue();
+    if (filteredTracks.length === 0) {
+        showToast("当前筛选条件未匹配到任何歌曲", "warning");
+        return;
+    }
+    
+    if (filteredTracks.length === globalPlaylistQueue.length) {
+        showToast("当前已是全部曲目，无需裁剪", "info");
+        return;
+    }
+
+    if (confirm(`确定将当前筛选出的 ${filteredTracks.length} 首曲目裁剪为新的播放列表吗？（其余 ${globalPlaylistQueue.length - filteredTracks.length} 首将被移除）`)) {
+        const currentPlayingTrack = globalPlaylistQueue[currentQueueIndex];
+        globalPlaylistQueue = filteredTracks;
+        
+        if (currentPlayingTrack) {
+            const newIdx = globalPlaylistQueue.findIndex(t => t.id === currentPlayingTrack.id);
+            currentQueueIndex = newIdx >= 0 ? newIdx : 0;
+        } else {
+            currentQueueIndex = 0;
+        }
+        
+        clearDrawerSearch();
+        setDrawerFilter('all');
+        updatePlaylistCountUI();
+        savePlayerStateToStorage();
+        renderPlaylistDrawer();
+        showToast(`✂️ 裁剪完成，当前队列剩余 ${globalPlaylistQueue.length} 首`, "success");
+    }
+}
+
 function clearPlaylistQueue() {
     globalPlaylistQueue = [];
     currentQueueIndex = -1;
@@ -798,42 +929,123 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-function renderPlaylistDrawer() {
+function updateDrawerCounts(all, ready, server, browser) {
+    const elAll = document.getElementById("qCountAll");
+    const elReady = document.getElementById("qCountReady");
+    const elServer = document.getElementById("qCountServer");
+    const elBrowser = document.getElementById("qCountBrowser");
+    if (elAll) elAll.textContent = all;
+    if (elReady) elReady.textContent = ready;
+    if (elServer) elServer.textContent = server;
+    if (elBrowser) elBrowser.textContent = browser;
+}
+
+async function renderPlaylistDrawer() {
     const list = document.getElementById("playlistDrawerList");
     if (!list) return;
-    list.innerHTML = "";
     
-    if (globalPlaylistQueue.length === 0) {
-        list.innerHTML = `<li style="padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;">播放列表为空</li>`;
+    const countEl = document.getElementById("playlistDrawerCount");
+    if (countEl) countEl.textContent = globalPlaylistQueue ? globalPlaylistQueue.length : 0;
+
+    // 确保 switches 状态同步
+    const chkTrial = document.getElementById("chkAutoSkipTrial");
+    if (chkTrial) chkTrial.checked = autoSkipTrial;
+    const chkOffline = document.getElementById("chkOfflineOnly");
+    if (chkOffline) chkOffline.checked = offlineOnlyMode;
+
+    if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) {
+        list.innerHTML = `<li style="padding: 24px; text-align: center; color: #94a3b8; font-size: 13px;">播放队列为空</li>`;
+        updateDrawerCounts(0, 0, 0, 0);
         return;
     }
 
-    globalPlaylistQueue.forEach((track, idx) => {
+    // 异步查询浏览器缓存中的 URL
+    const cachedUrls = await getAllCacheKeys();
+    lastCachedUrlsForDrawer = cachedUrls;
+
+    // 计算统计数据
+    let countServer = 0;
+    let countBrowser = 0;
+    let countReady = 0;
+
+    globalPlaylistQueue.forEach(track => {
+        const id = track.id || track.songId;
+        const isServer = track.isLocal === true;
+        const isBrowser = cachedUrls.some(u => u.includes(`id=${id}`) || u.includes(`songId=${id}`));
+        if (isServer) countServer++;
+        if (isBrowser) countBrowser++;
+        if (isServer || isBrowser) countReady++;
+    });
+
+    updateDrawerCounts(globalPlaylistQueue.length, countReady, countServer, countBrowser);
+
+    // 过滤列表
+    const filteredItems = [];
+    globalPlaylistQueue.forEach((track, originalIndex) => {
+        const id = track.id || track.songId;
+        const isServer = track.isLocal === true;
+        const isBrowser = cachedUrls.some(u => u.includes(`id=${id}`) || u.includes(`songId=${id}`));
+        const isReady = isServer || isBrowser;
+
+        if (drawerFilterType === 'ready' && !isReady) return;
+        if (drawerFilterType === 'server' && !isServer) return;
+        if (drawerFilterType === 'browser' && !isBrowser) return;
+
+        if (drawerSearchQuery) {
+            const name = (track.name || '').toLowerCase();
+            const artist = (track.artist || '').toLowerCase();
+            if (!name.includes(drawerSearchQuery) && !artist.includes(drawerSearchQuery)) {
+                return;
+            }
+        }
+
+        filteredItems.push({ track, originalIndex, isServer, isBrowser, isReady });
+    });
+
+    list.innerHTML = "";
+    if (filteredItems.length === 0) {
+        list.innerHTML = `
+            <li style="padding: 24px; text-align: center; color: #94a3b8; font-size: 13px;">
+                未找到符合当前条件的曲目<br>
+                <button class="drawer-header-btn" style="margin-top:8px;" onclick="clearDrawerSearch(); setDrawerFilter('all');">重置筛选</button>
+            </li>
+        `;
+        return;
+    }
+
+    filteredItems.forEach(item => {
+        const { track, originalIndex, isServer, isBrowser } = item;
         const li = document.createElement("li");
-        const isCurrent = (idx === currentQueueIndex);
+        const isCurrent = (originalIndex === currentQueueIndex);
         li.className = isCurrent ? "drawer-item active" : "drawer-item";
-        li.onclick = () => playTrackInQueue(idx);
+        li.onclick = () => playTrackInQueue(originalIndex);
         
         const trackTitle = escapeHtml(track.name || '未知歌曲');
         const trackArtist = escapeHtml(track.artist || '未知歌手');
-        const localTag = `<span id="badge-drawer-${track.id}" class="status-badge icon-only" style="margin-left:4px; display:none;"></span>`;
+
+        let badgeHtml = '';
+        if (isServer && isBrowser) {
+            badgeHtml = `<span class="status-badge status-both icon-only" title="✨ 服务器与本机浏览器均有缓存" style="margin-left:4px;">✨</span>`;
+        } else if (isServer) {
+            badgeHtml = `<span class="status-badge status-server icon-only" title="🖥️ 已在服务器磁盘" style="margin-left:4px;">🖥️</span>`;
+        } else if (isBrowser) {
+            badgeHtml = `<span class="status-badge status-browser icon-only" title="📲 已在当前设备浏览器缓存" style="margin-left:4px;">📲</span>`;
+        }
 
         li.innerHTML = `
             <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px; display:flex; align-items:center;" title="${trackTitle} - ${trackArtist}">
                 <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    ${isCurrent ? '🎵 ' : ''}<strong>${idx + 1}. ${trackTitle}</strong> - <span style="font-size:12px; color:#888;">${trackArtist}</span>
+                    ${isCurrent ? '🎵 ' : ''}<strong>${originalIndex + 1}. ${trackTitle}</strong> - <span style="font-size:12px; color:#888;">${trackArtist}</span>
                 </span>
-                ${localTag}
+                ${badgeHtml}
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
                 ${isCurrent ? '<span style="color:#22c55e; font-size:12px; font-weight:600;">播放中</span>' : ''}
-                <button class="drawer-item-del-btn" onclick="removeFromPlaylistQueue(${idx}, event)" title="从列表中移除">✕</button>
+                <button class="drawer-item-del-btn" onclick="removeFromPlaylistQueue(${originalIndex}, event)" title="从列表中移除">✕</button>
             </div>
         `;
         list.appendChild(li);
     });
-
-    asyncUpdateListBadges(globalPlaylistQueue, 'badge-drawer-');
 }
 
 function toggleMinimizeAudioPlayer() {
