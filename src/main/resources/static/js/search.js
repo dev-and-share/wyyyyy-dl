@@ -78,9 +78,13 @@ function renderSearchPage(page) {
             `;
         } else if (type === "1000") {
             // 歌单
+            const creatorName = (item.creator && typeof item.creator === 'object') ? (item.creator.nickname || '') : (typeof item.creator === 'string' ? item.creator : '');
+            const creatorHtml = creatorName ? ` - <span style="color:var(--text-secondary);">${creatorName}</span>` : '';
+            const trackCountHtml = item.trackCount ? ` <span style="color:var(--text-muted); font-size:12px;">(${item.trackCount} 首)</span>` : '';
+
             li.innerHTML = `
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <strong>${item.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
+                    <strong>${index + 1}. ${item.name}</strong>${creatorHtml}${trackCountHtml} <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
                 <div>
                     <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${item.id}')">👉 查看歌单详情</button>
@@ -88,9 +92,13 @@ function renderSearchPage(page) {
             `;
         } else if (type === "10") {
             // 专辑
+            const artistName = (item.artist && typeof item.artist === 'object') ? (item.artist.name || '') : (typeof item.artist === 'string' ? item.artist : '');
+            const artistHtml = artistName ? ` - <span style="color:var(--text-secondary);">${artistName}</span>` : '';
+            const sizeHtml = item.size ? ` <span style="color:var(--text-muted); font-size:12px;">(${item.size} 首歌)</span>` : '';
+
             li.innerHTML = `
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <strong>${item.name}</strong> - ${item.artist || ''} <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
+                    <strong>${index + 1}. ${item.name}</strong>${artistHtml}${sizeHtml} <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
                 <div>
                     <button class="jump-link-btn" onclick="jumpToAlbumDetail('${item.id}')">👉 查看专辑详情</button>
@@ -99,8 +107,8 @@ function renderSearchPage(page) {
         } else {
             // 歌手
             li.innerHTML = `
-                <div>
-                    <strong>${item.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
+                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <strong>${index + 1}. ${item.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
             `;
         }
