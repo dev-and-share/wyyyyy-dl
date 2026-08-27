@@ -553,6 +553,9 @@ function fetchDownloadTasks() {
 
                     item.appendChild(taskInfo);
 
+                    const rightActions = document.createElement('div');
+                    rightActions.className = 'task-actions-right';
+
                     const badge = document.createElement('span');
                     badge.className = `badge badge-${task.status.toLowerCase()}`;
                     
@@ -567,21 +570,21 @@ function fetchDownloadTasks() {
                     if (task.status === 'FAILED') statusText = '失败';
 
                     badge.textContent = statusText;
-                    item.appendChild(badge);
+                    rightActions.appendChild(badge);
 
                     if (task.status === 'SUCCESS' || task.status === 'SKIP') {
                         const revealBtn = document.createElement('button');
-                        revealBtn.className = 'btn-icon';
-                        revealBtn.style.cssText = 'margin-left:6px; font-size:12px; padding:2px 6px; background:rgba(255,255,255,0.75); border:1px solid #ccc; border-radius:4px; cursor:pointer; color:#333; white-space:nowrap; flex-shrink:0;';
-                        revealBtn.title = '在 Finder / 资源管理器中高亮选中此文件';
+                        revealBtn.className = 'task-locate-btn';
+                        revealBtn.title = '在 Finder / 资源管理器中高亮定位此文件';
                         revealBtn.textContent = '📂 定位';
                         revealBtn.onclick = (e) => {
                             e.stopPropagation();
                             if (typeof revealFile === 'function') revealFile(task.filePath || '', task.id);
                         };
-                        item.appendChild(revealBtn);
+                        rightActions.appendChild(revealBtn);
                     }
 
+                    item.appendChild(rightActions);
                     listContainer.appendChild(item);
                 });
 
