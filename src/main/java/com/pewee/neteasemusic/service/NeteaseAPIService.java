@@ -707,45 +707,50 @@ public class NeteaseAPIService implements InitializingBean{
 	        return HttpClientUtil.postForm(url, headers, params);
 	    }
 
+	    private static final String LINUX_KEY = "rFgB&h#%2?^eDg:Q";
+
+	    /**
+	     * 通过网易云官方 Linux Forward 接口代理请求 (用于无风控写操作)
+	     */
+	    public String requestLinuxApi(String innerUrl, Map<String, Object> innerParams) throws Exception {
+	        Map<String, Object> body = new LinkedHashMap<>();
+	        body.put("method", "POST");
+	        body.put("url", innerUrl);
+	        body.put("params", innerParams);
+
+	        String jsonBody = com.alibaba.fastjson.JSON.toJSONString(body);
+	        String eparams = aesEncryptECB(jsonBody, LINUX_KEY);
+
+	        Map<String, String> headers = new LinkedHashMap<>();
+	        headers.put("Referer", "https://music.163.com/");
+	        headers.put("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new LinkedHashMap<>();
+	        params.put("eparams", eparams);
+
+	        return HttpClientUtil.postForm("https://music.163.com/api/linux/forward", headers, params);
+	    }
+
 	    /**
 	     * 收藏 / 取消收藏歌单
 	     * @param playlistId 歌单 ID
 	     * @param subscribe true 为收藏，false 为取消收藏
-	     * @return EAPI 响应 JSON
+	     * @return Linux API 响应 JSON
 	     * @throws Exception
 	     */
 	    public String subscribePlaylist(Long playlistId, boolean subscribe) throws Exception {
 	        if (playlistId == null || playlistId <= 0) {
 	            throw new IllegalArgumentException("playlistId 不能为空");
 	        }
-	        String action = subscribe ? "subscribe" : "unsubscribe";
-	        String apiPath = "/api/playlist/" + action;
-	        String url = "https://interface3.music.163.com/eapi/playlist/" + action;
+	        String innerUrl = subscribe 
+	            ? "http://music.163.com/api/playlist/subscribe" 
+	            : "http://music.163.com/api/playlist/unsubscribe";
+	        
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("id", playlistId);
 
-	        Map<String, Object> config = new LinkedHashMap<>();
-	        config.put("os", "pc");
-	        config.put("appver", "8.9.70");
-	        config.put("osver", "");
-	        config.put("deviceId", "pyncm!");
-	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
-
-	        Map<String, Object> payload = new LinkedHashMap<>();
-	        payload.put("id", playlistId);
-	        payload.put("header", new ObjectMapper().writeValueAsString(config));
-
-	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
-	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
-	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
-	        String encParams = aesEncryptECB(rawParams, AES_KEY);
-
-	        Map<String, String> headers = new HashMap<>();
-	        headers.put("Referer", "");
-	        headers.put("Cookie", getCookieValue(this.cookie));
-
-	        Map<String, String> params = new HashMap<>();
-	        params.put("params", encParams);
-
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 
 	    /**
@@ -753,7 +758,7 @@ public class NeteaseAPIService implements InitializingBean{
 	     * @param playlistId 歌单 ID
 	     * @param op 操作类型: "add" 添加, "del" 移除
 	     * @param trackIds 歌曲 ID 列表
-	     * @return EAPI 响应 JSON
+	     * @return Linux API 响应 JSON
 	     * @throws Exception
 	     */
 	    public String manipulateTracks(Long playlistId, String op, List<Long> trackIds) throws Exception {
@@ -763,38 +768,13 @@ public class NeteaseAPIService implements InitializingBean{
 	        if (trackIds == null || trackIds.isEmpty()) {
 	            throw new IllegalArgumentException("trackIds 不能为空");
 	        }
-	        String apiPath = "/api/playlist/manipulate/tracks";
-	        String url = "https://interface3.music.163.com/eapi/playlist/manipulate/tracks";
+	        String innerUrl = "http://music.163.com/api/playlist/manipulate/tracks";
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("op", op);
+	        innerParams.put("pid", playlistId);
+	        innerParams.put("trackIds", com.alibaba.fastjson.JSON.toJSONString(trackIds));
 
-	        Map<String, Object> config = new LinkedHashMap<>();
-	        config.put("os", "pc");
-	        config.put("appver", "8.9.70");
-	        config.put("osver", "");
-	        config.put("deviceId", "pyncm!");
-	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
-
-	        String trackIdsJson = new ObjectMapper().writeValueAsString(trackIds);
-
-	        Map<String, Object> payload = new LinkedHashMap<>();
-	        payload.put("op", op);
-	        payload.put("pid", playlistId);
-	        payload.put("trackIds", trackIdsJson);
-	        payload.put("tracks", trackIdsJson);
-	        payload.put("header", new ObjectMapper().writeValueAsString(config));
-
-	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
-	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
-	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
-	        String encParams = aesEncryptECB(rawParams, AES_KEY);
-
-	        Map<String, String> headers = new HashMap<>();
-	        headers.put("Referer", "");
-	        headers.put("Cookie", getCookieValue(this.cookie));
-
-	        Map<String, String> params = new HashMap<>();
-	        params.put("params", encParams);
-
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 
 	    public String addTracksToPlaylist(Long playlistId, List<Long> trackIds) throws Exception {
@@ -806,85 +786,39 @@ public class NeteaseAPIService implements InitializingBean{
 	    }
 
 	    /**
-	     * 创建新歌单
+	     * 创建新自建歌单
 	     * @param name 歌单名称
 	     * @param isPrivate 是否私密
-	     * @return EAPI 响应 JSON
+	     * @return Linux API 响应 JSON
 	     * @throws Exception
 	     */
 	    public String createPlaylist(String name, boolean isPrivate) throws Exception {
 	        if (name == null || name.trim().isEmpty()) {
 	            throw new IllegalArgumentException("歌单名称不能为空");
 	        }
-	        String apiPath = "/api/playlist/create";
-	        String url = "https://interface3.music.163.com/eapi/playlist/create";
+	        String innerUrl = "http://music.163.com/api/playlist/create";
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("name", name.trim());
+	        innerParams.put("privacy", isPrivate ? 10 : 0);
 
-	        Map<String, Object> config = new LinkedHashMap<>();
-	        config.put("os", "pc");
-	        config.put("appver", "8.9.70");
-	        config.put("osver", "");
-	        config.put("deviceId", "pyncm!");
-	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
-
-	        Map<String, Object> payload = new LinkedHashMap<>();
-	        payload.put("name", name.trim());
-	        payload.put("privacy", isPrivate ? "10" : "0");
-	        payload.put("type", "NORMAL");
-	        payload.put("header", new ObjectMapper().writeValueAsString(config));
-
-	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
-	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
-	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
-	        String encParams = aesEncryptECB(rawParams, AES_KEY);
-
-	        Map<String, String> headers = new HashMap<>();
-	        headers.put("Referer", "");
-	        headers.put("Cookie", getCookieValue(this.cookie));
-
-	        Map<String, String> params = new HashMap<>();
-	        params.put("params", encParams);
-
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 
 	    /**
-	     * 删除歌单
+	     * 删除自建歌单
 	     * @param playlistId 歌单 ID
-	     * @return EAPI 响应 JSON
+	     * @return Linux API 响应 JSON
 	     * @throws Exception
 	     */
 	    public String deletePlaylist(Long playlistId) throws Exception {
 	        if (playlistId == null || playlistId <= 0) {
 	            throw new IllegalArgumentException("playlistId 不能为空");
 	        }
-	        String apiPath = "/api/playlist/delete";
-	        String url = "https://interface3.music.163.com/eapi/playlist/delete";
+	        String innerUrl = "http://music.163.com/api/playlist/delete";
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("pid", playlistId);
 
-	        Map<String, Object> config = new LinkedHashMap<>();
-	        config.put("os", "pc");
-	        config.put("appver", "8.9.70");
-	        config.put("osver", "");
-	        config.put("deviceId", "pyncm!");
-	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
-
-	        Map<String, Object> payload = new LinkedHashMap<>();
-	        payload.put("pid", playlistId);
-	        payload.put("ids", "[" + playlistId + "]");
-	        payload.put("header", new ObjectMapper().writeValueAsString(config));
-
-	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
-	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
-	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
-	        String encParams = aesEncryptECB(rawParams, AES_KEY);
-
-	        Map<String, String> headers = new HashMap<>();
-	        headers.put("Referer", "");
-	        headers.put("Cookie", getCookieValue(this.cookie));
-
-	        Map<String, String> params = new HashMap<>();
-	        params.put("params", encParams);
-
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 
 	    public static void main(String[] args) throws Exception {
