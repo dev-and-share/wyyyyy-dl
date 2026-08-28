@@ -277,6 +277,11 @@ async function renderPlaylistDrawer() {
             badgeHtml = `<span class="status-badge status-browser icon-only" title="📲 已在当前设备浏览器缓存 (点击查看详情)" style="margin-left:4px; cursor:pointer;" onclick="handleStatusBadgeClick(event, '${trackIdSafe}', '${trackNameSafe}', '${trackArtistSafe}', false, true)">📲</span>`;
         }
 
+        const isLiked = (typeof isSongLiked === 'function') ? isSongLiked(trackIdSafe) : false;
+        const heartIcon = isLiked ? '❤️' : '🤍';
+        const heartClass = 'drawer-like-btn' + (isLiked ? ' active' : '');
+        const heartTitle = isLiked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
+
         li.innerHTML = `
             <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px; display:flex; align-items:center;" title="${trackTitle} - ${trackArtist}">
                 <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
@@ -285,6 +290,7 @@ async function renderPlaylistDrawer() {
                 ${badgeHtml}
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                <button class="${heartClass}" data-song-id="${trackIdSafe}" onclick="event.stopPropagation(); toggleLikeTrack('${trackIdSafe}', '${trackNameSafe}')" title="${heartTitle}">${heartIcon}</button>
                 ${isCurrent ? '<span style="color:#22c55e; font-size:12px; font-weight:600;">播放中</span>' : ''}
                 <button class="drawer-item-del-btn" onclick="removeFromPlaylistQueue(${originalIndex}, event)" title="从列表中移除">✕</button>
             </div>

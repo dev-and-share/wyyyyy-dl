@@ -815,15 +815,15 @@ function updateAllLikeButtonsUI(targetSongId) {
         fullBtn.title = liked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
     }
 
-    // 3. 刷新列表中的红心标记
-    const listLikeBtns = document.querySelectorAll('.track-like-icon-btn');
+    // 3. 刷新列表与抽屉中的红心标记
+    const listLikeBtns = document.querySelectorAll('.track-like-btn, .drawer-like-btn, .track-like-icon-btn');
     listLikeBtns.forEach(btn => {
         const sid = btn.getAttribute('data-song-id');
         if (sid && (!targetSongId || Number(sid) === Number(targetSongId))) {
             const liked = isSongLiked(sid);
             btn.innerHTML = liked ? '❤️' : '🤍';
             btn.classList.toggle('active', liked);
-            btn.title = liked ? '已喜欢 (点击取消)' : '喜欢 (点击添加)';
+            btn.title = liked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
         }
     });
 }

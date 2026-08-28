@@ -1334,8 +1334,8 @@ ul.data-list li:last-child {
 }
 
 /* ❤️ 红心按钮 (Like / Unlike) 交互与微动效 */
-.like-btn, .full-like-btn {
-    font-size: 16px;
+.like-btn, .full-like-btn, .track-like-btn, .drawer-like-btn {
+    font-size: 15px;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -1346,17 +1346,32 @@ ul.data-list li:last-child {
     justify-content: center;
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.15s ease;
     user-select: none;
-    opacity: 0.8;
+    opacity: 0.75;
 }
 
-.like-btn:hover, .full-like-btn:hover {
+.like-btn:hover, .full-like-btn:hover, .track-like-btn:hover, .drawer-like-btn:hover {
     opacity: 1;
     transform: scale(1.25);
 }
 
-.like-btn.active, .full-like-btn.active {
+.like-btn.active, .full-like-btn.active, .track-like-btn.active, .drawer-like-btn.active {
     opacity: 1;
     animation: heartPulse 0.35s ease forwards;
+}
+
+.track-like-btn {
+    font-size: 15px;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+
+.track-like-btn:hover {
+    background: rgba(225, 29, 72, 0.12);
+}
+
+.drawer-like-btn {
+    font-size: 14px;
+    padding: 2px 4px;
 }
 
 .full-like-btn {
