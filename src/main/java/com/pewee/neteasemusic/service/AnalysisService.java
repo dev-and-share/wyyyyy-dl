@@ -27,6 +27,13 @@ import com.pewee.neteasemusic.models.dtos.TrackDTO;
 import com.pewee.neteasemusic.models.dtos.UserPlaylistListRespDTO;
 import com.pewee.neteasemusic.models.dtos.UserPlaylistSummaryDTO;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -35,6 +42,14 @@ public class AnalysisService {
 	
 	@Autowired
     private NeteaseAPIService neteaseAPIService;
+
+    // 克制拟真型异步线程池 (核心 4, 最大 8, 队列 256): 契合真实客户端并发行为, 杜绝风控风险
+    private static final ExecutorService asyncExecutor = new ThreadPoolExecutor(
+            4, 8, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(256),
+            new ThreadFactoryBuilder().setNameFormat("analysis-async-pool-%d").setDaemon(true).build(),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+    );
 	
 	public void refreshCookie(String c) {
 		neteaseAPIService.refreshCookie(c);
@@ -43,13 +58,43 @@ public class AnalysisService {
 	public SingleMusicAnalysisRespDTO analyzeSingleSong(Long id, String level) {
 		checkReady();
         try {
-            String urlJsonStr = neteaseAPIService.urlV1(id, level);
-            String nameJsonStr = neteaseAPIService.songDetail( Lists.newArrayList(id) );
-            String lyricJsonStr = neteaseAPIService.getLyric(id);
+            // 🚀 P1 优化：使用 CompletableFuture 并行拉取 urlV1、songDetail、getLyric (耗时由累加转为 Max)
+            CompletableFuture<String> urlFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return neteaseAPIService.urlV1(id, level);
+                } catch (Exception e) {
+                    log.error("拉取歌曲播放 URL 异常, songId={}", id, e);
+                    return null;
+                }
+            }, asyncExecutor);
 
-            JSONObject urlJson = JSON.parseObject(urlJsonStr);
-            JSONObject nameJson = JSON.parseObject(nameJsonStr);
-            JSONObject lyricJson = JSON.parseObject(lyricJsonStr);
+            CompletableFuture<String> nameFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return neteaseAPIService.songDetail(Lists.newArrayList(id));
+                } catch (Exception e) {
+                    log.error("拉取歌曲详情异常, songId={}", id, e);
+                    return null;
+                }
+            }, asyncExecutor);
+
+            CompletableFuture<String> lyricFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return neteaseAPIService.getLyric(id);
+                } catch (Exception e) {
+                    log.error("拉取歌词异常, songId={}", id, e);
+                    return null;
+                }
+            }, asyncExecutor);
+
+            CompletableFuture.allOf(urlFuture, nameFuture, lyricFuture).join();
+
+            String urlJsonStr = urlFuture.get();
+            String nameJsonStr = nameFuture.get();
+            String lyricJsonStr = lyricFuture.get();
+
+            JSONObject urlJson = StringUtils.isNotBlank(urlJsonStr) ? JSON.parseObject(urlJsonStr) : null;
+            JSONObject nameJson = StringUtils.isNotBlank(nameJsonStr) ? JSON.parseObject(nameJsonStr) : null;
+            JSONObject lyricJson = StringUtils.isNotBlank(lyricJsonStr) ? JSON.parseObject(lyricJsonStr) : null;
 
             JSONArray dataArray = urlJson != null ? urlJson.getJSONArray("data") : null;
             JSONObject songUrlData = (dataArray != null && !dataArray.isEmpty()) ? dataArray.getJSONObject(0) : null;
@@ -300,33 +345,46 @@ public class AnalysisService {
                     }
                 }
                 
-                // 每次 500 首批量获取歌曲详情
+                // 每次 500 首批量获取歌曲详情 (使用 CompletableFuture 并发并行拉取，大幅缩短大歌单等待耗时)
                 List<List<Long>> chunks = Lists.partition(remainingIds, 500);
-                for (List<Long> chunk : chunks) {
-                    try {
-                        String detailJsonStr = neteaseAPIService.songDetail(chunk);
-                        JSONObject detailJson = JSON.parseObject(detailJsonStr);
-                        JSONArray songs = detailJson != null ? detailJson.getJSONArray("songs") : null;
-                        if (songs != null) {
-                            for (int i = 0; i < songs.size(); i++) {
-                                JSONObject song = songs.getJSONObject(i);
-                                TrackDTO dto = new TrackDTO();
-                                dto.setId(song.getLong("id"));
-                                dto.setName(song.getString("name"));
-                                if (song.getJSONObject("al") != null) {
-                                    dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
-                                    dto.setAlbum(song.getJSONObject("al").getString("name"));
+                List<CompletableFuture<List<TrackDTO>>> chunkFutures = chunks.stream()
+                    .map(chunk -> CompletableFuture.supplyAsync(() -> {
+                        List<TrackDTO> chunkTracks = new ArrayList<>();
+                        try {
+                            String detailJsonStr = neteaseAPIService.songDetail(chunk);
+                            JSONObject detailJson = JSON.parseObject(detailJsonStr);
+                            JSONArray songs = detailJson != null ? detailJson.getJSONArray("songs") : null;
+                            if (songs != null) {
+                                for (int i = 0; i < songs.size(); i++) {
+                                    JSONObject song = songs.getJSONObject(i);
+                                    TrackDTO dto = new TrackDTO();
+                                    dto.setId(song.getLong("id"));
+                                    dto.setName(song.getString("name"));
+                                    if (song.getJSONObject("al") != null) {
+                                        dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
+                                        dto.setAlbum(song.getJSONObject("al").getString("name"));
+                                    }
+                                    if (song.getJSONArray("ar") != null) {
+                                        dto.setArtists(song.getJSONArray("ar").stream()
+                                            .map(ar -> ((JSONObject) ar).getString("name"))
+                                            .collect(Collectors.joining("/")));
+                                    }
+                                    chunkTracks.add(dto);
                                 }
-                                if (song.getJSONArray("ar") != null) {
-                                    dto.setArtists(song.getJSONArray("ar").stream()
-                                        .map(ar -> ((JSONObject) ar).getString("name"))
-                                        .collect(Collectors.joining("/")));
-                                }
-                                trackList.add(dto);
                             }
+                        } catch (Exception ex) {
+                            log.error("批量补全歌单剩余歌曲详情失败, size={}", chunk.size(), ex);
                         }
-                    } catch (Exception ex) {
-                        log.error("批量补全歌单剩余歌曲详情失败, size={}", chunk.size(), ex);
+                        return chunkTracks;
+                    }, asyncExecutor))
+                    .collect(Collectors.toList());
+
+                CompletableFuture.allOf(chunkFutures.toArray(new CompletableFuture[0])).join();
+
+                for (CompletableFuture<List<TrackDTO>> cf : chunkFutures) {
+                    try {
+                        trackList.addAll(cf.get());
+                    } catch (Exception ignore) {
                     }
                 }
                 log.info("歌单详情全量解析完毕, 实际获得歌曲数: {}", trackList.size());
