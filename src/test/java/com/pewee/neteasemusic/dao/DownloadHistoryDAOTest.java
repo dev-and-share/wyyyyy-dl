@@ -71,6 +71,31 @@ public class DownloadHistoryDAOTest {
     }
 
     @Test
+    @DisplayName("测试防止歌名子串误匹配 (如王菲《我爱你》绝不应匹配萧亚轩《我爱你那么多》)")
+    public void testPreventSubstringFalsePositiveMatching() throws Exception {
+        File elvaSong = new File(tempDir.toFile(), "我爱你那么多.mp3");
+        try (FileWriter writer = new FileWriter(elvaSong)) {
+            writer.write("audio data payload");
+        }
+        dao.addRecord(88801L, "我爱你那么多", "萧亚轩", "红蔷薇", elvaSong.getAbsolutePath(), elvaSong.length(), "lossless", "SUCCESS");
+
+        // 1. 测试王菲的《我爱你》，绝不能命中萧亚轩的《我爱你那么多》
+        DownloadHistoryDAO.DownloadHistoryItem fayeResult = dao.findLocalFileBySongOrName(999901L, "我爱你", "王菲");
+        assertNull(fayeResult, "王菲的《我爱你》绝不应该误匹配到萧亚轩的《我爱你那么多》");
+
+        // 2. 测试王菲的《我爱你 (电影原声版)》，在录入王菲《我爱你》后应当精准跨版本命中
+        File fayeSong = new File(tempDir.toFile(), "我爱你.mp3");
+        try (FileWriter writer = new FileWriter(fayeSong)) {
+            writer.write("audio data payload faye");
+        }
+        dao.addRecord(88802L, "我爱你", "王菲", "将爱", fayeSong.getAbsolutePath(), fayeSong.length(), "lossless", "SUCCESS");
+
+        DownloadHistoryDAO.DownloadHistoryItem fayeMatched = dao.findLocalFileBySongOrName(999902L, "我爱你 (电影原声版)", "王菲");
+        assertNotNull(fayeMatched, "王菲《我爱你 (电影原声版)》应当精准匹配到本地王菲的《我爱你》");
+        assertEquals("我爱你", fayeMatched.getSongName());
+    }
+
+    @Test
     @DisplayName("测试 Raw JSON 扩展存储与获取")
     public void testRawJsonStorage() {
         long id = dao.addRecord(1001L, "测试歌曲", "测试歌手", "测试专辑", "test.mp3", 1024L, "standard", "SUCCESS");

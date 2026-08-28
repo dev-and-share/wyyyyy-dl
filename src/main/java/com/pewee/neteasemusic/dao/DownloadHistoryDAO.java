@@ -268,8 +268,41 @@ public class DownloadHistoryDAO {
         return findLocalFileBySongOrName(songId, null, null);
     }
 
+    /**
+     * 规范化歌名：去除括号修饰后缀（Live/Remaster等）、去除标点与空格并转小写
+     */
+    public static String normalizeTrackName(String name) {
+        if (name == null) return "";
+        // 1. 去除常见括号修饰词（如 (Live), [2003 Remaster], （电影原声版）等）
+        String clean = name.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
+        if (clean.isEmpty()) clean = name.trim();
+        // 2. 去除所有标点符号与空格并转小写
+        return clean.toLowerCase().replaceAll("[\\s\\p{Punct}\\p{IsPunctuation}]+", "");
+    }
+
+    /**
+     * 规范化歌手名：去除标点与空格并转小写
+     */
+    public static String normalizeArtistName(String artist) {
+        if (artist == null) return "";
+        return artist.toLowerCase().replaceAll("[\\s\\p{Punct}\\p{IsPunctuation}]+", "");
+    }
+
+    /**
+     * 检查两个歌手是否匹配（支持多歌手场景）
+     */
+    public static boolean isArtistMatch(String artist1, String artist2) {
+        String a1 = normalizeArtistName(artist1);
+        String a2 = normalizeArtistName(artist2);
+        if (a1.isEmpty() || a2.isEmpty()) {
+            return false;
+        }
+        if (a1.equals(a2)) return true;
+        return a1.contains(a2) || a2.contains(a1);
+    }
+
     public DownloadHistoryItem findLocalFileBySongOrName(Long songId, String name, String artist) {
-        // 1. 优先根据 song_id 匹配
+        // 1. 优先根据 song_id 精确匹配
         if (songId != null && songId > 0) {
             String sql = "SELECT * FROM download_history WHERE song_id = ? ORDER BY id DESC LIMIT 1";
             try (Connection conn = getConnection();
@@ -289,35 +322,46 @@ public class DownloadHistoryDAO {
             }
         }
 
-        // 2. 智能降级：按歌名+歌手全量模糊比对
+        // 2. 智能跨专辑比对：核心歌名完全匹配 + 歌手严格匹配（绝不使用模糊子串 contains 匹配，防止不同歌曲误伤）
         if (name != null && !name.trim().isEmpty()) {
-            String cleanName = name.trim();
-            String baseName = cleanName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
-            if (baseName.isEmpty()) baseName = cleanName;
+            String targetCleanName = name.trim();
+            String targetNormName = normalizeTrackName(targetCleanName);
+            String targetArtist = (artist != null) ? artist.trim() : "";
 
-            String sql = "SELECT * FROM download_history ORDER BY id DESC";
-            try (Connection conn = getConnection();
-                 Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(sql)) {
-                while (rs.next()) {
-                    DownloadHistoryItem item = mapItemFromRs(rs);
-                    if (Boolean.TRUE.equals(item.getFileExists())) {
-                        String localName = item.getSongName() != null ? item.getSongName().trim() : "";
-                        String localBaseName = localName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
+            if (!targetNormName.isEmpty()) {
+                String sql = "SELECT * FROM download_history ORDER BY id DESC";
+                try (Connection conn = getConnection();
+                     Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery(sql)) {
+                    while (rs.next()) {
+                        DownloadHistoryItem item = mapItemFromRs(rs);
+                        if (Boolean.TRUE.equals(item.getFileExists())) {
+                            String localName = item.getSongName() != null ? item.getSongName().trim() : "";
+                            String localNormName = normalizeTrackName(localName);
 
-                        if (localName.equalsIgnoreCase(cleanName) || localBaseName.equalsIgnoreCase(baseName) || localName.contains(baseName) || cleanName.contains(localName)) {
-                            String cleanArtist = (artist != null) ? artist.trim() : "";
-                            String localArtist = item.getArtist() != null ? item.getArtist().trim() : "";
+                            // 核心歌名（去除括号版本后缀后）必须完全相等
+                            if (targetNormName.equals(localNormName)) {
+                                String localArtist = item.getArtist() != null ? item.getArtist().trim() : "";
 
-                            if (cleanArtist.isEmpty() || localArtist.isEmpty() || localArtist.contains(cleanArtist) || cleanArtist.contains(localArtist)) {
-                                log.info("🎯 按歌名歌手成功智能匹配本地文件: 《{}》 -> {}, path: {}", cleanName, item.getSongName(), item.getFilePath());
-                                return item;
+                                // Case A: 双方都有歌手信息，必须歌手匹配
+                                if (isArtistMatch(targetArtist, localArtist)) {
+                                    log.info("🎯 跨专辑/版本精准命中本地音轨: 《{}》({}) -> 《{}》({}), path: {}",
+                                            targetCleanName, targetArtist, localName, localArtist, item.getFilePath());
+                                    return item;
+                                }
+                                // Case B: 未剥离括号的完整歌名严格全字相等，且一方缺少歌手，且歌名长度 >= 4 字符
+                                else if ((targetArtist.isEmpty() || localArtist.isEmpty()) 
+                                        && targetCleanName.equalsIgnoreCase(localName) 
+                                        && targetNormName.length() >= 4) {
+                                    log.info("🎯 歌名全字精确命中无歌手音轨: 《{}》 -> 《{}》, path: {}", targetCleanName, localName, item.getFilePath());
+                                    return item;
+                                }
                             }
                         }
                     }
+                } catch (Exception e) {
+                    log.error("按歌名歌手匹配本地文件失败: name={}, artist={}", name, artist, e);
                 }
-            } catch (Exception e) {
-                log.error("按歌名歌手匹配本地文件失败: name={}, artist={}", name, artist, e);
             }
         }
 
@@ -454,19 +498,22 @@ public class DownloadHistoryDAO {
                 continue;
             }
 
-            String trackBaseName = trackName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
-            if (trackBaseName.isEmpty()) trackBaseName = trackName;
+            String targetNormName = normalizeTrackName(trackName);
             String trackArtist = track.getArtists() != null ? track.getArtists().trim() : "";
 
             boolean matched = false;
             for (DownloadHistoryItem local : validRecords) {
                 String localName = local.getSongName() != null ? local.getSongName().trim() : "";
-                String localBaseName = localName.replaceAll("[\\(\\[（【].*?[\\)\\]）】]", "").trim();
+                String localNormName = normalizeTrackName(localName);
 
-                if (localName.equalsIgnoreCase(trackName) || localBaseName.equalsIgnoreCase(trackBaseName) 
-                        || localName.contains(trackBaseName) || trackName.contains(localName)) {
+                if (targetNormName.equals(localNormName)) {
                     String localArtist = local.getArtist() != null ? local.getArtist().trim() : "";
-                    if (trackArtist.isEmpty() || localArtist.isEmpty() || localArtist.contains(trackArtist) || trackArtist.contains(localArtist)) {
+                    if (isArtistMatch(trackArtist, localArtist)) {
+                        matched = true;
+                        break;
+                    } else if ((trackArtist.isEmpty() || localArtist.isEmpty()) 
+                            && trackName.equalsIgnoreCase(localName) 
+                            && targetNormName.length() >= 4) {
                         matched = true;
                         break;
                     }
