@@ -789,19 +789,29 @@ function toggleLikeTrack(songId, songName) {
 }
 
 /**
+ * 🎨 生成标准精美矢量 SVG 红心图标 (兼容 Apple Music / Spotify 现代质感，彻底消除系统 Emoji 差异与白底)
+ */
+function getHeartSvgHtml(isLiked, size = 16) {
+    if (isLiked) {
+        return `<svg class="heart-icon filled" viewBox="0 0 24 24" width="${size}" height="${size}" fill="#ff3a3a" stroke="#ff3a3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+    } else {
+        return `<svg class="heart-icon outline" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+    }
+}
+
+/**
  * 刷新全界面红心按钮图标与样式（底栏、全屏黑胶、曲目列表）
  */
 function updateAllLikeButtonsUI(targetSongId) {
     // 1. 刷新底栏播放器红心按钮
     const barBtn = document.getElementById('audioBarLikeBtn');
-    const player = document.getElementById('globalAudioPlayer');
     const currentTrack = (typeof globalPlaylistQueue !== 'undefined' && typeof currentQueueIndex !== 'undefined' && currentQueueIndex >= 0) 
         ? globalPlaylistQueue[currentQueueIndex] 
         : null;
 
     if (barBtn && currentTrack && currentTrack.id) {
         const liked = isSongLiked(currentTrack.id);
-        barBtn.innerHTML = liked ? '❤️' : '🤍';
+        barBtn.innerHTML = getHeartSvgHtml(liked, 18);
         barBtn.className = 'ctrl-btn like-btn' + (liked ? ' active' : '');
         barBtn.title = liked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
     }
@@ -810,7 +820,7 @@ function updateAllLikeButtonsUI(targetSongId) {
     const fullBtn = document.getElementById('fullscreenLikeBtn');
     if (fullBtn && currentTrack && currentTrack.id) {
         const liked = isSongLiked(currentTrack.id);
-        fullBtn.innerHTML = liked ? '❤️' : '🤍';
+        fullBtn.innerHTML = getHeartSvgHtml(liked, 22);
         fullBtn.className = 'ctrl-btn sub-btn full-like-btn' + (liked ? ' active' : '');
         fullBtn.title = liked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
     }
@@ -821,13 +831,15 @@ function updateAllLikeButtonsUI(targetSongId) {
         const sid = btn.getAttribute('data-song-id');
         if (sid && (!targetSongId || Number(sid) === Number(targetSongId))) {
             const liked = isSongLiked(sid);
-            btn.innerHTML = liked ? '❤️' : '🤍';
+            const isDrawer = btn.classList.contains('drawer-like-btn');
+            btn.innerHTML = getHeartSvgHtml(liked, isDrawer ? 14 : 16);
             btn.classList.toggle('active', liked);
             btn.title = liked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
         }
     });
 }
 
+window.getHeartSvgHtml = getHeartSvgHtml;
 window.initLikedSongsCache = initLikedSongsCache;
 window.isSongLiked = isSongLiked;
 window.toggleLikeTrack = toggleLikeTrack;

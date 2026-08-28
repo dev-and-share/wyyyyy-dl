@@ -1333,55 +1333,68 @@ ul.data-list li:last-child {
     to { opacity: 1; transform: scale(1); }
 }
 
-/* ❤️ 红心按钮 (Like / Unlike) 交互与微动效 */
+/* ❤️ 红心按钮 (Like / Unlike) 极致精致矢量 SVG 交互与动效 */
 .like-btn, .full-like-btn, .track-like-btn, .drawer-like-btn {
-    font-size: 15px;
-    background: transparent;
-    border: none;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
     cursor: pointer;
-    padding: 0 4px;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.15s ease;
+    padding: 2px 4px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.15s ease, filter 0.2s ease;
     user-select: none;
-    opacity: 0.75;
+    opacity: 0.65;
+    color: #94a3b8;
+    vertical-align: middle;
+}
+
+.like-btn svg, .full-like-btn svg, .track-like-btn svg, .drawer-like-btn svg {
+    display: block;
+    pointer-events: none;
+    transition: transform 0.2s ease, fill 0.2s ease, stroke 0.2s ease;
 }
 
 .like-btn:hover, .full-like-btn:hover, .track-like-btn:hover, .drawer-like-btn:hover {
     opacity: 1;
-    transform: scale(1.25);
+    transform: scale(1.22);
+    color: #f43f5e;
 }
 
 .like-btn.active, .full-like-btn.active, .track-like-btn.active, .drawer-like-btn.active {
     opacity: 1;
+    color: #ff3a3a;
     animation: heartPulse 0.35s ease forwards;
 }
 
+.like-btn.active svg, .full-like-btn.active svg, .track-like-btn.active svg, .drawer-like-btn.active svg {
+    filter: drop-shadow(0 0 6px rgba(255, 58, 58, 0.5));
+}
+
 .track-like-btn {
-    font-size: 15px;
-    padding: 4px 6px;
+    padding: 3px 5px !important;
     border-radius: 6px;
 }
 
 .track-like-btn:hover {
-    background: rgba(225, 29, 72, 0.12);
+    background: rgba(244, 63, 94, 0.12) !important;
 }
 
 .drawer-like-btn {
-    font-size: 14px;
-    padding: 2px 4px;
+    padding: 2px 4px !important;
 }
 
 .full-like-btn {
-    font-size: 20px;
     margin-left: 8px;
 }
 
 @keyframes heartPulse {
     0% { transform: scale(1); }
-    50% { transform: scale(1.38); }
+    50% { transform: scale(1.36); }
     100% { transform: scale(1); }
 }
 

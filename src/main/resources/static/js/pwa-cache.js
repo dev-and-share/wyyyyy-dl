@@ -348,13 +348,13 @@ function renderTrackCapsuleSlotsHtml(track, prefix = 'track-') {
         : `downloadSingle('${id}')`;
 
     const isLiked = (typeof isSongLiked === 'function') ? isSongLiked(id) : false;
-    const heartIcon = isLiked ? '❤️' : '🤍';
+    const heartSvg = (typeof getHeartSvgHtml === 'function') ? getHeartSvgHtml(isLiked, 16) : (isLiked ? '❤️' : '🤍');
     const heartClass = 'track-like-btn' + (isLiked ? ' active' : '');
     const heartTitle = isLiked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
 
     return `
         <div class="track-action-group">
-            <button class="${heartClass}" data-song-id="${id}" onclick="event.stopPropagation(); toggleLikeTrack('${id}', '${nameSafe}')" title="${heartTitle}">${heartIcon}</button>
+            <button class="${heartClass}" data-song-id="${id}" onclick="event.stopPropagation(); toggleLikeTrack('${id}', '${nameSafe}')" title="${heartTitle}">${heartSvg}</button>
             <button id="${prefix}play-btn-${id}" class="${playBtnClass}" onclick="playSongById('${id}', '${nameSafe}', '${artistSafe}')" title="${playBtnTitle}">${playBtnText}</button>
             <button id="${prefix}server-btn-${id}" class="${serverBtnClass}" onclick="${serverBtnAction}" title="${serverBtnTitle}">${serverBtnText}</button>
             <button id="${prefix}cache-btn-${id}" class="track-btn-slot slot-browser-cache" onclick="cacheTracksToPhoneBatch([{id: '${id}', songId: '${id}'}], '${prefix}cache-btn-${id}', '📲 缓存')" title="缓存至手机/浏览器离线播放">📲 缓存</button>

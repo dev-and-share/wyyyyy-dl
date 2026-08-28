@@ -278,7 +278,7 @@ async function renderPlaylistDrawer() {
         }
 
         const isLiked = (typeof isSongLiked === 'function') ? isSongLiked(trackIdSafe) : false;
-        const heartIcon = isLiked ? '❤️' : '🤍';
+        const heartSvg = (typeof getHeartSvgHtml === 'function') ? getHeartSvgHtml(isLiked, 14) : (isLiked ? '❤️' : '🤍');
         const heartClass = 'drawer-like-btn' + (isLiked ? ' active' : '');
         const heartTitle = isLiked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
 
@@ -290,7 +290,7 @@ async function renderPlaylistDrawer() {
                 ${badgeHtml}
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                <button class="${heartClass}" data-song-id="${trackIdSafe}" onclick="event.stopPropagation(); toggleLikeTrack('${trackIdSafe}', '${trackNameSafe}')" title="${heartTitle}">${heartIcon}</button>
+                <button class="${heartClass}" data-song-id="${trackIdSafe}" onclick="event.stopPropagation(); toggleLikeTrack('${trackIdSafe}', '${trackNameSafe}')" title="${heartTitle}">${heartSvg}</button>
                 ${isCurrent ? '<span style="color:#22c55e; font-size:12px; font-weight:600;">播放中</span>' : ''}
                 <button class="drawer-item-del-btn" onclick="removeFromPlaylistQueue(${originalIndex}, event)" title="从列表中移除">✕</button>
             </div>
