@@ -37,11 +37,16 @@ src/main/resources/
 ├── application.properties           # download.path, host.download.path, external.library.paths
 ├── static/css/style.css             # 全局 UI 样式
 ├── static/js/
-│   ├── app.js                       # 主入口：播放器全局状态 playAudioOnline()
-│   ├── download-mgr.js              # 下载历史管理面板（UI + API 交互）
-│   ├── search.js                    # 搜索功能
+│   ├── ui-core.js                   # UI 通用基础组件：Toast、Modal 弹窗、主题引擎、SWR 缓存、工具函数
+│   ├── player-core.js               # 播放器核心引擎：音频控制、播放模式状态机、切歌算法、MediaSession 硬件遥控
+│   ├── player-lyric.js              # 歌词引擎：LRC 时间轴解析、毫秒级滚动高亮、沉浸式全屏黑胶唱片模态框
+│   ├── player-drawer.js             # 播放列表浮动抽屉：队列 UI 渲染、PointerEvent 视口边缘防越界拖拽、尺寸位置记忆
+│   ├── pwa-cache.js                 # PWA 离线存储：Cache API 音频持久化、Blob 真实时长秒级解构、离线队列状态
 │   ├── playlist.js                  # 歌单解析 + 批量下载
-│   └── album.js                     # 专辑解析 + 批量下载
+│   ├── album.js                     # 专辑解析 + 批量下载
+│   ├── search.js                    # 搜索功能
+│   ├── download-mgr.js              # 下载历史管理面板（UI + API 交互）
+│   └── app.js                       # 主入口调度器：DOM 加载挂载、全局事件与快捷键分发
 └── templates/
     ├── home.html                    # 主功能页（Thymeleaf）
     └── qr_login.html                # 扫码登录页

@@ -2,6 +2,7 @@
    🔍 NetEase Music Downloader - Search Module (search.js)
    ========================================================================== */
 
+let searchPage = 1;
 let searchResultsData = [];
 
 function searchSongs() {

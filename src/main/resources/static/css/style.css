@@ -890,6 +890,7 @@ ul.data-list li:last-child {
     display: flex;
     justify-content: flex-end;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
@@ -946,10 +947,32 @@ ul.data-list li:last-child {
     color: #38bdf8;
 }
 
+.app-modal-btn-copy:hover {
+    background: #0284c7;
+    color: #ffffff;
+}
+
 [data-theme="light"] .app-modal-btn-copy {
     background: #e0f2fe;
     border-color: #7dd3fc;
     color: #0284c7;
+}
+
+.app-modal-btn-cmd {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+}
+
+.app-modal-btn-cmd:hover {
+    background: #a855f7;
+    color: #ffffff;
+}
+
+[data-theme="light"] .app-modal-btn-cmd {
+    background: #f3e8ff;
+    border-color: #d8b4fe;
+    color: #7e22ce;
 }
 
 /* 📜 播放列表 Drawer (Glassmorphism Modal) */

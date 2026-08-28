@@ -2,6 +2,10 @@
    💽 NetEase Music Downloader - Album Module (album.js)
    ========================================================================== */
 
+let currentAlbum = null;
+let currentAlbumSongs = [];
+let currentAlbumCover = '/favicon.png';
+
 function quickLoadAlbum(albumId) {
     const input = document.getElementById("albumId");
     if (input) input.value = albumId;
@@ -136,8 +140,6 @@ function jumpToAlbumDetail(albumId) {
     loadAlbumInfo();
 }
 
-let currentAlbumSongs = [];
-let currentAlbumCover = '/favicon.png';
 
 function playFullCurrentAlbum() {
     if (!currentAlbumSongs || currentAlbumSongs.length === 0) {

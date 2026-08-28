@@ -2,6 +2,11 @@
    📁 NetEase Music Downloader - Playlist Module (playlist.js)
    ========================================================================== */
 
+let currentPage = 1;
+let currentPlaylist = null;
+let allTracks = [];
+const pageSize = 10;
+
 function getValidArtistNames(track) {
     if (!track) return '';
     let arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
