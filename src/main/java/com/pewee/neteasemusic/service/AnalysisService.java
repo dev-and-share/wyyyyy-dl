@@ -324,6 +324,14 @@ public class AnalysisService {
             Long currentUid = neteaseAPIService.getUid();
             boolean isCreator = (currentUid != null && creatorUserId != null && currentUid.equals(creatorUserId));
 
+            // 如果官方接口返回 false 但不是创建者，且当前用户已登录，则辅助校验用户歌单库
+            if ((isSubscribed == null || !isSubscribed) && !isCreator && currentUid != null) {
+                try {
+                    isSubscribed = isUserSubscribedToPlaylist(currentUid, playlistId);
+                } catch (Exception ignored) {
+                }
+            }
+
             playlistInfo.setUserId(creatorUserId);
             playlistInfo.setSubscribed(isSubscribed != null ? isSubscribed : false);
             playlistInfo.setIsCreator(isCreator);
@@ -461,13 +469,19 @@ public class AnalysisService {
         boolean hasMore = true;
         int currentOffset = offset;
         Long userUid = neteaseAPIService.getUserUid();
+        if (userUid == null) {
+            try {
+                userUid = neteaseAPIService.getAccountInfo();
+            } catch (Exception ignored) {
+            }
+        }
         try {
             while (hasMore) {
                 String jsonStr = neteaseAPIService.getUserPlaylist(userUid, limit, currentOffset);
                 JSONObject root = JSON.parseObject(jsonStr);
 
                 JSONArray playlistArray = root.getJSONArray("playlist");
-                hasMore = root.getBooleanValue("more");
+                hasMore = root.getBooleanValue("more") && (playlistArray != null && !playlistArray.isEmpty());
 
                 if (playlistArray != null) {
                     for (int i = 0; i < playlistArray.size(); i++) {
@@ -499,6 +513,7 @@ public class AnalysisService {
             resp.setTotal(allPlaylists.size());
             resp.setStatus(200);
         } catch (Exception e) {
+            log.error("获取用户歌单列表失败, userUid={}", userUid, e);
             resp.setPlaylists(Collections.emptyList());
             resp.setTotal(0);
             resp.setStatus(500);
@@ -518,6 +533,29 @@ public class AnalysisService {
         return String.format("%.2fPB", size);
     }
     
+    /**
+     * 辅助校验指定歌单是否在当前登录用户的收藏列表中
+     */
+    private boolean isUserSubscribedToPlaylist(Long uid, Long playlistId) {
+        if (uid == null || playlistId == null) return false;
+        try {
+            String jsonStr = neteaseAPIService.getUserPlaylist(uid, 500, 0);
+            JSONObject root = JSON.parseObject(jsonStr);
+            JSONArray playlistArray = root.getJSONArray("playlist");
+            if (playlistArray != null) {
+                for (int i = 0; i < playlistArray.size(); i++) {
+                    JSONObject pl = playlistArray.getJSONObject(i);
+                    if (playlistId.equals(pl.getLong("id"))) {
+                        Boolean sub = pl.getBoolean("subscribed");
+                        return Boolean.TRUE.equals(sub);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
     private void checkReady() {
     	if (!neteaseAPIService.checkReady()) {
     		throw new ServiceException(CommonRespInfo.NO_COOKIE_ERROR);

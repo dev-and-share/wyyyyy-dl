@@ -332,6 +332,59 @@ public class AnalysisController {
     }
 
     /**
+     * 转存 / 克隆歌单为我的自建歌单 (新建歌单并批量添加选中的曲目)
+     */
+    @RequestMapping(value = "/v2/playlist/fork", method = {RequestMethod.POST, RequestMethod.GET})
+    public RespEntity<?> forkPlaylist(@RequestParam String name,
+                                      @RequestParam(defaultValue = "false") boolean isPrivate,
+                                      @RequestParam String trackIds) {
+        try {
+            if (name == null || name.trim().isEmpty()) {
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, "歌单名称不能为空");
+            }
+            List<Long> idList = parseTrackIds(trackIds);
+            if (idList.isEmpty()) {
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, "歌曲列表不能为空");
+            }
+
+            // 1. 创建新歌单
+            String createResp = neteaseAPIService.createPlaylist(name.trim(), isPrivate);
+            if (createResp == null) {
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, "创建歌单失败");
+            }
+            com.alibaba.fastjson.JSONObject createObj = com.alibaba.fastjson.JSON.parseObject(createResp);
+            if (createObj.getIntValue("code") != 200) {
+                String msg = createObj.getString("message") != null ? createObj.getString("message") : createObj.getString("msg");
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "创建歌单失败");
+            }
+
+            Long newPlaylistId = createObj.getLong("id");
+            if (newPlaylistId == null && createObj.getJSONObject("playlist") != null) {
+                newPlaylistId = createObj.getJSONObject("playlist").getLong("id");
+            }
+            if (newPlaylistId == null) {
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, "未获取到新建歌单 ID");
+            }
+
+            // 2. 分批将歌曲添加至新歌单 (每批 500 首)
+            int batchSize = 500;
+            for (int i = 0; i < idList.size(); i += batchSize) {
+                List<Long> chunk = idList.subList(i, Math.min(i + batchSize, idList.size()));
+                neteaseAPIService.addTracksToPlaylist(newPlaylistId, chunk);
+            }
+
+            com.alibaba.fastjson.JSONObject resData = new com.alibaba.fastjson.JSONObject();
+            resData.put("id", newPlaylistId);
+            resData.put("name", name.trim());
+            resData.put("trackCount", idList.size());
+            return RespEntity.apply(CommonRespInfo.SUCCESS, resData);
+        } catch (Exception e) {
+            log.error("转存歌单失败, name={}, trackIds={}", name, trackIds, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
+    }
+
+    /**
      * 删除歌单
      */
     @RequestMapping(value = "/v2/playlist/delete", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
