@@ -130,41 +130,63 @@ function changeSearchPage(delta) {
 
 function subscribePlaylistFromSearch(plId, plName, btnElement) {
     if (!plId) return;
-    if (btnElement) {
-        btnElement.disabled = true;
-        btnElement.textContent = "⏳ 收藏中...";
-    }
-    axios.post('/v2/playlist/subscribe', new URLSearchParams({
-        id: plId,
-        subscribe: "true"
-    }))
-    .then(resp => {
-        if (resp.data && resp.data.code === '000000') {
-            showToast(`已成功收藏歌单「${plName || plId}」！`, 'success');
-            if (typeof deleteApiCache === 'function') {
-                deleteApiCache('my_playlists');
+
+    showAppModal({
+        title: '收藏歌单',
+        icon: '⭐',
+        content: `<div style="line-height:1.6; color:var(--text-secondary); text-align:left;">
+                    确定要收藏歌单「<strong>${escapeHtml(plName || plId)}</strong>」吗？<br><br>
+                    <div style="padding:8px 12px; background:rgba(245,158,11,0.08); border-left:3px solid #f59e0b; border-radius:4px; font-size:12px;">
+                      💡 <strong>提示</strong>：网易云官方近期对第三方客户端收藏他人歌单有设备安全风控。如遇限制，亦可在官方 App 收藏后在此同步加载。
+                    </div>
+                    <div style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-subtle);">
+                      <button class="btn-primary" type="button" style="margin:0; width:100%; padding:9px 12px; font-size:13px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow:0 2px 8px rgba(139,92,246,0.3);" onclick="document.querySelector('#modalCloseBtn')?.click(); jumpToPlaylistDetail('${plId}')">
+                        👉 前往查看歌单详情（可一键转存为自建歌单）
+                      </button>
+                    </div>
+                  </div>`,
+        confirmText: '确认收藏',
+        cancelText: '取消',
+        showCancel: true
+    }).then(confirmed => {
+        if (!confirmed) return;
+
+        if (btnElement) {
+            btnElement.disabled = true;
+            btnElement.textContent = "⏳ 收藏中...";
+        }
+        axios.post('/v2/playlist/subscribe', new URLSearchParams({
+            id: plId,
+            subscribe: "true"
+        }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                showToast(`已成功收藏歌单「${plName || plId}」！`, 'success');
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('my_playlists');
+                }
+                if (btnElement) {
+                    btnElement.textContent = "✅ 已收藏";
+                    btnElement.style.color = "#10b981";
+                    btnElement.style.borderColor = "rgba(16,185,129,0.3)";
+                    btnElement.style.background = "rgba(16,185,129,0.12)";
+                }
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || '收藏失败';
+                showToast(errMsg, 'warn');
+                if (btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.textContent = "⭐ 收藏";
+                }
             }
-            if (btnElement) {
-                btnElement.textContent = "✅ 已收藏";
-                btnElement.style.color = "#10b981";
-                btnElement.style.borderColor = "rgba(16,185,129,0.3)";
-                btnElement.style.background = "rgba(16,185,129,0.12)";
-            }
-        } else {
-            const errMsg = (resp.data && resp.data.msg) || '收藏失败';
-            showToast(errMsg, 'warn');
+        })
+        .catch(err => {
+            showToast('收藏歌单失败：' + err, 'error');
             if (btnElement) {
                 btnElement.disabled = false;
                 btnElement.textContent = "⭐ 收藏";
             }
-        }
-    })
-    .catch(err => {
-        showToast('收藏歌单失败：' + err, 'error');
-        if (btnElement) {
-            btnElement.disabled = false;
-            btnElement.textContent = "⭐ 收藏";
-        }
+        });
     });
 }
 

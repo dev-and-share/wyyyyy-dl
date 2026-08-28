@@ -80,7 +80,7 @@ function loadMyPlaylists(filterType) {
     }
 
     // 🔄 2. 并行后台请求最新数据
-    axios.post('/MyPlaylist?limit=100')
+    axios.post('/MyPlaylist')
         .then(resp => {
             const newPlaylists = (resp.data && resp.data.data && resp.data.data.playlists) || [];
             const oldPlaylists = (cached && cached.data && cached.data.playlists) || [];
@@ -116,14 +116,20 @@ function renderPlaylistDetailUI(playlist) {
     const isCreator = (playlist.isCreator === true);
     const safeName = (playlist.name || '').replace(/'/g, "\\'");
 
-    // 操作按钮：自建歌单显示「管理曲目」；别人的歌单显示「⭐ 收藏歌单」或「💔 取消收藏」
+    // 操作按钮：自建歌单显示「管理曲目」；别人的歌单显示「📦 转存为自建歌单」、「✏️ 挑选曲目」以及「⭐ 收藏 / 💔 取消收藏」
     let manageBtnHtml = '';
     if (isCreator) {
         manageBtnHtml = `<button class="btn-primary flex-1-btn" id="btnManageTracks" style="background:linear-gradient(135deg, #6366f1, #4f46e5);" onclick="togglePlaylistManageMode()">✏️ 管理曲目</button>`;
-    } else if (isSubscribed) {
-        manageBtnHtml = `<button class="btn-primary flex-1-btn" id="btnSubscribeToggle" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);" onclick="togglePlaylistSubscribe('${playlist.id}', '${safeName}', true)">💔 取消收藏</button>`;
     } else {
-        manageBtnHtml = `<button class="btn-primary flex-1-btn" id="btnSubscribeToggle" style="background:linear-gradient(135deg, #f59e0b, #d97706); box-shadow:0 2px 8px rgba(245,158,11,0.3);" onclick="togglePlaylistSubscribe('${playlist.id}', '${safeName}', false)">⭐ 收藏歌单</button>`;
+        const subBtn = isSubscribed
+            ? `<button class="btn-primary flex-1-btn" id="btnSubscribeToggle" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);" onclick="togglePlaylistSubscribe('${playlist.id}', '${safeName}', true)">💔 取消收藏</button>`
+            : `<button class="btn-primary flex-1-btn" id="btnSubscribeToggle" style="background:linear-gradient(135deg, #f59e0b, #d97706); box-shadow:0 2px 8px rgba(245,158,11,0.3);" onclick="togglePlaylistSubscribe('${playlist.id}', '${safeName}', false)">⭐ 收藏歌单</button>`;
+
+        manageBtnHtml = `
+            <button class="btn-primary flex-1-btn" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow:0 2px 8px rgba(139,92,246,0.3);" onclick="showForkPlaylistModal()" title="新建为自己的自建歌单">📦 转存为自建歌单</button>
+            <button class="btn-primary flex-1-btn" id="btnManageTracks" style="background:linear-gradient(135deg, #6366f1, #4f46e5);" onclick="togglePlaylistManageMode()">✏️ 挑选曲目</button>
+            ${subBtn}
+        `;
     }
 
     infoDiv.innerHTML = `
@@ -132,7 +138,7 @@ function renderPlaylistDetailUI(playlist) {
             <div class="detail-header-info">
                 <h4 class="detail-header-title">${playlist.name || '未知歌单'}</h4>
                 <div class="detail-header-sub">创建人：${playlist.creator || '未知'} | 共 ${playlist.trackCount || allTracks.length} 首歌</div>
-                <div class="detail-btn-group" style="flex-wrap:wrap;">
+                <div class="detail-btn-group" style="flex-wrap:wrap; gap:8px;">
                     <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">🖥️ 下载到电脑</button>
                     <button class="btn-primary flex-1-btn" id="playlist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
                     <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放歌单</button>
@@ -305,11 +311,27 @@ function downloadPlaylist(id) {
  */
 function togglePlaylistSubscribe(plId, plName, isCurrentlySubscribed) {
     if (!plId) return;
+
     const actionText = isCurrentlySubscribed ? '取消收藏' : '收藏';
+    const modalIcon = isCurrentlySubscribed ? '💔' : '⭐';
+    const noteHtml = !isCurrentlySubscribed 
+        ? `<div style="margin-top:10px; padding:8px 12px; background:rgba(245,158,11,0.08); border-left:3px solid #f59e0b; border-radius:4px; font-size:12px; color:var(--text-secondary);">
+             💡 <strong>提示</strong>：网易云官方近期对第三方客户端收藏他人歌单有设备安全风控。如遇限制，亦可在官方 App 收藏后在此同步加载。
+           </div>
+           <div style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-subtle);">
+             <button class="btn-primary" type="button" style="margin:0; width:100%; padding:9px 12px; font-size:13px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow:0 2px 8px rgba(139,92,246,0.3);" onclick="document.querySelector('#modalCloseBtn')?.click(); jumpToPlaylistDetail('${plId}')">
+               👉 前往查看歌单详情（可一键转存为自建歌单）
+             </button>
+           </div>`
+        : '';
+
     showAppModal({
         title: `${actionText}歌单`,
-        icon: isCurrentlySubscribed ? '💔' : '⭐',
-        content: `确定要${actionText}歌单「${escapeHtml(plName || plId)}」吗？`,
+        icon: modalIcon,
+        content: `<div style="line-height:1.6; color:var(--text-secondary); text-align:left;">
+                    确定要${actionText}歌单「<strong>${escapeHtml(plName || plId)}</strong>」吗？
+                    ${noteHtml}
+                  </div>`,
         confirmText: `确定${actionText}`,
         cancelText: '取消',
         showCancel: true,
@@ -329,7 +351,7 @@ function togglePlaylistSubscribe(plId, plName, isCurrentlySubscribed) {
                     deleteApiCache('playlist_' + plId);
                 }
                 if (typeof loadMyPlaylists === 'function') {
-                    loadMyPlaylists(isCurrentlySubscribed ? 'subscribed' : 'created');
+                    loadMyPlaylists('subscribed');
                 }
                 // 如果当前正在查看该歌单详情，刷新按钮状态
                 if (currentPlaylist && String(currentPlaylist.id) === String(plId)) {
@@ -382,22 +404,23 @@ function deleteMyCreatedPlaylist(plId, plName) {
 }
 
 /**
- * 切换歌单曲目管理模式
+ * 切换歌单曲目管理/挑选模式
  */
 function togglePlaylistManageMode() {
     if (!currentPlaylist) return;
     isManageMode = !isManageMode;
     selectedTrackIds.clear();
 
+    const isCreator = (currentPlaylist.isCreator === true);
     const manageBtn = document.getElementById('btnManageTracks');
     if (manageBtn) {
         if (isManageMode) {
-            manageBtn.textContent = '✕ 退出管理';
+            manageBtn.textContent = isCreator ? '✕ 退出管理' : '✕ 退出挑选';
             manageBtn.style.background = 'rgba(239,68,68,0.15)';
             manageBtn.style.color = '#f87171';
             manageBtn.style.border = '1px solid rgba(239,68,68,0.3)';
         } else {
-            manageBtn.textContent = '✏️ 管理曲目';
+            manageBtn.textContent = isCreator ? '✏️ 管理曲目' : '✏️ 挑选曲目';
             manageBtn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
             manageBtn.style.color = '';
             manageBtn.style.border = '';
@@ -421,7 +444,7 @@ function toggleTrackSelection(trackId) {
 }
 
 /**
- * 刷新底部管理工具栏
+ * 刷新底部管理/挑选工具栏
  */
 function updateManageActionBar() {
     const bar = document.getElementById('playlistManageActionBar');
@@ -436,23 +459,203 @@ function updateManageActionBar() {
     bar.style.display = 'flex';
     const count = selectedTrackIds.size;
     const isAllSelected = allTracks.length > 0 && selectedTrackIds.size === allTracks.length;
+    const isCreator = currentPlaylist && (currentPlaylist.isCreator === true);
+
+    let actionButtonsHtml = '';
+    if (isCreator) {
+        actionButtonsHtml = `
+            <button class="btn-primary" style="margin:0; padding:6px 14px; font-size:12px; background:linear-gradient(135deg, #ef4444, #dc2626); box-shadow:0 2px 8px rgba(239,68,68,0.3);" onclick="batchRemoveSelectedTracks()" ${count === 0 ? 'disabled' : ''}>
+                🗑️ 批量移除 (${count})
+            </button>
+        `;
+    } else {
+        actionButtonsHtml = `
+            <button class="btn-primary" style="margin:0; padding:6px 14px; font-size:12px; background:linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow:0 2px 8px rgba(139,92,246,0.3);" onclick="showForkPlaylistModal(Array.from(selectedTrackIds))" ${count === 0 ? 'disabled' : ''}>
+                📦 转存选中为新歌单 (${count})
+            </button>
+            <button class="btn-primary" style="margin:0; padding:6px 14px; font-size:12px; background:linear-gradient(135deg, #10b981, #059669); box-shadow:0 2px 8px rgba(16,185,129,0.3);" onclick="showAddToPlaylistModal(Array.from(selectedTrackIds))" ${count === 0 ? 'disabled' : ''}>
+                ➕ 添加至自建歌单 (${count})
+            </button>
+        `;
+    }
 
     bar.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <button class="btn-primary" style="margin:0; padding:6px 12px; font-size:12px; background:var(--bg-glass-card); border:1px solid var(--border-subtle); color:var(--text-main);" onclick="toggleSelectAllTracks()">
                 ${isAllSelected ? '取消全选' : '全选全部 (' + allTracks.length + ')'}
             </button>
             <span style="font-size:13px; color:var(--text-secondary);">已选 <strong style="color:var(--accent-color);">${count}</strong> 首</span>
         </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <button class="btn-primary" style="margin:0; padding:6px 14px; font-size:12px; background:linear-gradient(135deg, #ef4444, #dc2626); box-shadow:0 2px 8px rgba(239,68,68,0.3);" onclick="batchRemoveSelectedTracks()" ${count === 0 ? 'disabled' : ''}>
-                🗑️ 批量移除 (${count})
-            </button>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            ${actionButtonsHtml}
             <button class="btn-primary" style="margin:0; padding:6px 12px; font-size:12px; background:rgba(100,116,139,0.2); color:var(--text-muted);" onclick="togglePlaylistManageMode()">
                 ✕ 退出
             </button>
         </div>
     `;
+}
+
+/**
+ * 转存为我的自建歌单弹窗
+ * @param {Array<string|number>} [customTrackIds] 自定义曲目 ID 列表，未传时默认转存当前歌单全量曲目
+ */
+function showForkPlaylistModal(customTrackIds) {
+    if (!currentPlaylist) return;
+    
+    const targetIds = (Array.isArray(customTrackIds) && customTrackIds.length > 0)
+        ? customTrackIds
+        : allTracks.map(t => String(t.id || t.songId));
+
+    if (targetIds.length === 0) {
+        showToast("暂无可转存的歌曲！", "warning");
+        return;
+    }
+
+    const defaultName = currentPlaylist.name || '我的转存歌单';
+    window._forkPlaylistName = defaultName;
+    window._forkIsPrivate = false;
+    
+    showAppModal({
+        title: '转存为自建歌单',
+        icon: '📦',
+        content: `
+            <div style="text-align:left; line-height:1.6;">
+                <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+                    将为您新建一个专属于您的账号自建歌单，并自动将 <strong style="color:var(--accent-color);">${targetIds.length}</strong> 首歌曲批量存入其中。
+                </p>
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px;">新歌单名称：</label>
+                    <input type="text" id="modalForkPlaylistName" value="${escapeHtml(defaultName)}" oninput="window._forkPlaylistName = this.value" style="width:100%; padding:9px 12px; background:var(--input-bg); border:1px solid var(--border-subtle); border-radius:8px; color:var(--text-main); font-size:14px;">
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
+                    <input type="checkbox" id="modalForkIsPrivate" onchange="window._forkIsPrivate = this.checked" style="cursor:pointer; width:16px; height:16px;">
+                    <label for="modalForkIsPrivate" style="cursor:pointer;">设置为隐私歌单（仅自己可见）</label>
+                </div>
+            </div>
+        `,
+        confirmText: `确认转存 (${targetIds.length} 首)`,
+        cancelText: '取消',
+        showCancel: true
+    }).then(confirmed => {
+        if (!confirmed) {
+            delete window._forkPlaylistName;
+            delete window._forkIsPrivate;
+            return;
+        }
+
+        const playlistName = (window._forkPlaylistName !== undefined ? window._forkPlaylistName : defaultName).trim();
+        const isPrivate = Boolean(window._forkIsPrivate);
+        delete window._forkPlaylistName;
+        delete window._forkIsPrivate;
+
+        if (!playlistName) {
+            showToast("请输入新歌单名称", "warning");
+            return;
+        }
+
+        showToast("正在创建歌单并批量转存歌曲...", "info", 4000);
+
+        axios.post('/v2/playlist/fork', new URLSearchParams({
+            name: playlistName,
+            isPrivate: String(isPrivate),
+            trackIds: targetIds.join(',')
+        }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                const newPl = resp.data.data;
+                showToast(`🎉 成功转存 ${targetIds.length} 首歌曲至自建歌单「${playlistName}」！`, 'success', 4000);
+                
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('my_playlists');
+                }
+                if (typeof loadMyPlaylists === 'function') {
+                    loadMyPlaylists('created');
+                }
+
+                // 退出管理模式
+                if (isManageMode) {
+                    togglePlaylistManageMode();
+                }
+
+                // 自动载入并展示新建的自建歌单详情
+                if (newPl && newPl.id) {
+                    const inputEl = document.getElementById("playlistId");
+                    if (inputEl) inputEl.value = newPl.id;
+                    if (typeof loadPlaylistDetail === 'function') {
+                        loadPlaylistDetail();
+                    }
+                }
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || '转存失败';
+                showToast(errMsg, 'error');
+            }
+        })
+        .catch(err => showToast("转存歌单异常：" + err, "error"));
+    });
+}
+
+/**
+ * 快捷创建自建歌单弹窗
+ */
+function showCreatePlaylistModal() {
+    window._newPlaylistName = '';
+    window._newPlaylistIsPrivate = false;
+
+    showAppModal({
+        title: '新建自建歌单',
+        icon: '➕',
+        content: `
+            <div style="text-align:left; line-height:1.6;">
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px;">歌单名称：</label>
+                    <input type="text" id="modalCreatePlaylistName" placeholder="输入歌单名称" oninput="window._newPlaylistName = this.value" style="width:100%; padding:9px 12px; background:var(--input-bg); border:1px solid var(--border-subtle); border-radius:8px; color:var(--text-main); font-size:14px;">
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
+                    <input type="checkbox" id="modalCreateIsPrivate" onchange="window._newPlaylistIsPrivate = this.checked" style="cursor:pointer; width:16px; height:16px;">
+                    <label for="modalCreateIsPrivate" style="cursor:pointer;">设置为隐私歌单（仅自己可见）</label>
+                </div>
+            </div>
+        `,
+        confirmText: '立即创建',
+        cancelText: '取消',
+        showCancel: true
+    }).then(confirmed => {
+        if (!confirmed) {
+            delete window._newPlaylistName;
+            delete window._newPlaylistIsPrivate;
+            return;
+        }
+
+        const playlistName = (window._newPlaylistName || '').trim();
+        const isPrivate = Boolean(window._newPlaylistIsPrivate);
+        delete window._newPlaylistName;
+        delete window._newPlaylistIsPrivate;
+
+        if (!playlistName) {
+            showToast("请输入歌单名称", "warning");
+            return;
+        }
+
+        axios.post('/v2/playlist/create', new URLSearchParams({
+            name: playlistName,
+            isPrivate: String(isPrivate)
+        }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                showToast(`🎉 歌单「${playlistName}」创建成功！`, 'success');
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('my_playlists');
+                }
+                if (typeof loadMyPlaylists === 'function') {
+                    loadMyPlaylists('created');
+                }
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || '创建失败';
+                showToast(errMsg, 'error');
+            }
+        })
+        .catch(err => showToast("创建歌单异常：" + err, "error"));
+    });
 }
 
 /**
