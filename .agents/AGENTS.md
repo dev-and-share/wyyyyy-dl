@@ -9,7 +9,6 @@
 ```
 src/main/java/com/pewee/neteasemusic/
 ├── config/
-│   ├── AnalysisConfig.java          # @ConfigurationProperties prefix=analysis (ip/port)
 │   └── GlobalExceptionHandler.java  # 全局异常兜底
 ├── controller/
 │   ├── QrLoginController.java       # 扫码登录入口 (GET / → qr_login.html / home.html)
@@ -17,9 +16,9 @@ src/main/java/com/pewee/neteasemusic/
 │   ├── MusicDownloadControllerV2.java # 下载调度 (/v2/single|playlist|album|tasks|setRepeat...)
 │   └── DownloadHistoryController.java # 历史管理 (/v2/history/list|stats|scan|clean|importUntracked|scan_external|stream|raw|delete, /v2/reveal)
 ├── service/
-│   ├── AnalysisService.java         # 调本地 NeteaseAPI (5000端口) 解析歌曲URL/专辑/歌单/搜索
+│   ├── AnalysisService.java         # 业务编排：解析歌曲URL/专辑/歌单/搜索/批量详情
 │   ├── MusicDownloadService.java    # 实际下载逻辑 (异步线程池), 落盘后写 SQLite + saveRawJson
-│   └── NeteaseAPIService.java       # HTTP 封装：获取 Cookie / QR key / 登录状态检查
+│   └── NeteaseAPIService.java       # 纯 Java 原生实现：网易云 EAPI AES/MD5 加密解密、Cookie / 扫码登录 / 详情请求
 ├── dao/
 │   └── DownloadHistoryDAO.java      # SQLite DAO（核心！）含全部文件扫描、比对、外部曲库索引
 ├── models/
@@ -35,7 +34,7 @@ src/main/java/com/pewee/neteasemusic/
 └── exceptions/                      # 业务异常体系
 
 src/main/resources/
-├── application.properties           # analysis.ip/port, download.path, host.download.path, external.library.paths
+├── application.properties           # download.path, host.download.path, external.library.paths
 ├── static/css/style.css             # 全局 UI 样式
 ├── static/js/
 │   ├── app.js                       # 主入口：播放器全局状态 playAudioOnline()
@@ -55,7 +54,7 @@ src/test/java/com/pewee/neteasemusic/
 
 **技术栈**：Spring Boot + Thymeleaf + SQLite (via JDBC) + jaudiotagger + FastJSON + Lombok + Gradle + Docker (adoptopenjdk/openjdk8)
 
-**内置 NeteaseAPI**：应用启动后通过 `analysis.ip=127.0.0.1` + `analysis.port=5000` 调用本地 Python NeteaseAPI 服务进行歌曲解析。
+**纯 Java 原生逆向协议**：所有网易云 API（EAPI 加密/解密、曲目详情、试听解析、登录）均由 `NeteaseAPIService.java` 纯 Java 原生实现，无外部第三方 Python 或其他进程依赖。
 
 ---
 
@@ -205,12 +204,10 @@ src/test/java/com/pewee/neteasemusic/
    - 镜像构建：`docker build -t peweelive/netease-music-dl:latest .`
    - 基础镜像：`adoptopenjdk/openjdk8:ubuntu-jre-nightly`（Java 8）
 
-4. **应用端口**：默认 `8080`，内置 NeteaseAPI 服务在 `5000` 端口（`analysis.port`）。
+4. **应用端口**：默认 `8080`（纯 Java 进程，无需任何外部辅助端口）。
 
 5. **`application.properties` 关键配置项速查**：
    ```properties
-   analysis.ip=127.0.0.1
-   analysis.port=5000
    download.path=/media/music/
    host.download.path=${HOST_DOWNLOAD_PATH:}
    external.library.paths=${EXTERNAL_LIBRARY_PATHS:/media/external_music}
