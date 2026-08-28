@@ -620,8 +620,88 @@ public class NeteaseAPIService implements InitializingBean{
 	        return response;
 	    }
 	    
-	    
+	    /**
+	     * 获取用户喜欢的全部红心歌曲 ID 列表
+	     * @param userId 用户 ID (若为 null 则自动使用当前登录 uid)
+	     * @return 包含所有红心歌曲 ID 的 JSON 响应
+	     * @throws Exception
+	     */
+	    public String getLikedSongIds(Long userId) throws Exception {
+	        Long targetUid = userId != null ? userId : this.uid;
+	        if (targetUid == null) {
+	            targetUid = getAccountInfo();
+	        }
+	        String apiPath = "/api/song/like/get";
+	        String url = "https://interface3.music.163.com/eapi/song/like/get";
 
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "8.9.70");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("uid", targetUid);
+	        payload.put("header", new ObjectMapper().writeValueAsString(config));
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
+
+	    /**
+	     * 添加红心 / 取消红心单曲
+	     * @param trackId 歌曲 ID
+	     * @param like true 为添加红心，false 为取消红心
+	     * @return EAPI 响应 JSON
+	     * @throws Exception
+	     */
+	    public String likeTrack(Long trackId, boolean like) throws Exception {
+	        if (trackId == null || trackId <= 0) {
+	            throw new IllegalArgumentException("trackId 不能为空");
+	        }
+	        String apiPath = "/api/radio/like";
+	        String url = "https://interface3.music.163.com/eapi/radio/like?alg=itembased&trackId=" + trackId + "&like=" + like + "&time=3";
+
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "8.9.70");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("trackId", trackId);
+	        payload.put("like", like);
+	        payload.put("time", 3);
+	        payload.put("alg", "itembased");
+	        payload.put("header", new ObjectMapper().writeValueAsString(config));
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
 
 	    public static void main(String[] args) throws Exception {
 	    	NeteaseAPIService service = new NeteaseAPIService();

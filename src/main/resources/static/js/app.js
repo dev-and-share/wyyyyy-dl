@@ -135,6 +135,11 @@ document.addEventListener("DOMContentLoaded", function() {
         restorePlayerStateFromStorage();
     }
 
+    // 5.1 初始化红心歌曲 SWR 缓存 (Cache-First)
+    if (typeof initLikedSongsCache === 'function') {
+        initLikedSongsCache();
+    }
+
     // 6. 初始化播放列表窗口拖拽移动能力
     if (typeof initDraggablePlaylistDrawer === 'function') {
         initDraggablePlaylistDrawer();

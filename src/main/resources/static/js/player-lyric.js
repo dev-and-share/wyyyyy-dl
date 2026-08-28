@@ -116,6 +116,7 @@ function openLyricModal() {
     }
 
     if (typeof updatePlayModeBtnUI === 'function') updatePlayModeBtnUI();
+    if (typeof updateAllLikeButtonsUI === 'function') updateAllLikeButtonsUI();
     renderLyricLinesDOM();
 
     modal.style.display = "flex";

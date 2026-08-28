@@ -471,8 +471,30 @@ function playAudioOnline(url, name, artist, cover, lyric, album) {
 
         // 📱 绑定原生 Media Session API（实现 iOS/Android 锁屏界面遥控、显示封面与连续后台切歌）
         updateMediaSessionMetadata(name, artist, cover, album);
+
+        // ❤️ 刷新红心按钮状态
+        if (typeof updateAllLikeButtonsUI === 'function') {
+            updateAllLikeButtonsUI();
+        }
     }
 }
+
+/**
+ * ❤️ 切换当前正在播放曲目的红心状态
+ */
+function toggleCurrentAudioLike() {
+    const currentTrack = (typeof globalPlaylistQueue !== 'undefined' && typeof currentQueueIndex !== 'undefined' && currentQueueIndex >= 0) 
+        ? globalPlaylistQueue[currentQueueIndex] 
+        : null;
+    if (currentTrack && currentTrack.id) {
+        toggleLikeTrack(currentTrack.id, currentTrack.name);
+    } else {
+        const titleEl = document.getElementById("audioBarTitle");
+        const title = titleEl ? titleEl.textContent : "";
+        showToast(title ? `正在播放《${title}》` : "暂无可操作的当前歌曲", "info");
+    }
+}
+window.toggleCurrentAudioLike = toggleCurrentAudioLike;
 
 /**
  * 📱 硬件级 Media Session 锁屏组件更新函数

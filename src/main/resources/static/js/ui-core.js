@@ -689,3 +689,146 @@ function isFastDataEqual(oldObj, newObj) {
 window.getApiCache = getApiCache;
 window.setApiCache = setApiCache;
 window.isFastDataEqual = isFastDataEqual;
+
+/* ==========================================================================
+   ❤️ 网易云音乐红心 (Like / Unlike) Cache-First SWR 引擎
+   ========================================================================== */
+
+window.likedSongIdsSet = new Set();
+
+/**
+ * ⚡ 初始化红心歌曲 SWR 缓存（0ms 秒开读取本地持久化缓存 + 后台静默热更新）
+ */
+function initLikedSongsCache() {
+    // 1. 0ms 本地优先秒级恢复
+    const cached = getApiCache('liked_song_ids');
+    if (cached && Array.isArray(cached.data)) {
+        window.likedSongIdsSet = new Set(cached.data.map(id => Number(id)));
+        console.log(`[Like] ⚡ 0ms 恢复本地红心缓存: ${window.likedSongIdsSet.size} 首`);
+        updateAllLikeButtonsUI();
+    }
+
+    // 2. 后台静默发起 API 请求
+    axios.get('/v2/like/list')
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000' && Array.isArray(resp.data.data)) {
+                const freshIds = resp.data.data.map(id => Number(id));
+                const oldIds = cached && Array.isArray(cached.data) ? cached.data.map(id => Number(id)) : [];
+                
+                const isChanged = freshIds.length !== oldIds.length || JSON.stringify(freshIds) !== JSON.stringify(oldIds);
+                if (isChanged || !cached) {
+                    window.likedSongIdsSet = new Set(freshIds);
+                    setApiCache('liked_song_ids', freshIds);
+                    console.log(`[Like] 🔄 红心列表已后台平滑热更新: ${freshIds.length} 首`);
+                    updateAllLikeButtonsUI();
+                }
+            }
+        })
+        .catch(err => {
+            console.warn('[Like] 后台拉取红心列表失败 (使用本地离线缓存):', err);
+        });
+}
+
+/**
+ * 判断指定歌曲是否已添加红心
+ */
+function isSongLiked(songId) {
+    if (!songId || !window.likedSongIdsSet) return false;
+    return window.likedSongIdsSet.has(Number(songId));
+}
+
+/**
+ * 切换红心状态（乐观更新 UI + 本地缓存同步 + 后台异步请求）
+ */
+function toggleLikeTrack(songId, songName) {
+    if (!songId) {
+        showToast("无可用歌曲 ID", "warning");
+        return;
+    }
+    const numId = Number(songId);
+    const wasLiked = window.likedSongIdsSet.has(numId);
+    const willLike = !wasLiked;
+
+    // 🚀 Step 1: 乐观更新内存 Set 与本地缓存
+    if (willLike) {
+        window.likedSongIdsSet.add(numId);
+    } else {
+        window.likedSongIdsSet.delete(numId);
+    }
+    setApiCache('liked_song_ids', Array.from(window.likedSongIdsSet));
+
+    // 🎨 Step 2: 瞬间刷新全界面红心按钮 UI
+    updateAllLikeButtonsUI(numId);
+
+    const displayName = songName ? `《${songName}》` : '';
+    if (willLike) {
+        showToast(`❤️ 已将 ${displayName} 添加到我喜欢的音乐`, 'success', 2000);
+    } else {
+        showToast(`🤍 已将 ${displayName} 从我喜欢的音乐中移除`, 'info', 2000);
+    }
+
+    // 🌐 Step 3: 后台异步请求网易云 EAPI
+    axios.post('/v2/like', new URLSearchParams({ id: numId, like: willLike }))
+        .then(resp => {
+            if (!resp.data || resp.data.code !== '000000') {
+                throw new Error((resp.data && resp.data.msg) || "操作失败");
+            }
+        })
+        .catch(err => {
+            console.error('[Like] 同步红心失败，自动回滚:', err);
+            // 回滚状态
+            if (willLike) {
+                window.likedSongIdsSet.delete(numId);
+            } else {
+                window.likedSongIdsSet.add(numId);
+            }
+            setApiCache('liked_song_ids', Array.from(window.likedSongIdsSet));
+            updateAllLikeButtonsUI(numId);
+            showToast(`⚠️ 红心同步失败：${err.message || err}`, 'error', 3000);
+        });
+}
+
+/**
+ * 刷新全界面红心按钮图标与样式（底栏、全屏黑胶、曲目列表）
+ */
+function updateAllLikeButtonsUI(targetSongId) {
+    // 1. 刷新底栏播放器红心按钮
+    const barBtn = document.getElementById('audioBarLikeBtn');
+    const player = document.getElementById('globalAudioPlayer');
+    const currentTrack = (typeof globalPlaylistQueue !== 'undefined' && typeof currentQueueIndex !== 'undefined' && currentQueueIndex >= 0) 
+        ? globalPlaylistQueue[currentQueueIndex] 
+        : null;
+
+    if (barBtn && currentTrack && currentTrack.id) {
+        const liked = isSongLiked(currentTrack.id);
+        barBtn.innerHTML = liked ? '❤️' : '🤍';
+        barBtn.className = 'ctrl-btn like-btn' + (liked ? ' active' : '');
+        barBtn.title = liked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
+    }
+
+    // 2. 刷新全屏黑胶播放器红心按钮
+    const fullBtn = document.getElementById('fullscreenLikeBtn');
+    if (fullBtn && currentTrack && currentTrack.id) {
+        const liked = isSongLiked(currentTrack.id);
+        fullBtn.innerHTML = liked ? '❤️' : '🤍';
+        fullBtn.className = 'ctrl-btn sub-btn full-like-btn' + (liked ? ' active' : '');
+        fullBtn.title = liked ? '已喜欢 (点击取消红心)' : '喜欢 (点击添加红心)';
+    }
+
+    // 3. 刷新列表中的红心标记
+    const listLikeBtns = document.querySelectorAll('.track-like-icon-btn');
+    listLikeBtns.forEach(btn => {
+        const sid = btn.getAttribute('data-song-id');
+        if (sid && (!targetSongId || Number(sid) === Number(targetSongId))) {
+            const liked = isSongLiked(sid);
+            btn.innerHTML = liked ? '❤️' : '🤍';
+            btn.classList.toggle('active', liked);
+            btn.title = liked ? '已喜欢 (点击取消)' : '喜欢 (点击添加)';
+        }
+    });
+}
+
+window.initLikedSongsCache = initLikedSongsCache;
+window.isSongLiked = isSongLiked;
+window.toggleLikeTrack = toggleLikeTrack;
+window.updateAllLikeButtonsUI = updateAllLikeButtonsUI;

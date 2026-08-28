@@ -1,5 +1,6 @@
 package com.pewee.neteasemusic.controller;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,9 @@ public class AnalysisController {
 	
 	@Autowired
     private AnalysisService analysisService;
+
+	@Autowired
+    private NeteaseAPIService neteaseAPIService;
 	
 	@RequestMapping(value = "/setCookie", method = {RequestMethod.GET, RequestMethod.POST})
 	public RespEntity<?> refreshCookie(@RequestParam(value = "cookie",required = true) String cookie) {
@@ -175,5 +179,51 @@ public class AnalysisController {
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(defaultValue = "0") int offset) {
         return RespEntity.apply(CommonRespInfo.SUCCESS,analysisService.getUserPlaylists(limit, offset));
+    }
+
+    /**
+     * 获取当前登录用户喜欢的全部红心歌曲 ID 列表
+     */
+    @RequestMapping(value = "/v2/like/list", method = {RequestMethod.GET})
+    public RespEntity<?> getLikedSongIds() {
+        try {
+            String jsonResp = neteaseAPIService.getLikedSongIds(null);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.getIntValue("code") == 200) {
+                    com.alibaba.fastjson.JSONArray ids = obj.getJSONArray("ids");
+                    return RespEntity.apply(CommonRespInfo.SUCCESS, ids != null ? ids : Collections.emptyList());
+                } else {
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, obj.getString("message"));
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, Collections.emptyList());
+        } catch (Exception e) {
+            log.error("获取红心歌曲列表失败", e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * 添加红心 / 取消红心单曲
+     */
+    @RequestMapping(value = "/v2/like", method = {RequestMethod.POST, RequestMethod.GET})
+    public RespEntity<?> toggleLikeTrack(@RequestParam Long id,
+                                         @RequestParam(defaultValue = "true") boolean like) {
+        try {
+            String jsonResp = neteaseAPIService.likeTrack(id, like);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.getIntValue("code") == 200) {
+                    return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+                } else {
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, obj.getString("msg"));
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+        } catch (Exception e) {
+            log.error("切换红心状态失败, id={}, like={}", id, like, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
     }
 }

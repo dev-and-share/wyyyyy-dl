@@ -111,4 +111,29 @@ public class AnalysisControllerTest {
                 .andExpect(jsonPath("$.data.freeTrial").value(true))
                 .andExpect(jsonPath("$.data.freeTrialDuration").value(30));
     }
+
+    @Test
+    @DisplayName("测试 /v2/like/list 和 /v2/like 红心接口")
+    public void testLikeEndpoints() throws Exception {
+        // 1. 测试获取红心列表
+        Mockito.when(neteaseAPIService.getLikedSongIds(null))
+                .thenReturn("{\"code\":200, \"ids\":[186016, 326696]}");
+
+        mockMvc.perform(get("/v2/like/list"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data[0]").value(186016))
+                .andExpect(jsonPath("$.data[1]").value(326696));
+
+        // 2. 测试添加红心
+        Mockito.when(neteaseAPIService.likeTrack(eq(186016L), eq(true)))
+                .thenReturn("{\"code\":200, \"playlistId\":3554571}");
+
+        mockMvc.perform(post("/v2/like")
+                .param("id", "186016")
+                .param("like", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.code").value(200));
+    }
 }
