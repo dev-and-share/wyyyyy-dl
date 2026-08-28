@@ -309,8 +309,24 @@ public class AnalysisService {
             playlistInfo.setName(playlist.getString("name"));
             playlistInfo.setCoverImgUrl(playlist.getString("coverImgUrl"));
             playlistInfo.setDescription(playlist.getString("description"));
-            playlistInfo.setCreator(playlist.getJSONObject("creator").getString("nickname"));
+            if (playlist.getJSONObject("creator") != null) {
+                playlistInfo.setCreator(playlist.getJSONObject("creator").getString("nickname"));
+            } else {
+                playlistInfo.setCreator(playlist.getString("creator"));
+            }
             playlistInfo.setTrackCount(playlist.getIntValue("trackCount"));
+
+            Long creatorUserId = playlist.getLong("userId");
+            if (creatorUserId == null && playlist.getJSONObject("creator") != null) {
+                creatorUserId = playlist.getJSONObject("creator").getLong("userId");
+            }
+            Boolean isSubscribed = playlist.getBoolean("subscribed");
+            Long currentUid = neteaseAPIService.getUid();
+            boolean isCreator = (currentUid != null && creatorUserId != null && currentUid.equals(creatorUserId));
+
+            playlistInfo.setUserId(creatorUserId);
+            playlistInfo.setSubscribed(isSubscribed != null ? isSubscribed : false);
+            playlistInfo.setIsCreator(isCreator);
 
             JSONArray tracks = playlist.getJSONArray("tracks");
             List<TrackDTO> trackList = new ArrayList<>();

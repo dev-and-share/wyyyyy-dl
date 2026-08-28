@@ -844,3 +844,304 @@ window.initLikedSongsCache = initLikedSongsCache;
 window.isSongLiked = isSongLiked;
 window.toggleLikeTrack = toggleLikeTrack;
 window.updateAllLikeButtonsUI = updateAllLikeButtonsUI;
+
+/**
+ * ➕ 全局「添加到歌单」弹窗
+ * @param {string|number} songId 歌曲 ID
+ * @param {string} songName 歌名
+ * @param {string} artistName 歌手
+ */
+async function showAddToPlaylistModal(songId, songName = '', artistName = '') {
+    if (!songId) {
+        showToast("歌曲 ID 缺失，无法添加到歌单", "error");
+        return;
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'app-modal-backdrop';
+
+    const card = document.createElement('div');
+    card.className = 'app-modal-card playlist-picker-modal';
+
+    const cleanName = escapeHtml(songName || '未知歌曲');
+    const cleanArtist = escapeHtml(artistName || '');
+
+    card.innerHTML = `
+        <div class="app-modal-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span>📂</span>
+                <span>添加歌曲到歌单</span>
+            </div>
+            <button class="app-modal-close-btn" id="modalCloseBtn">✕</button>
+        </div>
+        <div class="app-modal-body" style="padding:14px 16px;">
+            <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px; display:flex; align-items:center; gap:6px; background:var(--bg-glass-card); padding:8px 12px; border-radius:10px; border:1px solid var(--border-subtle);">
+                <span style="font-size:16px;">🎵</span>
+                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <strong style="color:var(--text-main);">${cleanName}</strong>
+                    ${cleanArtist ? `<span style="color:var(--text-muted); font-size:12px;"> - ${cleanArtist}</span>` : ''}
+                </div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">选择自建歌单</span>
+                <button class="btn-primary" id="btnQuickCreatePl" style="margin:0; padding:4px 10px; font-size:11px; background:linear-gradient(135deg, #10b981, #059669); border-radius:12px; box-shadow:none;">➕ 新建歌单</button>
+            </div>
+
+            <div id="playlistPickerContainer" style="max-height:260px; overflow-y:auto; border-radius:12px; display:flex; flex-direction:column; gap:6px;">
+                <div style="padding:24px 0; text-align:center; color:var(--text-muted); font-size:13px;">
+                    <span style="display:inline-block; animation:spin 1s linear infinite; margin-right:6px;">🔄</span>正在读取我的歌单...
+                </div>
+            </div>
+        </div>
+        <div class="app-modal-footer">
+            <button class="app-modal-btn app-modal-btn-cancel" id="modalCancelBtn" style="flex:1;">取消</button>
+        </div>
+    `;
+
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+
+    const closeModal = () => {
+        card.style.transform = 'scale(0.95)';
+        card.style.opacity = '0';
+        backdrop.style.opacity = '0';
+        setTimeout(() => {
+            if (backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        }, 200);
+    };
+
+    const closeBtn = card.querySelector('#modalCloseBtn');
+    const cancelBtn = card.querySelector('#modalCancelBtn');
+    if (closeBtn) closeBtn.onclick = closeModal;
+    if (cancelBtn) cancelBtn.onclick = closeModal;
+    backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+
+    const quickCreateBtn = card.querySelector('#btnQuickCreatePl');
+    if (quickCreateBtn) {
+        quickCreateBtn.onclick = () => {
+            closeModal();
+            showCreatePlaylistModal((newPlId) => {
+                showAddToPlaylistModal(songId, songName, artistName);
+            });
+        };
+    }
+
+    // 渲染歌单项列表
+    const renderPickers = (playlists) => {
+        const container = card.querySelector('#playlistPickerContainer');
+        if (!container) return;
+        
+        // 过滤出用户创建的歌单
+        const createdList = (playlists || []).filter(p => p.subscribed === false || p.subscribed === null || p.subscribed === undefined);
+        
+        if (createdList.length === 0) {
+            container.innerHTML = `
+                <div style="padding:30px 10px; text-align:center; color:var(--text-muted); font-size:13px;">
+                    未找到创建的歌单，请先点击右上角「新建歌单」
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        createdList.forEach(pl => {
+            const row = document.createElement('div');
+            row.className = 'playlist-picker-item';
+            const cover = pl.coverImgUrl ? pl.coverImgUrl : '/favicon.png';
+            row.innerHTML = `
+                <img src="${cover}" class="playlist-picker-cover" alt="封面">
+                <div style="flex:1; min-width:0; overflow:hidden;">
+                    <div class="playlist-picker-name">${escapeHtml(pl.name)}</div>
+                    <div style="font-size:11px; color:var(--text-muted);">${pl.trackCount || 0} 首歌曲</div>
+                </div>
+                <button class="playlist-picker-add-btn">➕ 加入</button>
+            `;
+            row.onclick = () => {
+                row.style.pointerEvents = 'none';
+                row.style.opacity = '0.6';
+                const addBtn = row.querySelector('.playlist-picker-add-btn');
+                if (addBtn) addBtn.textContent = '⏳ 添加中...';
+
+                axios.post('/v2/playlist/tracks/add', new URLSearchParams({
+                    playlistId: pl.id,
+                    trackIds: String(songId)
+                }))
+                .then(resp => {
+                    if (resp.data && resp.data.code === '000000') {
+                        showToast(`已成功将《${cleanName}》添加到歌单「${pl.name}」`, 'success', 3500);
+                        // 清理该歌单详情 SWR 缓存与我的歌单缓存
+                        if (typeof deleteApiCache === 'function') {
+                            deleteApiCache('playlist_' + pl.id);
+                            deleteApiCache('my_playlists');
+                        }
+                        closeModal();
+                    } else {
+                        const errMsg = (resp.data && resp.data.msg) || '添加失败，歌曲可能已存在于该歌单中';
+                        showToast(errMsg, 'warn');
+                        row.style.pointerEvents = 'auto';
+                        row.style.opacity = '1';
+                        if (addBtn) addBtn.textContent = '➕ 加入';
+                    }
+                })
+                .catch(err => {
+                    showToast('添加失败：' + err, 'error');
+                    row.style.pointerEvents = 'auto';
+                    row.style.opacity = '1';
+                    if (addBtn) addBtn.textContent = '➕ 加入';
+                });
+            };
+            container.appendChild(row);
+        });
+    };
+
+    // 先读 SWR 缓存秒开
+    const cached = typeof getApiCache === 'function' ? getApiCache('my_playlists') : null;
+    if (cached && cached.data && cached.data.playlists) {
+        renderPickers(cached.data.playlists);
+    }
+
+    // 后台拉取最新
+    axios.post('/MyPlaylist?limit=100')
+        .then(resp => {
+            const list = (resp.data && resp.data.data && resp.data.data.playlists) || [];
+            if (typeof setApiCache === 'function') {
+                setApiCache('my_playlists', resp.data.data);
+            }
+            renderPickers(list);
+        })
+        .catch(err => {
+            if (!cached) {
+                const container = card.querySelector('#playlistPickerContainer');
+                if (container) {
+                    container.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444; font-size:13px;">加载歌单失败，请确保已登录账号</div>`;
+                }
+            }
+        });
+}
+
+/**
+ * ➕ 全局「创建新歌单」弹窗
+ * @param {Function} [onSuccess] 成功创建后的回调函数 (接收 newPlaylistId)
+ */
+function showCreatePlaylistModal(onSuccess = null) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'app-modal-backdrop';
+
+    const card = document.createElement('div');
+    card.className = 'app-modal-card';
+
+    card.innerHTML = `
+        <div class="app-modal-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span>✨</span>
+                <span>创建新歌单</span>
+            </div>
+            <button class="app-modal-close-btn" id="createPlCloseBtn">✕</button>
+        </div>
+        <div class="app-modal-body" style="padding:16px;">
+            <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px;">歌单标题</label>
+                <input type="text" id="newPlTitleInput" class="app-modal-input" placeholder="输入歌单名称 (例如: 我的心动精选)" maxlength="40" style="width:100%; box-sizing:border-box;">
+            </div>
+            
+            <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-glass-card); padding:10px 14px; border-radius:12px; border:1px solid var(--border-subtle);">
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:var(--text-main);">设置为私密歌单</div>
+                    <div style="font-size:11px; color:var(--text-muted);">仅自己可见该歌单</div>
+                </div>
+                <label class="compact-switch-label" style="margin:0;">
+                    <input type="checkbox" id="newPlPrivateSwitch">
+                    <span>私密</span>
+                </label>
+            </div>
+        </div>
+        <div class="app-modal-footer">
+            <button class="app-modal-btn app-modal-btn-cancel" id="createPlCancelBtn">取消</button>
+            <button class="app-modal-btn app-modal-btn-confirm" id="createPlConfirmBtn">立即创建</button>
+        </div>
+    `;
+
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+
+    const input = card.querySelector('#newPlTitleInput');
+    if (input) setTimeout(() => input.focus(), 150);
+
+    const closeModal = () => {
+        card.style.transform = 'scale(0.95)';
+        card.style.opacity = '0';
+        backdrop.style.opacity = '0';
+        setTimeout(() => {
+            if (backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        }, 200);
+    };
+
+    const closeBtn = card.querySelector('#createPlCloseBtn');
+    const cancelBtn = card.querySelector('#createPlCancelBtn');
+    const confirmBtn = card.querySelector('#createPlConfirmBtn');
+
+    if (closeBtn) closeBtn.onclick = closeModal;
+    if (cancelBtn) cancelBtn.onclick = closeModal;
+    backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+
+    const handleCreate = () => {
+        const title = (input ? input.value : '').trim();
+        if (!title) {
+            showToast("请输入歌单名称", "warning");
+            if (input) input.focus();
+            return;
+        }
+
+        const isPrivate = !!(card.querySelector('#newPlPrivateSwitch') && card.querySelector('#newPlPrivateSwitch').checked);
+
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = "创建中...";
+
+        axios.post('/v2/playlist/create', new URLSearchParams({
+            name: title,
+            isPrivate: String(isPrivate)
+        }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                showToast(`歌单「${title}」创建成功！`, 'success');
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('my_playlists');
+                }
+                if (typeof loadMyPlaylists === 'function') {
+                    loadMyPlaylists('created');
+                }
+                closeModal();
+                const newId = resp.data.data && resp.data.data.id;
+                if (typeof onSuccess === 'function') {
+                    onSuccess(newId);
+                }
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || '创建失败';
+                showToast(errMsg, 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = "立即创建";
+            }
+        })
+        .catch(err => {
+            showToast('创建歌单失败：' + err, 'error');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = "立即创建";
+        });
+    };
+
+    if (confirmBtn) confirmBtn.onclick = handleCreate;
+    if (input) {
+        input.onkeyup = (e) => {
+            if (e.key === 'Enter') handleCreate();
+        };
+    }
+}
+
+window.showAddToPlaylistModal = showAddToPlaylistModal;
+window.showCreatePlaylistModal = showCreatePlaylistModal;
+

@@ -92,6 +92,13 @@ src/test/java/com/pewee/neteasemusic/
 | GET | `/v2/reveal?path=&taskId=` | 在 Finder/Explorer 中定位文件 |
 | GET | `/qr/status?unikey=` | 轮询二维码扫码状态 |
 | GET | `/login/status` | 查询当前登录状态 |
+| GET/POST | `/v2/like?id=&like=` | 添加/取消红心歌曲 |
+| GET | `/v2/like/list` | 查询已红心全部歌曲 ID 列表 |
+| POST | `/v2/playlist/subscribe?id=&subscribe=` | 收藏/取消收藏歌单 |
+| POST | `/v2/playlist/tracks/add?playlistId=&trackIds=` | 添加歌曲到歌单 |
+| POST/DELETE | `/v2/playlist/tracks/remove?playlistId=&trackIds=` | 从自建歌单删除歌曲 |
+| POST | `/v2/playlist/create?name=&isPrivate=` | 创建新自建歌单 |
+| POST/DELETE | `/v2/playlist/delete?id=` | 删除自建歌单 |
 
 ---
 

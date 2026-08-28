@@ -217,7 +217,8 @@ public class AnalysisController {
                 if (obj.getIntValue("code") == 200) {
                     return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
                 } else {
-                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, obj.getString("msg"));
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "操作失败");
                 }
             }
             return RespEntity.apply(CommonRespInfo.SUCCESS, null);
@@ -225,5 +226,146 @@ public class AnalysisController {
             log.error("切换红心状态失败, id={}, like={}", id, like, e);
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
         }
+    }
+
+    /**
+     * 收藏 / 取消收藏歌单
+     */
+    @RequestMapping(value = "/v2/playlist/subscribe", method = {RequestMethod.POST, RequestMethod.GET})
+    public RespEntity<?> subscribePlaylist(@RequestParam Long id,
+                                           @RequestParam(defaultValue = "true") boolean subscribe) {
+        try {
+            String jsonResp = neteaseAPIService.subscribePlaylist(id, subscribe);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.getIntValue("code") == 200) {
+                    return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+                } else {
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "操作失败");
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+        } catch (Exception e) {
+            log.error("收藏/取消收藏歌单失败, id={}, subscribe={}", id, subscribe, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * 添加歌曲到歌单
+     */
+    @RequestMapping(value = "/v2/playlist/tracks/add", method = {RequestMethod.POST, RequestMethod.GET})
+    public RespEntity<?> addTracksToPlaylist(@RequestParam Long playlistId,
+                                             @RequestParam String trackIds) {
+        try {
+            List<Long> idList = parseTrackIds(trackIds);
+            String jsonResp = neteaseAPIService.addTracksToPlaylist(playlistId, idList);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.getIntValue("code") == 200 || obj.getIntValue("code") == 502) {
+                    // code 502 在部分网易云返回中可能表示包含重复歌曲但其余已添加，返回给前端处理
+                    if (obj.getIntValue("code") == 200) {
+                        return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+                    }
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "添加异常或歌曲已存在");
+                } else {
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "添加失败");
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+        } catch (Exception e) {
+            log.error("添加歌曲到歌单失败, playlistId={}, trackIds={}", playlistId, trackIds, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * 从歌单删除歌曲
+     */
+    @RequestMapping(value = "/v2/playlist/tracks/remove", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
+    public RespEntity<?> removeTracksFromPlaylist(@RequestParam Long playlistId,
+                                                @RequestParam String trackIds) {
+        try {
+            List<Long> idList = parseTrackIds(trackIds);
+            String jsonResp = neteaseAPIService.removeTracksFromPlaylist(playlistId, idList);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.getIntValue("code") == 200) {
+                    return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+                } else {
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "删除失败");
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+        } catch (Exception e) {
+            log.error("从歌单删除歌曲失败, playlistId={}, trackIds={}", playlistId, trackIds, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * 创建新歌单
+     */
+    @RequestMapping(value = "/v2/playlist/create", method = {RequestMethod.POST, RequestMethod.GET})
+    public RespEntity<?> createPlaylist(@RequestParam String name,
+                                        @RequestParam(defaultValue = "false") boolean isPrivate) {
+        try {
+            String jsonResp = neteaseAPIService.createPlaylist(name, isPrivate);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.getIntValue("code") == 200) {
+                    return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+                } else {
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "创建歌单失败");
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+        } catch (Exception e) {
+            log.error("创建歌单失败, name={}, isPrivate={}", name, isPrivate, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * 删除歌单
+     */
+    @RequestMapping(value = "/v2/playlist/delete", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
+    public RespEntity<?> deletePlaylist(@RequestParam Long id) {
+        try {
+            String jsonResp = neteaseAPIService.deletePlaylist(id);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.getIntValue("code") == 200) {
+                    return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+                } else {
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "删除歌单失败");
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+        } catch (Exception e) {
+            log.error("删除歌单失败, id={}", id, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+        }
+    }
+
+    private List<Long> parseTrackIds(String trackIds) {
+        if (trackIds == null || trackIds.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        String clean = trackIds.trim().replaceAll("[\\[\\]\\s]", "");
+        String[] parts = clean.split(",");
+        List<Long> result = new java.util.ArrayList<>();
+        for (String p : parts) {
+            if (!p.isEmpty()) {
+                result.add(Long.parseLong(p));
+            }
+        }
+        return result;
     }
 }

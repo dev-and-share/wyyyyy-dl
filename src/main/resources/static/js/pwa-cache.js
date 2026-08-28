@@ -358,6 +358,7 @@ function renderTrackCapsuleSlotsHtml(track, prefix = 'track-') {
             <button id="${prefix}play-btn-${id}" class="${playBtnClass}" onclick="playSongById('${id}', '${nameSafe}', '${artistSafe}')" title="${playBtnTitle}">${playBtnText}</button>
             <button id="${prefix}server-btn-${id}" class="${serverBtnClass}" onclick="${serverBtnAction}" title="${serverBtnTitle}">${serverBtnText}</button>
             <button id="${prefix}cache-btn-${id}" class="track-btn-slot slot-browser-cache" onclick="cacheTracksToPhoneBatch([{id: '${id}', songId: '${id}'}], '${prefix}cache-btn-${id}', '📲 缓存')" title="缓存至手机/浏览器离线播放">📲 缓存</button>
+            <button class="track-btn-slot slot-add-playlist" onclick="event.stopPropagation(); showAddToPlaylistModal('${id}', '${nameSafe}', '${artistSafe}')" title="添加至我的歌单">➕ 歌单</button>
         </div>
     `;
 }

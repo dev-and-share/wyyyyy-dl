@@ -206,6 +206,10 @@ public class NeteaseAPIService implements InitializingBean{
 	        return id;
 	    }
 
+	    public Long getUid() {
+	        return this.uid;
+	    }
+
 	    
 	    
 	    /**
@@ -686,6 +690,186 @@ public class NeteaseAPIService implements InitializingBean{
 	        payload.put("like", like);
 	        payload.put("time", 3);
 	        payload.put("alg", "itembased");
+	        payload.put("header", new ObjectMapper().writeValueAsString(config));
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
+
+	    /**
+	     * 收藏 / 取消收藏歌单
+	     * @param playlistId 歌单 ID
+	     * @param subscribe true 为收藏，false 为取消收藏
+	     * @return EAPI 响应 JSON
+	     * @throws Exception
+	     */
+	    public String subscribePlaylist(Long playlistId, boolean subscribe) throws Exception {
+	        if (playlistId == null || playlistId <= 0) {
+	            throw new IllegalArgumentException("playlistId 不能为空");
+	        }
+	        String action = subscribe ? "subscribe" : "unsubscribe";
+	        String apiPath = "/api/playlist/" + action;
+	        String url = "https://interface3.music.163.com/eapi/playlist/" + action;
+
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "8.9.70");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("id", playlistId);
+	        payload.put("header", new ObjectMapper().writeValueAsString(config));
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
+
+	    /**
+	     * 歌单曲目操作 (添加 / 移除)
+	     * @param playlistId 歌单 ID
+	     * @param op 操作类型: "add" 添加, "del" 移除
+	     * @param trackIds 歌曲 ID 列表
+	     * @return EAPI 响应 JSON
+	     * @throws Exception
+	     */
+	    public String manipulateTracks(Long playlistId, String op, List<Long> trackIds) throws Exception {
+	        if (playlistId == null || playlistId <= 0) {
+	            throw new IllegalArgumentException("playlistId 不能为空");
+	        }
+	        if (trackIds == null || trackIds.isEmpty()) {
+	            throw new IllegalArgumentException("trackIds 不能为空");
+	        }
+	        String apiPath = "/api/playlist/manipulate/tracks";
+	        String url = "https://interface3.music.163.com/eapi/playlist/manipulate/tracks";
+
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "8.9.70");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        String trackIdsJson = new ObjectMapper().writeValueAsString(trackIds);
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("op", op);
+	        payload.put("pid", playlistId);
+	        payload.put("trackIds", trackIdsJson);
+	        payload.put("tracks", trackIdsJson);
+	        payload.put("header", new ObjectMapper().writeValueAsString(config));
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
+
+	    public String addTracksToPlaylist(Long playlistId, List<Long> trackIds) throws Exception {
+	        return manipulateTracks(playlistId, "add", trackIds);
+	    }
+
+	    public String removeTracksFromPlaylist(Long playlistId, List<Long> trackIds) throws Exception {
+	        return manipulateTracks(playlistId, "del", trackIds);
+	    }
+
+	    /**
+	     * 创建新歌单
+	     * @param name 歌单名称
+	     * @param isPrivate 是否私密
+	     * @return EAPI 响应 JSON
+	     * @throws Exception
+	     */
+	    public String createPlaylist(String name, boolean isPrivate) throws Exception {
+	        if (name == null || name.trim().isEmpty()) {
+	            throw new IllegalArgumentException("歌单名称不能为空");
+	        }
+	        String apiPath = "/api/playlist/create";
+	        String url = "https://interface3.music.163.com/eapi/playlist/create";
+
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "8.9.70");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("name", name.trim());
+	        payload.put("privacy", isPrivate ? "10" : "0");
+	        payload.put("type", "NORMAL");
+	        payload.put("header", new ObjectMapper().writeValueAsString(config));
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
+
+	    /**
+	     * 删除歌单
+	     * @param playlistId 歌单 ID
+	     * @return EAPI 响应 JSON
+	     * @throws Exception
+	     */
+	    public String deletePlaylist(Long playlistId) throws Exception {
+	        if (playlistId == null || playlistId <= 0) {
+	            throw new IllegalArgumentException("playlistId 不能为空");
+	        }
+	        String apiPath = "/api/playlist/delete";
+	        String url = "https://interface3.music.163.com/eapi/playlist/delete";
+
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "8.9.70");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("pid", playlistId);
+	        payload.put("ids", "[" + playlistId + "]");
 	        payload.put("header", new ObjectMapper().writeValueAsString(config));
 
 	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);

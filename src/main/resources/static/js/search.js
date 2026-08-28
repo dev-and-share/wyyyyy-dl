@@ -81,11 +81,12 @@ function renderSearchPage(page) {
             const trackCountHtml = item.trackCount ? ` <span style="color:var(--text-muted); font-size:12px;">(${item.trackCount} 首)</span>` : '';
 
             li.innerHTML = `
-                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;">
                     <strong>${index + 1}. ${item.name}</strong>${creatorHtml}${trackCountHtml} <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
-                <div>
-                    <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${item.id}')">👉 查看歌单详情</button>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button class="jump-link-btn" style="background:rgba(245,158,11,0.12); color:#fbbf24; border-color:rgba(245,158,11,0.3);" onclick="subscribePlaylistFromSearch('${item.id}', '${(item.name || '').replace(/'/g, "\\'")}', this)">⭐ 收藏</button>
+                    <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${item.id}')">👉 查看详情</button>
                 </div>
             `;
         } else if (type === "10") {
@@ -126,3 +127,44 @@ function renderSearchPage(page) {
 function changeSearchPage(delta) {
     // 基础搜索暂按服务端 Limit 分页展示
 }
+
+function subscribePlaylistFromSearch(plId, plName, btnElement) {
+    if (!plId) return;
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.textContent = "⏳ 收藏中...";
+    }
+    axios.post('/v2/playlist/subscribe', new URLSearchParams({
+        id: plId,
+        subscribe: "true"
+    }))
+    .then(resp => {
+        if (resp.data && resp.data.code === '000000') {
+            showToast(`已成功收藏歌单「${plName || plId}」！`, 'success');
+            if (typeof deleteApiCache === 'function') {
+                deleteApiCache('my_playlists');
+            }
+            if (btnElement) {
+                btnElement.textContent = "✅ 已收藏";
+                btnElement.style.color = "#10b981";
+                btnElement.style.borderColor = "rgba(16,185,129,0.3)";
+                btnElement.style.background = "rgba(16,185,129,0.12)";
+            }
+        } else {
+            const errMsg = (resp.data && resp.data.msg) || '收藏失败';
+            showToast(errMsg, 'warn');
+            if (btnElement) {
+                btnElement.disabled = false;
+                btnElement.textContent = "⭐ 收藏";
+            }
+        }
+    })
+    .catch(err => {
+        showToast('收藏歌单失败：' + err, 'error');
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.textContent = "⭐ 收藏";
+        }
+    });
+}
+

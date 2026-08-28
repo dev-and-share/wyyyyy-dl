@@ -7,6 +7,10 @@ let currentPlaylist = null;
 let allTracks = [];
 const pageSize = 10;
 
+// 歌单管理模式状态
+let isManageMode = false;
+let selectedTrackIds = new Set();
+
 function getValidArtistNames(track) {
     if (!track) return '';
     let arNames = track.artists || (track.ar ? track.ar.map(a => a.name).join('/') : '');
@@ -34,20 +38,31 @@ function renderMyPlaylistsDOM(playlists, filterType) {
         return;
     }
     
-    filtered.forEach(pl => {
+    filtered.forEach((pl, idx) => {
         const li = document.createElement("li");
         const isSubscribed = (pl.subscribed === true);
         const tag = isSubscribed 
             ? '<span class="status-badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.25); font-weight:600; margin-right:6px;">收藏</span>' 
             : '<span class="status-badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.25); font-weight:600; margin-right:6px;">创建</span>';
         
+        const safeName = (pl.name || '').replace(/'/g, "\\'");
+        
+        // 收藏歌单提供「💔 取消收藏」；非第一个自建歌单提供「🗑️ 删除」
+        let actionBtnHtml = '';
+        if (isSubscribed) {
+            actionBtnHtml = `<button class="jump-link-btn" style="background:rgba(239,68,68,0.1); color:#f87171; border-color:rgba(239,68,68,0.25); font-size:11px; margin-right:4px;" onclick="event.stopPropagation(); togglePlaylistSubscribe('${pl.id}', '${safeName}', true)" title="取消收藏该歌单">💔 取消收藏</button>`;
+        } else if (idx > 0) {
+            actionBtnHtml = `<button class="jump-link-btn" style="background:rgba(239,68,68,0.08); color:#f87171; border-color:rgba(239,68,68,0.2); font-size:11px; margin-right:4px;" onclick="event.stopPropagation(); deleteMyCreatedPlaylist('${pl.id}', '${safeName}')" title="删除该自建歌单">🗑️ 删除</button>`;
+        }
+
         li.innerHTML = `
-            <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center;">
+            <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; margin-right:6px;">
                 ${tag}
-                <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-main);">${pl.name}</strong> 
+                <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-main); cursor:pointer;" onclick="jumpToPlaylistDetail('${pl.id}')" title="查看歌单详情">${pl.name}</strong> 
                 <span style="color:var(--text-muted); font-size:11px; margin-left:4px; flex-shrink:0;">(${pl.trackCount || 0}首)</span>
             </div>
-            <div style="flex-shrink:0;">
+            <div style="display:flex; align-items:center; flex-shrink:0;">
+                ${actionBtnHtml}
                 <button class="jump-link-btn" onclick="jumpToPlaylistDetail('${pl.id}')">👉 查看详情</button>
             </div>
         `;
@@ -91,9 +106,25 @@ function renderPlaylistDetailUI(playlist) {
     currentPlaylist = playlist;
     allTracks = playlist.tracks || [];
     currentPage = 1;
+    isManageMode = false;
+    selectedTrackIds.clear();
 
     const infoDiv = document.getElementById("playlist-info");
     if (!infoDiv) return;
+
+    const isSubscribed = (playlist.subscribed === true);
+    const isCreator = (playlist.isCreator === true);
+    const safeName = (playlist.name || '').replace(/'/g, "\\'");
+
+    // 操作按钮：自建歌单显示「管理曲目」；别人的歌单显示「⭐ 收藏歌单」或「💔 取消收藏」
+    let manageBtnHtml = '';
+    if (isCreator) {
+        manageBtnHtml = `<button class="btn-primary flex-1-btn" id="btnManageTracks" style="background:linear-gradient(135deg, #6366f1, #4f46e5);" onclick="togglePlaylistManageMode()">✏️ 管理曲目</button>`;
+    } else if (isSubscribed) {
+        manageBtnHtml = `<button class="btn-primary flex-1-btn" id="btnSubscribeToggle" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);" onclick="togglePlaylistSubscribe('${playlist.id}', '${safeName}', true)">💔 取消收藏</button>`;
+    } else {
+        manageBtnHtml = `<button class="btn-primary flex-1-btn" id="btnSubscribeToggle" style="background:linear-gradient(135deg, #f59e0b, #d97706); box-shadow:0 2px 8px rgba(245,158,11,0.3);" onclick="togglePlaylistSubscribe('${playlist.id}', '${safeName}', false)">⭐ 收藏歌单</button>`;
+    }
 
     infoDiv.innerHTML = `
         <div class="detail-header-card">
@@ -101,13 +132,15 @@ function renderPlaylistDetailUI(playlist) {
             <div class="detail-header-info">
                 <h4 class="detail-header-title">${playlist.name || '未知歌单'}</h4>
                 <div class="detail-header-sub">创建人：${playlist.creator || '未知'} | 共 ${playlist.trackCount || allTracks.length} 首歌</div>
-                <div class="detail-btn-group">
+                <div class="detail-btn-group" style="flex-wrap:wrap;">
                     <button class="btn-primary flex-1-btn" onclick="downloadPlaylist('${playlist.id}')">🖥️ 下载到电脑</button>
                     <button class="btn-primary flex-1-btn" id="playlist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器')">📲 缓存到浏览器 (计算中...)</button>
                     <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentPlaylist()">▶️ 播放歌单</button>
+                    ${manageBtnHtml}
                 </div>
             </div>
         </div>
+        <div id="playlistManageActionBar" class="manage-action-bar" style="display:none;"></div>
     `;
     renderPage(currentPage);
     refreshPhoneCacheBtn(allTracks, 'playlist-cache-btn', '📲 缓存到浏览器');
@@ -183,20 +216,39 @@ function renderPage(page) {
 
     pageTracks.forEach((track, index) => {
         const li = document.createElement("li");
-        li.className = "track-item-card";
+        const trackId = track.id || track.songId;
+        const isSelected = selectedTrackIds.has(String(trackId));
+        li.className = "track-item-card" + (isManageMode ? " manage-mode" : "") + (isSelected ? " selected" : "");
         const trackIndex = start + index + 1;
         const artistDisplay = getValidArtistNames(track);
         const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
 
-        const localBadge = `<span id="badge-pl-${track.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
+        const localBadge = `<span id="badge-pl-${trackId}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
         const slotsHtml = renderTrackCapsuleSlotsHtml(track, 'pl-');
+
+        const checkboxHtml = isManageMode
+            ? `<input type="checkbox" class="track-select-checkbox" data-id="${trackId}" ${isSelected ? "checked" : ""} onclick="event.stopPropagation(); toggleTrackSelection('${trackId}')" style="margin-right:10px; cursor:pointer; width:16px; height:16px;">`
+            : '';
+
+        const manageDeleteBtn = isManageMode
+            ? `<button class="jump-link-btn" style="background:rgba(239,68,68,0.12); color:#ef4444; border-color:rgba(239,68,68,0.25); margin-left:6px; font-size:11px; padding:4px 8px;" onclick="event.stopPropagation(); removeSingleTrackFromCurrentPlaylist('${trackId}', '${(track.name || '').replace(/'/g, "\\'")}')" title="从歌单移除该歌曲">🗑️ 移除</button>`
+            : '';
 
         li.innerHTML = `
             <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
-                <strong class="clickable-track-title" onclick="jumpToSongDetail('${track.id}')" title="点击查看单曲详细信息" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${trackIndex}. ${track.name}</strong>${artistHtml}${localBadge}
+                ${checkboxHtml}
+                <strong class="clickable-track-title" onclick="jumpToSongDetail('${trackId}')" title="点击查看单曲详细信息" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${trackIndex}. ${track.name}</strong>${artistHtml}${localBadge}
             </div>
-            ${slotsHtml}
+            <div style="display:flex; align-items:center;">
+                ${slotsHtml}
+                ${manageDeleteBtn}
+            </div>
         `;
+
+        if (isManageMode) {
+            li.onclick = () => toggleTrackSelection(trackId);
+        }
+
         list.appendChild(li);
     });
 
@@ -206,6 +258,7 @@ function renderPage(page) {
     document.getElementById("next-page").disabled = (page >= totalPages);
 
     asyncUpdateListBadges(pageTracks, 'pl-');
+    updateManageActionBar();
 }
 
 function playFullCurrentPlaylist() {
@@ -242,3 +295,280 @@ function downloadPlaylist(id) {
         })
         .catch(err => showToast("提交歌单下载失败：" + err, "error"));
 }
+
+/* ==========================================================================
+   ✨ 歌单管理与曲目增删交互功能 (Playlist Management Features)
+   ========================================================================== */
+
+/**
+ * 收藏 / 取消收藏歌单
+ */
+function togglePlaylistSubscribe(plId, plName, isCurrentlySubscribed) {
+    if (!plId) return;
+    const actionText = isCurrentlySubscribed ? '取消收藏' : '收藏';
+    showAppModal({
+        title: `${actionText}歌单`,
+        icon: isCurrentlySubscribed ? '💔' : '⭐',
+        content: `确定要${actionText}歌单「${escapeHtml(plName || plId)}」吗？`,
+        confirmText: `确定${actionText}`,
+        cancelText: '取消',
+        showCancel: true,
+        danger: isCurrentlySubscribed
+    }).then(confirmed => {
+        if (!confirmed) return;
+        
+        axios.post('/v2/playlist/subscribe', new URLSearchParams({
+            id: plId,
+            subscribe: String(!isCurrentlySubscribed)
+        }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                showToast(`已成功${actionText}歌单「${plName}」！`, 'success');
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('my_playlists');
+                    deleteApiCache('playlist_' + plId);
+                }
+                if (typeof loadMyPlaylists === 'function') {
+                    loadMyPlaylists(isCurrentlySubscribed ? 'subscribed' : 'created');
+                }
+                // 如果当前正在查看该歌单详情，刷新按钮状态
+                if (currentPlaylist && String(currentPlaylist.id) === String(plId)) {
+                    currentPlaylist.subscribed = !isCurrentlySubscribed;
+                    renderPlaylistDetailUI(currentPlaylist);
+                }
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || `${actionText}失败`;
+                showToast(errMsg, 'error');
+            }
+        })
+        .catch(err => showToast(`${actionText}失败：` + err, 'error'));
+    });
+}
+
+/**
+ * 删除自建歌单
+ */
+function deleteMyCreatedPlaylist(plId, plName) {
+    if (!plId) return;
+    showAppModal({
+        title: '删除歌单',
+        icon: '🗑️',
+        content: `确定要删除自建歌单「${escapeHtml(plName || plId)}」吗？此操作不可恢复。`,
+        confirmText: '确认删除',
+        cancelText: '取消',
+        showCancel: true,
+        danger: true
+    }).then(confirmed => {
+        if (!confirmed) return;
+
+        axios.post('/v2/playlist/delete', new URLSearchParams({ id: plId }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                showToast(`歌单「${plName}」已成功删除`, 'success');
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('my_playlists');
+                    deleteApiCache('playlist_' + plId);
+                }
+                if (typeof loadMyPlaylists === 'function') {
+                    loadMyPlaylists('created');
+                }
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || '删除失败';
+                showToast(errMsg, 'error');
+            }
+        })
+        .catch(err => showToast('删除歌单异常：' + err, 'error'));
+    });
+}
+
+/**
+ * 切换歌单曲目管理模式
+ */
+function togglePlaylistManageMode() {
+    if (!currentPlaylist) return;
+    isManageMode = !isManageMode;
+    selectedTrackIds.clear();
+
+    const manageBtn = document.getElementById('btnManageTracks');
+    if (manageBtn) {
+        if (isManageMode) {
+            manageBtn.textContent = '✕ 退出管理';
+            manageBtn.style.background = 'rgba(239,68,68,0.15)';
+            manageBtn.style.color = '#f87171';
+            manageBtn.style.border = '1px solid rgba(239,68,68,0.3)';
+        } else {
+            manageBtn.textContent = '✏️ 管理曲目';
+            manageBtn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
+            manageBtn.style.color = '';
+            manageBtn.style.border = '';
+        }
+    }
+
+    renderPage(currentPage);
+}
+
+/**
+ * 勾选/反选单首曲目
+ */
+function toggleTrackSelection(trackId) {
+    const sId = String(trackId);
+    if (selectedTrackIds.has(sId)) {
+        selectedTrackIds.delete(sId);
+    } else {
+        selectedTrackIds.add(sId);
+    }
+    renderPage(currentPage);
+}
+
+/**
+ * 刷新底部管理工具栏
+ */
+function updateManageActionBar() {
+    const bar = document.getElementById('playlistManageActionBar');
+    if (!bar) return;
+
+    if (!isManageMode) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+    }
+
+    bar.style.display = 'flex';
+    const count = selectedTrackIds.size;
+    const isAllSelected = allTracks.length > 0 && selectedTrackIds.size === allTracks.length;
+
+    bar.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-primary" style="margin:0; padding:6px 12px; font-size:12px; background:var(--bg-glass-card); border:1px solid var(--border-subtle); color:var(--text-main);" onclick="toggleSelectAllTracks()">
+                ${isAllSelected ? '取消全选' : '全选全部 (' + allTracks.length + ')'}
+            </button>
+            <span style="font-size:13px; color:var(--text-secondary);">已选 <strong style="color:var(--accent-color);">${count}</strong> 首</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-primary" style="margin:0; padding:6px 14px; font-size:12px; background:linear-gradient(135deg, #ef4444, #dc2626); box-shadow:0 2px 8px rgba(239,68,68,0.3);" onclick="batchRemoveSelectedTracks()" ${count === 0 ? 'disabled' : ''}>
+                🗑️ 批量移除 (${count})
+            </button>
+            <button class="btn-primary" style="margin:0; padding:6px 12px; font-size:12px; background:rgba(100,116,139,0.2); color:var(--text-muted);" onclick="togglePlaylistManageMode()">
+                ✕ 退出
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * 全选 / 取消全选全部曲目
+ */
+function toggleSelectAllTracks() {
+    if (selectedTrackIds.size === allTracks.length) {
+        selectedTrackIds.clear();
+    } else {
+        selectedTrackIds.clear();
+        allTracks.forEach(t => selectedTrackIds.add(String(t.id || t.songId)));
+    }
+    renderPage(currentPage);
+}
+
+/**
+ * 从当前歌单移除单首歌曲
+ */
+function removeSingleTrackFromCurrentPlaylist(trackId, trackName) {
+    if (!currentPlaylist || !trackId) return;
+    showAppModal({
+        title: '从歌单移除歌曲',
+        icon: '🗑️',
+        content: `确定将《${escapeHtml(trackName || '选定歌曲')}》从歌单「${escapeHtml(currentPlaylist.name)}」中移除吗？`,
+        confirmText: '确认移除',
+        cancelText: '取消',
+        showCancel: true,
+        danger: true
+    }).then(confirmed => {
+        if (!confirmed) return;
+
+        axios.post('/v2/playlist/tracks/remove', new URLSearchParams({
+            playlistId: currentPlaylist.id,
+            trackIds: String(trackId)
+        }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                showToast(`已成功移除《${trackName}》`, 'success');
+                // 内存中剔除并更新
+                allTracks = allTracks.filter(t => String(t.id || t.songId) !== String(trackId));
+                currentPlaylist.tracks = allTracks;
+                currentPlaylist.trackCount = allTracks.length;
+                selectedTrackIds.delete(String(trackId));
+                
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('playlist_' + currentPlaylist.id);
+                    deleteApiCache('my_playlists');
+                }
+                
+                // 页码校准
+                const totalPages = Math.ceil(allTracks.length / pageSize) || 1;
+                if (currentPage > totalPages) currentPage = totalPages;
+                renderPage(currentPage);
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || '移除失败';
+                showToast(errMsg, 'error');
+            }
+        })
+        .catch(err => showToast('移除失败：' + err, 'error'));
+    });
+}
+
+/**
+ * 批量从当前歌单移除选中的歌曲
+ */
+function batchRemoveSelectedTracks() {
+    if (!currentPlaylist || selectedTrackIds.size === 0) return;
+    const idsArray = Array.from(selectedTrackIds);
+    const count = idsArray.length;
+
+    showAppModal({
+        title: '批量移除歌曲',
+        icon: '🗑️',
+        content: `确定从歌单「${escapeHtml(currentPlaylist.name)}」中批量移除选中的 <strong>${count}</strong> 首歌曲吗？`,
+        confirmText: `确认移除 (${count})`,
+        cancelText: '取消',
+        showCancel: true,
+        danger: true
+    }).then(confirmed => {
+        if (!confirmed) return;
+
+        axios.post('/v2/playlist/tracks/remove', new URLSearchParams({
+            playlistId: currentPlaylist.id,
+            trackIds: idsArray.join(',')
+        }))
+        .then(resp => {
+            if (resp.data && resp.data.code === '000000') {
+                showToast(`已成功移除 ${count} 首歌曲！`, 'success');
+                const idSet = new Set(idsArray);
+                allTracks = allTracks.filter(t => !idSet.has(String(t.id || t.songId)));
+                currentPlaylist.tracks = allTracks;
+                currentPlaylist.trackCount = allTracks.length;
+                selectedTrackIds.clear();
+
+                if (typeof deleteApiCache === 'function') {
+                    deleteApiCache('playlist_' + currentPlaylist.id);
+                    deleteApiCache('my_playlists');
+                }
+
+                const totalPages = Math.ceil(allTracks.length / pageSize) || 1;
+                if (currentPage > totalPages) currentPage = totalPages;
+                renderPage(currentPage);
+            } else {
+                const errMsg = (resp.data && resp.data.msg) || '批量移除失败';
+                showToast(errMsg, 'error');
+            }
+        })
+        .catch(err => showToast('批量移除失败：' + err, 'error'));
+    });
+}
+
+window.togglePlaylistSubscribe = togglePlaylistSubscribe;
+window.deleteMyCreatedPlaylist = deleteMyCreatedPlaylist;
+window.togglePlaylistManageMode = togglePlaylistManageMode;
+window.toggleTrackSelection = toggleTrackSelection;
+window.toggleSelectAllTracks = toggleSelectAllTracks;
+window.removeSingleTrackFromCurrentPlaylist = removeSingleTrackFromCurrentPlaylist;
+window.batchRemoveSelectedTracks = batchRemoveSelectedTracks;
+

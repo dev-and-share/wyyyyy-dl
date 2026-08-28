@@ -136,4 +136,78 @@ public class AnalysisControllerTest {
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.code").value(200));
     }
+
+    @Test
+    @DisplayName("测试 /v2/playlist/subscribe 歌单收藏与取消收藏接口")
+    public void testPlaylistSubscribeEndpoint() throws Exception {
+        Mockito.when(neteaseAPIService.subscribePlaylist(eq(123456L), eq(true)))
+                .thenReturn("{\"code\":200, \"message\":\"ok\"}");
+
+        mockMvc.perform(post("/v2/playlist/subscribe")
+                .param("id", "123456")
+                .param("subscribe", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.code").value(200));
+
+        Mockito.when(neteaseAPIService.subscribePlaylist(eq(123456L), eq(false)))
+                .thenReturn("{\"code\":200, \"message\":\"ok\"}");
+
+        mockMvc.perform(post("/v2/playlist/subscribe")
+                .param("id", "123456")
+                .param("subscribe", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"));
+    }
+
+    @Test
+    @DisplayName("测试 /v2/playlist/tracks/add 与 remove 歌单曲目增删接口")
+    public void testPlaylistTracksManipulateEndpoints() throws Exception {
+        // 添加歌曲
+        Mockito.when(neteaseAPIService.addTracksToPlaylist(eq(123456L), anyList()))
+                .thenReturn("{\"code\":200, \"count\":1}");
+
+        mockMvc.perform(post("/v2/playlist/tracks/add")
+                .param("playlistId", "123456")
+                .param("trackIds", "186016,326696"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.count").value(1));
+
+        // 删除歌曲
+        Mockito.when(neteaseAPIService.removeTracksFromPlaylist(eq(123456L), anyList()))
+                .thenReturn("{\"code\":200, \"count\":1}");
+
+        mockMvc.perform(post("/v2/playlist/tracks/remove")
+                .param("playlistId", "123456")
+                .param("trackIds", "186016"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.code").value(200));
+    }
+
+    @Test
+    @DisplayName("测试 /v2/playlist/create 与 delete 歌单创建与删除接口")
+    public void testPlaylistCreateAndDeleteEndpoints() throws Exception {
+        // 创建歌单
+        Mockito.when(neteaseAPIService.createPlaylist(eq("心动精选"), eq(false)))
+                .thenReturn("{\"code\":200, \"id\":998877}");
+
+        mockMvc.perform(post("/v2/playlist/create")
+                .param("name", "心动精选")
+                .param("isPrivate", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.id").value(998877));
+
+        // 删除歌单
+        Mockito.when(neteaseAPIService.deletePlaylist(eq(998877L)))
+                .thenReturn("{\"code\":200, \"message\":\"ok\"}");
+
+        mockMvc.perform(post("/v2/playlist/delete")
+                .param("id", "998877"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.code").value(200));
+    }
 }
