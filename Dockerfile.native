@@ -1,0 +1,56 @@
+# ==============================================================================
+# Stage 1: Build GraalVM Native Image
+# ==============================================================================
+FROM ghcr.io/graalvm/native-image-community:21 AS builder
+
+# 安装 findutils (包含 xargs 工具供 gradlew 使用)
+RUN microdnf install -y findutils && microdnf clean all
+
+WORKDIR /build
+
+# 拷贝 Gradle 核心配置文件（利用 Docker 缓存层）
+COPY gradlew settings.gradle build.gradle gradle.properties ./
+COPY gradle/ ./gradle/
+
+RUN chmod +x ./gradlew
+
+# 预先拉取依赖（如果网络畅通）
+RUN ./gradlew dependencies --no-daemon || true
+
+# 拷贝源代码
+COPY src/ ./src/
+
+# 编译生成原生二进制文件（跳过测试）
+RUN ./gradlew nativeCompile -x test --no-daemon
+
+# ==============================================================================
+# Stage 2: Runtime Container
+# ==============================================================================
+FROM ubuntu:22.04
+
+# 安装运行时必要组件：ca-certificates (HTTPS), tzdata (时区), libfreetype6/fontconfig (二维码 AWT ImageIO)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        tzdata \
+        libfreetype6 \
+        fontconfig \
+        libxrender1 \
+        libxext6 \
+        libxi6 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 创建音乐及外部库目录
+RUN mkdir -p /app /media/music /media/external
+
+# 从 Stage 1 拷贝编译完成的原生二进制文件
+COPY --from=builder /build/build/native/nativeCompile/netease-music-dl-native /app/netease-music-dl
+
+ENV TZ=Asia/Shanghai
+ENV AUTHER=pewee
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/netease-music-dl"]

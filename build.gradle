@@ -22,6 +22,10 @@ repositories {
     mavenCentral()
 }
 
+configurations.all {
+    exclude group: "commons-logging", module: "commons-logging"
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -29,7 +33,9 @@ dependencies {
     implementation "com.google.guava:guava:$guavaVersion"
     implementation "com.alibaba:fastjson:$fastjsonVersion"
     implementation "joda-time:joda-time:$jodaVersion"
-    implementation "commons-fileupload:commons-fileupload:$fileuploadVersion"
+    implementation("commons-fileupload:commons-fileupload:$fileuploadVersion") {
+        exclude group: "commons-logging", module: "commons-logging"
+    }
     implementation "org.apache.commons:commons-lang3:$commonsLangVersion"
     // log4j 1.x已移除，改用 Spring Boot 默认 logback + log4j-to-slf4j 桥接
     implementation "org.apache.logging.log4j:log4j-to-slf4j:2.21.1"
@@ -37,8 +43,12 @@ dependencies {
     compileOnly "org.projectlombok:lombok:$lombokVersion"
     annotationProcessor "org.projectlombok:lombok:$lombokVersion"
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    implementation("org.apache.httpcomponents:httpclient:${httpclientVersion}")
-    implementation("org.apache.httpcomponents:httpmime:${httpmimeVersion}")
+    implementation("org.apache.httpcomponents:httpclient:${httpclientVersion}") {
+        exclude group: "commons-logging", module: "commons-logging"
+    }
+    implementation("org.apache.httpcomponents:httpmime:${httpmimeVersion}") {
+        exclude group: "commons-logging", module: "commons-logging"
+    }
     implementation("com.google.zxing:core:${zxingVersion}")
     implementation("com.google.zxing:javase:${zxingVersion}")
     implementation("net.jthink:jaudiotagger:3.0.1")
@@ -49,6 +59,11 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// 禁用测试类 AOT 代码生成（Spring Boot 3 AOT 暂不支持 @MockBean）
+tasks.named('processTestAot') {
+    enabled = false
 }
 
 wrapper {
@@ -63,6 +78,12 @@ graalvmNative {
             buildArgs.add('--verbose')
             // 放宽 native 构建限制，兼容 sqlite/jaudiotagger/fastjson
             buildArgs.add('-H:+AllowIncompleteClasspath')
+            // 关键修复：commons-logging 必须 runtime 初始化
+            buildArgs.add('--initialize-at-run-time=org.apache.commons.logging.LogFactory')
+            buildArgs.add('--initialize-at-run-time=org.apache.commons.logging.LogFactoryService')
+            buildArgs.add('-Djava.awt.headless=true')
+            buildArgs.add('-H:+UnlockExperimentalVMOptions')
+            buildArgs.add('-H:+ReportExceptionStackTraces')
         }
     }
 }
@@ -72,4 +93,9 @@ tasks.named("bootBuildImage") {
     imageName = "peweelive/netease-music-dl:native"
     builder = "paketobuildpacks/builder-jammy-tiny"
     environment = ["BP_NATIVE_IMAGE": "true"]
+    pullPolicy = "IF_NOT_PRESENT"
+    // 兼容 OrbStack 的 Docker API
+    docker {
+        host = "unix:///var/run/docker.sock"
+    }
 }
