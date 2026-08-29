@@ -22,7 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(DownloadHistoryController.class)
 @TestPropertySource(properties = {
     "download.path=/tmp/test_download_path",
-    "host.download.path=/tmp/test_download_path"
+    "host.download.path=/tmp/test_download_path",
+    "reveal.auto-open.enabled=false"
 })
 @DisplayName("📥 下载历史记录控制器 DownloadHistoryController 单元测试")
 public class DownloadHistoryControllerTest {
@@ -123,5 +124,53 @@ public class DownloadHistoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data").value("/Users/houtokki/Downloads/fast_sr/周杰伦 - 晴天.flac"));
+    }
+
+    @Test
+    @DisplayName("测试 /v2/history/missing: 获取缺失文件清单")
+    public void testGetMissingRecords() throws Exception {
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> list = new ArrayList<>();
+        DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
+        item.setId(501L);
+        item.setSongName("缺失歌曲");
+        item.setArtist("测试歌手");
+        item.setFileExists(false);
+        list.add(item);
+
+        Mockito.when(downloadHistoryDAO.getMissingRecords()).thenReturn(list);
+
+        mockMvc.perform(get("/v2/history/missing"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data[0].songName").value("缺失歌曲"));
+    }
+
+    @Test
+    @DisplayName("测试 /v2/history/non_mp3: 获取非 MP3 格式清单")
+    public void testGetNonMp3Records() throws Exception {
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> list = new ArrayList<>();
+        DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
+        item.setId(601L);
+        item.setSongName("FLAC歌曲");
+        item.setFilePath("test.flac");
+        list.add(item);
+
+        Mockito.when(downloadHistoryDAO.getNonMp3Records()).thenReturn(list);
+
+        mockMvc.perform(get("/v2/history/non_mp3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data[0].songName").value("FLAC歌曲"));
+    }
+
+    @Test
+    @DisplayName("测试 /v2/history/cleanNonMp3: 批量清理非 MP3 记录")
+    public void testCleanNonMp3Records() throws Exception {
+        Mockito.when(downloadHistoryDAO.cleanNonMp3Records()).thenReturn(5);
+
+        mockMvc.perform(post("/v2/history/cleanNonMp3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data").value(5));
     }
 }

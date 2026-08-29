@@ -28,6 +28,9 @@ public class DownloadHistoryController {
     @Resource
     private MusicDownloadService musicDownloadService;
 
+    @org.springframework.beans.factory.annotation.Value("${reveal.auto-open.enabled:true}")
+    private boolean autoOpenEnabled = true;
+
     /**
      * 定位/在 Finder/Explorer 中打开文件
      */
@@ -61,27 +64,29 @@ public class DownloadHistoryController {
             return RespEntity.apply(CommonRespInfo.NOT_LEGAL_PARAM.getCode(), "物理文件不存在: " + (targetPath != null ? targetPath : (name != null ? name : "id=" + songId)), null);
         }
 
-        String containerAbsPath = file.getAbsolutePath();
         String hostAbsPath = downloadHistoryDAO.toHostPath(file);
+        openInSystemFileManager(file);
+        return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "定位文件成功: " + hostAbsPath, hostAbsPath);
+    }
+
+    private void openInSystemFileManager(File file) {
+        if (!autoOpenEnabled || file == null || !file.exists()) {
+            return;
+        }
         try {
+            String containerAbsPath = file.getAbsolutePath();
             String osName = System.getProperty("os.name").toLowerCase();
             if (osName.contains("mac")) {
                 Runtime.getRuntime().exec(new String[]{"open", "-R", containerAbsPath});
             } else if (osName.contains("win")) {
                 Runtime.getRuntime().exec(new String[]{"explorer", "/select,", containerAbsPath});
             } else {
-                // Linux / Docker 容器环境
                 try {
                     Runtime.getRuntime().exec(new String[]{"xdg-open", file.getParent()});
-                } catch (Exception e) {
-                    log.warn("Docker / 无 GUI 环境，文件宿主机绝对路径为: {}", hostAbsPath);
-                    return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "已找到对应文件路径", hostAbsPath);
-                }
+                } catch (Exception ignored) {}
             }
-            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "定位文件成功: " + hostAbsPath, hostAbsPath);
         } catch (Exception e) {
-            log.error("定位打开文件失败, path={}", hostAbsPath, e);
-            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "已找到对应文件路径: " + hostAbsPath, hostAbsPath);
+            log.warn("调用系统文件管理器打开文件失败: {}", file.getAbsolutePath(), e);
         }
     }
 
@@ -155,6 +160,33 @@ public class DownloadHistoryController {
     @PostMapping("/history/scan")
     public RespEntity<Map<String, Object>> scanHistoryFiles() {
         return RespEntity.apply(CommonRespInfo.SUCCESS, downloadHistoryDAO.scanFiles());
+    }
+
+    /**
+     * 查询所有物理文件已缺失的历史记录清单
+     */
+    @GetMapping("/history/missing")
+    public RespEntity<List<DownloadHistoryDAO.DownloadHistoryItem>> getMissingRecords() {
+        List<DownloadHistoryDAO.DownloadHistoryItem> missing = downloadHistoryDAO.getMissingRecords();
+        return RespEntity.apply(CommonRespInfo.SUCCESS, missing);
+    }
+
+    /**
+     * 查询所有非 .mp3 格式的历史记录清单
+     */
+    @GetMapping("/history/non_mp3")
+    public RespEntity<List<DownloadHistoryDAO.DownloadHistoryItem>> getNonMp3Records() {
+        List<DownloadHistoryDAO.DownloadHistoryItem> nonMp3 = downloadHistoryDAO.getNonMp3Records();
+        return RespEntity.apply(CommonRespInfo.SUCCESS, nonMp3);
+    }
+
+    /**
+     * 批量清理所有非 .mp3 格式的历史记录
+     */
+    @PostMapping("/history/cleanNonMp3")
+    public RespEntity<Integer> cleanNonMp3Records() {
+        int count = downloadHistoryDAO.cleanNonMp3Records();
+        return RespEntity.apply(CommonRespInfo.SUCCESS, count);
     }
 
     /**

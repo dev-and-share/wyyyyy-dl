@@ -219,4 +219,71 @@ public class DownloadHistoryDAOTest {
         assertEquals(audio.getCanonicalPath(), resolved.getCanonicalPath());
         assertTrue(resolved.exists(), "容错机制应当成功定位到底层真实物理文件");
     }
+
+    @Test
+    @DisplayName("测试 getMissingRecords 与 cleanMissingRecords")
+    public void testGetAndCleanMissingRecords() throws Exception {
+        File validFile = new File(tempDir.toFile(), "valid.mp3");
+        try (FileWriter w = new FileWriter(validFile)) { w.write("valid data 1234567890"); }
+
+        dao.addRecord(2001L, "存在歌曲", "歌手A", "专辑A", validFile.getAbsolutePath(), validFile.length(), "lossless", "SUCCESS");
+        dao.addRecord(2002L, "缺失歌曲1", "歌手B", "专辑B", "/non/exist/file1.mp3", 0L, "lossless", "SUCCESS");
+        dao.addRecord(2003L, "缺失歌曲2", "歌手C", "专辑C", "", 0L, "lossless", "SUCCESS");
+
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> missing = dao.getMissingRecords();
+        assertEquals(2, missing.size(), "应当准确筛选出 2 首物理文件不存在的记录");
+
+        int cleaned = dao.cleanMissingRecords();
+        assertEquals(2, cleaned, "应当成功清理 2 首缺失记录");
+
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> remainingMissing = dao.getMissingRecords();
+        assertEquals(0, remainingMissing.size(), "清理后缺失记录应当为 0");
+    }
+
+    @Test
+    @DisplayName("测试 getNonMp3Records 与 cleanNonMp3Records")
+    public void testGetAndCleanNonMp3Records() throws Exception {
+        dao.addRecord(3001L, "MP3歌曲", "歌手A", "专辑A", "song.mp3", 1000L, "standard", "SUCCESS");
+        dao.addRecord(3002L, "FLAC歌曲", "歌手B", "专辑B", "song.flac", 2000L, "lossless", "SUCCESS");
+        dao.addRecord(3003L, "M4A歌曲", "歌手C", "专辑C", "song.m4a", 1500L, "standard", "SUCCESS");
+
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> nonMp3 = dao.getNonMp3Records();
+        assertEquals(2, nonMp3.size(), "应当准确筛选出 2 首非 MP3 格式记录");
+
+        int cleaned = dao.cleanNonMp3Records();
+        assertEquals(2, cleaned, "应当成功清理 2 首非 MP3 记录");
+
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> remaining = dao.getNonMp3Records();
+        assertEquals(0, remaining.size(), "清理后非 MP3 记录应当为 0");
+    }
+
+    @Test
+    @DisplayName("测试 .musicignore 忽略机制在扫描与浏览中生效")
+    public void testMusicIgnoreDirectory() throws Exception {
+        File normalDir = new File(tempDir.toFile(), "正常专辑");
+        normalDir.mkdirs();
+        File ignoredDir = new File(tempDir.toFile(), "忽略目录");
+        ignoredDir.mkdirs();
+
+        File song1 = new File(normalDir, "正常歌曲.mp3");
+        try (FileWriter w = new FileWriter(song1)) { w.write("song1"); }
+
+        File song2 = new File(ignoredDir, "被忽略的歌曲.mp3");
+        try (FileWriter w = new FileWriter(song2)) { w.write("song2"); }
+
+        File ignoreMarker = new File(ignoredDir, ".musicignore");
+        try (FileWriter w = new FileWriter(ignoreMarker)) { w.write(""); }
+
+        ReflectionTestUtils.setField(dao, "externalLibraryPaths", tempDir.toAbsolutePath().toString());
+        Map<String, Object> scanRes = dao.scanExternalLibraries();
+        assertEquals(1, scanRes.get("scannedFiles"), "扫描应当自动跳过带 .musicignore 标记的目录，仅扫描到 1 首歌曲");
+
+        java.util.List<DownloadHistoryDAO.FolderItemDTO> contents = dao.listFolderContents(tempDir.toAbsolutePath().toString());
+        assertEquals(1, contents.size(), "目录浏览应当过滤掉 .musicignore 目录");
+        assertEquals("正常专辑", contents.get(0).getName());
+
+        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> tracks = dao.getFolderTracks(tempDir.toAbsolutePath().toString(), true);
+        assertEquals(1, tracks.size(), "递归抓取曲目也应自动跳过 .musicignore 目录");
+        assertEquals("正常歌曲", tracks.get(0).getSongName());
+    }
 }

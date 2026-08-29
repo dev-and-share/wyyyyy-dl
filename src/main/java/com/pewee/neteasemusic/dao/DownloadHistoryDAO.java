@@ -4,8 +4,10 @@ import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 
@@ -15,6 +17,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -57,6 +61,19 @@ public class DownloadHistoryDAO {
         private Boolean fileExists;
     }
 
+    @Data
+    public static class FolderCheckDTO {
+        private String path;
+        private String hostPath;
+        private String folderName;
+        private int totalFiles;
+        private int totalDirs;
+        private List<String> sampleFiles;
+        private boolean isRoot;
+    }
+
+    private final Set<String> ignoredFolderSet = java.util.Collections.synchronizedSet(new HashSet<>());
+
     @PostConstruct
     public void init() {
         try {
@@ -91,10 +108,35 @@ public class DownloadHistoryDAO {
                         "FOREIGN KEY(history_id) REFERENCES download_history(id) ON DELETE CASCADE" +
                         ")";
                 stmt.execute(rawSql);
+
+                String ignoredSql = "CREATE TABLE IF NOT EXISTS ignored_folders (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "folder_path TEXT UNIQUE, " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        ")";
+                stmt.execute(ignoredSql);
             }
-            log.info("SQLite 数据库及扩展 Raw JSON 子表初始化完毕: {}", dbFile.getAbsolutePath());
+
+            loadIgnoredFolders();
+            log.info("SQLite 数据库、Raw JSON 子表及 ignored_folders 表初始化完毕: {}", dbFile.getAbsolutePath());
         } catch (Exception e) {
             log.error("初始化 SQLite 数据库失败!", e);
+        }
+    }
+
+    private void loadIgnoredFolders() {
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT folder_path FROM ignored_folders")) {
+            while (rs.next()) {
+                String p = rs.getString("folder_path");
+                if (p != null && !p.trim().isEmpty()) {
+                    ignoredFolderSet.add(p.trim());
+                }
+            }
+            log.info("🚫 已载入已忽略目录总数: {}", ignoredFolderSet.size());
+        } catch (Exception e) {
+            log.warn("载入已忽略目录失败: {}", e.getMessage());
         }
     }
 
@@ -211,13 +253,14 @@ public class DownloadHistoryDAO {
     public synchronized long addRecord(Long songId, String songName, String artist, String album, String filePath, Long fileSize, String quality, String status) {
         String sql = "INSERT INTO download_history (song_id, song_name, artist, album, file_path, file_size, quality, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         String relPath = toRelativePath(filePath);
+        String savedPath = (relPath != null && !relPath.isEmpty()) ? relPath : (filePath != null ? filePath : "");
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setObject(1, songId);
             pstmt.setString(2, songName != null ? songName : "未知歌曲");
             pstmt.setString(3, artist != null ? artist : "");
             pstmt.setString(4, album != null ? album : "");
-            pstmt.setString(5, relPath);
+            pstmt.setString(5, savedPath);
             pstmt.setObject(6, fileSize != null ? fileSize : 0L);
             pstmt.setString(7, quality != null ? quality : "standard");
             pstmt.setString(8, status != null ? status : "SUCCESS");
@@ -601,15 +644,38 @@ public class DownloadHistoryDAO {
         }
     }
 
+    public boolean isIgnoredDirectory(File dir) {
+        if (dir == null || !dir.exists() || !dir.isDirectory()) return false;
+        if (dir.getName().startsWith(".")) return true;
+        // 1. 物理标记 .musicignore 文件
+        File ignoreMarker = new File(dir, ".musicignore");
+        if (ignoreMarker.exists()) return true;
+
+        // 2. 数据库 ignored_folders 忽略黑名单（包含自身或任一祖先路径）
+        String abs = dir.getAbsolutePath();
+        synchronized (ignoredFolderSet) {
+            for (String ignored : ignoredFolderSet) {
+                if (abs.equals(ignored) || abs.startsWith(ignored + File.separator) || abs.startsWith(ignored + "/")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void collectAudioFiles(File dir, List<File> list) {
+        if (dir == null || isIgnoredDirectory(dir)) return;
         File[] files = dir.listFiles();
         if (files == null) return;
         for (File f : files) {
             if (f.isDirectory()) {
-                collectAudioFiles(f, list);
+                if (!isIgnoredDirectory(f)) {
+                    collectAudioFiles(f, list);
+                }
             } else if (f.isFile()) {
                 String name = f.getName().toLowerCase();
-                if (name.endsWith(".mp3") || name.endsWith(".flac") || name.endsWith(".m4a") || name.endsWith(".wav") || name.endsWith(".aac") || name.endsWith(".ogg")) {
+                // 仅扫描并入库 .mp3 格式音频
+                if (name.endsWith(".mp3")) {
                     list.add(f);
                 }
             }
@@ -659,31 +725,78 @@ public class DownloadHistoryDAO {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    DownloadHistoryItem item = new DownloadHistoryItem();
-                    item.setId(rs.getLong("id"));
-                    item.setSongId(rs.getLong("song_id"));
-                    item.setSongName(rs.getString("song_name"));
-                    item.setArtist(rs.getString("artist"));
-                    item.setAlbum(rs.getString("album"));
-                    String fpath = rs.getString("file_path");
-                    File resolved = resolveFile(fpath);
-                    String relPath = toRelativePath(fpath);
-                    item.setFilePath(resolved.getAbsolutePath());
-                    item.setRelativePath(relPath);
-                    item.setHostFilePath(new File(hostDownloadPath, relPath).getAbsolutePath());
-                    item.setFileSize(rs.getLong("file_size"));
-                    item.setQuality(rs.getString("quality"));
-                    item.setStatus(rs.getString("status"));
-                    item.setCreatedAt(rs.getString("created_at"));
-
-                    item.setFileExists(resolved.exists());
-                    list.add(item);
+                    list.add(mapItemFromRs(rs));
                 }
             }
         } catch (Exception e) {
             log.error("查询下载历史失败!", e);
         }
         return list;
+    }
+
+    /**
+     * 查询所有物理文件已缺失的历史记录
+     */
+    public List<DownloadHistoryItem> getMissingRecords() {
+        List<DownloadHistoryItem> missing = new ArrayList<>();
+        String sql = "SELECT * FROM download_history ORDER BY id DESC";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                DownloadHistoryItem item = mapItemFromRs(rs);
+                if (Boolean.FALSE.equals(item.getFileExists())) {
+                    missing.add(item);
+                }
+            }
+        } catch (Exception e) {
+            log.error("查询缺失文件记录失败!", e);
+        }
+        return missing;
+    }
+
+    /**
+     * 查询所有非 .mp3 格式的历史记录
+     */
+    public List<DownloadHistoryItem> getNonMp3Records() {
+        List<DownloadHistoryItem> nonMp3List = new ArrayList<>();
+        String sql = "SELECT * FROM download_history ORDER BY id DESC";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                DownloadHistoryItem item = mapItemFromRs(rs);
+                String fpath = item.getFilePath();
+                if (fpath == null || !fpath.toLowerCase().endsWith(".mp3")) {
+                    nonMp3List.add(item);
+                }
+            }
+        } catch (Exception e) {
+            log.error("查询非 MP3 记录失败!", e);
+        }
+        return nonMp3List;
+    }
+
+    /**
+     * 批量清理所有非 .mp3 格式的历史记录
+     */
+    public int cleanNonMp3Records() {
+        List<DownloadHistoryItem> nonMp3 = getNonMp3Records();
+        if (nonMp3.isEmpty()) return 0;
+
+        String sql = "DELETE FROM download_history WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            for (DownloadHistoryItem item : nonMp3) {
+                pstmt.setLong(1, item.getId());
+                pstmt.addBatch();
+            }
+            int[] counts = pstmt.executeBatch();
+            return counts.length;
+        } catch (Exception e) {
+            log.error("批量清理非 MP3 记录失败!", e);
+            return 0;
+        }
     }
 
     public int countRecords(String keyword) {
@@ -737,8 +850,9 @@ public class DownloadHistoryDAO {
             log.error("获取下载统计失败!", e);
         }
 
-        // 校验实际存在的文件数量与缺失文件数
+        // 校验实际存在的文件数量与缺失文件数、非 MP3 文件数
         int missingCount = 0;
+        int nonMp3Count = 0;
         String allSql = "SELECT file_path FROM download_history";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -749,35 +863,36 @@ public class DownloadHistoryDAO {
                 if (!f.exists()) {
                     missingCount++;
                 }
+                if (fpath == null || !fpath.toLowerCase().endsWith(".mp3")) {
+                    nonMp3Count++;
+                }
             }
         } catch (Exception e) {
-            log.error("校验文件存在性失败!", e);
+            log.error("校验文件存在性与格式失败!", e);
         }
         stats.put("missingCount", missingCount);
+        stats.put("nonMp3Count", nonMp3Count);
         return stats;
     }
 
     private static final java.util.Set<String> AUDIO_EXTENSIONS = new java.util.HashSet<>(
-            java.util.Arrays.asList(".flac", ".mp3", ".m4a", ".ogg", ".wav", ".aac", ".ape", ".ncm")
+            java.util.Collections.singletonList(".mp3")
     );
 
     private boolean isAudioFile(File file) {
         if (file == null || !file.isFile() || file.getName().startsWith(".")) return false;
         String name = file.getName().toLowerCase();
-        for (String ext : AUDIO_EXTENSIONS) {
-            if (name.endsWith(ext)) return true;
-        }
-        return false;
+        return name.endsWith(".mp3");
     }
 
     private void scanDirectoryRecursive(File dir, Map<String, DownloadHistoryItem> dbFilePathMap, List<Map<String, Object>> untrackedFiles) {
-        if (dir == null || !dir.exists() || !dir.isDirectory()) return;
+        if (dir == null || !dir.exists() || !dir.isDirectory() || isIgnoredDirectory(dir)) return;
         File[] files = dir.listFiles();
         if (files == null) return;
 
         for (File f : files) {
             if (f.isDirectory()) {
-                if (!f.getName().startsWith(".")) {
+                if (!isIgnoredDirectory(f)) {
                     scanDirectoryRecursive(f, dbFilePathMap, untrackedFiles);
                 }
             } else if (isAudioFile(f)) {
@@ -793,6 +908,216 @@ public class DownloadHistoryDAO {
         }
     }
 
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FolderItemDTO {
+        private String name;
+        private String path;
+        private String hostPath;
+        private boolean isDirectory;
+        private long size;
+        private int trackCount;
+        private String songName;
+        private String artist;
+        private String album;
+        private Long songId;
+        private Long historyId;
+        private String streamUrl;
+    }
+
+    public List<Map<String, String>> getFolderRoots() {
+        List<Map<String, String>> roots = new ArrayList<>();
+        // 1. 下载主目录
+        File downloadDir = new File(downloadPath);
+        if (downloadDir.exists()) {
+            Map<String, String> r1 = new HashMap<>();
+            r1.put("name", "📥 默认下载主目录");
+            r1.put("path", downloadDir.getAbsolutePath());
+            r1.put("hostPath", hostDownloadPath != null && !hostDownloadPath.isEmpty() ? hostDownloadPath : downloadDir.getAbsolutePath());
+            roots.add(r1);
+        }
+
+        // 2. 外部曲库目录
+        if (externalLibraryPaths != null && !externalLibraryPaths.trim().isEmpty()) {
+            String[] parts = externalLibraryPaths.split("[,;]");
+            for (String p : parts) {
+                if (p != null && !p.trim().isEmpty()) {
+                    File extDir = new File(p.trim());
+                    if (extDir.exists()) {
+                        Map<String, String> r = new HashMap<>();
+                        r.put("name", "📁 外部曲库 (" + extDir.getName() + ")");
+                        r.put("path", extDir.getAbsolutePath());
+                        r.put("hostPath", toHostPath(extDir));
+                        roots.add(r);
+                    }
+                }
+            }
+        }
+        return roots;
+    }
+
+    public List<FolderItemDTO> listFolderContents(String folderPath) {
+        List<FolderItemDTO> result = new ArrayList<>();
+        if (folderPath == null || folderPath.trim().isEmpty()) {
+            return result;
+        }
+
+        File dir = resolveFile(folderPath);
+        if (!dir.exists() || !dir.isDirectory() || isIgnoredDirectory(dir)) {
+            return result;
+        }
+
+        // 预加载所有有效数据库记录供元数据毫秒级比对
+        Map<String, DownloadHistoryItem> dbMap = new HashMap<>();
+        String sql = "SELECT * FROM download_history ORDER BY id DESC";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                DownloadHistoryItem item = mapItemFromRs(rs);
+                if (item.getFilePath() != null) {
+                    dbMap.put(item.getFilePath(), item);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        File[] files = dir.listFiles();
+        if (files == null) return result;
+
+        List<FolderItemDTO> dirList = new ArrayList<>();
+        List<FolderItemDTO> fileList = new ArrayList<>();
+
+        for (File f : files) {
+            if (f.getName().startsWith(".")) continue;
+            if (f.isDirectory()) {
+                if (isIgnoredDirectory(f)) continue;
+                int trackCount = countMp3FilesRecursive(f);
+                FolderItemDTO dto = new FolderItemDTO();
+                dto.setName(f.getName());
+                dto.setPath(f.getAbsolutePath());
+                dto.setHostPath(toHostPath(f));
+                dto.setDirectory(true);
+                dto.setTrackCount(trackCount);
+                dirList.add(dto);
+            } else if (f.isFile() && f.getName().toLowerCase().endsWith(".mp3")) {
+                FolderItemDTO dto = new FolderItemDTO();
+                dto.setName(f.getName());
+                dto.setPath(f.getAbsolutePath());
+                dto.setHostPath(toHostPath(f));
+                dto.setDirectory(false);
+                dto.setSize(f.length());
+
+                DownloadHistoryItem dbItem = dbMap.get(f.getAbsolutePath());
+                if (dbItem != null) {
+                    dto.setSongName(dbItem.getSongName());
+                    dto.setArtist(dbItem.getArtist());
+                    dto.setAlbum(dbItem.getAlbum());
+                    dto.setSongId(dbItem.getSongId());
+                    dto.setHistoryId(dbItem.getId());
+                } else {
+                    com.pewee.neteasemusic.utils.TagUtils.TagInfo tag = com.pewee.neteasemusic.utils.TagUtils.readTags(f);
+                    dto.setSongName(tag.getTitle() != null ? tag.getTitle() : f.getName());
+                    dto.setArtist(tag.getArtist() != null ? tag.getArtist() : "未知歌手");
+                    dto.setAlbum(tag.getAlbum() != null ? tag.getAlbum() : dir.getName());
+                }
+                String relPath = toRelativePath(f.getAbsolutePath());
+                String playPath = relPath.isEmpty() ? f.getAbsolutePath() : relPath;
+                try {
+                    dto.setStreamUrl("/v2/history/stream?path=" + java.net.URLEncoder.encode(playPath, "UTF-8"));
+                } catch (Exception e) {
+                    dto.setStreamUrl("/v2/history/stream?path=" + playPath);
+                }
+                fileList.add(dto);
+            }
+        }
+
+        dirList.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+        fileList.sort((a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+
+        result.addAll(dirList);
+        result.addAll(fileList);
+        return result;
+    }
+
+    public int countMp3FilesRecursive(File dir) {
+        if (dir == null || isIgnoredDirectory(dir)) return 0;
+        File[] files = dir.listFiles();
+        if (files == null) return 0;
+        int count = 0;
+        for (File f : files) {
+            if (f.isDirectory()) {
+                if (!isIgnoredDirectory(f)) {
+                    count += countMp3FilesRecursive(f);
+                }
+            } else if (f.isFile() && f.getName().toLowerCase().endsWith(".mp3")) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public List<DownloadHistoryItem> getFolderTracks(String folderPath, boolean recursive) {
+        List<DownloadHistoryItem> tracks = new ArrayList<>();
+        if (folderPath == null || folderPath.trim().isEmpty()) return tracks;
+
+        File dir = resolveFile(folderPath);
+        if (!dir.exists() || !dir.isDirectory() || isIgnoredDirectory(dir)) return tracks;
+
+        List<File> mp3Files = new ArrayList<>();
+        collectMp3Files(dir, mp3Files, recursive);
+
+        Map<String, DownloadHistoryItem> dbMap = new HashMap<>();
+        String sql = "SELECT * FROM download_history ORDER BY id DESC";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                DownloadHistoryItem item = mapItemFromRs(rs);
+                if (item.getFilePath() != null) {
+                    dbMap.put(item.getFilePath(), item);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        for (File f : mp3Files) {
+            DownloadHistoryItem item = dbMap.get(f.getAbsolutePath());
+            if (item == null) {
+                com.pewee.neteasemusic.utils.TagUtils.TagInfo tag = com.pewee.neteasemusic.utils.TagUtils.readTags(f);
+                item = new DownloadHistoryItem();
+                item.setId(0L);
+                item.setSongId(0L);
+                item.setSongName(tag.getTitle() != null ? tag.getTitle() : f.getName());
+                item.setArtist(tag.getArtist() != null ? tag.getArtist() : "未知歌手");
+                item.setAlbum(tag.getAlbum() != null ? tag.getAlbum() : dir.getName());
+                item.setFilePath(f.getAbsolutePath());
+                item.setRelativePath(toRelativePath(f.getAbsolutePath()));
+                item.setHostFilePath(toHostPath(f));
+                item.setFileSize(f.length());
+                item.setQuality("local");
+                item.setStatus("SUCCESS");
+                item.setFileExists(true);
+            }
+            tracks.add(item);
+        }
+        return tracks;
+    }
+
+    private void collectMp3Files(File dir, List<File> list, boolean recursive) {
+        if (dir == null || isIgnoredDirectory(dir)) return;
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory() && recursive) {
+                if (!isIgnoredDirectory(f)) {
+                    collectMp3Files(f, list, true);
+                }
+            } else if (f.isFile() && f.getName().toLowerCase().endsWith(".mp3")) {
+                list.add(f);
+            }
+        }
+    }
+
     public Map<String, Object> scanFiles() {
         Map<String, Object> res = new HashMap<>();
         List<Map<String, Object>> missingRecords = new ArrayList<>();
@@ -803,19 +1128,20 @@ public class DownloadHistoryDAO {
         Map<String, DownloadHistoryItem> dbFilePathMap = new HashMap<>();
 
         for (DownloadHistoryItem item : all) {
-            if (item.getFilePath() != null && !item.getFilePath().isEmpty()) {
-                File f = resolveFile(item.getFilePath());
-                if (f.exists()) {
-                    validCount++;
+            if (Boolean.TRUE.equals(item.getFileExists())) {
+                validCount++;
+                if (item.getFilePath() != null && !item.getFilePath().isEmpty()) {
+                    File f = resolveFile(item.getFilePath());
                     dbFilePathMap.put(f.getAbsolutePath(), item);
-                } else {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("id", item.getId());
-                    m.put("songName", item.getSongName());
-                    m.put("artist", item.getArtist());
-                    m.put("filePath", item.getFilePath());
-                    missingRecords.add(m);
                 }
+            } else {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", item.getId());
+                m.put("songName", item.getSongName() != null ? item.getSongName() : "未知歌曲");
+                m.put("artist", item.getArtist() != null ? item.getArtist() : "未知歌手");
+                m.put("album", item.getAlbum() != null ? item.getAlbum() : "");
+                m.put("filePath", item.getFilePath() != null ? item.getFilePath() : "");
+                missingRecords.add(m);
             }
         }
 
@@ -874,24 +1200,20 @@ public class DownloadHistoryDAO {
     }
 
     public int cleanMissingRecords() {
-        List<DownloadHistoryItem> all = getRecords(null, 1, 10000);
+        List<DownloadHistoryItem> missing = getMissingRecords();
+        if (missing.isEmpty()) return 0;
+
         List<Long> deleteIds = new ArrayList<>();
-        for (DownloadHistoryItem item : all) {
-            if (item.getFilePath() == null || item.getFilePath().isEmpty()) {
-                deleteIds.add(item.getId());
-                continue;
-            }
-            File resolved = resolveFile(item.getFilePath());
-            if (!resolved.exists() || resolved.length() < 1250000) {
-                deleteIds.add(item.getId());
+        for (DownloadHistoryItem item : missing) {
+            deleteIds.add(item.getId());
+            if (item.getFilePath() != null && !item.getFilePath().isEmpty()) {
+                File resolved = resolveFile(item.getFilePath());
                 // 自动擦除以前残留在 Mac 硬盘的小于 1.2MB 试听垃圾文件
                 if (resolved.exists() && resolved.length() < 1250000) {
                     try { resolved.delete(); } catch (Exception ignored) {}
                 }
             }
         }
-
-        if (deleteIds.isEmpty()) return 0;
 
         String sql = "DELETE FROM download_history WHERE id = ?";
         try (Connection conn = getConnection();
@@ -905,6 +1227,157 @@ public class DownloadHistoryDAO {
         } catch (Exception e) {
             log.error("批量清理文件缺失记录失败!", e);
             return 0;
+        }
+    }
+
+    public boolean ignoreFolder(String folderPath) {
+        if (folderPath == null || folderPath.trim().isEmpty()) return false;
+        try {
+            File dir = resolveFile(folderPath);
+            String absPath = dir.getAbsolutePath();
+
+            // 1. 尝试物理创建 .musicignore 标记文件
+            try {
+                if (dir.exists() && dir.isDirectory()) {
+                    File ignoreMarker = new File(dir, ".musicignore");
+                    if (!ignoreMarker.exists()) {
+                        boolean created = ignoreMarker.createNewFile();
+                        log.info("🚫 物理创建 .musicignore 文件结果: dir={}, created={}", absPath, created);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("⚠️ 物理创建 .musicignore 失败 (可能是只读挂载或无写入权限)，自动降级为数据库持久化忽略: {}", e.getMessage());
+            }
+
+            // 2. 数据库 ignored_folders 表持久化记录（即使是只读挂载也能 100% 忽略生效）
+            String sql = "INSERT OR IGNORE INTO ignored_folders (folder_path) VALUES (?)";
+            try (Connection conn = getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, absPath);
+                pstmt.executeUpdate();
+                if (!absPath.equals(folderPath)) {
+                    pstmt.setString(1, folderPath);
+                    pstmt.executeUpdate();
+                }
+            } catch (Exception e) {
+                log.warn("保存忽略目录到 SQLite 失败: {}", e.getMessage());
+            }
+
+            ignoredFolderSet.add(absPath);
+            ignoredFolderSet.add(folderPath);
+            log.info("🚫 成功将目录加入忽略黑名单: absPath={}, inputPath={}", absPath, folderPath);
+            return true;
+        } catch (Exception e) {
+            log.error("忽略目录处理失败: path={}", folderPath, e);
+            return false;
+        }
+    }
+
+    public boolean deleteFolder(String folderPath) {
+        if (folderPath == null || folderPath.trim().isEmpty()) return false;
+        try {
+            File dir = resolveFile(folderPath);
+            if (!dir.exists() || !dir.isDirectory()) return false;
+
+            // 安全检查：禁止删除根路径或主下载目录
+            String absPath = dir.getAbsolutePath();
+            if (absPath.equals("/") || absPath.equals("/media") || (downloadPath != null && absPath.equals(new File(downloadPath).getAbsolutePath()))) {
+                log.warn("⚠️ 拒绝删除根目录: {}", absPath);
+                return false;
+            }
+
+            // 1. 递归删除物理文件夹及所有内容
+            boolean deleted = deleteDirectoryRecursively(dir);
+
+            // 2. 同步清理数据库历史记录与忽略黑名单
+            String relPath = toRelativePath(absPath);
+            String prefix1 = relPath.isEmpty() ? absPath + "/%" : relPath + "/%";
+            String prefix2 = absPath + "/%";
+            String sql = "DELETE FROM download_history WHERE file_path = ? OR file_path LIKE ? OR file_path LIKE ?";
+            try (Connection conn = getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, relPath.isEmpty() ? absPath : relPath);
+                pstmt.setString(2, prefix1);
+                pstmt.setString(3, prefix2);
+                pstmt.executeUpdate();
+
+                // 同步清理 ignored_folders 表
+                try (PreparedStatement delIgnored = conn.prepareStatement("DELETE FROM ignored_folders WHERE folder_path = ? OR folder_path LIKE ? OR folder_path LIKE ?")) {
+                    delIgnored.setString(1, absPath);
+                    delIgnored.setString(2, prefix1);
+                    delIgnored.setString(3, prefix2);
+                    delIgnored.executeUpdate();
+                }
+            } catch (Exception e) {
+                log.warn("删除文件夹时清理数据库记录异常: {}", e.getMessage());
+            }
+
+            ignoredFolderSet.remove(absPath);
+            ignoredFolderSet.remove(folderPath);
+
+            log.info("🗑️ 成功物理删除文件夹: {}", absPath);
+            return deleted;
+        } catch (Exception e) {
+            log.error("物理删除文件夹失败: path={}", folderPath, e);
+            return false;
+        }
+    }
+
+    private boolean deleteDirectoryRecursively(File dir) {
+        if (dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            if (files != null) {
+                for (File child : files) {
+                    deleteDirectoryRecursively(child);
+                }
+            }
+        }
+        return dir.delete();
+    }
+
+    public FolderCheckDTO checkFolder(String folderPath) {
+        if (folderPath == null || folderPath.trim().isEmpty()) return null;
+        try {
+            File dir = resolveFile(folderPath);
+            if (!dir.exists() || !dir.isDirectory()) return null;
+
+            FolderCheckDTO dto = new FolderCheckDTO();
+            dto.setPath(folderPath);
+            dto.setHostPath(toHostPath(dir));
+            dto.setFolderName(dir.getName());
+
+            String absPath = dir.getAbsolutePath();
+            boolean isRoot = absPath.equals("/") || absPath.equals("/media")
+                    || (downloadPath != null && absPath.equals(new File(downloadPath).getAbsolutePath()));
+            dto.setRoot(isRoot);
+
+            List<String> samples = new ArrayList<>();
+            int[] counts = new int[]{0, 0}; // [files, dirs]
+            collectDirectoryStats(dir, samples, counts);
+
+            dto.setTotalFiles(counts[0]);
+            dto.setTotalDirs(counts[1]);
+            dto.setSampleFiles(samples);
+            return dto;
+        } catch (Exception e) {
+            log.error("预检文件夹失败: path={}", folderPath, e);
+            return null;
+        }
+    }
+
+    private void collectDirectoryStats(File dir, List<String> samples, int[] counts) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) {
+                counts[1]++;
+                collectDirectoryStats(f, samples, counts);
+            } else {
+                counts[0]++;
+                if (samples.size() < 5) {
+                    samples.add(f.getName());
+                }
+            }
         }
     }
 }
