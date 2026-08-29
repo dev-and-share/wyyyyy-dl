@@ -75,13 +75,13 @@ let peqAudioCtx = null;
 let peqSourceNode = null;
 let peqFilters = [];
 let peqPreampNode = null;
-let isPeqEnabled = true;
+let isPeqEnabled = false; // 默认直通模式，保护移动端与 PWA 后台息屏播放
 let currentPeqPresetKey = 'flat';
 let currentPeqBands = JSON.parse(JSON.stringify(DEFAULT_PEQ_BANDS));
 let customPresets = {};
 
 /**
- * 🚀 初始化 Web Audio API 节点链路
+ * 🚀 初始化 Web Audio API 节点链路 (仅在用户主动启用 PEQ 时按需挂载)
  */
 function initPeqAudioContext() {
     if (peqAudioCtx) {
@@ -99,7 +99,6 @@ function initPeqAudioContext() {
         if (!AudioContextClass) return false;
 
         peqAudioCtx = new AudioContextClass();
-        player.crossOrigin = "anonymous";
 
         // 创建 MediaElementSource 单例
         peqSourceNode = peqAudioCtx.createMediaElementSource(player);
@@ -136,7 +135,7 @@ function initPeqAudioContext() {
 
         return true;
     } catch (e) {
-        console.warn("[PEQ] 初始化 Web Audio 均衡器链路失败:", e);
+        console.warn("[PEQ] 初始化 Web Audio 均衡器链路安全捕获:", e);
         return false;
     }
 }
@@ -191,16 +190,18 @@ function savePeqConfigToStorage() {
  * ⚡ 实时同步 Filter 节点参数
  */
 function applyPeqFilterParams() {
-    initPeqAudioContext();
-    if (!peqFilters || peqFilters.length < 5) return;
-
-    for (let i = 0; i < 5; i++) {
-        const band = currentPeqBands[i];
-        const filter = peqFilters[i];
-        if (filter) {
-            filter.frequency.setValueAtTime(band.freq, peqAudioCtx.currentTime);
-            filter.gain.setValueAtTime(isPeqEnabled ? band.gain : 0, peqAudioCtx.currentTime);
-            filter.Q.setValueAtTime(band.q, peqAudioCtx.currentTime);
+    if (isPeqEnabled) {
+        initPeqAudioContext();
+    }
+    if (peqFilters && peqFilters.length === 5 && peqAudioCtx) {
+        for (let i = 0; i < 5; i++) {
+            const band = currentPeqBands[i];
+            const filter = peqFilters[i];
+            if (filter) {
+                filter.frequency.setValueAtTime(band.freq, peqAudioCtx.currentTime);
+                filter.gain.setValueAtTime(isPeqEnabled ? band.gain : 0, peqAudioCtx.currentTime);
+                filter.Q.setValueAtTime(band.q, peqAudioCtx.currentTime);
+            }
         }
     }
 
@@ -223,7 +224,7 @@ function togglePeqEnable(forceState) {
     const chk = document.getElementById("peqMasterSwitch");
     if (chk) chk.checked = isPeqEnabled;
 
-    showToast(isPeqEnabled ? "⚡ 已启用 5 段参量均衡器" : "⚪ 已旁通 (Bypass) 参量均衡器", "info", 2000);
+    showToast(isPeqEnabled ? "⚡ 已开启参量均衡器（Web Audio 音频增强）" : "⚪ 已切换为原生直通模式（保障手机息屏后台播放）", "info", 2500);
 }
 
 /**
@@ -408,15 +409,35 @@ function drawPeqCurve() {
 
     const totalMag = new Float32Array(sampleCount).fill(1.0);
 
-    if (peqFilters && peqFilters.length === 5 && isPeqEnabled) {
-        const magResponse = new Float32Array(sampleCount);
-        const phaseResponse = new Float32Array(sampleCount);
+    if (peqFilters && peqFilters.length === 5 && isPeqEnabled && peqAudioCtx) {
+        try {
+            const magResponse = new Float32Array(sampleCount);
+            const phaseResponse = new Float32Array(sampleCount);
 
-        for (let b = 0; b < 5; b++) {
-            peqFilters[b].getFrequencyResponse(freqs, magResponse, phaseResponse);
-            for (let i = 0; i < sampleCount; i++) {
-                totalMag[i] *= magResponse[i];
+            for (let b = 0; b < 5; b++) {
+                peqFilters[b].getFrequencyResponse(freqs, magResponse, phaseResponse);
+                for (let i = 0; i < sampleCount; i++) {
+                    totalMag[i] *= magResponse[i];
+                }
             }
+        } catch (e) {
+            // 安全降级
+        }
+    } else if (isPeqEnabled) {
+        // 基于标准 Peaking Filter 传递函数数学模拟曲线
+        for (let i = 0; i < sampleCount; i++) {
+            let totalGainDb = 0;
+            const f = freqs[i];
+            for (let b = 0; b < 5; b++) {
+                const band = currentPeqBands[b];
+                if (Math.abs(band.gain) > 0.01) {
+                    const octDiff = Math.log2(f / Math.max(20, band.freq));
+                    const bw = 1.0 / Math.max(0.2, band.q);
+                    const response = band.gain / (1.0 + Math.pow(octDiff / (bw * 0.5), 2));
+                    totalGainDb += response;
+                }
+            }
+            totalMag[i] = Math.pow(10, totalGainDb / 20);
         }
     }
 
@@ -596,7 +617,9 @@ function togglePeqDrawer() {
 
     if (drawer.style.display === 'none' || !drawer.style.display) {
         drawer.style.display = 'flex';
-        initPeqAudioContext();
+        if (isPeqEnabled) {
+            initPeqAudioContext();
+        }
         refreshPeqPresetSelectOptions();
         renderPeqSlidersDOM();
         setTimeout(drawPeqCurve, 60);

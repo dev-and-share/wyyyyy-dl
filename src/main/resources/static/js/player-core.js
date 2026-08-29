@@ -540,7 +540,7 @@ function playAudioOnline(url, name, artist, cover, lyric, album) {
                 if (fullPlayBtn) fullPlayBtn.innerHTML = "▶";
             });
         }
-        if (typeof initPeqAudioContext === 'function') {
+        if (typeof isPeqEnabled !== 'undefined' && isPeqEnabled && typeof initPeqAudioContext === 'function') {
             initPeqAudioContext();
         }
         savePlayerStateToStorage();
