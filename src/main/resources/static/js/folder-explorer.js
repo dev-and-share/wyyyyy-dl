@@ -53,17 +53,18 @@ function selectFolderRoot(rootPath, rootName) {
     folderNodeCache.clear();
     renderFolderRootsBar();
 
+    const rootDomId = getNodeDomId(rootPath);
+
     // 初始化根节点容器
     const treeContainer = document.getElementById("folder-explorer-list");
     if (!treeContainer) return;
 
     treeContainer.innerHTML = `
         <div class="tree-root-wrapper" id="tree-root-container">
-            <div class="tree-node-row tree-node-root" id="node-row-root">
+            <div class="tree-node-row tree-node-root" id="node-row-${rootDomId}">
                 <div class="tree-row-content">
                     <div class="tree-left-section" onclick="toggleTreeNode('${escapeJsString(rootPath)}', 0, event)">
-                        <span class="tree-expander expanded" id="expander-of-root">▼</span>
-                        <span class="tree-icon" id="icon-of-root">🗂️</span>
+                        <span class="tree-expander expanded" id="expander-of-${rootDomId}">▼</span>
                         <span class="tree-node-name tree-root-name">${escapeHtml(rootName)}</span>
                         <span class="tree-badge-count" id="root-meta-badge">正在扫描...</span>
                     </div>
@@ -80,7 +81,7 @@ function selectFolderRoot(rootPath, rootName) {
                     </div>
                 </div>
             </div>
-            <div class="tree-children-container" id="children-of-root" style="display: block;">
+            <div class="tree-children-container" id="children-of-${rootDomId}" style="display: block;">
                 <div style="padding: 15px 25px; color: var(--text-muted); font-size: 13px;">
                     <span class="loading-spinner"></span> 正在扫描读取目录结构...
                 </div>
@@ -89,7 +90,7 @@ function selectFolderRoot(rootPath, rootName) {
     `;
 
     // 自动加载并展开根目录子节点
-    loadAndRenderNodeChildren(rootPath, 0, document.getElementById('children-of-root'), rootName);
+    loadAndRenderNodeChildren(rootPath, 0, document.getElementById(`children-of-${rootDomId}`), rootName);
 }
 
 // 全局路径与 DOM ID 映射，安全支持中文与任意特殊字符
@@ -217,7 +218,7 @@ function renderNodeItemsHTML(items, level, containerElement) {
             html += `
                 <div class="tree-node-wrapper" id="wrapper-of-${safeId}">
                     <div class="tree-node-row tree-node-dir" 
-                         style="padding-left: ${indentPadding}px;" 
+                         style="--tree-level: ${level};" 
                          id="row-of-${safeId}">
                         <div class="tree-row-content">
                             <div class="tree-left-section" onclick="toggleTreeNode('${escapeJsString(item.path)}', ${level}, event)">
@@ -232,7 +233,7 @@ function renderNodeItemsHTML(items, level, containerElement) {
                                         ▶ 连播
                                     </button>
                                     <button class="tree-btn tree-btn-queue" onclick="appendFolderTracksToQueue('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', true)" title="追加到播放列表">
-                                        ➕
+                                        ➕ 追加
                                     </button>
                                 ` : ''}
                                 ${item.hostPath ? `
@@ -262,7 +263,7 @@ function renderNodeItemsHTML(items, level, containerElement) {
             const hostPath = item.hostPath || item.path || '';
 
             html += `
-                <div class="tree-node-row tree-node-file" style="padding-left: ${indentPadding}px;">
+                <div class="tree-node-row tree-node-file" style="--tree-level: ${level};" id="row-of-${safeId}">
                     <div class="tree-row-content">
                         <div class="tree-left-section" onclick="playSingleLocalFile('${escapeJsString(item.streamUrl || item.path)}', '${escapeJsString(item.songName || item.name)}', '${escapeJsString(item.artist || '')}', '${escapeJsString(item.album || '')}')">
                             <span class="tree-file-indent"></span>
@@ -300,20 +301,24 @@ function renderNodeItemsHTML(items, level, containerElement) {
  * 全部展开 / 全部折叠树
  */
 function expandAllTreeNodes() {
-    const expanders = document.querySelectorAll('.tree-node-dir .tree-expander:not(.expanded)');
+    const expanders = document.querySelectorAll('.tree-node-row .tree-expander:not(.expanded)');
     expanders.forEach(btn => btn.click());
 }
 
 function collapseAllTreeNodes() {
+    const rootDomId = currentActiveRoot ? getNodeDomId(currentActiveRoot.path) : null;
+    const rootContainerId = rootDomId ? `children-of-${rootDomId}` : 'children-of-root';
+    const rootRowId = rootDomId ? `node-row-${rootDomId}` : 'node-row-root';
+
     const containers = document.querySelectorAll('.tree-children-container');
-    containers.forEach((c, idx) => {
-        if (c.id !== 'children-of-root') {
+    containers.forEach(c => {
+        if (c.id !== rootContainerId) {
             c.style.display = 'none';
         }
     });
     const expanders = document.querySelectorAll('.tree-expander.expanded');
     expanders.forEach(exp => {
-        if (exp.parentElement.parentElement.id !== 'node-row-root') {
+        if (!exp.closest(`#${rootRowId}`)) {
             exp.textContent = '▶';
             exp.classList.remove('expanded');
         }

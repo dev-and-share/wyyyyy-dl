@@ -106,8 +106,8 @@ function renderSearchPage(page) {
         } else {
             // 歌手
             li.innerHTML = `
-                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <strong>${index + 1}. ${item.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
+                <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <strong>${index + 1}. ${escapeHtml(item.name)}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
                 </div>
             `;
         }
