@@ -1,13 +1,14 @@
 plugins {
-    id 'org.springframework.boot' version '2.4.1'
-    id 'io.spring.dependency-management' version '1.0.12.RELEASE'
+    id 'org.springframework.boot' version '3.2.5'
+    id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
+    id 'org.graalvm.buildtools.native' version '0.9.28'
 }
 
 group = 'com.pewee'
 version = '1.0.0'
-sourceCompatibility = '1.8'
-targetCompatibility = '1.8'
+sourceCompatibility = '21'
+targetCompatibility = '21'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
@@ -24,23 +25,26 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-	//implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation "com.google.guava:guava:$guavaVersion"
     implementation "com.alibaba:fastjson:$fastjsonVersion"
     implementation "joda-time:joda-time:$jodaVersion"
     implementation "commons-fileupload:commons-fileupload:$fileuploadVersion"
     implementation "org.apache.commons:commons-lang3:$commonsLangVersion"
-    implementation "log4j:log4j:$log4jVersion"
+    // log4j 1.x已移除，改用 Spring Boot 默认 logback + log4j-to-slf4j 桥接
+    implementation "org.apache.logging.log4j:log4j-to-slf4j:2.21.1"
+    implementation "org.apache.logging.log4j:log4j-api:2.21.1"
     compileOnly "org.projectlombok:lombok:$lombokVersion"
     annotationProcessor "org.projectlombok:lombok:$lombokVersion"
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	implementation("org.apache.httpcomponents:httpclient:${httpclientVersion}")
-	implementation("org.apache.httpcomponents:httpmime:${httpmimeVersion}")
-	implementation("com.google.zxing:core:${zxingVersion}")
-	implementation("com.google.zxing:javase:${zxingVersion}")
-	implementation("net.jthink:jaudiotagger:3.0.1")
-	implementation("org.xerial:sqlite-jdbc:3.36.0.3")
+    implementation("org.apache.httpcomponents:httpclient:${httpclientVersion}")
+    implementation("org.apache.httpcomponents:httpmime:${httpmimeVersion}")
+    implementation("com.google.zxing:core:${zxingVersion}")
+    implementation("com.google.zxing:javase:${zxingVersion}")
+    implementation("net.jthink:jaudiotagger:3.0.1")
+    implementation("org.xerial:sqlite-jdbc:3.45.3.0")
+    // Jakarta annotation API 替代 javax.annotation
+    implementation "jakarta.annotation:jakarta.annotation-api:2.1.1"
 }
 
 tasks.named('test') {
@@ -48,5 +52,24 @@ tasks.named('test') {
 }
 
 wrapper {
-    gradleVersion = '7.3'
+    gradleVersion = '8.7'
+}
+
+// Spring Boot 3 AOT + Native 配置
+graalvmNative {
+    binaries {
+        main {
+            imageName = 'netease-music-dl-native'
+            buildArgs.add('--verbose')
+            // 放宽 native 构建限制，兼容 sqlite/jaudiotagger/fastjson
+            buildArgs.add('-H:+AllowIncompleteClasspath')
+        }
+    }
+}
+
+// build-image 使用 Paketo + Java21
+tasks.named("bootBuildImage") {
+    imageName = "peweelive/netease-music-dl:native"
+    builder = "paketobuildpacks/builder-jammy-tiny"
+    environment = ["BP_NATIVE_IMAGE": "true"]
 }
