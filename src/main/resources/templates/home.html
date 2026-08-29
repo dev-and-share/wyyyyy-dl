@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.4.3">
+    <link rel="stylesheet" href="/css/style.css?v=4.4.4">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -202,31 +202,10 @@
     <!-- 4. 下载管理 Tab 内容 -->
     <div id="tab-download-mgr" class="tab-content" style="display:none;">
         <div class="accordion-wrapper">
-            <!-- 浏览器缓存管理 Card -->
-            <div class="accordion-card active" id="card-browser-cache">
+            <!-- Section 1: 📁 本地曲库与文件夹树形浏览器 -->
+            <div class="accordion-card active" id="card-folder-explorer">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">📲 浏览器离线缓存管理</h3>
-                    <span class="accordion-icon">▼</span>
-                </div>
-                <div class="accordion-body">
-                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
-                        <div style="font-size:14px;"><strong>已缓存歌曲：</strong><span id="cache-stat-total">0</span> 首</div>
-                        <div style="font-size:14px;"><strong>估算大小：</strong><span id="cache-stat-size">0 B</span></div>
-                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn-primary" onclick="loadBrowserCacheList()">🔄 扫描/刷新缓存</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除所有缓存</button>
-                        </div>
-                    </div>
-                    <ul class="data-list scrollable-list" id="browser-cache-list">
-                        <li style="padding:15px; text-align:center; color:#888;">点击“扫描/刷新缓存”查看已缓存在本浏览器的歌曲</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- 📁 本地曲库与文件夹树形浏览器 -->
-            <div class="accordion-card" id="card-folder-explorer">
-                <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">📁 本地曲库与文件夹树 (Tree View & 连播)</h3>
+                    <h3 class="accordion-title">📁 1. 本地曲库与文件夹树连播</h3>
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
@@ -252,9 +231,10 @@
                 </div>
             </div>
 
+            <!-- Section 2: 📥 本地下载历史与文件管理 -->
             <div class="accordion-card" id="card-download-history">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">📥 本地下载历史与文件管理</h3>
+                    <h3 class="accordion-title">📥 2. 本地下载历史与文件管理</h3>
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
@@ -296,6 +276,27 @@
                         <span id="history-page-indicator" style="font-size:13px; color:var(--text-secondary);">第 1 页 / 共 1 页</span>
                         <button id="history-next" class="btn-primary" onclick="changeHistoryPage(1)">下一页</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Section 3: 📲 浏览器离线缓存管理 -->
+            <div class="accordion-card" id="card-browser-cache">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📲 3. 浏览器离线缓存管理</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
+                        <div style="font-size:14px;"><strong>已缓存歌曲：</strong><span id="cache-stat-total">0</span> 首</div>
+                        <div style="font-size:14px;"><strong>估算大小：</strong><span id="cache-stat-size">0 B</span></div>
+                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="loadBrowserCacheList()">🔄 扫描/刷新缓存</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除所有缓存</button>
+                        </div>
+                    </div>
+                    <ul class="data-list scrollable-list" id="browser-cache-list">
+                        <li style="padding:15px; text-align:center; color:#888;">点击“扫描/刷新缓存”查看已缓存在本浏览器的歌曲</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -480,19 +481,19 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v4.4.3</div>
+    <div class="app-version-footer">网易云下载器 · PWA v4.4.4</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/ui-core.js?v=4.4.3"></script>
-    <script src="/js/player-core.js?v=4.4.3"></script>
-    <script src="/js/player-lyric.js?v=4.4.3"></script>
-    <script src="/js/player-drawer.js?v=4.4.3"></script>
-    <script src="/js/pwa-cache.js?v=4.4.3"></script>
-    <script src="/js/playlist.js?v=4.4.3"></script>
-    <script src="/js/album.js?v=4.4.3"></script>
-    <script src="/js/search.js?v=4.4.3"></script>
-    <script src="/js/download-mgr.js?v=4.4.3"></script>
-    <script src="/js/folder-explorer.js?v=4.4.3"></script>
-    <script src="/js/app.js?v=4.4.3"></script>
+    <script src="/js/ui-core.js?v=4.4.4"></script>
+    <script src="/js/player-core.js?v=4.4.4"></script>
+    <script src="/js/player-lyric.js?v=4.4.4"></script>
+    <script src="/js/player-drawer.js?v=4.4.4"></script>
+    <script src="/js/pwa-cache.js?v=4.4.4"></script>
+    <script src="/js/playlist.js?v=4.4.4"></script>
+    <script src="/js/album.js?v=4.4.4"></script>
+    <script src="/js/search.js?v=4.4.4"></script>
+    <script src="/js/download-mgr.js?v=4.4.4"></script>
+    <script src="/js/folder-explorer.js?v=4.4.4"></script>
+    <script src="/js/app.js?v=4.4.4"></script>
 </body>
 </html>

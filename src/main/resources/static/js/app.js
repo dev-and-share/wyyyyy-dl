@@ -52,8 +52,13 @@ function switchTab(tabName, updateHash = true) {
         loadMyPlaylists();
     }
 
-    if (pureName === 'download-mgr' && typeof loadDownloadHistory === 'function') {
-        loadDownloadHistory(1);
+    if (pureName === 'download-mgr') {
+        if (typeof initFolderExplorerRoots === 'function') {
+            initFolderExplorerRoots();
+        }
+        if (typeof loadDownloadHistory === 'function') {
+            loadDownloadHistory(1);
+        }
         if (typeof loadHistoryStats === 'function') {
             loadHistoryStats();
         }
