@@ -3661,13 +3661,19 @@ ul.data-list li.history-item-card .card-sub-row {
 }
 
 .peq-header {
-    padding: 14px 18px;
+    padding: 12px 16px;
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.peq-header-top-bar {
+    width: 100%;
+    display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
 }
 
 .peq-header-title {
@@ -3680,10 +3686,10 @@ ul.data-list li.history-item-card .card-sub-row {
 }
 
 .peq-header-controls {
+    width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .peq-switch-label {
@@ -3697,6 +3703,7 @@ ul.data-list li.history-item-card .card-sub-row {
     padding: 4px 10px;
     border-radius: 20px;
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+    flex-shrink: 0;
 }
 
 .peq-switch-label input[type="checkbox"] {
@@ -3705,6 +3712,8 @@ ul.data-list li.history-item-card .card-sub-row {
 }
 
 .peq-preset-select {
+    flex: 1;
+    min-width: 0;
     padding: 4px 10px;
     border-radius: 8px;
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
