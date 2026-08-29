@@ -636,6 +636,26 @@ function closePeqDrawer() {
     if (drawer) drawer.style.display = 'none';
 }
 
+// 📱 监听手机息屏与亮屏事件：智能维持均衡器状态与后台不间断播放
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        // 手机息屏/切后台：若开启了均衡器且正在播放，尝试维持 Web Audio 活跃
+        const player = document.getElementById("globalAudioPlayer");
+        if (player && !player.paused && peqAudioCtx && isPeqEnabled) {
+            if (peqAudioCtx.state === 'suspended') {
+                peqAudioCtx.resume().catch(() => {});
+            }
+        }
+    } else {
+        // 手机重新亮屏/回到前台：瞬间恢复 AudioContext 调音并重绘曲线
+        if (peqAudioCtx && isPeqEnabled && peqAudioCtx.state === 'suspended') {
+            peqAudioCtx.resume().then(() => {
+                if (typeof drawPeqCurve === 'function') drawPeqCurve();
+            }).catch(() => {});
+        }
+    }
+});
+
 // 页面加载自动初始化
 document.addEventListener("DOMContentLoaded", () => {
     loadPeqConfigFromStorage();
