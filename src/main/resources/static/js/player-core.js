@@ -539,6 +539,7 @@ function playAudioOnline(url, name, artist, cover, lyric, album) {
                 if (playBtn) playBtn.innerHTML = "▶";
                 if (fullPlayBtn) fullPlayBtn.innerHTML = "▶";
             });
+        }
         if (typeof initPeqAudioContext === 'function') {
             initPeqAudioContext();
         }

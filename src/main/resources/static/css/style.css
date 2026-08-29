@@ -1007,7 +1007,7 @@ ul.data-list li:last-child {
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: var(--radius-lg);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-    z-index: 9999;
+    z-index: 10002;
     overflow: hidden;
     color: #ffffff;
     display: flex;
