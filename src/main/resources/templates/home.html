@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.4.0">
+    <link rel="stylesheet" href="/css/style.css?v=4.4.3">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -170,6 +170,28 @@
                             <div class="empty-icon">💽</div>
                             <div class="empty-title">在上方搜索专辑或输入专辑 ID 解析</div>
                             <div class="empty-desc">支持解析整张专辑全部曲目、批量打包下载或手机端离线随身听缓存</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: 歌手详情解析与热门 Top 50 -->
+            <div class="accordion-card" id="card-artist-detail">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">🎤 3. 歌手解析与热门 Top 50</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <input type="text" id="artistId" placeholder="输入歌手 ID (如 6452)" style="flex:1;" onkeyup="if(event.key==='Enter') loadArtistInfo();">
+                        <button class="btn-primary" onclick="loadArtistInfo()">解析歌手</button>
+                    </div>
+                    <div id="artist-info">
+                        <!-- 🎨 默认优雅空状态 -->
+                        <div class="empty-placeholder-card">
+                            <div class="empty-icon">🎤</div>
+                            <div class="empty-title">在上方搜索歌手或输入歌手 ID 解析</div>
+                            <div class="empty-desc">支持查看歌手详情、热门 Top 50 代表作、一键连播或离线随身听缓存</div>
                         </div>
                     </div>
                 </div>
@@ -458,19 +480,19 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v4.4.0</div>
+    <div class="app-version-footer">网易云下载器 · PWA v4.4.3</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/ui-core.js?v=4.4.0"></script>
-    <script src="/js/player-core.js?v=4.4.0"></script>
-    <script src="/js/player-lyric.js?v=4.4.0"></script>
-    <script src="/js/player-drawer.js?v=4.4.0"></script>
-    <script src="/js/pwa-cache.js?v=4.4.0"></script>
-    <script src="/js/playlist.js?v=4.4.0"></script>
-    <script src="/js/album.js?v=4.4.0"></script>
-    <script src="/js/search.js?v=4.4.0"></script>
-    <script src="/js/download-mgr.js?v=4.4.0"></script>
-    <script src="/js/folder-explorer.js?v=4.4.0"></script>
-    <script src="/js/app.js?v=4.4.0"></script>
+    <script src="/js/ui-core.js?v=4.4.3"></script>
+    <script src="/js/player-core.js?v=4.4.3"></script>
+    <script src="/js/player-lyric.js?v=4.4.3"></script>
+    <script src="/js/player-drawer.js?v=4.4.3"></script>
+    <script src="/js/pwa-cache.js?v=4.4.3"></script>
+    <script src="/js/playlist.js?v=4.4.3"></script>
+    <script src="/js/album.js?v=4.4.3"></script>
+    <script src="/js/search.js?v=4.4.3"></script>
+    <script src="/js/download-mgr.js?v=4.4.3"></script>
+    <script src="/js/folder-explorer.js?v=4.4.3"></script>
+    <script src="/js/app.js?v=4.4.3"></script>
 </body>
 </html>

@@ -18,7 +18,9 @@ import com.pewee.neteasemusic.exceptions.ServiceException;
 import com.pewee.neteasemusic.models.dtos.AlbumAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.AlbumDTO;
 import com.pewee.neteasemusic.models.dtos.AlbumInfoDTO;
+import com.pewee.neteasemusic.models.dtos.ArtistAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.ArtistDTO;
+import com.pewee.neteasemusic.models.dtos.ArtistInfoDTO;
 import com.pewee.neteasemusic.models.dtos.PlaylistAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.PlaylistDTO;
 import com.pewee.neteasemusic.models.dtos.PlaylistInfoDTO;
@@ -457,6 +459,54 @@ public class AnalysisService {
             result.setAlbum(albumInfo);
             result.setStatus(200);
         } catch (Exception e) {
+            result.setStatus(500);
+        }
+        return result;
+    }
+
+    public ArtistAnalysisRespDTO analyzeArtist(Long artistId) {
+        checkReady();
+        ArtistAnalysisRespDTO result = new ArtistAnalysisRespDTO();
+        try {
+            String jsonStr = neteaseAPIService.getArtistDetail(artistId);
+            JSONObject json = JSON.parseObject(jsonStr);
+            JSONObject artist = json.getJSONObject("artist");
+
+            ArtistInfoDTO artistInfo = new ArtistInfoDTO();
+            if (artist != null) {
+                artistInfo.setId(artist.getLong("id"));
+                artistInfo.setName(artist.getString("name"));
+                artistInfo.setCoverImgUrl(artist.getString("picUrl"));
+                artistInfo.setBriefDesc(artist.getString("briefDesc"));
+                artistInfo.setMusicSize(artist.getInteger("musicSize"));
+                artistInfo.setAlbumSize(artist.getInteger("albumSize"));
+            }
+
+            JSONArray hotSongs = json.getJSONArray("hotSongs");
+            List<TrackDTO> trackList = new ArrayList<>();
+            if (hotSongs != null) {
+                for (int i = 0; i < hotSongs.size(); i++) {
+                    JSONObject track = hotSongs.getJSONObject(i);
+                    TrackDTO dto = new TrackDTO();
+                    dto.setId(track.getLong("id"));
+                    dto.setName(track.getString("name"));
+                    if (track.containsKey("al") && track.getJSONObject("al") != null) {
+                        dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
+                        dto.setAlbum(track.getJSONObject("al").getString("name"));
+                    }
+                    if (track.containsKey("ar") && track.getJSONArray("ar") != null) {
+                        dto.setArtists(track.getJSONArray("ar").stream()
+                            .map(ar -> ((JSONObject) ar).getString("name"))
+                            .collect(Collectors.joining("/")));
+                    }
+                    trackList.add(dto);
+                }
+            }
+            artistInfo.setSongs(trackList);
+            result.setArtist(artistInfo);
+            result.setStatus(200);
+        } catch (Exception e) {
+            log.error("解析歌手热门歌曲失败, id={}", artistId, e);
             result.setStatus(500);
         }
         return result;

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pewee.neteasemusic.enums.CommonRespInfo;
 import com.pewee.neteasemusic.models.common.RespEntity;
 import com.pewee.neteasemusic.models.dtos.AlbumAnalysisRespDTO;
+import com.pewee.neteasemusic.models.dtos.ArtistAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.PlaylistAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.SingleMusicAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.TrackDTO;
@@ -58,6 +59,15 @@ public class AnalysisController {
     	if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
 			downloadHistoryDAO.markLocalStatusBatch(result.getPlaylist().getTracks());
 		}
+        return RespEntity.apply(CommonRespInfo.SUCCESS, result);
+    }
+
+    @RequestMapping(value = "/Artist", method = {RequestMethod.GET, RequestMethod.POST})
+    public RespEntity<?> artist(@RequestParam(required = true) Long id) {
+        ArtistAnalysisRespDTO result = analysisService.analyzeArtist(id);
+        if (result != null && result.getArtist() != null && result.getArtist().getSongs() != null) {
+            downloadHistoryDAO.markLocalStatusBatch(result.getArtist().getSongs());
+        }
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
     

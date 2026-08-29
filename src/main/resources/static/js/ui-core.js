@@ -419,6 +419,18 @@ function jumpToSongDetail(songId) {
     if (typeof loadSongInfo === 'function') loadSongInfo();
 }
 
+function jumpToArtistDetail(artistId) {
+    if (!artistId) return;
+    if (typeof switchTab === 'function') switchTab('search');
+
+    const input = document.getElementById("artistId");
+    if (input) input.value = artistId;
+
+    openAccordionCard("card-artist-detail");
+    if (typeof loadArtistInfo === 'function') loadArtistInfo();
+}
+window.jumpToArtistDetail = jumpToArtistDetail;
+
 function loadSongInfo() {
     const id = document.getElementById("songId").value;
     const level = document.getElementById("songLevel").value;

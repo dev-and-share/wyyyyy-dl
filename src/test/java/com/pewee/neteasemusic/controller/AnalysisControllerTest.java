@@ -9,8 +9,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Collections;
+
 import com.pewee.neteasemusic.dao.DownloadHistoryDAO;
 import com.pewee.neteasemusic.models.dtos.SingleMusicAnalysisRespDTO;
+import com.pewee.neteasemusic.models.dtos.TrackDTO;
 import com.pewee.neteasemusic.service.AnalysisService;
 import com.pewee.neteasemusic.service.NeteaseAPIService;
 
@@ -209,5 +212,33 @@ public class AnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.code").value(200));
+    }
+
+    @Test
+    @DisplayName("测试 /Artist 获取歌手热门歌曲与详情接口")
+    public void testArtistEndpoint() throws Exception {
+        com.pewee.neteasemusic.models.dtos.ArtistAnalysisRespDTO respDTO = new com.pewee.neteasemusic.models.dtos.ArtistAnalysisRespDTO();
+        com.pewee.neteasemusic.models.dtos.ArtistInfoDTO artistInfo = new com.pewee.neteasemusic.models.dtos.ArtistInfoDTO();
+        artistInfo.setId(6452L);
+        artistInfo.setName("周杰伦");
+        artistInfo.setCoverImgUrl("http://p1.music.126.net/jay.jpg");
+        artistInfo.setBriefDesc("华语流行男歌手");
+
+        TrackDTO track1 = new TrackDTO();
+        track1.setId(186016L);
+        track1.setName("晴天");
+        track1.setArtists("周杰伦");
+        track1.setAlbum("叶惠美");
+        artistInfo.setSongs(Collections.singletonList(track1));
+        respDTO.setArtist(artistInfo);
+        respDTO.setStatus(200);
+
+        Mockito.when(analysisService.analyzeArtist(eq(6452L))).thenReturn(respDTO);
+
+        mockMvc.perform(get("/Artist").param("id", "6452"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.artist.name").value("周杰伦"))
+                .andExpect(jsonPath("$.data.artist.songs[0].name").value("晴天"));
     }
 }

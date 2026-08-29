@@ -331,6 +331,38 @@ public class NeteaseAPIService implements InitializingBean{
 
 	    
 	    
+	    // 歌手详情与热门 50 首
+	    public String getArtistDetail(Long artistId) throws Exception {
+	        String apiPath = "/api/v1/artist/" + artistId;
+	        String url = "https://interface3.music.163.com/eapi/v1/artist/" + artistId;
+
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("header", new ObjectMapper().writeValueAsString(config));
+	        payload.put("top", 50);
+	        payload.put("id", artistId);
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
+
 	    //专辑详情
 	    public String getAlbumDetail(Long albumId) throws Exception {
 	        String apiPath = "/api/v1/album/" + albumId;
