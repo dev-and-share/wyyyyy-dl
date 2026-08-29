@@ -81,6 +81,8 @@ graalvmNative {
             // 关键修复：commons-logging 必须 runtime 初始化
             buildArgs.add('--initialize-at-run-time=org.apache.commons.logging.LogFactory')
             buildArgs.add('--initialize-at-run-time=org.apache.commons.logging.LogFactoryService')
+            buildArgs.add('-Dfile.encoding=UTF-8')
+            buildArgs.add('-Dsun.jnu.encoding=UTF-8')
             buildArgs.add('-Djava.awt.headless=true')
             buildArgs.add('-H:+UnlockExperimentalVMOptions')
             buildArgs.add('-H:+ReportExceptionStackTraces')
