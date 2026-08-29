@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.pewee.neteasemusic.models.common.DownloadTaskStatus;
 import java.util.stream.Collectors;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;

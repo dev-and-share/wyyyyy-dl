@@ -128,8 +128,8 @@ public class AnalysisController {
     @RequestMapping(value = "/v2/stream", method = {RequestMethod.GET})
     public void streamAudio(@RequestParam(required = false) Long id,
                             @RequestParam(required = false) Long historyId,
-                            javax.servlet.http.HttpServletRequest request,
-                            javax.servlet.http.HttpServletResponse response) {
+                            jakarta.servlet.http.HttpServletRequest request,
+                            jakarta.servlet.http.HttpServletResponse response) {
         com.pewee.neteasemusic.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = null;
         if (historyId != null && historyId > 0) {
             localItem = downloadHistoryDAO.getRecordById(historyId);
@@ -138,13 +138,13 @@ public class AnalysisController {
             localItem = downloadHistoryDAO.findLocalFileBySongId(id);
         }
         if (localItem == null || !Boolean.TRUE.equals(localItem.getFileExists())) {
-            response.setStatus(javax.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
             return;
         }
 
         java.io.File file = new java.io.File(localItem.getFilePath());
         if (!file.exists()) {
-            response.setStatus(javax.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
             return;
         }
 

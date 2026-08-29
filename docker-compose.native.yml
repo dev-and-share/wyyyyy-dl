@@ -1,0 +1,24 @@
+name: netease-music-native
+
+services:
+  netease-music-dl-native:
+    build:
+      context: .
+      dockerfile: Dockerfile.native
+    image: peweelive/netease-music-dl:native
+    container_name: netease-music-dl-native-test
+    restart: unless-stopped
+    ports:
+      # 映射到宿主机 8081 端口，完全隔离现有 8080 开发容器
+      - "8081:8080"
+    environment:
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - TZ=Asia/Shanghai
+      - HOST_DOWNLOAD_PATH=${HOST_DOWNLOAD_PATH}
+      - EXTERNAL_LIBRARY_HOST_PATH=${EXTERNAL_LIBRARY_HOST_PATH}
+      - EXTERNAL_LIBRARY_CONTAINER_PATH=${EXTERNAL_LIBRARY_CONTAINER_PATH}
+      - EXTERNAL_LIBRARY_PATHS=${EXTERNAL_LIBRARY_PATHS}
+    volumes:
+      - ${HOST_DOWNLOAD_PATH}:/media/music
+      - ${EXTERNAL_LIBRARY_HOST_PATH}:${EXTERNAL_LIBRARY_CONTAINER_PATH}:ro
