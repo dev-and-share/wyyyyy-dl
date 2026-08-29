@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.4.4">
+    <link rel="stylesheet" href="/css/style.css?v=4.4.5">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -371,6 +371,9 @@
                     <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.8" oninput="changeVolume(this.value)" class="volume-slider">
                 </div>
 
+                <!-- 🎛️ 5 段参量均衡器 (PEQ) 按钮 -->
+                <button class="ctrl-btn sub-btn peq-btn-badge" id="peqToggleBtn" onclick="togglePeqDrawer()" title="5段参量均衡器 (PEQ 音质改善)">🎛️</button>
+
                 <div class="right-action-group">
                     <button class="ctrl-btn mini-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
                     <button class="ctrl-btn mini-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
@@ -474,26 +477,63 @@
                     <button class="ctrl-btn sub-btn" onclick="playPrevTrack()" title="上一首">⏮</button>
                     <button class="ctrl-btn play-main-btn" id="fullscreenPlayPauseBtn" onclick="togglePlayPause()" title="播放 / 暂停">▶</button>
                     <button class="ctrl-btn sub-btn" onclick="playNextTrack()" title="下一首">⏭</button>
+                    <button class="ctrl-btn sub-btn peq-btn-badge" id="fullPeqToggleBtn" onclick="togglePeqDrawer()" title="5段参量均衡器 (PEQ)">🎛️</button>
                     <button class="ctrl-btn sub-btn" onclick="togglePlaylistDrawer()" title="播放列表">📜</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 🎛️ 5 段参量均衡器 (PEQ) 弹窗卡片 (Parametric EQ Drawer) -->
+    <div class="peq-drawer-modal" id="peqDrawerModal" style="display: none;">
+        <div class="peq-header">
+            <h3 class="peq-header-title">🎛️ 5 段参量均衡器 (Parametric EQ)</h3>
+            <div class="peq-header-controls">
+                <label class="peq-switch-label" title="开启或旁通 (Bypass) 参量均衡器">
+                    <input type="checkbox" id="peqMasterSwitch" onchange="togglePeqEnable(this.checked)" checked>
+                    <span>⚡ 启用</span>
+                </label>
+                <select id="peqPresetSelect" class="peq-preset-select" onchange="applyPeqPreset(this.value)"></select>
+                <button class="peq-close-btn" onclick="closePeqDrawer()" title="关闭">✕</button>
+            </div>
+        </div>
+
+        <div class="peq-body">
+            <!-- 📈 实时频响曲线可视化 Canvas -->
+            <div class="peq-canvas-card">
+                <canvas id="peqCanvas"></canvas>
+            </div>
+
+            <!-- 🎚️ 5 段详细调节卡片 Grid -->
+            <div class="peq-sliders-grid" id="peqSlidersContainer"></div>
+        </div>
+
+        <div class="peq-footer-actions">
+            <div style="display:flex; gap:8px;">
+                <button class="peq-tool-btn" onclick="saveCurrentAsCustomPreset()" title="将当前 15 个调音参数保存为新预设">💾 保存为新预设</button>
+                <button class="peq-tool-btn" onclick="resetPeqToFlat()" title="所有频段归零">🔄 重置为默认</button>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted);">
+                💡 5段频率/增益/Q值全可调 · Web Audio 原生实时渲染
+            </div>
+        </div>
+    </div>
+
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v4.4.4</div>
+    <div class="app-version-footer">网易云下载器 · PWA v4.4.5</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/ui-core.js?v=4.4.4"></script>
-    <script src="/js/player-core.js?v=4.4.4"></script>
-    <script src="/js/player-lyric.js?v=4.4.4"></script>
-    <script src="/js/player-drawer.js?v=4.4.4"></script>
-    <script src="/js/pwa-cache.js?v=4.4.4"></script>
-    <script src="/js/playlist.js?v=4.4.4"></script>
-    <script src="/js/album.js?v=4.4.4"></script>
-    <script src="/js/search.js?v=4.4.4"></script>
-    <script src="/js/download-mgr.js?v=4.4.4"></script>
-    <script src="/js/folder-explorer.js?v=4.4.4"></script>
-    <script src="/js/app.js?v=4.4.4"></script>
+    <script src="/js/ui-core.js?v=4.4.5"></script>
+    <script src="/js/player-core.js?v=4.4.5"></script>
+    <script src="/js/player-peq.js?v=4.4.5"></script>
+    <script src="/js/player-lyric.js?v=4.4.5"></script>
+    <script src="/js/player-drawer.js?v=4.4.5"></script>
+    <script src="/js/pwa-cache.js?v=4.4.5"></script>
+    <script src="/js/playlist.js?v=4.4.5"></script>
+    <script src="/js/album.js?v=4.4.5"></script>
+    <script src="/js/search.js?v=4.4.5"></script>
+    <script src="/js/download-mgr.js?v=4.4.5"></script>
+    <script src="/js/folder-explorer.js?v=4.4.5"></script>
+    <script src="/js/app.js?v=4.4.5"></script>
 </body>
 </html>
