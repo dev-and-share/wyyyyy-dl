@@ -19,4 +19,7 @@ public class TrackDTO {
 	
 	//pic url
 	private String picUrl;
+	
+	//是否本地已下载/存在
+	private Boolean isLocal;
 }

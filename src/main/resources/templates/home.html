@@ -3,31 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🎵 网易云音乐下载器 · 现代体验版</title>
+    <title>网易云音乐下载器 · 现代体验版</title>
+    <script>
+        // ⚡ 防白屏闪烁主题预初始化
+        (function() {
+            var mode = localStorage.getItem('theme_mode') || 'dark';
+            var activeTheme = mode;
+            if (mode === 'auto') {
+                activeTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', activeTheme);
+            document.documentElement.setAttribute('data-theme-mode', mode);
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <meta name="theme-color" content="#0a0e1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="网易云下载器">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=4.3.6">
 </head>
 <body>
-    <!-- 页头 -->
-    <div class="header-container">
-        <div>
-            <h2 class="header-title">🎵 网易云音乐下载器</h2>
-            <div class="header-sub">高效的无损音频解析与批量下载工具</div>
+    <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
+    <div class="app-top-bar" id="appTopBar">
+        <div class="app-brand">
+            <span class="brand-logo">🎵</span>
+            <span class="brand-title">网易云下载器</span>
         </div>
-        <div class="repeat-switch-container">
-            <label style="cursor: pointer;">
-                <input type="checkbox" id="repeatSwitch" onchange="toggleRepeat()"> 允许重复下载
+        
+        <div class="app-nav-tabs">
+            <button class="nav-tab-btn active" data-tab="tab-playlist">📁 歌单</button>
+            <button class="nav-tab-btn" data-tab="tab-search">🔍 搜索</button>
+            <button class="nav-tab-btn" data-tab="tab-download-mgr">📥 本地</button>
+        </div>
+
+        <div class="app-top-actions">
+            <!-- 🌓 三态主题模式切换 (深色 / 浅色 / 自动) -->
+            <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleThemeMode()" title="切换主题模式 (深色 / 浅色 / 跟随系统)">
+                <span id="themeIcon">🌙</span>
+                <span class="theme-text" id="themeText">深色</span>
+            </button>
+
+            <label class="compact-switch-label" title="允许再次下载已存在的同名歌曲">
+                <input type="checkbox" id="repeatSwitch" onchange="toggleRepeat()">
+                <span>允许重复</span>
             </label>
         </div>
-    </div>
-
-    <!-- 顶栏 Tab 切换 -->
-    <div class="tabs-nav">
-        <button class="tab-btn active" data-tab="tab-playlist">📁 歌单模块</button>
-        <button class="tab-btn" data-tab="tab-album">💽 专辑模块</button>
-        <button class="tab-btn" data-tab="tab-search">🔍 搜索模块</button>
     </div>
 
     <!-- 1. 歌单 Tab 内容 (手风琴布局) -->
@@ -41,9 +66,16 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <p style="font-size:13px; color:#666;">加载已登录账号收藏或创建的歌单列表。</p>
-                    <button class="btn-primary" onclick="loadMyPlaylists()">加载歌单列表</button>
-                    <ul class="data-list" id="playlist-list"></ul>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <span style="font-size:13px; color:var(--text-secondary);">账号歌单快捷加载：</span>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="loadMyPlaylists('created')" style="width:auto; margin:0; padding:5px 10px; font-size:12px;">📂 创建的歌单</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow:0 2px 8px rgba(139,92,246,0.3);" onclick="loadMyPlaylists('subscribed')">⭐ 收藏的歌单</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #64748b, #475569); box-shadow:0 2px 8px rgba(100,116,139,0.3);" onclick="loadMyPlaylists('all')">📋 全部</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); box-shadow:0 2px 8px rgba(16,185,129,0.3);" onclick="showCreatePlaylistModal()" title="新建自建歌单">➕ 新建歌单</button>
+                        </div>
+                    </div>
+                    <ul class="data-list scrollable-list" id="playlist-list"></ul>
                 </div>
             </div>
 
@@ -59,10 +91,10 @@
                         <button class="btn-primary" onclick="loadPlaylistDetail()">查看歌单详情</button>
                     </div>
                     <div id="playlist-info"></div>
-                    <ul class="data-list" id="playlist-tracks"></ul>
-                    <div id="playlist-pagination" class="pagination-container">
+                    <ul class="data-list scrollable-list" id="playlist-tracks"></ul>
+                    <div id="playlist-pagination" class="pagination-container" style="display:none;">
                         <button id="prev-page" class="btn-primary" onclick="changePage(-1)" disabled>上一页</button>
-                        <span id="page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
+                        <span id="page-indicator" style="font-size:13px; color:var(--text-secondary);">第 1 页</span>
                         <button id="next-page" class="btn-primary" onclick="changePage(1)">下一页</button>
                     </div>
                 </div>
@@ -91,62 +123,162 @@
         </div>
     </div>
 
-    <!-- 2. 专辑 Tab 内容 -->
-    <div id="tab-album" class="tab-content" style="display:none;">
+    <!-- 2. 搜索 Tab 内容 (全网综合搜索 + 专辑解析) -->
+    <div id="tab-search" class="tab-content" style="display:none;">
         <div class="accordion-wrapper">
-            <div class="accordion-card active" id="card-album-detail">
+            <!-- Section 1: 关键词与全网综合搜索 -->
+            <div class="accordion-card active" id="card-search">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">💽 查看专辑信息</h3>
+                    <h3 class="accordion-title">🔍 1. 关键词综合搜索</h3>
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
                     <div class="form-row">
-                        <input type="text" id="albumId" placeholder="输入专辑 ID" style="flex:1;">
-                        <button class="btn-primary" onclick="loadAlbumInfo()">查看专辑</button>
+                        <input type="text" id="searchKeyword" placeholder="输入关键词 (歌曲 / 歌手 / 专辑 / 歌单)" style="flex:1;" onkeyup="if(event.key==='Enter') searchSongs();">
+                        <select id="searchType">
+                            <option value="1">单曲</option>
+                            <option value="10">专辑</option>
+                            <option value="1000">歌单</option>
+                            <option value="100">歌手</option>
+                        </select>
+                        <input type="number" id="searchLimit" value="10" min="1" max="100" style="width:70px;">
+                        <button class="btn-primary" onclick="searchSongs()">搜索</button>
+                    </div>
+                    <ul class="data-list scrollable-list" id="search-results"></ul>
+                    <div id="search-pagination" class="pagination-container">
+                        <button id="search-prev" class="btn-primary" onclick="changeSearchPage(-1)" disabled>上一页</button>
+                        <span id="search-page-indicator" style="font-size:13px; color:var(--text-secondary);">共 0 条结果</span>
+                        <button id="search-next" class="btn-primary" onclick="changeSearchPage(1)" disabled>下一页</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: 专辑详情解析与整辑下载 -->
+            <div class="accordion-card" id="card-album-detail">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">💽 2. 专辑解析与整辑下载</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <input type="text" id="albumId" placeholder="输入专辑 ID (如 32311)" style="flex:1;" onkeyup="if(event.key==='Enter') loadAlbumInfo();">
+                        <button class="btn-primary" onclick="loadAlbumInfo()">解析专辑</button>
                     </div>
                     <div id="album-info">
-                        <p><strong>下载：</strong> <span id="album-download"></span></p>
-                        <p><strong>专辑名：</strong> <span id="album-name"></span></p>
-                        <p><strong>歌手：</strong> <span id="album-artist"></span></p>
-                        <p><strong>发行时间：</strong> <span id="album-publish-time"></span></p>
-                        <p><strong>封面：</strong><br><img id="album-cover" style="max-width: 150px; border-radius:8px; margin-top:5px;"></p>
-                        <h4>歌曲列表：</h4>
-                        <ul class="data-list" id="album-tracks"></ul>
+                        <!-- 🎨 默认优雅空状态 (Empty State Placeholder) -->
+                        <div class="empty-placeholder-card">
+                            <div class="empty-icon">💽</div>
+                            <div class="empty-title">在上方搜索专辑或输入专辑 ID 解析</div>
+                            <div class="empty-desc">支持解析整张专辑全部曲目、批量打包下载或手机端离线随身听缓存</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 3. 搜索 Tab 内容 -->
-    <div id="tab-search" class="tab-content" style="display:none;">
+    <!-- 4. 下载管理 Tab 内容 -->
+    <div id="tab-download-mgr" class="tab-content" style="display:none;">
         <div class="accordion-wrapper">
-            <div class="accordion-card active" id="card-search">
+            <!-- 浏览器缓存管理 Card -->
+            <div class="accordion-card active" id="card-browser-cache">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">🔍 关键词搜索</h3>
+                    <h3 class="accordion-title">📲 浏览器离线缓存管理</h3>
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="searchKeyword" placeholder="输入关键词 (歌曲 / 歌手 / 歌单)" style="flex:1;">
-                        <select id="searchType">
-                            <option value="1">单曲</option>
-                            <option value="1000">歌单</option>
-                            <option value="10">专辑</option>
-                            <option value="100">歌手</option>
-                        </select>
-                        <input type="number" id="searchLimit" value="10" min="1" style="width:70px;">
-                        <button class="btn-primary" onclick="searchSongs()">搜索</button>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
+                        <div style="font-size:14px;"><strong>已缓存歌曲：</strong><span id="cache-stat-total">0</span> 首</div>
+                        <div style="font-size:14px;"><strong>估算大小：</strong><span id="cache-stat-size">0 B</span></div>
+                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="loadBrowserCacheList()">🔄 扫描/刷新缓存</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除所有缓存</button>
+                        </div>
                     </div>
-                    <ul class="data-list" id="search-results"></ul>
-                    <div id="search-pagination" class="pagination-container">
-                        <button id="search-prev" class="btn-primary" onclick="changeSearchPage(-1)" disabled>上一页</button>
-                        <span id="search-page-indicator" style="font-size:13px; color:#666;">第 1 页</span>
-                        <button id="search-next" class="btn-primary" onclick="changeSearchPage(1)">下一页</button>
+                    <ul class="data-list scrollable-list" id="browser-cache-list">
+                        <li style="padding:15px; text-align:center; color:#888;">点击“扫描/刷新缓存”查看已缓存在本浏览器的歌曲</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 📁 本地曲库与文件夹树形浏览器 -->
+            <div class="accordion-card" id="card-folder-explorer">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📁 本地曲库与文件夹树 (Tree View & 连播)</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <!-- 根目录切换 Tab -->
+                    <div id="folder-root-selector" class="folder-roots-bar"></div>
+
+                    <!-- 树形全局控制与搜索 Bar -->
+                    <div class="tree-control-bar">
+                        <div class="tree-search-wrap">
+                            <input type="text" id="folderTreeFilterInput" class="tree-filter-input" placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..." oninput="filterFolderTree(this.value)">
+                        </div>
+                        <div class="tree-global-actions">
+                            <button class="tree-tool-btn" onclick="expandAllTreeNodes()" title="展开所有子文件夹">📂 全部展开</button>
+                            <button class="tree-tool-btn" onclick="collapseAllTreeNodes()" title="折叠所有子文件夹">📁 全部折叠</button>
+                            <button class="tree-tool-btn" onclick="selectFolderRoot(currentActiveRoot?.path, currentActiveRoot?.name)" title="刷新整库">🔄 刷新</button>
+                        </div>
+                    </div>
+
+                    <!-- 树形内容容器 -->
+                    <div class="folder-tree-container" id="folder-explorer-list">
+                        <div style="padding:25px; text-align:center; color:var(--text-secondary);">正在加载本地曲库...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-card" id="card-download-history">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📥 本地下载历史与文件管理</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <!-- 统计数据 Bar -->
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
+                        <div style="font-size:14px;"><strong>已记录下载：</strong><span id="mgr-stat-total">0</span> 首</div>
+                        <div style="font-size:14px;"><strong>占用空间：</strong><span id="mgr-stat-size">0 B</span></div>
+                        <div style="font-size:14px; color:#ef4444;" id="mgr-stat-missing-box" onclick="showMissingFilesModal()" title="点击查看所有缺失文件清单"><strong>⚠️ 文件缺失：</strong><span id="mgr-stat-missing">0</span> 首 <span class="mgr-stat-missing-tag">查看 ↗</span></div>
+                        <div style="font-size:14px; color:#f59e0b;" id="mgr-stat-non-mp3-box" onclick="showNonMp3FilesModal()" title="点击查看所有非 MP3 格式音频记录"><strong>📁 非 MP3 格式：</strong><span id="mgr-stat-non-mp3">0</span> 首 <span class="mgr-stat-non-mp3-tag">查看 ↗</span></div>
+                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部曲库</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #06b6d4, #0891b2);" onclick="scanDiskFiles()">🔍 对齐磁盘</button>
+                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="cleanMissingHistory()">🧹 清理失效</button>
+                            <button class="btn-primary" onclick="loadDownloadHistory(1)">🔄 刷新</button>
+                        </div>
+                    </div>
+
+                    <!-- 搜索筛选 -->
+                    <div class="form-row mgr-search-row" style="margin-bottom:12px;">
+                        <input type="text" id="mgrSearchKeyword" placeholder="搜索已下载歌曲 / 歌手 / 专辑" style="flex:1;" onkeyup="if(event.key==='Enter') loadDownloadHistory(1);">
+                        <button class="btn-primary" onclick="loadDownloadHistory(1)">搜索</button>
+                    </div>
+
+                    <!-- 扫描诊断结果弹窗/框 -->
+                    <div id="scanResultBox" style="display:none; background:var(--scan-box-bg); border:1px solid var(--scan-box-border); padding:12px; border-radius:8px; margin-bottom:15px; font-size:13px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <h4 style="margin:0; color:#f59e0b; font-size:14px;">🔍 磁盘对齐扫描诊断结果</h4>
+                            <button class="btn-icon" style="background:transparent; border:none; color:var(--text-muted); font-size:14px; cursor:pointer; padding:2px 6px;" onclick="document.getElementById('scanResultBox').style.display='none';" title="关闭">✕</button>
+                        </div>
+                        <div id="scanResultContent"></div>
+                    </div>
+
+                    <!-- 历史列表 -->
+                    <ul class="data-list scrollable-list" id="download-history-list"></ul>
+
+                    <!-- 分页 -->
+                    <div id="history-pagination" class="pagination-container" style="margin-top:15px;">
+                        <button id="history-prev" class="btn-primary" onclick="changeHistoryPage(-1)" disabled>上一页</button>
+                        <span id="history-page-indicator" style="font-size:13px; color:var(--text-secondary);">第 1 页 / 共 1 页</span>
+                        <button id="history-next" class="btn-primary" onclick="changeHistoryPage(1)">下一页</button>
                     </div>
                 </div>
             </div>
         </div>
+        <!-- 彻底防止底部播放器遮挡 UI 的死占位 Spacer 块 (自适应移动端 Safe Area) -->
+        <div style="height: calc(140px + env(safe-area-inset-bottom, 0px)); width: 100%; pointer-events: none;"></div>
     </div>
 
     <!-- 右下角悬浮半透明下载监控卡片 (Floating Glassmorphism Widget) -->
@@ -164,39 +296,181 @@
         </div>
     </div>
 
-    <!-- 底部固定在线试听播放器 (Global Audio Player Bar) -->
+    <!-- 🎬 现代暗黑极简三段式音频播放器 (Modern Dark Audio Player Bar) -->
     <div class="bottom-audio-bar" id="globalAudioBar" style="display: none;">
+        <!-- 隐藏的原生 audio 标签引擎 -->
+        <audio id="globalAudioPlayer" style="display: none;"></audio>
+
         <div class="audio-bar-inner">
-            <div class="audio-track-info">
-                <img id="audioBarCover" src="" class="audio-cover" alt="封面">
+            <!-- 1. 左侧：封面与歌名信息 (点击调起全屏黑胶播放器) -->
+            <div class="audio-left-section" onclick="openLyricModal()" style="cursor: pointer;" title="点击展开全屏播放器与歌词">
+                <div class="vinyl-cover-wrapper">
+                    <img id="audioBarCover" src="/favicon.png" class="audio-cover vinyl-disk" alt="封面" onerror="this.src='/favicon.png'">
+                </div>
                 <div class="audio-text">
-                    <div id="audioBarTitle" class="audio-title">未在播放</div>
+                    <div class="audio-title-row">
+                        <div id="audioBarTitle" class="audio-title">未在播放</div>
+                        <span id="audioSourceBadge" class="audio-source-badge icon-only badge-server" style="display: none;" title="🖥️ 已存在服务器磁盘">🖥️</span>
+                        <button class="ctrl-btn like-btn" id="audioBarLikeBtn" onclick="toggleCurrentAudioLike()" title="喜欢 (点击添加红心)">
+                            <svg class="heart-icon outline" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </button>
+                    </div>
                     <div id="audioBarArtist" class="audio-artist">未知歌手</div>
                 </div>
             </div>
-            <div class="audio-controls">
-                <audio id="globalAudioPlayer" controls style="height: 36px; outline: none; width: 100%; max-width: 450px;"></audio>
+
+            <!-- 2. 中间：核心控制 + 自定义进度条 -->
+            <div class="audio-center-section">
+                <div class="audio-main-controls">
+                    <button class="ctrl-btn sub-btn" id="playModeBtn" onclick="togglePlayMode()" title="切换播放模式 (列表循环)">🔁</button>
+                    <button class="ctrl-btn sub-btn" onclick="playPrevTrack()" title="上一首">⏮</button>
+                    <button class="ctrl-btn play-main-btn" id="audioPlayPauseBtn" onclick="togglePlayPause()" title="播放 / 暂停">▶</button>
+                    <button class="ctrl-btn sub-btn" onclick="playNextTrack()" title="下一首">⏭</button>
+                </div>
+                <div class="audio-progress-container">
+                    <span id="audioCurrentTime" class="time-stamp">00:00</span>
+                    <div class="progress-bar-wrapper" id="progressBarWrapper" onclick="seekAudio(event)">
+                        <div class="progress-bar-bg"></div>
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                        <div class="progress-bar-handle" id="progressBarHandle"></div>
+                    </div>
+                    <span id="audioTotalTime" class="time-stamp">00:00</span>
+                </div>
             </div>
-            <div class="audio-bar-actions">
-                <button class="audio-action-btn" onclick="openLyricModal()" title="全屏歌词">🎤 歌词</button>
-                <button class="audio-action-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
-                <button class="audio-action-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
+
+            <!-- 3. 右侧：歌词、列表、音量、最小化与关闭 -->
+            <div class="audio-right-section">
+                <button class="ctrl-btn sub-btn" onclick="openLyricModal()" title="全屏沉浸歌词">🎤</button>
+                <button class="ctrl-btn sub-btn playlist-btn-badge" onclick="togglePlaylistDrawer()" title="当前播放列表">📜<span id="playlistCount" class="badge-count">0</span></button>
+                
+                <div class="volume-container">
+                    <span class="vol-icon" onclick="toggleMute()" id="volIcon">🔊</span>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.8" oninput="changeVolume(this.value)" class="volume-slider">
+                </div>
+
+                <div class="right-action-group">
+                    <button class="ctrl-btn mini-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
+                    <button class="ctrl-btn mini-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 🎤 全屏沉浸式 LRC 歌词 Modal -->
+    <!-- 📜 播放列表 Drawer 弹窗卡片 (Playlist Drawer) -->
+    <div class="playlist-drawer" id="playlistDrawer" style="display: none;">
+        <div class="playlist-drawer-header">
+            <span>📜 播放队列 (<span id="playlistDrawerCount">0</span> 首)</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button id="btnQueueTrim" class="drawer-header-btn" style="display:none; color:#38bdf8; border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.12);" onclick="applyQueueTrim()" title="将当前筛选结果保留为新播放列表">✂️ 仅保留筛选曲目</button>
+                <button class="drawer-header-btn" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️ 清空</button>
+                <button class="drawer-header-btn" onclick="togglePlaylistDrawer()" title="关闭">✕</button>
+            </div>
+        </div>
+
+        <!-- 🔍 队列内搜索与快速过滤栏 -->
+        <div class="playlist-drawer-filter-bar">
+            <div class="drawer-search-wrap">
+                <input type="text" id="drawerSearchInput" class="drawer-search-input" placeholder="🔍 筛选当前列表 (歌名 / 歌手)..." oninput="onDrawerFilterChange()">
+                <button id="drawerSearchClear" class="drawer-search-clear-btn" style="display:none;" onclick="clearDrawerSearch()">✕</button>
+            </div>
+            
+            <!-- 🏷️ 筛选 Tab 按钮组 -->
+            <div class="drawer-filter-tabs">
+                <button class="drawer-tab-btn active" id="tab-q-all" onclick="setDrawerFilter('all')">全部 <span id="qCountAll">0</span></button>
+                <button class="drawer-tab-btn" id="tab-q-ready" onclick="setDrawerFilter('ready')" title="服务器或本机浏览器已有的曲目">✨ 离线就绪 <span id="qCountReady">0</span></button>
+                <button class="drawer-tab-btn" id="tab-q-server" onclick="setDrawerFilter('server')" title="已在服务器磁盘">🖥️ 本地 <span id="qCountServer">0</span></button>
+                <button class="drawer-tab-btn" id="tab-q-browser" onclick="setDrawerFilter('browser')" title="已在当前浏览器缓存">📲 缓存 <span id="qCountBrowser">0</span></button>
+            </div>
+
+            <!-- ⚙️ 智能跳过与播放策略开关 -->
+            <div class="drawer-switches-row">
+                <label class="drawer-switch-label" title="播放遇到 30 秒试听曲目时，自动跳过并播放下一首完整歌曲">
+                    <input type="checkbox" id="chkAutoSkipTrial" onchange="toggleAutoSkipTrial(this.checked)">
+                    <span>🛡️ 自动跳过试听</span>
+                </label>
+                <label class="drawer-switch-label" title="仅播放服务器或本机已缓存的歌曲，完全无需消耗外网流量">
+                    <input type="checkbox" id="chkOfflineOnly" onchange="toggleOfflineOnlyMode(this.checked)">
+                    <span>📴 纯离线模式</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="playlist-drawer-body">
+            <ul class="playlist-drawer-list" id="playlistDrawerList"></ul>
+        </div>
+    </div>
+
+    <!-- 🎤 全屏沉浸式现代大黑胶音乐播放器 Modal -->
     <div class="lyric-modal-overlay" id="lyricModal" style="display: none;" onclick="closeLyricModal()">
         <div class="lyric-modal-card" onclick="event.stopPropagation();">
             <div class="lyric-modal-header">
-                <h3 class="lyric-modal-title" id="lyricModalTitle">🎵 歌曲歌词</h3>
-                <button class="lyric-close-btn" onclick="closeLyricModal()" title="退出全屏歌词">✕</button>
+                <button class="lyric-close-btn" onclick="closeLyricModal()" title="收起全屏播放器">🔽</button>
+                <h3 class="lyric-modal-title" id="lyricModalTitle">🎵 全屏沉浸播放</h3>
+                <button class="lyric-close-btn" onclick="closeLyricModal()" title="关闭全屏">✕</button>
             </div>
-            <div class="lyric-modal-body" id="lyricModalContent"></div>
+            
+            <div class="fullscreen-player-body">
+                <!-- 左侧 / 上方：大黑胶唱片与歌曲元信息 -->
+                <div class="fullscreen-cover-column">
+                    <div class="fullscreen-vinyl-container">
+                        <div class="fullscreen-vinyl-disk-wrapper">
+                            <img id="fullscreenVinylCover" src="/favicon.png" class="fullscreen-cover-img vinyl-disk" alt="大图封面" onerror="this.src='/favicon.png'">
+                        </div>
+                    </div>
+                    <div class="fullscreen-meta-info">
+                        <div class="fullscreen-title-wrap">
+                            <div id="fullscreenTitle" class="fullscreen-title">未在播放</div>
+                            <span id="fullscreenBadge" class="audio-source-badge icon-only badge-server" style="display: none;" title="🖥️ 已存在服务器磁盘">🖥️</span>
+                            <button class="ctrl-btn full-like-btn" id="fullscreenLikeBtn" onclick="toggleCurrentAudioLike()" title="喜欢 (点击添加红心)">
+                                <svg class="heart-icon outline" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            </button>
+                        </div>
+                        <div id="fullscreenArtist" class="fullscreen-artist">未知歌手</div>
+                    </div>
+                </div>
+
+                <!-- 右侧 / 下方：滚动歌词展示面板 -->
+                <div class="fullscreen-lyrics-column">
+                    <div class="lyric-modal-body" id="lyricModalContent"></div>
+                </div>
+            </div>
+
+            <!-- 底部：全屏沉浸播放控制条 -->
+            <div class="fullscreen-controls-bar">
+                <div class="audio-progress-container" style="width: 100%; max-width: 650px; margin: 0 auto 10px auto;">
+                    <span id="fullscreenCurrentTime" class="time-stamp">00:00</span>
+                    <div class="progress-bar-wrapper" onclick="seekAudio(event)">
+                        <div class="progress-bar-bg"></div>
+                        <div class="progress-bar-fill" id="fullscreenProgressBarFill"></div>
+                        <div class="progress-bar-handle" id="fullscreenProgressBarHandle"></div>
+                    </div>
+                    <span id="fullscreenTotalTime" class="time-stamp">00:00</span>
+                </div>
+                <div class="fullscreen-main-controls">
+                    <button class="ctrl-btn sub-btn" id="fullscreenPlayModeBtn" onclick="togglePlayMode()" title="切换播放模式">🔁</button>
+                    <button class="ctrl-btn sub-btn" onclick="playPrevTrack()" title="上一首">⏮</button>
+                    <button class="ctrl-btn play-main-btn" id="fullscreenPlayPauseBtn" onclick="togglePlayPause()" title="播放 / 暂停">▶</button>
+                    <button class="ctrl-btn sub-btn" onclick="playNextTrack()" title="下一首">⏭</button>
+                    <button class="ctrl-btn sub-btn" onclick="togglePlaylistDrawer()" title="播放列表">📜</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- JavaScript 全局控制引擎 -->
-    <script src="/js/app.js"></script>
+    <!-- 📱 微型低调 App 版本号 Footer -->
+    <div class="app-version-footer">网易云下载器 · PWA v4.3.6</div>
+
+    <!-- JavaScript 模块化控制引擎 -->
+    <script src="/js/ui-core.js?v=4.3.6"></script>
+    <script src="/js/player-core.js?v=4.3.6"></script>
+    <script src="/js/player-lyric.js?v=4.3.6"></script>
+    <script src="/js/player-drawer.js?v=4.3.6"></script>
+    <script src="/js/pwa-cache.js?v=4.3.6"></script>
+    <script src="/js/playlist.js?v=4.3.6"></script>
+    <script src="/js/album.js?v=4.3.6"></script>
+    <script src="/js/search.js?v=4.3.6"></script>
+    <script src="/js/download-mgr.js?v=4.3.6"></script>
+    <script src="/js/folder-explorer.js?v=4.3.6"></script>
+    <script src="/js/app.js?v=4.3.6"></script>
 </body>
 </html>

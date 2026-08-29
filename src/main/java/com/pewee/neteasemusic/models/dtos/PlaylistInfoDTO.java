@@ -28,5 +28,14 @@ public class PlaylistInfoDTO {
 	//track列表
 	private List<TrackDTO> tracks;
 	
+	//创建人 UID
+	private Long userId;
+
+	//是否已收藏
+	private Boolean subscribed;
+
+	//是否为当前登录用户自建
+	private Boolean isCreator;
+	
 	
 }

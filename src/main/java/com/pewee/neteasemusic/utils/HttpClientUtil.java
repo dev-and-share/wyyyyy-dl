@@ -97,8 +97,40 @@ public class HttpClientUtil {
         cm.setMaxTotal(500);
         //每个主机的最大并行链接数
         cm.setDefaultMaxPerRoute(50);
+        //空闲超过 2 秒即校验连接可用性
+        cm.setValidateAfterInactivity(2000);
+
+        // 配置 Socket 基础参数 (TCP_NODELAY, SO_KEEPALIVE)
+        org.apache.http.config.SocketConfig socketConfig = org.apache.http.config.SocketConfig.custom()
+                .setTcpNoDelay(true)
+                .setSoKeepAlive(true)
+                .setSoReuseAddress(true)
+                .setSoTimeout(100000)
+                .build();
+        cm.setDefaultSocketConfig(socketConfig);
 
         httpClientBuilder.setConnectionManager(cm);
+        // 自动清理过期与空闲连接
+        httpClientBuilder.evictExpiredConnections();
+        httpClientBuilder.evictIdleConnections(30, java.util.concurrent.TimeUnit.SECONDS);
+
+        // 自定义 Keep-Alive 策略 (默认 60 秒长连接保活)
+        httpClientBuilder.setKeepAliveStrategy((response, context) -> {
+            org.apache.http.HeaderElementIterator it = new org.apache.http.message.BasicHeaderElementIterator(
+                    response.headerIterator(org.apache.http.protocol.HTTP.CONN_KEEP_ALIVE));
+            while (it.hasNext()) {
+                org.apache.http.HeaderElement he = it.nextElement();
+                String param = he.getName();
+                String value = he.getValue();
+                if (value != null && param.equalsIgnoreCase("timeout")) {
+                    try {
+                        return Long.parseLong(value) * 1000;
+                    } catch (NumberFormatException ignore) {
+                    }
+                }
+            }
+            return 60 * 1000; // 默认 60 秒
+        });
 
         rc = RequestConfig.custom()
                 //建立连接的超时时间
@@ -128,7 +160,7 @@ public class HttpClientUtil {
     }
 
     public static String executeGet(String url, Map<String, String> headers, Map<String, String> paraMaps, Charset charset) throws IOException, URISyntaxException {
-        log.info("准备执行get,url:{},headers:{},paraMaps:{}", url, headers, paraMaps);
+        log.debug("准备执行get,url:{},headers:{},paraMaps:{}", url, headers, paraMaps);
         HttpGet get = null;
         try {
             get = encapsulateHttpGet(url, headers, paraMaps);
@@ -153,7 +185,7 @@ public class HttpClientUtil {
                 }
             }
         }
-        log.info("httpclient调用返回结果: {}",result);
+        log.debug("httpclient调用返回结果: {}", result);
         return result;
     }
 
@@ -200,7 +232,7 @@ public class HttpClientUtil {
     }
 
     public static String postForm(String url, Map<String, String> headers, Map<String, String> formMap) throws IOException {
-        log.info("准备执行postForm,url:{},headers:{},fromMap:{}", url, headers, formMap);
+        log.debug("准备执行postForm,url:{},headers:{},fromMap:{}", url, headers, formMap);
         HttpPost post = new HttpPost(url);
         post.setConfig(rc);
         if (headers != null) {
@@ -235,12 +267,12 @@ public class HttpClientUtil {
                 }
             }
         }
-        log.info("httpclient调用返回结果: {}",result);
+        log.debug("httpclient调用返回结果: {}", result);
         return result;
     }
     
     public static Pair<String,Header[]> postFormAndReturnHeaders(String url, Map<String, String> headers, Map<String, String> formMap) throws IOException {
-        log.info("准备执行postForm,url:{},headers:{},fromMap:{}", url, headers, formMap);
+        log.debug("准备执行postForm,url:{},headers:{},fromMap:{}", url, headers, formMap);
         HttpPost post = new HttpPost(url);
         post.setConfig(rc);
         if (headers != null) {
@@ -277,12 +309,12 @@ public class HttpClientUtil {
                 }
             }
         }
-        log.info("httpclient调用返回结果: {}",result);
+        log.debug("httpclient调用返回结果: {}", result);
         return  Pair.of(result, allHeaders);
     }
 
     public static String postJson(String url, Map<String, String> headers, String json) throws IOException {
-        log.info("准备执行postJson,url:{},headers:{},json:{}", url, headers, json);
+        log.debug("准备执行postJson,url:{},headers:{},json:{}", url, headers, json);
         HttpPost post = new HttpPost(url);
         post.setConfig(rc);
         if (headers != null) {
@@ -313,7 +345,7 @@ public class HttpClientUtil {
                 }
             }
         }
-        log.info("httpclient调用返回结果: {}",result);
+        log.debug("httpclient调用返回结果: {}", result);
         return result;
     }
 
