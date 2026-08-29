@@ -14,7 +14,8 @@ src/main/java/com/pewee/neteasemusic/
 │   ├── QrLoginController.java       # 扫码登录入口 (GET / → qr_login.html / home.html)
 │   ├── AnalysisController.java      # 核心解析 + 本地流拦截 (/Song_V1, /v2/stream, /Album, /Playlist, /Search, /MyPlaylist, /setCookie)
 │   ├── MusicDownloadControllerV2.java # 下载调度 (/v2/single|playlist|album|tasks|setRepeat...)
-│   └── DownloadHistoryController.java # 历史管理 (/v2/history/list|stats|scan|clean|importUntracked|scan_external|stream|raw|delete, /v2/reveal)
+│   ├── DownloadHistoryController.java # 历史管理 (/v2/history/list|stats|scan|clean|importUntracked|scan_external|missing|non_mp3|cleanNonMp3|cleanMissing|stream|raw|delete, /v2/reveal)
+│   └── FolderExplorerController.java  # 本地曲库与文件夹浏览 (/v2/folder/roots|browse|tracks)
 ├── service/
 │   ├── AnalysisService.java         # 业务编排：解析歌曲URL/专辑/歌单/搜索/批量详情
 │   ├── MusicDownloadService.java    # 实际下载逻辑 (异步线程池), 落盘后写 SQLite + saveRawJson
@@ -45,7 +46,8 @@ src/main/resources/
 │   ├── playlist.js                  # 歌单解析 + 批量下载
 │   ├── album.js                     # 专辑解析 + 批量下载
 │   ├── search.js                    # 搜索功能
-│   ├── download-mgr.js              # 下载历史管理面板（UI + API 交互）
+│   ├── download-mgr.js              # 下载历史管理面板（UI + API 交互 + 诊断弹窗）
+│   ├── folder-explorer.js           # 本地曲库与文件夹浏览器（目录树浏览 + 一键连播文件夹）
 │   └── app.js                       # 主入口调度器：DOM 加载挂载、全局事件与快捷键分发
 └── templates/
     ├── home.html                    # 主功能页（Thymeleaf）
@@ -86,9 +88,15 @@ src/test/java/com/pewee/neteasemusic/
 | GET | `/v2/history/raw?id=` | 读取原始 JSON 快照 |
 | DELETE | `/v2/history/delete?id=` | 删除历史记录 |
 | POST | `/v2/history/scan` | 扫描磁盘与数据库一致性 |
+| GET | `/v2/history/missing` | 查询所有物理文件缺失的记录清单 |
 | POST | `/v2/history/cleanMissing` | 清理已丢失文件的记录 |
+| GET | `/v2/history/non_mp3` | 查询所有非 .mp3 格式的记录清单 |
+| POST | `/v2/history/cleanNonMp3` | 批量清理所有非 .mp3 格式记录 |
 | POST | `/v2/history/importUntracked` | 一键导入未录入本地音频 |
 | POST | `/v2/history/scan_external` | 扫描并索引外部曲库 |
+| GET | `/v2/folder/roots` | 获取可浏览的本地根目录列表 |
+| GET | `/v2/folder/browse?path=` | 浏览指定目录下的子文件夹与 MP3 文件 |
+| GET | `/v2/folder/tracks?path=&recursive=` | 提取指定文件夹全部 MP3 音轨元数据 |
 | GET | `/v2/reveal?path=&taskId=` | 在 Finder/Explorer 中定位文件 |
 | GET | `/qr/status?unikey=` | 轮询二维码扫码状态 |
 | GET | `/login/status` | 查询当前登录状态 |
