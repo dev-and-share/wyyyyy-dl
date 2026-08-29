@@ -145,6 +145,11 @@ document.addEventListener("DOMContentLoaded", function() {
         initDraggablePlaylistDrawer();
     }
 
+    // 6.1 初始化本地曲库文件夹浏览器
+    if (typeof initFolderExplorer === 'function') {
+        initFolderExplorer();
+    }
+
     // 7. 注册 Service Worker (PWA 离线支持) 与申请永久存储配额
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
@@ -223,6 +228,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (fullTotTime) fullTotTime.textContent = formatted;
         };
 
+        let lastSaveProgressTs = 0;
         player.ontimeupdate = function() {
             if (!player.duration) return;
             const current = player.currentTime;
@@ -237,6 +243,15 @@ document.addEventListener("DOMContentLoaded", function() {
             if (fullFill) fullFill.style.width = percentage + "%";
             if (fullHandle) fullHandle.style.left = percentage + "%";
             if (fullCurTime) fullCurTime.textContent = curFormatted;
+
+            // 💾 定期 (每 2 秒) 自动持久化播放进度到 localStorage，保障刷新恢复
+            const now = Date.now();
+            if (now - lastSaveProgressTs > 2000) {
+                lastSaveProgressTs = now;
+                if (typeof savePlayerStateToStorage === 'function') {
+                    savePlayerStateToStorage();
+                }
+            }
 
             // 歌词同步滚动
             if (typeof parsedLrcList !== 'undefined' && parsedLrcList && parsedLrcList.length > 0) {

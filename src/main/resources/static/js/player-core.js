@@ -114,10 +114,41 @@ function prepareTrackInUI(track, seekTime) {
 
     if (bar) bar.style.display = "flex";
 
-    axios.post('/Song_V1', new URLSearchParams({ id: track.id, level: 'lossless', type: 'json' }))
+    // 1. 本地歌曲或已有流地址：直接加载并恢复进度，绝不发线上解析
+    const directUrl = track.resolvedUrl || (track.isLocal ? track.url : null);
+    if (directUrl && player) {
+        player.src = directUrl;
+        if (typeof updatePlayerBadges === 'function') {
+            updatePlayerBadges(directUrl);
+        }
+        if (typeof parseLrc === 'function') {
+            currentPlayingLyric = track.lyric || "";
+            parsedLrcList = parseLrc(currentPlayingLyric);
+        }
+        if (typeof renderPlaylistDrawer === 'function') {
+            renderPlaylistDrawer();
+        }
+        if (seekTime > 0) {
+            player.addEventListener('loadedmetadata', function onMeta() {
+                try {
+                    player.currentTime = seekTime;
+                } catch (e) {}
+                player.removeEventListener('loadedmetadata', onMeta);
+            });
+            if (player.duration) {
+                try { player.currentTime = seekTime; } catch (e) {}
+            }
+        }
+        return;
+    }
+
+    // 2. 线上未解析歌曲：异步请求解析
+    axios.post('/Song_V1', new URLSearchParams({ id: track.id, name: track.name || '', artist: track.artist || '', level: 'lossless', type: 'json' }))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url && player) {
+                track.resolvedUrl = song.url;
+                track.resolvedAt = Date.now();
                 player.src = song.url;
                 
                 if (typeof updatePlayerBadges === 'function') {
@@ -133,7 +164,13 @@ function prepareTrackInUI(track, seekTime) {
                 }
                 
                 if (seekTime > 0) {
-                    player.currentTime = seekTime;
+                    player.addEventListener('loadedmetadata', function onMeta() {
+                        try { player.currentTime = seekTime; } catch (e) {}
+                        player.removeEventListener('loadedmetadata', onMeta);
+                    });
+                    if (player.duration) {
+                        try { player.currentTime = seekTime; } catch (e) {}
+                    }
                 }
             }
         })
@@ -159,7 +196,13 @@ function preloadTrackStreamUrl(index) {
     if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) return;
     if (index < 0 || index >= globalPlaylistQueue.length) return;
     const track = globalPlaylistQueue[index];
-    if (!track || (track.resolvedUrl && Date.now() - (track.resolvedAt || 0) < 1200000)) return; // 20分钟内有效则跳过
+    if (!track) return;
+    if (track.isLocal && track.url) {
+        track.resolvedUrl = track.url;
+        track.resolvedAt = Date.now();
+        return;
+    }
+    if (track.resolvedUrl && Date.now() - (track.resolvedAt || 0) < 1200000) return; // 20分钟内有效则跳过
 
     axios.post('/Song_V1', new URLSearchParams({ id: track.id, name: track.name || '', artist: track.artist || '', level: 'lossless', type: 'json' }))
         .then(resp => {
@@ -191,6 +234,20 @@ function playTrackInQueue(index) {
     currentQueueIndex = index;
     const track = globalPlaylistQueue[index];
     savePlayerStateToStorage();
+
+    // 0. 本地音频优先直接播放（无需向网易云线上发网络解析）
+    if (track.isLocal && (track.url || track.resolvedUrl)) {
+        const localUrl = track.resolvedUrl || track.url;
+        track.resolvedUrl = localUrl;
+        track.resolvedAt = Date.now();
+        const cover = track.cover || '/favicon.png';
+        playAudioOnline(localUrl, track.name, track.artist, cover, track.album || track.lyric || '');
+        if (typeof renderPlaylistDrawer === 'function') {
+            renderPlaylistDrawer();
+        }
+        preloadNextSongAfter(currentQueueIndex);
+        return;
+    }
 
     // 📴 纯离线模式：只播放本地/浏览器缓存曲目，遇到线上未缓存歌曲自动寻找下一首
     if (offlineOnlyMode) {
@@ -328,10 +385,25 @@ function togglePlayPause() {
     const fullBtn = document.getElementById("fullscreenPlayPauseBtn");
     const fullCover = document.getElementById("fullscreenVinylCover");
 
-    if (!player || !player.src) return;
+    if (!player) return;
+
+    // 🛡️ 如果刷新后 player.src 尚未载入，自动触发当前队列项播放
+    if (!player.src || player.src === '' || player.src.endsWith('/')) {
+        if (currentQueueIndex >= 0 && globalPlaylistQueue && globalPlaylistQueue.length > currentQueueIndex) {
+            playTrackInQueue(currentQueueIndex);
+            return;
+        }
+    }
+
+    if (!player.src) return;
 
     if (player.paused) {
-        player.play();
+        player.play().catch(e => {
+            console.warn("播放失败，尝试重新调度队列曲目:", e);
+            if (currentQueueIndex >= 0 && globalPlaylistQueue && globalPlaylistQueue.length > currentQueueIndex) {
+                playTrackInQueue(currentQueueIndex);
+            }
+        });
         if (btn) btn.innerHTML = "⏸";
         if (cover) cover.classList.add("playing");
         if (fullBtn) fullBtn.innerHTML = "⏸";
@@ -342,6 +414,7 @@ function togglePlayPause() {
         if (cover) cover.classList.remove("playing");
         if (fullBtn) fullBtn.innerHTML = "▶";
         if (fullCover) fullCover.classList.remove("playing");
+        savePlayerStateToStorage();
     }
 }
 

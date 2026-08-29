@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.0.0">
+    <link rel="stylesheet" href="/css/style.css?v=4.3.6">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -201,6 +201,35 @@
                 </div>
             </div>
 
+            <!-- 📁 本地曲库与文件夹树形浏览器 -->
+            <div class="accordion-card" id="card-folder-explorer">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📁 本地曲库与文件夹树 (Tree View & 连播)</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <!-- 根目录切换 Tab -->
+                    <div id="folder-root-selector" class="folder-roots-bar"></div>
+
+                    <!-- 树形全局控制与搜索 Bar -->
+                    <div class="tree-control-bar">
+                        <div class="tree-search-wrap">
+                            <input type="text" id="folderTreeFilterInput" class="tree-filter-input" placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..." oninput="filterFolderTree(this.value)">
+                        </div>
+                        <div class="tree-global-actions">
+                            <button class="tree-tool-btn" onclick="expandAllTreeNodes()" title="展开所有子文件夹">📂 全部展开</button>
+                            <button class="tree-tool-btn" onclick="collapseAllTreeNodes()" title="折叠所有子文件夹">📁 全部折叠</button>
+                            <button class="tree-tool-btn" onclick="selectFolderRoot(currentActiveRoot?.path, currentActiveRoot?.name)" title="刷新整库">🔄 刷新</button>
+                        </div>
+                    </div>
+
+                    <!-- 树形内容容器 -->
+                    <div class="folder-tree-container" id="folder-explorer-list">
+                        <div style="padding:25px; text-align:center; color:var(--text-secondary);">正在加载本地曲库...</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="accordion-card" id="card-download-history">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
                     <h3 class="accordion-title">📥 本地下载历史与文件管理</h3>
@@ -211,7 +240,8 @@
                     <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
                         <div style="font-size:14px;"><strong>已记录下载：</strong><span id="mgr-stat-total">0</span> 首</div>
                         <div style="font-size:14px;"><strong>占用空间：</strong><span id="mgr-stat-size">0 B</span></div>
-                        <div style="font-size:14px; color:#ef4444;" id="mgr-stat-missing-box"><strong>文件缺失：</strong><span id="mgr-stat-missing">0</span> 首</div>
+                        <div style="font-size:14px; color:#ef4444;" id="mgr-stat-missing-box" onclick="showMissingFilesModal()" title="点击查看所有缺失文件清单"><strong>⚠️ 文件缺失：</strong><span id="mgr-stat-missing">0</span> 首 <span class="mgr-stat-missing-tag">查看 ↗</span></div>
+                        <div style="font-size:14px; color:#f59e0b;" id="mgr-stat-non-mp3-box" onclick="showNonMp3FilesModal()" title="点击查看所有非 MP3 格式音频记录"><strong>📁 非 MP3 格式：</strong><span id="mgr-stat-non-mp3">0</span> 首 <span class="mgr-stat-non-mp3-tag">查看 ↗</span></div>
                         <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
                             <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部曲库</button>
                             <button class="btn-primary" style="background:linear-gradient(135deg, #06b6d4, #0891b2);" onclick="scanDiskFiles()">🔍 对齐磁盘</button>
@@ -428,18 +458,19 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v4.0.8</div>
+    <div class="app-version-footer">网易云下载器 · PWA v4.3.6</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/ui-core.js?v=4.0.8"></script>
-    <script src="/js/player-core.js?v=4.0.8"></script>
-    <script src="/js/player-lyric.js?v=4.0.8"></script>
-    <script src="/js/player-drawer.js?v=4.0.8"></script>
-    <script src="/js/pwa-cache.js?v=4.0.8"></script>
-    <script src="/js/playlist.js?v=4.0.8"></script>
-    <script src="/js/album.js?v=4.0.8"></script>
-    <script src="/js/search.js?v=4.0.8"></script>
-    <script src="/js/download-mgr.js?v=4.0.8"></script>
-    <script src="/js/app.js?v=4.0.8"></script>
+    <script src="/js/ui-core.js?v=4.3.6"></script>
+    <script src="/js/player-core.js?v=4.3.6"></script>
+    <script src="/js/player-lyric.js?v=4.3.6"></script>
+    <script src="/js/player-drawer.js?v=4.3.6"></script>
+    <script src="/js/pwa-cache.js?v=4.3.6"></script>
+    <script src="/js/playlist.js?v=4.3.6"></script>
+    <script src="/js/album.js?v=4.3.6"></script>
+    <script src="/js/search.js?v=4.3.6"></script>
+    <script src="/js/download-mgr.js?v=4.3.6"></script>
+    <script src="/js/folder-explorer.js?v=4.3.6"></script>
+    <script src="/js/app.js?v=4.3.6"></script>
 </body>
 </html>
