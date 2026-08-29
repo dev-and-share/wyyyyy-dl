@@ -91,7 +91,16 @@ function loadHistoryStats() {
                 
                 const missingBox = document.getElementById('mgr-stat-missing-box');
                 if (missingBox) {
-                    missingBox.style.display = (s.missingCount > 0) ? 'inline-block' : 'none';
+                    missingBox.style.display = (s.missingCount > 0) ? 'inline-flex' : 'none';
+                }
+
+                const nonMp3Elem = document.getElementById('mgr-stat-non-mp3');
+                if (nonMp3Elem) {
+                    nonMp3Elem.textContent = s.nonMp3Count || 0;
+                }
+                const nonMp3Box = document.getElementById('mgr-stat-non-mp3-box');
+                if (nonMp3Box) {
+                    nonMp3Box.style.display = (s.nonMp3Count > 0) ? 'inline-flex' : 'none';
                 }
             }
         })
@@ -551,3 +560,349 @@ async function estimateBrowserCacheSize() {
         document.getElementById('cache-stat-size').textContent = "当前浏览器不支持估算";
     }
 }
+
+/* ==========================================================================
+   ⚠️ 缺失文件明细弹窗与操作 (Missing Files Modal & Actions)
+   ========================================================================== */
+
+/**
+ * ⚠️ 点击顶部“文件缺失：N 首”徽章，弹出全量缺失文件明细管理弹窗
+ */
+async function showMissingFilesModal() {
+    showToast("正在获取物理缺失文件清单...", "info", 1500);
+    try {
+        const resp = await axios.get('/v2/history/missing');
+        if (resp.data.code !== '000000') {
+            showAlert('获取缺失文件列表失败：' + (resp.data.msg || resp.data.message), '查询失败', '❌');
+            return;
+        }
+
+        const missing = resp.data.data || [];
+        if (missing.length === 0) {
+            showToast("🎉 太棒了，当前没有任何物理文件缺失的记录！", "success", 3000);
+            loadHistoryStats();
+            return;
+        }
+
+        let listHtml = `<div class="missing-files-scroll-list" id="modalMissingList">`;
+        missing.forEach((item, index) => {
+            const rawPath = item.hostFilePath || item.filePath || '(空路径)';
+            const escapedPath = typeof escapeHtml === 'function' ? escapeHtml(rawPath) : rawPath;
+            const escapedSongName = typeof escapeHtml === 'function' ? escapeHtml(item.songName || '未知歌曲') : (item.songName || '未知歌曲');
+            const escapedArtist = typeof escapeHtml === 'function' ? escapeHtml(item.artist || '未知歌手') : (item.artist || '未知歌手');
+            const escapedAlbum = typeof escapeHtml === 'function' ? escapeHtml(item.album || '未知专辑') : (item.album || '未知专辑');
+
+            listHtml += `
+                <div class="missing-track-card" id="missing-card-${item.id}">
+                    <div class="missing-card-top">
+                        <div class="missing-song-title">
+                            <span style="color:#ef4444; font-weight:bold; margin-right:4px;">${index + 1}.</span> ${escapedSongName}
+                        </div>
+                        <button class="missing-del-btn" onclick="deleteMissingItemFromModal(${item.id}, this)">🗑 移除记录</button>
+                    </div>
+                    <div class="missing-meta-row">
+                        <span>🎤 歌手: <strong>${escapedArtist}</strong></span>
+                        ${item.album ? `<span>💿 专辑: ${escapedAlbum}</span>` : ''}
+                        <span style="color:var(--text-muted);">🆔 ID: ${item.id}</span>
+                    </div>
+                    <div class="missing-path-box" onclick="copyMissingPath('${rawPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', event)" title="点击复制路径到剪贴板">
+                        📂 原始记录路径: ${escapedPath}
+                    </div>
+                </div>
+            `;
+        });
+        listHtml += `</div>`;
+
+        const modalContent = `
+            <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; line-height:1.5;">
+                💡 以下 <strong style="color:#ef4444;" id="missingModalCount">${missing.length}</strong> 首歌曲在数据库中已登记，但本地磁盘物理文件已不存在（可能已被移除、重命名或转换格式）。
+            </div>
+            ${listHtml}
+        `;
+
+        // 弹出自定义 Modal
+        const backdrop = document.createElement('div');
+        backdrop.className = 'app-modal-backdrop';
+        backdrop.id = 'missingFilesModalBackdrop';
+
+        const card = document.createElement('div');
+        card.className = 'app-modal-card missing-files-modal-card';
+
+        card.innerHTML = `
+            <div class="app-modal-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span>⚠️</span>
+                    <span id="missingModalTitle">物理文件缺失记录明细 (<span id="missingModalTitleCount">${missing.length}</span> 首)</span>
+                </div>
+                <button class="app-modal-close-btn" id="missingModalCloseBtn">✕</button>
+            </div>
+            <div class="app-modal-body" style="padding-top:12px;">
+                ${modalContent}
+            </div>
+            <div class="app-modal-footer" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626); padding:6px 14px; font-size:13px;" onclick="cleanMissingFromModal()">🧹 一键清理全部失效记录</button>
+                <button class="app-modal-btn app-modal-btn-confirm" id="missingModalConfirmBtn">关闭</button>
+            </div>
+        `;
+
+        backdrop.appendChild(card);
+        document.body.appendChild(backdrop);
+
+        const closeModal = () => {
+            backdrop.style.opacity = '0';
+            card.style.transform = 'scale(0.95) translateY(10px)';
+            setTimeout(() => {
+                if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+            }, 150);
+        };
+
+        const closeBtn = card.querySelector('#missingModalCloseBtn');
+        const confirmBtn = card.querySelector('#missingModalConfirmBtn');
+        if (closeBtn) closeBtn.onclick = closeModal;
+        if (confirmBtn) confirmBtn.onclick = closeModal;
+
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+
+    } catch (err) {
+        showToast("查询缺失文件失败: " + err, "error");
+    }
+}
+
+function copyMissingPath(path, event) {
+    if (event) event.stopPropagation();
+    if (!path || path === '(空路径)') return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(path).then(() => {
+            showToast("📋 原始文件路径已成功复制到剪贴板！", "success", 2000);
+        }).catch(() => {
+            showToast("已选中路径", "info", 1500);
+        });
+    } else {
+        showToast("已选中路径", "info", 1500);
+    }
+}
+
+async function deleteMissingItemFromModal(id, btn) {
+    const ok = await showConfirm('确定要从数据库中移除此条失效记录吗？', '删除失效记录', { icon: '🗑️', danger: true, confirmText: '移除' });
+    if (!ok) return;
+
+    if (btn) btn.disabled = true;
+
+    try {
+        const resp = await axios.delete(`/v2/history/delete?id=${id}`);
+        if (resp.data.code === '000000') {
+            showToast('已移除该条失效记录', 'info', 2000);
+            const cardElem = document.getElementById(`missing-card-${id}`);
+            if (cardElem) {
+                cardElem.style.opacity = '0';
+                cardElem.style.transform = 'scale(0.9)';
+                cardElem.style.transition = 'all 0.2s ease';
+                setTimeout(() => {
+                    if (cardElem.parentNode) cardElem.parentNode.removeChild(cardElem);
+                    const remainingCards = document.querySelectorAll('.missing-track-card');
+                    const titleCount = document.getElementById('missingModalTitleCount');
+                    const modalCount = document.getElementById('missingModalCount');
+                    if (titleCount) titleCount.textContent = remainingCards.length;
+                    if (modalCount) modalCount.textContent = remainingCards.length;
+                    if (remainingCards.length === 0) {
+                        const backdrop = document.getElementById('missingFilesModalBackdrop');
+                        if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+                        showToast('🎉 所有缺失记录已全部处理完毕！', 'success', 3000);
+                    }
+                }, 200);
+            }
+            loadHistoryStats();
+            loadDownloadHistory(historyCurrentPage);
+        } else {
+            showToast('删除失败: ' + (resp.data.msg || resp.data.message), 'error');
+            if (btn) btn.disabled = false;
+        }
+    } catch (err) {
+        showToast('删除请求异常: ' + err, 'error');
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function cleanMissingFromModal() {
+    const backdrop = document.getElementById('missingFilesModalBackdrop');
+    if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    cleanMissingHistory();
+}
+
+/**
+ * 📁 点击顶部“非 MP3 格式：N 首”徽章，弹出全量非 MP3 格式音频明细弹窗
+ */
+async function showNonMp3FilesModal() {
+    showToast("正在获取非 MP3 格式音频清单...", "info", 1500);
+    try {
+        const resp = await axios.get('/v2/history/non_mp3');
+        if (resp.data.code !== '000000') {
+            showAlert('获取非 MP3 文件列表失败：' + (resp.data.msg || resp.data.message), '查询失败', '❌');
+            return;
+        }
+
+        const nonMp3 = resp.data.data || [];
+        if (nonMp3.length === 0) {
+            showToast("🎉 太棒了，当前数据库中全部为 MP3 格式音频！", "success", 3000);
+            loadHistoryStats();
+            return;
+        }
+
+        let listHtml = `<div class="missing-files-scroll-list" id="modalNonMp3List">`;
+        nonMp3.forEach((item, index) => {
+            const rawPath = item.hostFilePath || item.filePath || '(空路径)';
+            const escapedPath = typeof escapeHtml === 'function' ? escapeHtml(rawPath) : rawPath;
+            const escapedSongName = typeof escapeHtml === 'function' ? escapeHtml(item.songName || '未知歌曲') : (item.songName || '未知歌曲');
+            const escapedArtist = typeof escapeHtml === 'function' ? escapeHtml(item.artist || '未知歌手') : (item.artist || '未知歌手');
+            const escapedAlbum = typeof escapeHtml === 'function' ? escapeHtml(item.album || '未知专辑') : (item.album || '未知专辑');
+
+            // 提取文件扩展名标签
+            let ext = 'UNKNOWN';
+            if (rawPath && rawPath.includes('.')) {
+                ext = rawPath.split('.').pop().split('?')[0].toUpperCase();
+                if (ext.length > 6) ext = 'OTHER';
+            }
+
+            listHtml += `
+                <div class="non-mp3-track-card" id="non-mp3-card-${item.id}">
+                    <div class="missing-card-top">
+                        <div class="missing-song-title">
+                            <span style="color:#f59e0b; font-weight:bold; margin-right:4px;">${index + 1}.</span>
+                            <span class="non-mp3-ext-tag">[${ext}]</span> ${escapedSongName}
+                        </div>
+                        <button class="missing-del-btn" onclick="deleteNonMp3ItemFromModal(${item.id}, this)">🗑 移除记录</button>
+                    </div>
+                    <div class="missing-meta-row">
+                        <span>🎤 歌手: <strong>${escapedArtist}</strong></span>
+                        ${item.album ? `<span>💿 专辑: ${escapedAlbum}</span>` : ''}
+                        <span style="color:var(--text-muted);">🆔 ID: ${item.id}</span>
+                        ${item.fileSize ? `<span>📦 大小: ${formatBytes(item.fileSize)}</span>` : ''}
+                    </div>
+                    <div class="missing-path-box" onclick="copyMissingPath('${rawPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', event)" title="点击复制路径到剪贴板">
+                        📂 记录路径: ${escapedPath}
+                    </div>
+                </div>
+            `;
+        });
+        listHtml += `</div>`;
+
+        const modalContent = `
+            <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; line-height:1.5;">
+                💡 以下 <strong style="color:#f59e0b;" id="nonMp3ModalCount">${nonMp3.length}</strong> 首歌曲为非 MP3 格式（如 FLAC、M4A、WAV、AAC 等）。
+            </div>
+            ${listHtml}
+        `;
+
+        // 弹出自定义 Modal
+        const backdrop = document.createElement('div');
+        backdrop.className = 'app-modal-backdrop';
+        backdrop.id = 'nonMp3FilesModalBackdrop';
+
+        const card = document.createElement('div');
+        card.className = 'app-modal-card missing-files-modal-card';
+
+        card.innerHTML = `
+            <div class="app-modal-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span>📁</span>
+                    <span id="nonMp3ModalTitle">非 MP3 格式音频明细清单 (<span id="nonMp3ModalTitleCount">${nonMp3.length}</span> 首)</span>
+                </div>
+                <button class="app-modal-close-btn" id="nonMp3ModalCloseBtn">✕</button>
+            </div>
+            <div class="app-modal-body" style="padding-top:12px;">
+                ${modalContent}
+            </div>
+            <div class="app-modal-footer" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <button class="btn-primary" style="background:linear-gradient(135deg, #f59e0b, #d97706); padding:6px 14px; font-size:13px;" onclick="cleanNonMp3FromModal()">🧹 一键清理全部非 MP3 记录</button>
+                <button class="app-modal-btn app-modal-btn-confirm" id="nonMp3ModalConfirmBtn">关闭</button>
+            </div>
+        `;
+
+        backdrop.appendChild(card);
+        document.body.appendChild(backdrop);
+
+        const closeModal = () => {
+            backdrop.style.opacity = '0';
+            card.style.transform = 'scale(0.95) translateY(10px)';
+            setTimeout(() => {
+                if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+            }, 150);
+        };
+
+        const closeBtn = card.querySelector('#nonMp3ModalCloseBtn');
+        const confirmBtn = card.querySelector('#nonMp3ModalConfirmBtn');
+        if (closeBtn) closeBtn.onclick = closeModal;
+        if (confirmBtn) confirmBtn.onclick = closeModal;
+
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+
+    } catch (err) {
+        showToast("查询非 MP3 文件失败: " + err, "error");
+    }
+}
+
+async function deleteNonMp3ItemFromModal(id, btn) {
+    const ok = await showConfirm('确定要从数据库中移除此条非 MP3 记录吗？', '删除记录', { icon: '🗑️', danger: true, confirmText: '移除' });
+    if (!ok) return;
+
+    if (btn) btn.disabled = true;
+
+    try {
+        const resp = await axios.delete(`/v2/history/delete?id=${id}`);
+        if (resp.data.code === '000000') {
+            showToast('已移除该条记录', 'info', 2000);
+            const cardElem = document.getElementById(`non-mp3-card-${id}`);
+            if (cardElem) {
+                cardElem.style.opacity = '0';
+                cardElem.style.transform = 'scale(0.9)';
+                cardElem.style.transition = 'all 0.2s ease';
+                setTimeout(() => {
+                    if (cardElem.parentNode) cardElem.parentNode.removeChild(cardElem);
+                    const remainingCards = document.querySelectorAll('.non-mp3-track-card');
+                    const titleCount = document.getElementById('nonMp3ModalTitleCount');
+                    const modalCount = document.getElementById('nonMp3ModalCount');
+                    if (titleCount) titleCount.textContent = remainingCards.length;
+                    if (modalCount) modalCount.textContent = remainingCards.length;
+                    if (remainingCards.length === 0) {
+                        const backdrop = document.getElementById('nonMp3FilesModalBackdrop');
+                        if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+                        showToast('🎉 所有非 MP3 记录已全部清理完毕！', 'success', 3000);
+                    }
+                }, 200);
+            }
+            loadHistoryStats();
+            loadDownloadHistory(historyCurrentPage);
+        } else {
+            showToast('删除失败: ' + (resp.data.msg || resp.data.message), 'error');
+            if (btn) btn.disabled = false;
+        }
+    } catch (err) {
+        showToast('删除请求异常: ' + err, 'error');
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function cleanNonMp3FromModal() {
+    const ok = await showConfirm('确定要从数据库中一键清理所有非 MP3 格式的历史记录吗？', '清理非 MP3 记录', { icon: '🧹', danger: true, confirmText: '立即清理' });
+    if (!ok) return;
+
+    try {
+        const resp = await axios.post('/v2/history/cleanNonMp3');
+        if (resp.data.code === '000000') {
+            showToast(`✅ 成功清理 ${resp.data.data} 条非 MP3 格式记录！`, 'success', 3500);
+            const backdrop = document.getElementById('nonMp3FilesModalBackdrop');
+            if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+            loadHistoryStats();
+            loadDownloadHistory(1);
+        } else {
+            showToast('清理失败: ' + (resp.data.msg || resp.data.message), 'error');
+        }
+    } catch (err) {
+        showToast('清理请求失败: ' + err, 'error');
+    }
+}
+

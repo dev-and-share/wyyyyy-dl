@@ -2891,3 +2891,612 @@ ul.data-list li.history-item-card .card-sub-row {
     border-color: #6366f1;
 }
 
+/* ==========================================================================
+   ⚠️ 缺失文件明细弹窗 (Missing Files Modal) 样式
+   ========================================================================== */
+
+#mgr-stat-missing-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px dashed rgba(239, 68, 68, 0.35);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+#mgr-stat-missing-box:hover {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+}
+
+.mgr-stat-missing-tag {
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 1px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+#mgr-stat-missing-box:hover .mgr-stat-missing-tag {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.missing-files-modal-card {
+    width: 92% !important;
+    max-width: 680px !important;
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.missing-files-scroll-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    margin: 12px 0;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.missing-track-card {
+    background: var(--bg-card-hover, rgba(255, 255, 255, 0.04));
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-left: 4px solid #ef4444;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.missing-track-card:hover {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.45);
+}
+
+.missing-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.missing-song-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+    word-break: break-all;
+}
+
+.missing-meta-row {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.missing-path-box {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--tag-btn-bg, rgba(0, 0, 0, 0.25));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    padding: 4px 8px;
+    border-radius: 5px;
+    word-break: break-all;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.missing-path-box:hover {
+    color: var(--primary-color, #38bdf8);
+    border-color: var(--primary-color, #38bdf8);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+.missing-del-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.missing-del-btn:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+}
+
+/* ==========================================================================
+   📁 非 MP3 格式明细弹窗 (Non-MP3 Files Modal) 样式
+   ========================================================================== */
+
+#mgr-stat-non-mp3-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px dashed rgba(245, 158, 11, 0.4);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+#mgr-stat-non-mp3-box:hover {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: #f59e0b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+}
+
+.mgr-stat-non-mp3-tag {
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(245, 158, 11, 0.22);
+    color: #f59e0b;
+    padding: 1px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+#mgr-stat-non-mp3-box:hover .mgr-stat-non-mp3-tag {
+    background: #f59e0b;
+    color: #ffffff;
+}
+
+.non-mp3-ext-tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.non-mp3-track-card {
+    background: var(--bg-card-hover, rgba(255, 255, 255, 0.04));
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.non-mp3-track-card:hover {
+    background: rgba(245, 158, 11, 0.06);
+    border-color: rgba(245, 158, 11, 0.45);
+}
+
+/* ==========================================================================
+   📁 本地曲库与文件夹树形组件 (Folder Tree View) 样式
+   ========================================================================== */
+
+.folder-roots-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.folder-root-tab {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    background: var(--tag-btn-bg, rgba(255, 255, 255, 0.05));
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.folder-root-tab:hover {
+    background: var(--bg-card-hover, rgba(255, 255, 255, 0.1));
+    color: var(--text-main);
+}
+
+.folder-root-tab.active {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+/* 顶部搜索与全局操作栏 */
+.tree-control-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--stat-bar-bg);
+    border: 1px solid var(--border-subtle);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.tree-search-wrap {
+    flex: 1;
+    min-width: 200px;
+}
+
+.tree-filter-input {
+    width: 100%;
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg, rgba(0, 0, 0, 0.2));
+    color: var(--text-main);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.tree-filter-input:focus {
+    border-color: var(--primary-color, #38bdf8);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.tree-global-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tree-tool-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    background: var(--tag-btn-bg, rgba(255, 255, 255, 0.06));
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tree-tool-btn:hover {
+    background: var(--bg-card-hover, rgba(255, 255, 255, 0.12));
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+
+/* 树形容器 */
+.folder-tree-container {
+    max-height: 560px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--bg-card, rgba(0, 0, 0, 0.18));
+    padding: 8px 4px;
+}
+
+/* 树节点行通用样式 (行间距舒适、过渡平滑) */
+.tree-node-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.tree-node-row {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 7px 12px !important;
+    margin: 3px 0 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: 6px !important;
+    border: 1px solid transparent;
+}
+
+/* 鼠标 Mouse On 高亮动效 */
+.tree-node-row:hover {
+    background: rgba(56, 189, 248, 0.08) !important;
+    border-color: rgba(56, 189, 248, 0.2) !important;
+    box-shadow: inset 3px 0 0 #38bdf8, 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+    transform: translateX(1px);
+}
+
+.tree-node-root {
+    background: rgba(16, 185, 129, 0.08) !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+    border-radius: 6px;
+    margin-bottom: 8px !important;
+    padding: 8px 14px !important;
+}
+
+.tree-node-root:hover {
+    background: rgba(16, 185, 129, 0.15) !important;
+    box-shadow: inset 3px 0 0 #10b981, 0 2px 10px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* 单行强制横向弹性布局 */
+.tree-row-content {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    gap: 12px !important;
+    min-height: 32px;
+}
+
+/* 左侧标题与图标内容区 (文件名最醒目，(含xx首)略小) */
+.tree-left-section {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+/* 展开 / 折叠指示器 */
+.tree-expander {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.tree-expander:hover {
+    color: var(--primary-color, #38bdf8);
+    transform: scale(1.15);
+}
+
+.tree-expander.expanded {
+    color: var(--text-secondary);
+}
+
+.tree-file-indent {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.tree-icon {
+    font-size: 17px;
+    flex-shrink: 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+.tree-file-icon {
+    font-size: 15px;
+    opacity: 0.9;
+}
+
+/* 文件名 / 文件夹名：最醒目 */
+.tree-node-name {
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
+    color: #f8fafc !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    letter-spacing: 0.2px;
+}
+
+.tree-dir-name {
+    color: #f8fafc !important;
+}
+
+.tree-song-name {
+    font-weight: 600 !important;
+    color: #e2e8f0 !important;
+}
+
+.tree-root-name {
+    font-size: 15px !important;
+    color: #ffffff !important;
+}
+
+/* (含 xx 首) 徽章标签：文件略小、精致 */
+.tree-badge-count {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    background: rgba(16, 185, 129, 0.18) !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    padding: 2px 8px !important;
+    border-radius: 12px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    margin-left: 2px !important;
+}
+
+/* 歌曲元数据 */
+.tree-song-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 4px;
+}
+
+.tree-meta-artist {
+    color: #94a3b8;
+}
+
+.tree-meta-album {
+    color: var(--text-muted);
+    font-size: 11.5px;
+}
+
+.tree-meta-size {
+    color: var(--text-muted);
+    font-size: 11px;
+    opacity: 0.85;
+}
+
+/* 右侧操作按钮组 (居于右边整齐排列，好看颜色区分) */
+.tree-actions-group {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+}
+
+/* 统一彩色胶囊按钮规格 */
+.tree-btn {
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1.4 !important;
+    white-space: nowrap !important;
+    user-select: none;
+}
+
+.tree-btn:hover {
+    transform: translateY(-1.5px) scale(1.03);
+    filter: brightness(1.12);
+}
+
+.tree-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* ▶ 连播 / 播放：翡翠绿渐变 */
+.tree-btn-play {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35) !important;
+}
+
+.tree-btn-play:hover {
+    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.55) !important;
+}
+
+/* ➕ 追加 / 队列：紫罗兰渐变 */
+.tree-btn-queue {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.35) !important;
+}
+
+.tree-btn-queue:hover {
+    box-shadow: 0 3px 10px rgba(139, 92, 246, 0.55) !important;
+}
+
+/* 📂 定位：科技天蓝渐变 */
+.tree-btn-locate {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.35) !important;
+}
+
+.tree-btn-locate:hover {
+    box-shadow: 0 3px 10px rgba(14, 165, 233, 0.55) !important;
+}
+
+/* 🔄 局部刷新：琥珀橙渐变 */
+.tree-btn-refresh {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35) !important;
+}
+
+.tree-btn-refresh:hover {
+    box-shadow: 0 3px 10px rgba(245, 158, 11, 0.55) !important;
+}
+
+/* 🚫 忽略目录：幽雅暗灰暗紫微带警示 */
+.tree-btn-ignore {
+    background: rgba(148, 163, 184, 0.18) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+}
+
+.tree-btn-ignore:hover {
+    background: #64748b !important;
+    color: #ffffff !important;
+    border-color: #64748b !important;
+    box-shadow: 0 2px 8px rgba(100, 116, 139, 0.4) !important;
+}
+
+/* 🗑️ 彻底删除：猩红/危险渐变 */
+.tree-btn-delete {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35) !important;
+}
+
+.tree-btn-delete:hover {
+    box-shadow: 0 3px 10px rgba(239, 68, 68, 0.55) !important;
+}
+
+/* 子层级缩进与层级线条 */
+.tree-children-container {
+    position: relative;
+    border-left: 1px dashed rgba(255, 255, 255, 0.09);
+    margin-left: 16px;
+    padding-left: 2px;
+}
+
+.tree-empty-leaf {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+
+
+
+
