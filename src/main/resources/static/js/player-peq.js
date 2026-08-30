@@ -609,13 +609,15 @@ function refreshPeqPresetSelectOptions(selectKey) {
 }
 
 /**
- * 🎛️ 打开 / 关闭 PEQ 均衡器弹窗抽屉
+ * 🎛️ 打开 / 关闭 PEQ 均衡器弹窗遮罩
  */
 function togglePeqDrawer() {
+    const overlay = document.getElementById("peqModalOverlay");
     const drawer = document.getElementById("peqDrawerModal");
-    if (!drawer) return;
+    if (!overlay || !drawer) return;
 
-    if (drawer.style.display === 'none' || !drawer.style.display) {
+    if (overlay.style.display === 'none' || !overlay.style.display) {
+        overlay.style.display = 'flex';
         drawer.style.display = 'flex';
         if (isPeqEnabled) {
             initPeqAudioContext();
@@ -627,13 +629,21 @@ function togglePeqDrawer() {
         const chk = document.getElementById("peqMasterSwitch");
         if (chk) chk.checked = isPeqEnabled;
     } else {
-        drawer.style.display = 'none';
+        closePeqDrawer();
     }
 }
 
 function closePeqDrawer() {
+    const overlay = document.getElementById("peqModalOverlay");
     const drawer = document.getElementById("peqDrawerModal");
+    if (overlay) overlay.style.display = 'none';
     if (drawer) drawer.style.display = 'none';
+}
+
+function handlePeqOverlayClick(e) {
+    if (e && e.target && e.target.id === "peqModalOverlay") {
+        closePeqDrawer();
+    }
 }
 
 // 📱 监听手机息屏与亮屏事件：智能维持均衡器状态与后台不间断播放
@@ -664,6 +674,7 @@ document.addEventListener("DOMContentLoaded", () => {
 window.initPeqAudioContext = initPeqAudioContext;
 window.togglePeqDrawer = togglePeqDrawer;
 window.closePeqDrawer = closePeqDrawer;
+window.handlePeqOverlayClick = handlePeqOverlayClick;
 window.togglePeqEnable = togglePeqEnable;
 window.applyPeqPreset = applyPeqPreset;
 window.saveCurrentAsCustomPreset = saveCurrentAsCustomPreset;
