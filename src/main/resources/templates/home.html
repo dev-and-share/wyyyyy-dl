@@ -42,6 +42,8 @@
         </div>
 
         <div class="app-top-actions">
+            <!-- 🧪 Svelte 5 新版一键切换（双版并存，不覆盖旧版） -->
+            <button class="theme-toggle-btn" style="background:rgba(139,92,246,0.15); border-color:rgba(139,92,246,0.3); color:#a78bfa;" onclick="switchToSvelte()" title="试用 Svelte 5 重构新版（可随时切回）">🧪 试用新版</button>
             <!-- 🌓 三态主题模式切换 (深色 / 浅色 / 自动) -->
             <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleThemeMode()" title="切换主题模式 (深色 / 浅色 / 跟随系统)">
                 <span id="themeIcon">🌙</span>
@@ -539,5 +541,11 @@
     <script src="/js/download-mgr.js?v=4.6.7"></script>
     <script src="/js/folder-explorer.js?v=4.6.7"></script>
     <script src="/js/app.js?v=4.6.7"></script>
+    <script>
+      // 双版切换：旧版 -> Svelte 5 新版（经 /api/ui-version 写 Cookie）
+      function switchToSvelte(){
+        fetch('/api/ui-version?v=svelte').then(()=>{ location.href='/?v=svelte'; }).catch(()=>{ location.href='/?v=svelte'; });
+      }
+    </script>
 </body>
 </html>
