@@ -298,6 +298,12 @@
                     setQueue([tr],0); setTimeout(()=>audioEl?.play(),0);
                   }}>▶️ 试听</button>
                   <button class="track-btn-slot slot-server-download" onclick={()=> api.downloadSingle(String(t.id)).then(()=>{showToast('已提交单曲下载','success'); fetchTasks();})}>📥 下载</button>
+                  <button class="track-btn-slot slot-browser-cache" onclick={()=> showToast('📲 缓存到浏览器：PWA 缓存开发中，先用下载','info')}>📲 缓存</button>
+                  <button class="track-btn-slot slot-add-playlist" onclick={async()=>{
+                    const pid = prompt('输入要添加到的自建歌单ID');
+                    if(!pid) return;
+                    try{ const j=await api.playlistAdd(pid, String(t.id)); if(j.code==='000000') showToast('已添加到歌单','success'); else showToast(j.msg,'warning'); }catch(e){ showToast('添加失败:'+e,'error'); }
+                  }}>➕ 歌单</button>
                 </div>
               </li>
             {/each}
