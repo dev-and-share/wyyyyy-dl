@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { api } from './lib/api';
   import { formatTime, formatBytes, getApiCache, setApiCache, deleteApiCache } from './lib/utils';
+  import FolderExplorer from './components/FolderExplorer.svelte';
 
   // ---------- 主题 ----------
   let themeMode: 'dark'|'light'|'auto' = $state((localStorage.getItem('theme_mode') as any) || 'dark');
@@ -61,7 +62,7 @@
   }
 
   // ---------- 播放器 ----------
-  type Track = {id:number|string, name:string, artist:string, cover:string, url?:string, lyric?:string};
+  type Track = {id:number|string, name:string, artist:string, cover:string, url?:string, lyric?:string, isLocal?:boolean};
   let queue: Track[] = $state([]);
   let qIndex = $state(0);
   let playing = $state(false);
@@ -79,15 +80,31 @@
   let curTrack = $derived(queue[qIndex] || null);
   let filteredQueue = $derived(queue.filter(t=> !drawerFilter || (t.name+t.artist).toLowerCase().includes(drawerFilter.toLowerCase())));
 
+  async function resolveUrl(track:Track): Promise<string>{
+    if(track.url && track.url.includes('/stream')) return track.url;
+    try{
+      const j=await api.songV1(String(track.id), 'lossless');
+      const url=j?.data?.url;
+      if(url) { track.url=url; return url; }
+    }catch{}
+    return track.url||'';
+  }
+  async function ensurePlay(){
+    if(!audioEl || !curTrack) return;
+    let url = curTrack.url || await resolveUrl(curTrack);
+    if(url && audioEl.src!==url) audioEl.src=url;
+    // 监听 src 变化自动播放
+    if(audioEl.src) audioEl.play().catch(()=> showToast('播放失败，尝试试听','warning'));
+  }
   function togglePlay(){
     if(!audioEl) return;
-    if(audioEl.paused) audioEl.play().catch(()=>{}); else audioEl.pause();
+    if(audioEl.paused) ensurePlay().then(()=> audioEl?.paused && audioEl?.play().catch(()=>{})); else audioEl.pause();
   }
-  function playAt(i:number){ qIndex=i; setTimeout(()=> audioEl?.play().catch(()=>{}),0); }
-  function next(){ if(queue.length===0) return; if(playMode==='shuffle') qIndex=Math.floor(Math.random()*queue.length); else qIndex=(qIndex+1)%queue.length; setTimeout(()=>audioEl?.play().catch(()=>{}),10); }
-  function prev(){ if(queue.length===0) return; qIndex=(qIndex-1+queue.length)%queue.length; setTimeout(()=>audioEl?.play().catch(()=>{}),10); }
+  async function playAt(i:number){ qIndex=i; await ensurePlay(); setTimeout(()=> audioEl?.play().catch(()=>{}),10); }
+  async function next(){ if(queue.length===0) return; if(playMode==='shuffle') qIndex=Math.floor(Math.random()*queue.length); else qIndex=(qIndex+1)%queue.length; await ensurePlay(); setTimeout(()=>audioEl?.play().catch(()=>{}),10); }
+  async function prev(){ if(queue.length===0) return; qIndex=(qIndex-1+queue.length)%queue.length; await ensurePlay(); setTimeout(()=>audioEl?.play().catch(()=>{}),10); }
   function seek(e:MouseEvent){ if(!audioEl||!duration) return; const rect=(e.currentTarget as HTMLElement).getBoundingClientRect(); const p=(e.clientX-rect.left)/rect.width; audioEl.currentTime=p*duration; }
-  function setQueue(tracks:Track[], idx=0){ queue=tracks; qIndex=idx; }
+  function setQueue(tracks:Track[], idx=0){ queue=tracks; qIndex=idx; setTimeout(()=>ensurePlay(),50); }
 
   // ---------- 歌单 ----------
   let myPlaylists:any[] = $state([]);
@@ -123,12 +140,14 @@
       const pl=j?.data?.playlist;
       if(!pl?.tracks?.length){ if(!cached) showToast('未找到歌单','warning'); return; }
       setApiCache(key, j.data); renderPlaylist(pl);
+      // 手风琴：收起我的歌单，展开歌单详情
+      acc.my=false; acc.detail=true; acc.song=false;
     }catch(e){ showToast('获取歌单失败: '+e,'error'); }
   }
   function renderPlaylist(pl:any){
     playlist=pl; allTracks=pl.tracks||[]; curPage=1;
   }
-  function jumpToPlaylist(id:string){ playlistId=id; loadPlaylistDetail(); switchTab('playlist'); acc.detail=true; }
+  function jumpToPlaylist(id:string){ playlistId=id; loadPlaylistDetail(); switchTab('playlist'); }
 
   // ---------- 搜索 ----------
   let kw=$state(''), sType=$state('1'), sLimit=$state('10');
@@ -138,8 +157,9 @@
     try{
       const j=await api.search(kw, sType, sLimit);
       if(j?.code && j.code!=='000000'){ showToast(j.msg || '搜索失败，请先登录','warning'); return; }
-      const data=j?.data||{};
-      sResults = data.songs||data.albums||data.playlists||data.artists||data.result||[];
+      const d=j?.data;
+      if(Array.isArray(d)) sResults=d;
+      else sResults = (d as any)?.songs||(d as any)?.albums||(d as any)?.playlists||(d as any)?.artists||(d as any)?.result||[];
       if(sResults.length===0) showToast('无结果','info');
     }catch(e){ showToast('搜索失败: '+e,'error'); }
   }
@@ -160,15 +180,17 @@
   async function clearTasks(){ await api.tasksClear(); tasks=[]; showToast('已清空','info'); }
 
   // ---------- 历史 ----------
-  let histKw=$state(''), histPage=$state(1), histList:any[]=$state([]), histStats:any=$state(null);
+  let histKw=$state(''), histPage=$state(1), histList:any[]=$state([]), histStats:any=$state(null), histTotal=$state(0);
   async function loadHistory(p=1){
     histPage=p;
     try{
       const j=await api.historyList(histKw, p);
-      histList=j?.data?.records||j?.data||[];
+      histList=j?.data?.list||[];
+      histTotal=j?.data?.total||0;
       const s=await api.historyStats(); histStats=s?.data||null;
-    }catch{}
+    }catch(e){ showToast('加载历史失败:'+e,'error'); }
   }
+  let histTotalPages=$derived(Math.max(1, Math.ceil(histTotal/10)));
 
   // ---------- 文件夹 ----------
   let roots:any[]=$state([]), curRoot:any=$state(null), tree:any[]=$state([]);
@@ -243,14 +265,21 @@
           </div>
         </div>
         <ul class="data-list scrollable-list">
-          {#each myPlaylists.filter(p=> playlistFilter==='all'|| (playlistFilter==='created'? !p.subscribed : !!p.subscribed)) as pl}
+          {#each myPlaylists.filter(p=> playlistFilter==='all'|| (playlistFilter==='created'? !p.subscribed : !!p.subscribed)) as pl, idx}
             <li>
-              <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                <span class="status-badge" style="margin-right:6px; font-size:11px;">{pl.subscribed?'收藏':'创建'}</span>
-                <strong class="clickable-track-title" onclick={()=>jumpToPlaylist(String(pl.id))}>{pl.name}</strong>
-                <span style="color:var(--text-muted); font-size:11px; margin-left:4px;">({pl.trackCount||0}首)</span>
+              <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+                <span class="status-badge" style="background:{pl.subscribed?'rgba(59,130,246,0.15)':'rgba(34,197,94,0.15)'}; color:{pl.subscribed?'#60a5fa':'#4ade80'}; border:1px solid {pl.subscribed?'rgba(59,130,246,0.25)':'rgba(34,197,94,0.25)'}; font-weight:600; padding:2px 6px; border-radius:6px; font-size:11px;">{pl.subscribed?'收藏':'创建'}</span>
+                <strong class="clickable-track-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" onclick={()=>jumpToPlaylist(String(pl.id))}>{pl.name}</strong>
+                <span style="color:var(--text-muted); font-size:11px; margin-left:2px; flex-shrink:0;">({pl.trackCount||0}首)</span>
               </div>
-              <button class="jump-link-btn" onclick={()=>jumpToPlaylist(String(pl.id))}>👉 查看详情</button>
+              <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+                {#if pl.subscribed}
+                  <button class="jump-link-btn" style="background:rgba(239,68,68,0.1); color:#f87171; border-color:rgba(239,68,68,0.25); font-size:11px;" onclick={(e)=>{e.stopPropagation(); if(confirm('取消收藏 '+pl.name+'?')) api.playlistSubscribe(String(pl.id), false).then(j=>{ if(j.code==='000000'){ showToast('已取消收藏','success'); loadMyPlaylists(); } else showToast(j.msg,'error'); });}}>💔 取消收藏</button>
+                {:else if idx>0}
+                  <button class="jump-link-btn" style="background:rgba(239,68,68,0.08); color:#f87171; border-color:rgba(239,68,68,0.2); font-size:11px;" onclick={(e)=>{e.stopPropagation(); if(confirm('删除 '+pl.name+'?')) api.playlistDelete(String(pl.id)).then(j=>{ if(j.code==='000000'){ showToast('已删除','success'); loadMyPlaylists(); } else showToast(j.msg,'error'); });}}>🗑️ 删除</button>
+                {/if}
+                <button class="jump-link-btn" onclick={()=>jumpToPlaylist(String(pl.id))}>👉 查看详情</button>
+              </div>
             </li>
           {:else}
             <li style="justify-content:center; color:var(--text-muted); font-size:13px;">暂无歌单</li>
@@ -281,23 +310,27 @@
           <ul class="data-list scrollable-list">
             {#each paged as t, i}
               {@const idx=(curPage-1)*pageSize+i+1}
+              {@const isLocal = t.isLocal===true}
+              {@const artist = t.ar?.map((a:any)=>a.name).join('/') || t.artists || ''}
               <li>
-                <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px;">
+                <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
                   <strong class="clickable-track-title" onclick={()=>{
-                    const tr={id:t.id, name:t.name, artist:t.ar?.map((a:any)=>a.name).join('/')||t.artists||'', cover:t.al?.picUrl||'/favicon.png'};
+                    const tr={id:t.id, name:t.name, artist, cover:t.al?.picUrl||'/favicon.png'};
                     const q=[tr, ...queue]; setQueue(q,0);
-                  }}>{idx}. {t.name}</strong>
-                  <span style="color:var(--text-muted); font-size:12px;">{t.ar?.map((a:any)=>a.name).join('/') || t.artists || ''}</span>
+                  }}>{idx}. {t.name}{artist ? ' - ' + artist : ''}</strong>
+                  {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 已在服务器" style="margin-left:6px;">🖥️</span>{/if}
                   <button class="track-like-btn" class:active={likedSet.has(Number(t.id))} onclick={()=>toggleLike(Number(t.id), t.name)} title="红心">
                     {#if likedSet.has(Number(t.id))}❤️{:else}🤍{/if}
                   </button>
                 </div>
                 <div class="track-action-group">
-                  <button class="track-btn-slot slot-play-preview" onclick={()=>{
-                    const tr={id:t.id, name:t.name, artist:t.ar?.map((a:any)=>a.name).join('/')||'', cover:t.al?.picUrl||'/favicon.png'};
+                  <button class={isLocal ? 'track-btn-slot slot-play-ready' : 'track-btn-slot slot-play-preview'} title={isLocal ? '本地无损秒播' : '在线试听'} onclick={()=>{
+                    const tr={id:t.id, name:t.name, artist, cover:t.al?.picUrl||'/favicon.png'};
                     setQueue([tr],0); setTimeout(()=>audioEl?.play(),0);
-                  }}>▶️ 试听</button>
-                  <button class="track-btn-slot slot-server-download" onclick={()=> api.downloadSingle(String(t.id)).then(()=>{showToast('已提交单曲下载','success'); fetchTasks();})}>📥 下载</button>
+                  }}>{isLocal ? '▶️ 播放' : '▶️ 试听'}</button>
+                  <button class={isLocal ? 'track-btn-slot slot-server-locate' : 'track-btn-slot slot-server-download'} title={isLocal ? '定位物理文件' : '下载到电脑'} onclick={()=>{
+                    if(isLocal){ showToast('📂 已在服务器，定位功能开发中','info'); } else { api.downloadSingle(String(t.id)).then(()=>{showToast('已提交单曲下载','success'); fetchTasks();}); }
+                  }}>{isLocal ? '📂 定位' : '📥 下载'}</button>
                   <button class="track-btn-slot slot-browser-cache" onclick={()=> showToast('📲 缓存到浏览器：PWA 缓存开发中，先用下载','info')}>📲 缓存</button>
                   <button class="track-btn-slot slot-add-playlist" onclick={async()=>{
                     const pid = prompt('输入要添加到的自建歌单ID');
@@ -378,60 +411,58 @@
     </div>
   {:else}
     <div class="accordion-card" class:active={acc.folder}>
-      <div class="accordion-header" onclick={()=>toggleAcc('folder')}><h3 class="accordion-title">📁 1. 本地曲库与文件夹树</h3><span class="accordion-icon">▼</span></div>
+      <div class="accordion-header" onclick={()=>toggleAcc('folder')}><h3 class="accordion-title">📁 1. 本地曲库与文件夹树连播</h3><span class="accordion-icon">▼</span></div>
       <div class="accordion-body">
-        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-          {#each roots as r}
-            <button class="btn-primary" style="padding:6px 10px; font-size:12px; background: curRoot?.path===r.path ? '#2563eb' : '#334155';" onclick={()=>{curRoot=r; loadBrowse(r.path);}}>{r.name}</button>
-          {:else}
-            <span style="color:var(--text-muted); font-size:12px;">无本地曲库</span>
-          {/each}
-        </div>
-        <div class="scrollable-list" style="border:1px solid var(--border-subtle); border-radius:8px; padding:6px;">
-          {#each tree as node}
-            <div style="padding:6px 8px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:13px;">📁 {node.name || node.path}</span>
-              <button class="jump-link-btn" onclick={()=>api.folderTracks(node.path,true).then((j:any)=> {
-                const tracks=j?.data||[];
-                if(tracks.length) setQueue(tracks.map((t:any)=>({id:t.id||t.path, name:t.name, artist:t.artist||'', cover:'/favicon.png'})),0);
-              })}>▶️ 播放此目录</button>
-            </div>
-          {:else}
-            <div style="padding:20px; text-align:center; color:var(--text-muted);">选择根目录查看</div>
-          {/each}
-        </div>
+        <FolderExplorer />
       </div>
     </div>
     <div class="accordion-card" class:active={acc.history}>
       <div class="accordion-header" onclick={()=>toggleAcc('history')}><h3 class="accordion-title">📥 2. 本地下载历史与文件管理</h3><span class="accordion-icon">▼</span></div>
       <div class="accordion-body">
-        <div style="display:flex; gap:8px; flex-wrap:wrap; background:var(--stat-bar-bg); padding:10px 12px; border-radius:8px; margin-bottom:8px; font-size:13px; align-items:center;">
-          <span>已记录 {histStats?.total ?? histList.length} 首</span>
-          <span>占用 {histStats?.totalSize ? formatBytesLocal(histStats.totalSize) : '-'}</span>
-          <span style="margin-left:auto; display:flex; gap:6px;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:8px; margin-bottom:10px; align-items:center; font-size:13px;">
+          <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
+          <span>占用空间：<strong>{histStats?.totalSize ? formatBytesLocal(histStats.totalSize) : '-'}</strong></span>
+          <span style="color:#ef4444; cursor:pointer;" onclick={()=> showToast('缺失 '+histStats?.missingCount+' 首','info')}>⚠️ 文件缺失：{histStats?.missingCount ?? 0} 首 <span style="font-size:10px; border:1px solid rgba(239,68,68,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span></span>
+          <span style="color:#f59e0b; cursor:pointer;" onclick={()=> showToast('非MP3 '+histStats?.nonMp3Count+' 首','info')}>📁 非 MP3 格式：{histStats?.nonMp3Count ?? 0} 首 <span style="font-size:10px; border:1px solid rgba(245,158,11,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span></span>
+          <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn-primary" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed); padding:6px 10px; font-size:11px;" onclick={()=> showToast('外部曲库扫描开发中','info')}>📁 外部曲库</button>
+            <button class="btn-primary" style="background:linear-gradient(135deg,#06b6d4,#0891b2); padding:6px 10px; font-size:11px;" onclick={()=> showToast('对齐磁盘开发中','info')}>🔍 对齐磁盘</button>
+            <button class="btn-primary" style="background:linear-gradient(135deg,#ef4444,#dc2626); padding:6px 10px; font-size:11px;" onclick={()=> showToast('清理失效开发中','info')}>🧹 清理失效</button>
             <button class="btn-primary" style="padding:6px 10px; font-size:11px;" onclick={()=>loadHistory(1)}>🔄 刷新</button>
-            <button class="btn-primary" style="padding:6px 10px; font-size:11px; background:#6366f1;" onclick={()=>{
-              const p=prompt('搜索关键词'); if(p!==null){ histKw=p; loadHistory(1); }
-            }}>🔍 搜索</button>
-          </span>
+          </div>
+        </div>
+        <div class="form-row" style="display:flex; gap:6px; margin-bottom:8px;">
+          <input type="text" placeholder="🔍 搜索已下载歌曲 / 歌手 / 专辑 (按回车搜索)" style="flex:1;" bind:value={histKw} onkeydown={(e)=> e.key==='Enter' && loadHistory(1)} />
+          <button class="btn-primary sp-hide-btn" onclick={()=>loadHistory(1)}>搜索</button>
         </div>
         <ul class="data-list scrollable-list">
           {#each histList as h}
-            <li>
-              <div style="flex:1; overflow:hidden;">
-                <strong style="font-size:13px;">{h.title || h.name || h.fileName}</strong>
-                <div style="font-size:11px; color:var(--text-muted);">{h.artist || ''} | {h.album || ''}</div>
+            <li style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 12px;">
+              <div style="flex:1; min-width:0; overflow:hidden;">
+                <div style="font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{h.songName || h.title || h.name}</div>
+                <div style="font-size:12px; color:var(--text-secondary); display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <span>{h.artist || '未知歌手'}</span>
+                  <span style="color:var(--text-muted);">{h.fileSize ? formatBytesLocal(h.fileSize) : ''}</span>
+                  <span style="background:rgba(16,185,129,0.12); color:#4ade80; border:1px solid rgba(16,185,129,0.25); padding:1px 6px; border-radius:6px; font-size:11px;">{h.fileExists ? '正常' : '缺失'}</span>
+                </div>
               </div>
-              <button class="jump-link-btn" onclick={()=>copyText(h.filePath||'')}>📋 路径</button>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="tree-btn" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:5px 10px; border-radius:12px; font-size:11px; cursor:pointer;" onclick={()=>{
+                  const url=`/v2/history/stream?path=${encodeURIComponent(h.filePath||'')}`;
+                  setQueue([{id:h.songId||h.id, name:h.songName||'未知', artist:h.artist||'', cover:'/favicon.png', url}],0); setTimeout(()=>audioEl?.play().catch(()=>{}),100);
+                }}>▶ 播放</button>
+                <button class="tree-btn" style="background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.25); padding:5px 10px; border-radius:12px; font-size:11px; cursor:pointer;" onclick={()=> copyText(h.hostFilePath||h.filePath||'')}>📂 定位</button>
+                <button class="tree-btn" style="background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); padding:5px 10px; border-radius:12px; font-size:11px; cursor:pointer;" onclick={()=> {if(confirm('删除 '+ (h.songName||'' )+'?')) showToast('删除开发中','info');}}>🗑️ 删除</button>
+              </div>
             </li>
           {:else}
             <li style="justify-content:center; color:var(--text-muted);">暂无历史</li>
           {/each}
         </ul>
-        <div style="display:flex; justify-content:space-between; margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:8px;">
           <button class="btn-primary" disabled={histPage<=1} onclick={()=>loadHistory(histPage-1)}>上一页</button>
-          <span style="font-size:12px; color:var(--text-secondary);">第 {histPage} 页</span>
-          <button class="btn-primary" onclick={()=>loadHistory(histPage+1)}>下一页</button>
+          <span style="font-size:12px; color:var(--text-secondary);">第 {histPage} 页 / 共 {histTotalPages} 页 (共 {histTotal} 条)</span>
+          <button class="btn-primary" disabled={histPage>=histTotalPages} onclick={()=>loadHistory(histPage+1)}>下一页</button>
         </div>
       </div>
     </div>
@@ -476,9 +507,13 @@
         </div>
       </div>
       <div class="audio-right-section" style="display:flex; align-items:center; gap:6px;">
-        <button class="ctrl-btn sub-btn" onclick={()=>showLyric=!showLyric} title="歌词">🎤</button>
-        <button class="ctrl-btn sub-btn" onclick={()=>showDrawer=!showDrawer} title="队列">📜<span style="font-size:10px; margin-left:2px;">{queue.length}</span></button>
-        <input type="range" min="0" max="1" step="0.05" value={volume} oninput={(e)=>{ volume=parseFloat((e.target as HTMLInputElement).value); if(audioEl) audioEl.volume=volume; }} style="width:70px;" />
+        <button class="ctrl-btn sub-btn" onclick={()=>showLyric=!showLyric} title="全屏歌词">🎤</button>
+        <button class="ctrl-btn sub-btn playlist-btn-badge" onclick={()=>showDrawer=!showDrawer} title="当前播放列表">📜<span style="font-size:10px; margin-left:2px;">{queue.length}</span></button>
+        <div class="volume-container" style="display:flex; align-items:center; gap:4px;">
+          <span style="cursor:pointer;" onclick={()=>{ if(audioEl) audioEl.muted=!audioEl.muted; }}>{volume>0?'🔊':'🔇'}</span>
+          <input type="range" min="0" max="1" step="0.05" value={volume} oninput={(e)=>{ volume=parseFloat((e.target as HTMLInputElement).value); if(audioEl) audioEl.volume=volume; }} class="volume-slider" style="width:70px;" />
+        </div>
+        <button class="ctrl-btn sub-btn peq-btn-badge" onclick={()=>showPeq=!showPeq} title="5段参量均衡器">🎛️</button>
         <button class="ctrl-btn mini-btn" onclick={()=>{ queue=[]; showDrawer=false; }}>✕</button>
       </div>
     </div>
