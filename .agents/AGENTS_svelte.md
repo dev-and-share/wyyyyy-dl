@@ -36,7 +36,7 @@ templates/home.html:46  🧪 试用新版  ↔  App.svelte:222 ↩️ 旧版
 
 | 坑 | 解 |
 |---|---|
-| `8080` 被 OrbStack 占 | 本地 `8081` 绕过，`compose` 走 `18080:8080`，`--download.path=/tmp/music` 避 `/media` 权限 |
+| `8080` 复用 | 统一 `docker compose up -d --build` 直出 `8080`（OrbStack 转发），无需 `8081/18080` 绕路；本地 `bootRun` 亦 `--server.port=8080` |
 | `JDK25 + Lombok` `ExceptionInInitializerError` | `JAVA_HOME=jdk-21` |
 | `input` 白底 | `input` 补 `type="text"` 使 `input[type=text]` 命中 |
 | `my-playlist-filter-bar` 垂直堆 | 改 `my-playlist-filter-bar + playlist-quick-btn-group + quick-btn-item` 原类 + `grid 4等分` 移动端 |
