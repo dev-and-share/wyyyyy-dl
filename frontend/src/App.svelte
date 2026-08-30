@@ -3,6 +3,9 @@
   import { api } from './lib/api';
   import { formatTime, formatBytes, getApiCache, setApiCache, deleteApiCache } from './lib/utils';
   import FolderExplorer from './components/FolderExplorer.svelte';
+  import LyricModal from './components/LyricModal.svelte';
+  import PeqDrawer from './components/PeqDrawer.svelte';
+  import CreatePlaylistModal from './components/CreatePlaylistModal.svelte';
 
   // ---------- 主题 ----------
   let themeMode: 'dark'|'light'|'auto' = $state((localStorage.getItem('theme_mode') as any) || 'dark');
@@ -80,6 +83,7 @@
   let autoSkipTrial = $state(false);
   let offlineOnly = $state(false);
   let drawerPos = $state({x:0,y:0, dragging:false, startX:0, startY:0});
+  let showCreateModal = $state(false);
 
   let curTrack = $derived(queue[qIndex] || null);
   let filteredQueue = $derived(queue.filter(t=> !drawerFilter || (t.name+t.artist).toLowerCase().includes(drawerFilter.toLowerCase())));
@@ -228,16 +232,28 @@
   // ---------- 生命周期 ----------
   onMount(()=>{
     applyTheme(themeMode);
-    // hash 初始
     const h=location.hash.replace('#',''); if(h) tab=h as any;
     window.addEventListener('hashchange',()=>{ const hh=location.hash.replace('#',''); if(hh) tab=hh as any; });
+    // 监听曲库连播事件（来自 FolderExplorer）
+    window.addEventListener('svelte:playFolder', ((e:CustomEvent)=>{
+      const {tracks, name} = (e as CustomEvent).detail;
+      if(!tracks?.length){ showToast('该目录无可播文件','warning'); return; }
+      const q = tracks.map((t:any, idx:number)=> ({
+        id: t.songId||t.id||`local_${Date.now()}_${idx}`,
+        name: t.songName||t.name||'未知',
+        artist: t.artist||'未知',
+        cover: '/favicon.png',
+        url: t.relativePath ? `/v2/history/stream?path=${encodeURIComponent(t.relativePath)}` : (t.filePath ? `/v2/history/stream?path=${encodeURIComponent(t.filePath)}` : t.streamUrl||''),
+        isLocal: true
+      }));
+      setQueue(q, 0);
+      showToast(`已连播 ${name} 共 ${q.length} 首`,'success',3000);
+    }) as EventListener);
     api.getRepeat().then((j:any)=>{ if(j?.code==='000000') repeat=j.data===true; }).catch(()=>{});
     fetchTasks(); setInterval(fetchTasks, 3000);
     loadMyPlaylists(); loadRoots(); loadHistory(1);
-    // 初始化红心
     const c=getApiCache('liked_song_ids'); if(c?.data) likedSet=new Set(c.data.map((n:any)=>Number(n)));
     api.likeList().then((j:any)=>{ if(j?.code==='000000'&&Array.isArray(j.data)){ likedSet=new Set(j.data.map((n:any)=>Number(n))); setApiCache('liked_song_ids', j.data);} }).catch(()=>{});
-    // 从 localStorage 恢复队列
     try{ const q=JSON.parse(localStorage.getItem('svelte_queue')||'null'); if(q?.queue?.length){ queue=q.queue; qIndex=q.qIndex||0; } }catch{}
   });
   $effect(()=>{ try{ localStorage.setItem('svelte_queue', JSON.stringify({queue,qIndex})) }catch{} });
@@ -284,10 +300,7 @@
             <button class="btn-primary quick-btn-item btn-created" onclick={()=>loadMyPlaylists('created')}>📂 创建<span class="pc-only-text">的歌单</span></button>
             <button class="btn-primary quick-btn-item btn-subscribed" onclick={()=>loadMyPlaylists('subscribed')}>⭐ 收藏<span class="pc-only-text">的歌单</span></button>
             <button class="btn-primary quick-btn-item btn-all" onclick={()=>loadMyPlaylists('all')}>📋 全部</button>
-            <button class="btn-primary quick-btn-item btn-create" onclick={async()=>{
-              const name=prompt('新歌单名称'); if(!name) return;
-              const j=await api.playlistCreate(name,false); if(j.code==='000000'){ showToast('创建成功','success'); loadMyPlaylists('created'); } else showToast(j.msg,'error');
-            }}>➕ 新建<span class="pc-only-text">歌单</span></button>
+            <button class="btn-primary quick-btn-item btn-create" onclick={()=>showCreateModal=true}>➕ 新建<span class="pc-only-text">歌单</span></button>
           </div>
         </div>
         <ul class="data-list scrollable-list">
@@ -340,9 +353,8 @@
               {@const artist = t.ar?.map((a:any)=>a.name).join('/') || t.artists || ''}
               <li>
                 <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-                  <strong class="clickable-track-title" onclick={()=>{
-                    const tr={id:t.id, name:t.name, artist, cover:t.al?.picUrl||'/favicon.png'};
-                    const q=[tr, ...queue]; setQueue(q,0);
+                  <strong class="clickable-track-title" title="点击查看单曲详细信息" style="cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" onclick={()=>{
+                    songId=String(t.id); songLevel='lossless'; loadSong(); switchTab('playlist'); acc.my=false; acc.detail=false; acc.song=true;
                   }}>{idx}. {t.name}{artist ? ' - ' + artist : ''}</strong>
                   {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 已在服务器" style="margin-left:6px;">🖥️</span>{/if}
                   <button class="track-like-btn" class:active={likedSet.has(Number(t.id))} onclick={()=>toggleLike(Number(t.id), t.name)} title="红心">
@@ -658,14 +670,12 @@
   </div>
 {/if}
 
-<!-- 全屏歌词 (简化) -->
+<!-- 全屏黑胶歌词（对齐旧版） -->
 {#if showLyric && curTrack}
-  <div class="lyric-modal-overlay" style="display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:10001; align-items:center; justify-content:center; padding:16px;" onclick={()=>showLyric=false}>
-    <div class="lyric-modal-card" onclick={(e)=>e.stopPropagation()} style="background:rgba(15,23,42,0.96); border:1px solid rgba(255,255,255,0.12); border-radius:16px; width:100%; max-width:520px; max-height:80vh; overflow:auto; padding:16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="margin:0; color:#fff;">🎤 {curTrack.name}</h3><button class="btn-primary" style="padding:4px 8px; font-size:12px;" onclick={()=>showLyric=false}>✕ 关闭</button></div>
-      <pre style="white-space:pre-wrap; color:#cbd5e1; font-size:13px; line-height:1.6;">{curTrack.lyric || songInfo?.lyric || '暂无歌词'}</pre>
-    </div>
-  </div>
+  <LyricModal track={curTrack} currentTime={curTime} playing={playing} onClose={()=>showLyric=false} />
+{/if}
+{#if showPeq}
+  <PeqDrawer onClose={()=>showPeq=false} />
 {/if}
 
 <!-- 下载监控 -->
@@ -701,6 +711,9 @@
       </div>
     </div>
   </div>
+{/if}
+{#if showCreateModal}
+  <CreatePlaylistModal onClose={()=>showCreateModal=false} onSuccess={(id)=>{ showToast('创建成功','success'); loadMyPlaylists('created'); if(id){ playlistId=String(id); loadPlaylistDetail(); } }} />
 {/if}
 
 <style>

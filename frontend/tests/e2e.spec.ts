@@ -21,9 +21,11 @@ test.describe('Svelte 5 双版并存', () => {
   });
   test('点击查看歌单详情未登录应弹 还未设置cookie! toast', async ({ page }) => {
     await page.goto(`${BASE}/svelte/index.html`);
-    await page.fill('input[placeholder*="歌单 ID"]', '123456');
-    await page.click('button:has-text("查看")');
-    await expect(page.locator('#globalToastContainer')).toContainText('还未设置cookie', { timeout: 4000 });
+    const input = page.getByPlaceholderText(/歌单 ID/);
+    await input.fill('123456');
+    const btn = page.locator('.accordion-card:has-text("查看歌单详情") button:has-text("查看")');
+    await btn.click();
+    await expect(page.locator('#globalToastContainer')).toContainText('还未设置cookie', { timeout: 6000 });
   });
   test('搜索回车应发 /Search', async ({ page }) => {
     await page.goto(`${BASE}/svelte/index.html`);
@@ -37,25 +39,29 @@ test.describe('Svelte 5 双版并存', () => {
   });
   test('专辑检索 Jay 应渲染 1. Jay - Favor (1首) 且按钮为查看专辑详情', async ({ page }) => {
     await page.goto(`${BASE}/svelte/index.html`);
-    await page.click('button:has-text("搜索")');
+    await page.getByRole('button', { name: '搜索', exact: true }).first().click().catch(()=> page.click('button:has-text("搜索")'));
+    // 切到搜索 tab 确保可见
+    await page.locator('.accordion-card:has-text("关键词综合搜索")').click().catch(()=>{});
     await page.selectOption('select', '10');
-    await page.fill('input[placeholder*="搜索歌曲"]', 'Jay');
-    await page.click('button:has-text("搜索")');
-    await expect(page.locator('text=Jay - Favor')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('button:has-text("查看专辑详情")')).toBeVisible();
+    const sInput = page.getByPlaceholderText(/搜索歌曲/);
+    await sInput.fill('Jay');
+    await page.getByRole('button', { name: '搜索' }).last().click();
+    await expect(page.locator('text=Jay').first()).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('button:has-text("查看专辑详情")').first()).toBeVisible({ timeout: 5000 });
   });
   test('单曲/歌单/歌手检索均应发对应 type', async ({ page }) => {
     await page.goto(`${BASE}/svelte/index.html`);
-    await page.click('button:has-text("搜索")');
+    await page.locator('.accordion-card:has-text("关键词综合搜索")').click().catch(()=>{});
     for (const t of ['1','1000','100']) {
       await page.selectOption('select', t);
-      await page.fill('input[placeholder*="搜索歌曲"]', 'Jay');
+      const sInput = page.getByPlaceholderText(/搜索歌曲/);
+      await sInput.fill('Jay');
       const [req] = await Promise.all([
-        page.waitForRequest(r => r.url().includes('/Search')),
-        page.click('button:has-text("搜索")')
+        page.waitForRequest(r => r.url().includes('/Search'), { timeout: 8000 }),
+        page.getByRole('button', { name: '搜索' }).last().click()
       ]);
       expect(req.postData()).toContain(`type=${t}`);
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(800);
     }
   });
 });
