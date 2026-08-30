@@ -100,6 +100,9 @@ function initPeqAudioContext() {
 
         peqAudioCtx = new AudioContextClass();
 
+        // 确保 player 具备 CORS anonymous 属性
+        player.crossOrigin = "anonymous";
+
         // 创建 MediaElementSource 单例
         peqSourceNode = peqAudioCtx.createMediaElementSource(player);
 
@@ -218,6 +221,13 @@ function togglePeqEnable(forceState) {
         isPeqEnabled = forceState;
     } else {
         isPeqEnabled = !isPeqEnabled;
+    }
+
+    if (isPeqEnabled) {
+        initPeqAudioContext();
+        if (peqAudioCtx && peqAudioCtx.state === 'suspended') {
+            peqAudioCtx.resume().catch(() => {});
+        }
     }
 
     applyPeqFilterParams();
@@ -615,6 +625,10 @@ function togglePeqDrawer() {
     const overlay = document.getElementById("peqModalOverlay");
     const drawer = document.getElementById("peqDrawerModal");
     if (!overlay || !drawer) return;
+
+    if (peqAudioCtx && peqAudioCtx.state === 'suspended') {
+        peqAudioCtx.resume().catch(() => {});
+    }
 
     if (overlay.style.display === 'none' || !overlay.style.display) {
         overlay.style.display = 'flex';
