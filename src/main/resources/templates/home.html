@@ -21,11 +21,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="网易云下载器">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.3.6">
+    <link rel="stylesheet" href="/css/style.css?v=4.6.7">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -66,13 +66,13 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-                        <span style="font-size:13px; color:var(--text-secondary);">账号歌单快捷加载：</span>
-                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                            <button class="btn-primary" onclick="loadMyPlaylists('created')" style="width:auto; margin:0; padding:5px 10px; font-size:12px;">📂 创建的歌单</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow:0 2px 8px rgba(139,92,246,0.3);" onclick="loadMyPlaylists('subscribed')">⭐ 收藏的歌单</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #64748b, #475569); box-shadow:0 2px 8px rgba(100,116,139,0.3);" onclick="loadMyPlaylists('all')">📋 全部</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #10b981, #059669); box-shadow:0 2px 8px rgba(16,185,129,0.3);" onclick="showCreatePlaylistModal()" title="新建自建歌单">➕ 新建歌单</button>
+                    <div class="my-playlist-filter-bar">
+                        <span class="filter-bar-label">账号歌单快捷加载：</span>
+                        <div class="playlist-quick-btn-group">
+                            <button class="btn-primary quick-btn-item btn-created" onclick="loadMyPlaylists('created')">📂 创建<span class="pc-only-text">的歌单</span></button>
+                            <button class="btn-primary quick-btn-item btn-subscribed" onclick="loadMyPlaylists('subscribed')">⭐ 收藏<span class="pc-only-text">的歌单</span></button>
+                            <button class="btn-primary quick-btn-item btn-all" onclick="loadMyPlaylists('all')">📋 全部</button>
+                            <button class="btn-primary quick-btn-item btn-create" onclick="showCreatePlaylistModal()" title="新建自建歌单">➕ 新建<span class="pc-only-text">歌单</span></button>
                         </div>
                     </div>
                     <ul class="data-list scrollable-list" id="playlist-list"></ul>
@@ -86,9 +86,9 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="playlistId" placeholder="输入歌单 ID" style="flex:1;">
-                        <button class="btn-primary" onclick="loadPlaylistDetail()">查看歌单详情</button>
+                    <div class="form-row flex-input-row">
+                        <input type="text" id="playlistId" placeholder="输入歌单 ID (如 123456，按回车查看)" style="flex:1;" onkeyup="if(event.key==='Enter') loadPlaylistDetail();">
+                        <button class="btn-primary inline-action-btn" onclick="loadPlaylistDetail()">查看<span class="pc-only-text">歌单详情</span></button>
                     </div>
                     <div id="playlist-info"></div>
                     <ul class="data-list scrollable-list" id="playlist-tracks"></ul>
@@ -107,14 +107,14 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="songId" placeholder="输入歌曲 ID" style="flex:1;">
-                        <select id="songLevel">
-                            <option value="standard">standard (标准)</option>
-                            <option value="exhigh">exhigh (极高)</option>
-                            <option value="lossless" selected>lossless (无损)</option>
+                    <div class="form-row flex-input-row">
+                        <input type="text" id="songId" placeholder="输入歌曲 ID (按回车查看)" style="flex:1;" onkeyup="if(event.key==='Enter') loadSongInfo();">
+                        <select id="songLevel" style="width:auto; flex-shrink:0;">
+                            <option value="standard">标准</option>
+                            <option value="exhigh">极高</option>
+                            <option value="lossless" selected>无损</option>
                         </select>
-                        <button class="btn-primary" onclick="loadSongInfo()">查看单曲信息</button>
+                        <button class="btn-primary inline-action-btn" onclick="loadSongInfo()">查看<span class="pc-only-text">单曲信息</span></button>
                     </div>
                     <div id="song-info"></div>
                 </div>
@@ -133,16 +133,16 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="searchKeyword" placeholder="输入关键词 (歌曲 / 歌手 / 专辑 / 歌单)" style="flex:1;" onkeyup="if(event.key==='Enter') searchSongs();">
-                        <select id="searchType">
+                    <div class="form-row search-form-row">
+                        <input type="text" id="searchKeyword" placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)" style="flex:1;" onkeyup="if(event.key==='Enter') searchSongs();">
+                        <select id="searchType" style="width:auto; flex-shrink:0;">
                             <option value="1">单曲</option>
                             <option value="10">专辑</option>
                             <option value="1000">歌单</option>
                             <option value="100">歌手</option>
                         </select>
-                        <input type="number" id="searchLimit" value="10" min="1" max="100" style="width:70px;">
-                        <button class="btn-primary" onclick="searchSongs()">搜索</button>
+                        <input type="number" id="searchLimit" value="10" min="1" max="100" class="search-limit-input" style="width:60px;" title="单页条数">
+                        <button class="btn-primary sp-hide-btn" onclick="searchSongs()">搜索</button>
                     </div>
                     <ul class="data-list scrollable-list" id="search-results"></ul>
                     <div id="search-pagination" class="pagination-container">
@@ -160,9 +160,9 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row" style="margin-bottom:12px;">
-                        <input type="text" id="albumId" placeholder="输入专辑 ID (如 32311)" style="flex:1;" onkeyup="if(event.key==='Enter') loadAlbumInfo();">
-                        <button class="btn-primary" onclick="loadAlbumInfo()">解析专辑</button>
+                    <div class="form-row flex-input-row" style="margin-bottom:12px;">
+                        <input type="text" id="albumId" placeholder="输入专辑 ID (如 32311，按回车解析)" style="flex:1;" onkeyup="if(event.key==='Enter') loadAlbumInfo();">
+                        <button class="btn-primary inline-action-btn" onclick="loadAlbumInfo()">解析<span class="pc-only-text">专辑</span></button>
                     </div>
                     <div id="album-info">
                         <!-- 🎨 默认优雅空状态 (Empty State Placeholder) -->
@@ -174,37 +174,38 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Section 3: 歌手详情解析与热门 Top 50 -->
+            <div class="accordion-card" id="card-artist-detail">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">🎤 3. 歌手解析与热门 Top 50</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="form-row flex-input-row" style="margin-bottom:12px;">
+                        <input type="text" id="artistId" placeholder="输入歌手 ID (如 6452，按回车解析)" style="flex:1;" onkeyup="if(event.key==='Enter') loadArtistInfo();">
+                        <button class="btn-primary inline-action-btn" onclick="loadArtistInfo()">解析<span class="pc-only-text">歌手</span></button>
+                    </div>
+                    <div id="artist-info">
+                        <!-- 🎨 默认优雅空状态 -->
+                        <div class="empty-placeholder-card">
+                            <div class="empty-icon">🎤</div>
+                            <div class="empty-title">在上方搜索歌手或输入歌手 ID 解析</div>
+                            <div class="empty-desc">支持查看歌手详情、热门 Top 50 代表作、一键连播或离线随身听缓存</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- 4. 下载管理 Tab 内容 -->
     <div id="tab-download-mgr" class="tab-content" style="display:none;">
         <div class="accordion-wrapper">
-            <!-- 浏览器缓存管理 Card -->
-            <div class="accordion-card active" id="card-browser-cache">
+            <!-- Section 1: 📁 本地曲库与文件夹树形浏览器 -->
+            <div class="accordion-card active" id="card-folder-explorer">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">📲 浏览器离线缓存管理</h3>
-                    <span class="accordion-icon">▼</span>
-                </div>
-                <div class="accordion-body">
-                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
-                        <div style="font-size:14px;"><strong>已缓存歌曲：</strong><span id="cache-stat-total">0</span> 首</div>
-                        <div style="font-size:14px;"><strong>估算大小：</strong><span id="cache-stat-size">0 B</span></div>
-                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn-primary" onclick="loadBrowserCacheList()">🔄 扫描/刷新缓存</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除所有缓存</button>
-                        </div>
-                    </div>
-                    <ul class="data-list scrollable-list" id="browser-cache-list">
-                        <li style="padding:15px; text-align:center; color:#888;">点击“扫描/刷新缓存”查看已缓存在本浏览器的歌曲</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- 📁 本地曲库与文件夹树形浏览器 -->
-            <div class="accordion-card" id="card-folder-explorer">
-                <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">📁 本地曲库与文件夹树 (Tree View & 连播)</h3>
+                    <h3 class="accordion-title">📁 1. 本地曲库与文件夹树连播</h3>
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
@@ -230,9 +231,10 @@
                 </div>
             </div>
 
+            <!-- Section 2: 📥 本地下载历史与文件管理 -->
             <div class="accordion-card" id="card-download-history">
                 <div class="accordion-header" onclick="toggleAccordionCard(this)">
-                    <h3 class="accordion-title">📥 本地下载历史与文件管理</h3>
+                    <h3 class="accordion-title">📥 2. 本地下载历史与文件管理</h3>
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
@@ -242,18 +244,18 @@
                         <div style="font-size:14px;"><strong>占用空间：</strong><span id="mgr-stat-size">0 B</span></div>
                         <div style="font-size:14px; color:#ef4444;" id="mgr-stat-missing-box" onclick="showMissingFilesModal()" title="点击查看所有缺失文件清单"><strong>⚠️ 文件缺失：</strong><span id="mgr-stat-missing">0</span> 首 <span class="mgr-stat-missing-tag">查看 ↗</span></div>
                         <div style="font-size:14px; color:#f59e0b;" id="mgr-stat-non-mp3-box" onclick="showNonMp3FilesModal()" title="点击查看所有非 MP3 格式音频记录"><strong>📁 非 MP3 格式：</strong><span id="mgr-stat-non-mp3">0</span> 首 <span class="mgr-stat-non-mp3-tag">查看 ↗</span></div>
-                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部曲库</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #06b6d4, #0891b2);" onclick="scanDiskFiles()">🔍 对齐磁盘</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="cleanMissingHistory()">🧹 清理失效</button>
-                            <button class="btn-primary" onclick="loadDownloadHistory(1)">🔄 刷新</button>
+                        <div class="history-header-actions">
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部<span class="pc-only-text">曲库</span></button>
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #06b6d4, #0891b2);" onclick="scanDiskFiles()">🔍 对齐<span class="pc-only-text">磁盘</span></button>
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="cleanMissingHistory()">🧹 清理<span class="pc-only-text">失效</span></button>
+                            <button class="btn-primary quick-btn-item" onclick="loadDownloadHistory(1)">🔄 刷新</button>
                         </div>
                     </div>
 
                     <!-- 搜索筛选 -->
                     <div class="form-row mgr-search-row" style="margin-bottom:12px;">
-                        <input type="text" id="mgrSearchKeyword" placeholder="搜索已下载歌曲 / 歌手 / 专辑" style="flex:1;" onkeyup="if(event.key==='Enter') loadDownloadHistory(1);">
-                        <button class="btn-primary" onclick="loadDownloadHistory(1)">搜索</button>
+                        <input type="text" id="mgrSearchKeyword" placeholder="🔍 搜索已下载歌曲 / 歌手 / 专辑 (按回车搜索)" style="flex:1;" onkeyup="if(event.key==='Enter') loadDownloadHistory(1);">
+                        <button class="btn-primary sp-hide-btn" onclick="loadDownloadHistory(1)">搜索</button>
                     </div>
 
                     <!-- 扫描诊断结果弹窗/框 -->
@@ -276,30 +278,34 @@
                     </div>
                 </div>
             </div>
-        </div>
-        <!-- 彻底防止底部播放器遮挡 UI 的死占位 Spacer 块 (自适应移动端 Safe Area) -->
-        <div style="height: calc(140px + env(safe-area-inset-bottom, 0px)); width: 100%; pointer-events: none;"></div>
-    </div>
 
-    <!-- 右下角悬浮半透明下载监控卡片 (Floating Glassmorphism Widget) -->
-    <div class="floating-monitor" id="floatingMonitor" style="display: none;">
-        <div class="monitor-header" onclick="toggleMinimizeMonitor()">
-            <span class="monitor-header-title" id="monitorHeaderTitle">📥 下载监控</span>
-            <div class="monitor-header-actions" onclick="event.stopPropagation();">
-                <button class="btn-icon" onclick="clearMonitorTasks()" title="清空历史记录">🗑️</button>
-                <button class="btn-icon" onclick="toggleMinimizeMonitor()" title="最小化 / 展开">➖</button>
-                <button class="btn-icon" onclick="hideMonitor()" title="关闭监控">✕</button>
+            <!-- Section 3: 📲 浏览器离线缓存管理 -->
+            <div class="accordion-card" id="card-browser-cache">
+                <div class="accordion-header" onclick="toggleAccordionCard(this)">
+                    <h3 class="accordion-title">📲 3. 浏览器离线缓存管理</h3>
+                    <span class="accordion-icon">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
+                        <div style="font-size:14px;"><strong>已缓存歌曲：</strong><span id="cache-stat-total">0</span> 首</div>
+                        <div style="font-size:14px;"><strong>估算大小：</strong><span id="cache-stat-size">0 B</span></div>
+                        <div class="history-header-actions browser-cache-actions">
+                            <button class="btn-primary quick-btn-item" onclick="loadBrowserCacheList()">🔄 刷新缓存</button>
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除缓存</button>
+                        </div>
+                    </div>
+                    <ul class="data-list scrollable-list" id="browser-cache-list">
+                        <li style="padding:15px; text-align:center; color:#888;">点击“扫描/刷新缓存”查看已缓存在本浏览器的歌曲</li>
+                    </ul>
+                </div>
             </div>
-        </div>
-        <div class="monitor-body">
-            <div class="monitor-task-list" id="monitorTaskList"></div>
         </div>
     </div>
 
     <!-- 🎬 现代暗黑极简三段式音频播放器 (Modern Dark Audio Player Bar) -->
     <div class="bottom-audio-bar" id="globalAudioBar" style="display: none;">
         <!-- 隐藏的原生 audio 标签引擎 -->
-        <audio id="globalAudioPlayer" style="display: none;"></audio>
+        <audio id="globalAudioPlayer" crossorigin="anonymous" style="display: none;"></audio>
 
         <div class="audio-bar-inner">
             <!-- 1. 左侧：封面与歌名信息 (点击调起全屏黑胶播放器) -->
@@ -348,55 +354,74 @@
                     <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.8" oninput="changeVolume(this.value)" class="volume-slider">
                 </div>
 
+                <!-- 🎛️ 5 段参量均衡器 (PEQ) 按钮 -->
+                <button class="ctrl-btn sub-btn peq-btn-badge" id="peqToggleBtn" onclick="togglePeqDrawer()" title="5段参量均衡器 (PEQ 音质改善)">🎛️</button>
+
                 <div class="right-action-group">
-                    <button class="ctrl-btn mini-btn" onclick="toggleMinimizeAudioPlayer()" title="最小化 / 展开">➖</button>
                     <button class="ctrl-btn mini-btn" onclick="closeAudioPlayer()" title="关闭播放器">✕</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 📜 播放列表 Drawer 弹窗卡片 (Playlist Drawer) -->
+    <!-- 📜 播放列表 & 下载任务 Drawer 统一抽屉 (Playlist & Tasks Drawer) -->
     <div class="playlist-drawer" id="playlistDrawer" style="display: none;">
         <div class="playlist-drawer-header">
-            <span>📜 播放队列 (<span id="playlistDrawerCount">0</span> 首)</span>
+            <div class="drawer-header-tabs">
+                <button class="drawer-main-tab active" id="drawerTabQueue" onclick="switchDrawerMainTab('queue')">
+                    📜 播放队列 (<span id="playlistDrawerCount">0</span>)
+                </button>
+                <button class="drawer-main-tab" id="drawerTabTasks" onclick="switchDrawerMainTab('tasks')">
+                    📥 下载任务 <span id="drawerTasksBadge" class="drawer-badge-pill" style="display:none;">0</span>
+                </button>
+            </div>
             <div style="display:flex; gap:6px; align-items:center;">
                 <button id="btnQueueTrim" class="drawer-header-btn" style="display:none; color:#38bdf8; border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.12);" onclick="applyQueueTrim()" title="将当前筛选结果保留为新播放列表">✂️ 仅保留筛选曲目</button>
-                <button class="drawer-header-btn" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️ 清空</button>
+                <button class="drawer-header-btn" id="drawerClearBtn" onclick="handleDrawerClear()" title="清空当前列表">🗑️ 清空</button>
                 <button class="drawer-header-btn" onclick="togglePlaylistDrawer()" title="关闭">✕</button>
             </div>
         </div>
 
-        <!-- 🔍 队列内搜索与快速过滤栏 -->
-        <div class="playlist-drawer-filter-bar">
-            <div class="drawer-search-wrap">
-                <input type="text" id="drawerSearchInput" class="drawer-search-input" placeholder="🔍 筛选当前列表 (歌名 / 歌手)..." oninput="onDrawerFilterChange()">
-                <button id="drawerSearchClear" class="drawer-search-clear-btn" style="display:none;" onclick="clearDrawerSearch()">✕</button>
-            </div>
-            
-            <!-- 🏷️ 筛选 Tab 按钮组 -->
-            <div class="drawer-filter-tabs">
-                <button class="drawer-tab-btn active" id="tab-q-all" onclick="setDrawerFilter('all')">全部 <span id="qCountAll">0</span></button>
-                <button class="drawer-tab-btn" id="tab-q-ready" onclick="setDrawerFilter('ready')" title="服务器或本机浏览器已有的曲目">✨ 离线就绪 <span id="qCountReady">0</span></button>
-                <button class="drawer-tab-btn" id="tab-q-server" onclick="setDrawerFilter('server')" title="已在服务器磁盘">🖥️ 本地 <span id="qCountServer">0</span></button>
-                <button class="drawer-tab-btn" id="tab-q-browser" onclick="setDrawerFilter('browser')" title="已在当前浏览器缓存">📲 缓存 <span id="qCountBrowser">0</span></button>
+        <!-- 1. 播放队列视图 -->
+        <div id="drawerQueueView" class="drawer-view-panel" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
+            <!-- 🔍 队列内搜索与快速过滤栏 -->
+            <div class="playlist-drawer-filter-bar">
+                <div class="drawer-search-wrap">
+                    <input type="text" id="drawerSearchInput" class="drawer-search-input" placeholder="🔍 筛选当前列表 (歌名 / 歌手)..." oninput="onDrawerFilterChange()">
+                    <button id="drawerSearchClear" class="drawer-search-clear-btn" style="display:none;" onclick="clearDrawerSearch()">✕</button>
+                </div>
+                
+                <!-- 🏷️ 筛选 Tab 按钮组 -->
+                <div class="drawer-filter-tabs">
+                    <button class="drawer-tab-btn active" id="tab-q-all" onclick="setDrawerFilter('all')">全部 <span id="qCountAll">0</span></button>
+                    <button class="drawer-tab-btn" id="tab-q-ready" onclick="setDrawerFilter('ready')" title="服务器或本机浏览器已有的曲目">✨ 离线就绪 <span id="qCountReady">0</span></button>
+                    <button class="drawer-tab-btn" id="tab-q-server" onclick="setDrawerFilter('server')" title="已在服务器磁盘">🖥️ 本地 <span id="qCountServer">0</span></button>
+                    <button class="drawer-tab-btn" id="tab-q-browser" onclick="setDrawerFilter('browser')" title="已在当前浏览器缓存">📲 缓存 <span id="qCountBrowser">0</span></button>
+                </div>
+
+                <!-- ⚙️ 智能跳过与播放策略开关 -->
+                <div class="drawer-switches-row">
+                    <label class="drawer-switch-label" title="播放遇到 30 秒试听曲目时，自动跳过并播放下一首完整歌曲">
+                        <input type="checkbox" id="chkAutoSkipTrial" onchange="toggleAutoSkipTrial(this.checked)">
+                        <span>🛡️ 自动跳过试听</span>
+                    </label>
+                    <label class="drawer-switch-label" title="仅播放服务器或本机已缓存的歌曲，完全无需消耗外网流量">
+                        <input type="checkbox" id="chkOfflineOnly" onchange="toggleOfflineOnlyMode(this.checked)">
+                        <span>📴 纯离线模式</span>
+                    </label>
+                </div>
             </div>
 
-            <!-- ⚙️ 智能跳过与播放策略开关 -->
-            <div class="drawer-switches-row">
-                <label class="drawer-switch-label" title="播放遇到 30 秒试听曲目时，自动跳过并播放下一首完整歌曲">
-                    <input type="checkbox" id="chkAutoSkipTrial" onchange="toggleAutoSkipTrial(this.checked)">
-                    <span>🛡️ 自动跳过试听</span>
-                </label>
-                <label class="drawer-switch-label" title="仅播放服务器或本机已缓存的歌曲，完全无需消耗外网流量">
-                    <input type="checkbox" id="chkOfflineOnly" onchange="toggleOfflineOnlyMode(this.checked)">
-                    <span>📴 纯离线模式</span>
-                </label>
+            <div class="playlist-drawer-body">
+                <ul class="playlist-drawer-list" id="playlistDrawerList"></ul>
             </div>
         </div>
 
-        <div class="playlist-drawer-body">
-            <ul class="playlist-drawer-list" id="playlistDrawerList"></ul>
+        <!-- 2. 下载任务视图 -->
+        <div id="drawerTasksView" class="drawer-view-panel" style="display:none; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
+            <div class="playlist-drawer-body" style="flex:1; overflow-y:auto; padding:8px;">
+                <div class="monitor-task-list" id="monitorTaskList"></div>
+            </div>
         </div>
     </div>
 
@@ -439,7 +464,7 @@
             <div class="fullscreen-controls-bar">
                 <div class="audio-progress-container" style="width: 100%; max-width: 650px; margin: 0 auto 10px auto;">
                     <span id="fullscreenCurrentTime" class="time-stamp">00:00</span>
-                    <div class="progress-bar-wrapper" onclick="seekAudio(event)">
+                    <div class="progress-bar-wrapper" id="fullscreenProgressBarWrapper">
                         <div class="progress-bar-bg"></div>
                         <div class="progress-bar-fill" id="fullscreenProgressBarFill"></div>
                         <div class="progress-bar-handle" id="fullscreenProgressBarHandle"></div>
@@ -451,26 +476,68 @@
                     <button class="ctrl-btn sub-btn" onclick="playPrevTrack()" title="上一首">⏮</button>
                     <button class="ctrl-btn play-main-btn" id="fullscreenPlayPauseBtn" onclick="togglePlayPause()" title="播放 / 暂停">▶</button>
                     <button class="ctrl-btn sub-btn" onclick="playNextTrack()" title="下一首">⏭</button>
+                    <button class="ctrl-btn sub-btn peq-btn-badge" id="fullPeqToggleBtn" onclick="togglePeqDrawer()" title="5段参量均衡器 (PEQ)">🎛️</button>
                     <button class="ctrl-btn sub-btn" onclick="togglePlaylistDrawer()" title="播放列表">📜</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 🎛️ 5 段参量均衡器 (PEQ) 毛玻璃遮罩与弹窗卡片 (Parametric EQ Modal Overlay) -->
+    <div class="peq-modal-overlay" id="peqModalOverlay" style="display: none;" onclick="handlePeqOverlayClick(event)">
+        <div class="peq-drawer-modal" id="peqDrawerModal" onclick="event.stopPropagation()">
+            <div class="peq-header">
+                <div class="peq-header-top-bar">
+                    <h3 class="peq-header-title">🎛️ 5 段参量均衡器 (Parametric EQ)</h3>
+                    <button class="peq-close-btn" onclick="closePeqDrawer()" title="关闭">✕</button>
+                </div>
+                <div class="peq-header-controls">
+                    <label class="peq-switch-label" title="开启或旁通 (Bypass) 参量均衡器">
+                        <input type="checkbox" id="peqMasterSwitch" onchange="togglePeqEnable(this.checked)" checked>
+                        <span>⚡ 启用</span>
+                    </label>
+                    <select id="peqPresetSelect" class="peq-preset-select" onchange="applyPeqPreset(this.value)"></select>
+                </div>
+            </div>
+
+            <div class="peq-body">
+                <!-- 📈 实时频响曲线可视化 Canvas -->
+                <div class="peq-canvas-card">
+                    <canvas id="peqCanvas"></canvas>
+                </div>
+
+                <!-- 🎚️ 5 段详细调节卡片 Grid -->
+                <div class="peq-sliders-grid" id="peqSlidersContainer"></div>
+            </div>
+
+            <div class="peq-footer-actions">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="peq-tool-btn" onclick="saveCurrentAsCustomPreset()" title="将当前 15 个调音参数保存为新预设">💾 保存预设</button>
+                    <button class="peq-tool-btn" onclick="resetPeqToFlat()" title="所有频段归零">🔄 重置</button>
+                    <button class="peq-tool-btn peq-btn-close-bottom" onclick="closePeqDrawer()" style="background:rgba(239,68,68,0.12); color:#f87171; border-color:rgba(239,68,68,0.3);">✕ 完成关闭</button>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted);">
+                    💡 5段频率/增益/Q值全可调 · 实时生效
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v4.3.6</div>
+    <div class="app-version-footer">网易云下载器 · PWA v4.6.7</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/ui-core.js?v=4.3.6"></script>
-    <script src="/js/player-core.js?v=4.3.6"></script>
-    <script src="/js/player-lyric.js?v=4.3.6"></script>
-    <script src="/js/player-drawer.js?v=4.3.6"></script>
-    <script src="/js/pwa-cache.js?v=4.3.6"></script>
-    <script src="/js/playlist.js?v=4.3.6"></script>
-    <script src="/js/album.js?v=4.3.6"></script>
-    <script src="/js/search.js?v=4.3.6"></script>
-    <script src="/js/download-mgr.js?v=4.3.6"></script>
-    <script src="/js/folder-explorer.js?v=4.3.6"></script>
-    <script src="/js/app.js?v=4.3.6"></script>
+    <script src="/js/ui-core.js?v=4.6.7"></script>
+    <script src="/js/player-core.js?v=4.6.7"></script>
+    <script src="/js/player-peq.js?v=4.6.7"></script>
+    <script src="/js/player-lyric.js?v=4.6.7"></script>
+    <script src="/js/player-drawer.js?v=4.6.7"></script>
+    <script src="/js/pwa-cache.js?v=4.6.7"></script>
+    <script src="/js/playlist.js?v=4.6.7"></script>
+    <script src="/js/album.js?v=4.6.7"></script>
+    <script src="/js/search.js?v=4.6.7"></script>
+    <script src="/js/download-mgr.js?v=4.6.7"></script>
+    <script src="/js/folder-explorer.js?v=4.6.7"></script>
+    <script src="/js/app.js?v=4.6.7"></script>
 </body>
 </html>

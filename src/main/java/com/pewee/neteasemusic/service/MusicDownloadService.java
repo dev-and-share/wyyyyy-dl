@@ -142,6 +142,32 @@ public class MusicDownloadService implements InitializingBean {
 		doDownloadSingleSongV2(id, this.path, "未知歌曲");
 	}
 
+	/**
+	 * 🚀 边播边存后台静默落盘调度器（自动按歌单/专辑分类，试听曲目严格过滤）
+	 */
+	public void asyncDownloadOnPlay(Long id, String playlistName, String albumName, String trackName) {
+		if (id == null || id <= 0) return;
+		DownloadTaskStatus existing = downloadTasks.get(id);
+		if (existing != null && ("DOWNLOADING".equals(existing.getStatus()) || "SUCCESS".equals(existing.getStatus()))) {
+			return;
+		}
+		String targetDir = this.path + "__曲库__/";
+		if (org.apache.commons.lang3.StringUtils.isNotBlank(playlistName)) {
+			targetDir = this.path + "歌单/" + FileUtils.getValidatedPathName(playlistName) + "/";
+		} else if (org.apache.commons.lang3.StringUtils.isNotBlank(albumName)) {
+			targetDir = this.path + "专辑/" + FileUtils.getValidatedPathName(albumName) + "/";
+		}
+		final String finalDir = targetDir;
+		final String finalName = (trackName != null && !trackName.trim().isEmpty()) ? trackName : "未知歌曲";
+		executor.execute(() -> {
+			try {
+				doDownloadSingleSongV2(id, finalDir, finalName);
+			} catch (Exception e) {
+				log.warn("边播边存异步任务执行异常, id={}", id, e);
+			}
+		});
+	}
+
 	public void doDownloadSingleSongV2(Long id, String path, String trackName) {
 		DownloadTaskStatus taskStatus = downloadTasks.get(id);
 		if (taskStatus == null) {
@@ -169,9 +195,31 @@ public class MusicDownloadService implements InitializingBean {
 			if (analysisSingleMusic == null || 200 != analysisSingleMusic.getStatus()) {
 				throw new RuntimeException("分析歌曲URL失败");
 			}
+
+			// 🛑 核心防污染拦截：如果标记为试听，直接拒绝落盘
+			if (Boolean.TRUE.equals(analysisSingleMusic.getFreeTrial())) {
+				log.info("歌曲 id: {} 为 VIP 试听片段，已阻止落盘入库", id);
+				taskStatus.setStatus("SKIP");
+				return;
+			}
+
 			taskStatus.setName(analysisSingleMusic.getName());
+			String artist = analysisSingleMusic.getAr_name();
+			String songName = analysisSingleMusic.getName();
+
+			// 🗂️ 目录决策：若未指定具体歌单/专辑目录，单一已知歌手归档至 {歌手名}/，多歌手/群星/未知归档至 __曲库__/
 			String dir = path;
-			String fileName = analysisSingleMusic.getName();
+			if (dir.equals(this.path) || dir.equals(this.path + "__曲库__/") || dir.endsWith("/__曲库__/")) {
+				if (isSingleKnownArtist(artist)) {
+					dir = this.path + FileUtils.getValidatedPathName(artist.trim()) + "/";
+				} else {
+					dir = this.path + "__曲库__/";
+				}
+			}
+
+			String fileName = (org.apache.commons.lang3.StringUtils.isNotBlank(artist))
+					? FileUtils.getValidatedPathName(artist + " - " + songName)
+					: FileUtils.getValidatedPathName(songName);
 			log.info("开始将歌曲: {} 写入目录: {}", fileName, dir);
 			File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())).toFile();
 			FileUtils.writeToFile(file.toPath(),
@@ -294,6 +342,23 @@ public class MusicDownloadService implements InitializingBean {
 
 	public void clearDownloadTasks() {
 		downloadTasks.clear();
+	}
+
+	public boolean isSingleKnownArtist(String artist) {
+		if (artist == null || artist.trim().isEmpty()) {
+			return false;
+		}
+		String clean = artist.trim();
+		if ("群星".equals(clean) || "Various Artists".equalsIgnoreCase(clean) || "未知歌手".equals(clean) || "未知".equals(clean)) {
+			return false;
+		}
+		// 检查是否包含多歌手常见分隔符：/、\、&、,、，、;、；、、以及 feat./ft.
+		if (clean.contains("/") || clean.contains("\\") || clean.contains("&") 
+				|| clean.contains(",") || clean.contains("，") || clean.contains(";") || clean.contains("；")
+				|| clean.contains("、") || clean.toLowerCase().contains("feat.") || clean.toLowerCase().contains("ft.")) {
+			return false;
+		}
+		return true;
 	}
 
 }

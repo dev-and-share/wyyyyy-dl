@@ -50,7 +50,7 @@ function revealFile(path, taskId) {
                 navigator.clipboard.writeText(fpath).catch(() => {});
             }
             if (resp.data.code === '000000') {
-                showRevealModal(fpath, rawPath, '📂 已为您复制 Mac 宿主机真实物理路径到剪贴板！');
+                showRevealModal(fpath, rawPath, '📂 已为您复制服务器真实物理路径到剪贴板！');
             } else {
                 showRevealModal(fpath, rawPath, '定位提示：' + (resp.data.msg || resp.data.message));
             }
@@ -155,8 +155,9 @@ function loadDownloadHistory(page) {
                             </div>
                             <div class="sub-right">
                                 ${item.fileExists ? `<button class="action-btn btn-play" onclick="playLocalFile('${encodeURIComponent(item.relativePath || item.filePath)}', '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}', '${item.cover || ''}')">▶ 播放</button>` : ''}
-                                ${item.fileExists ? `<button class="action-btn btn-locate" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
-                                <button class="action-btn btn-del" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
+                                ${item.fileExists ? `<button class="action-btn btn-locate sp-hide" onclick="revealFile('${encodeURIComponent(hostPath)}')">📂 定位</button>` : ''}
+                                <button class="action-btn btn-del sp-hide" onclick="deleteHistoryItem(${item.id})">🗑 删除</button>
+                                <button class="action-btn btn-more sp-show" onclick="showHistoryActionMenu(${item.id}, '${(item.songName||'').replace(/'/g, "\\'")}', '${(item.artist||'').replace(/'/g, "\\'")}', '${encodeURIComponent(hostPath)}', ${item.fileExists}, '${encodeURIComponent(item.relativePath || item.filePath)}')">···</button>
                             </div>
                         </div>
                     `;
@@ -166,6 +167,47 @@ function loadDownloadHistory(page) {
         })
         .catch(err => alert("加载下载历史失败: " + err));
 }
+
+/**
+ * 📱 移动端历史记录项更多操作 ActionSheet
+ */
+function showHistoryActionMenu(id, songName, artist, encodedHostPath, fileExists, encodedRelativePath) {
+    const items = [];
+
+    if (fileExists) {
+        items.push({
+            icon: '▶️',
+            text: '立即播放此音频',
+            subtext: '0 延迟本地直通解码',
+            onClick: () => playLocalFile(encodedRelativePath, songName, artist, '')
+        });
+        if (encodedHostPath) {
+            items.push({
+                icon: '📂',
+                text: '在文件管理器/服务器中定位',
+                subtext: '查看或定位服务器物理文件',
+                onClick: () => revealFile(encodedHostPath)
+            });
+        }
+    }
+
+    items.push({
+        icon: '🗑️',
+        text: '删除此条下载历史记录',
+        subtext: '从数据库移除记录',
+        danger: true,
+        onClick: () => deleteHistoryItem(id)
+    });
+
+    if (typeof showActionSheet === 'function') {
+        showActionSheet({
+            title: `🎵 ${songName || '历史音频'}`,
+            subtitle: artist || '',
+            items: items
+        });
+    }
+}
+window.showHistoryActionMenu = showHistoryActionMenu;
 
 function changeHistoryPage(delta) {
     const target = historyCurrentPage + delta;

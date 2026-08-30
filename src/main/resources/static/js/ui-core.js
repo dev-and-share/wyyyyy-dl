@@ -419,6 +419,18 @@ function jumpToSongDetail(songId) {
     if (typeof loadSongInfo === 'function') loadSongInfo();
 }
 
+function jumpToArtistDetail(artistId) {
+    if (!artistId) return;
+    if (typeof switchTab === 'function') switchTab('search');
+
+    const input = document.getElementById("artistId");
+    if (input) input.value = artistId;
+
+    openAccordionCard("card-artist-detail");
+    if (typeof loadArtistInfo === 'function') loadArtistInfo();
+}
+window.jumpToArtistDetail = jumpToArtistDetail;
+
 function loadSongInfo() {
     const id = document.getElementById("songId").value;
     const level = document.getElementById("songLevel").value;
@@ -511,115 +523,101 @@ function fetchDownloadTasks() {
         .then(resp => {
             if (resp.data.code === '000000') {
                 const tasks = resp.data.data || [];
-                const widget = document.getElementById('floatingMonitor');
+                const badge = document.getElementById('drawerTasksBadge');
                 const listContainer = document.getElementById('monitorTaskList');
 
-                if (!widget || !listContainer) return;
+                const activeCount = tasks.filter(t => t.status === 'DOWNLOADING' || t.status === 'PENDING').length;
 
-                if (tasks.length === 0) {
-                    widget.style.display = 'none';
-                    return;
+                // 🔄 动态更新抽屉 Header 上的下载任务徽标：只显示正在下载中的数字！
+                if (badge) {
+                    if (activeCount > 0) {
+                        badge.style.display = 'inline-flex';
+                        badge.textContent = activeCount;
+                    } else {
+                        badge.style.display = 'none';
+                        badge.textContent = '0';
+                    }
                 }
 
-                widget.style.display = 'block';
-                listContainer.innerHTML = '';
+                if (listContainer) {
+                    if (tasks.length === 0) {
+                        listContainer.innerHTML = `
+                            <div style="padding: 36px 16px; text-align: center; color: #94a3b8; font-size: 13px;">
+                                📥 暂无下载任务记录
+                            </div>`;
+                    } else {
+                        listContainer.innerHTML = '';
+                        tasks.forEach(task => {
+                            const item = document.createElement('div');
+                            item.className = 'monitor-task-item';
 
-                let hasActiveTask = false;
+                            const taskInfo = document.createElement('div');
+                            taskInfo.className = 'task-info';
 
-                tasks.forEach(task => {
-                    const item = document.createElement('div');
-                    item.className = 'monitor-task-item';
+                            const nameSpan = document.createElement('span');
+                            nameSpan.className = 'task-name';
+                            nameSpan.textContent = task.name || `未知歌曲 (${task.id})`;
+                            taskInfo.appendChild(nameSpan);
 
-                    const taskInfo = document.createElement('div');
-                    taskInfo.className = 'task-info';
+                            if (task.status === 'FAILED' && task.errorMsg) {
+                                const errorDiv = document.createElement('div');
+                                errorDiv.className = 'task-error';
+                                errorDiv.textContent = `❌ ${task.errorMsg}`;
+                                taskInfo.appendChild(errorDiv);
+                            }
 
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'task-name';
-                    nameSpan.textContent = task.name || `未知歌曲 (${task.id})`;
-                    taskInfo.appendChild(nameSpan);
+                            item.appendChild(taskInfo);
 
-                    if (task.status === 'FAILED' && task.errorMsg) {
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'task-error';
-                        errorDiv.textContent = `❌ ${task.errorMsg}`;
-                        taskInfo.appendChild(errorDiv);
+                            const rightActions = document.createElement('div');
+                            rightActions.className = 'task-actions-right';
+
+                            const badgeEl = document.createElement('span');
+                            badgeEl.className = `badge badge-${task.status.toLowerCase()}`;
+                            
+                            let statusText = task.status;
+                            if (task.status === 'PENDING') statusText = '排队中';
+                            if (task.status === 'DOWNLOADING') statusText = '下载中';
+                            if (task.status === 'SUCCESS') statusText = '成功';
+                            if (task.status === 'SKIP') statusText = '跳过';
+                            if (task.status === 'FAILED') statusText = '失败';
+
+                            badgeEl.textContent = statusText;
+                            rightActions.appendChild(badgeEl);
+
+                            if (task.status === 'SUCCESS' || task.status === 'SKIP') {
+                                const revealBtn = document.createElement('button');
+                                revealBtn.className = 'task-locate-btn';
+                                revealBtn.title = '在文件管理器/服务器中定位此文件';
+                                revealBtn.textContent = '📂 定位';
+                                revealBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    if (typeof revealSong === 'function') revealSong(task.id, task.name, '', task.filePath || '', task.id);
+                                };
+                                rightActions.appendChild(revealBtn);
+                            }
+
+                            item.appendChild(rightActions);
+                            listContainer.appendChild(item);
+                        });
                     }
+                }
 
-                    item.appendChild(taskInfo);
-
-                    const rightActions = document.createElement('div');
-                    rightActions.className = 'task-actions-right';
-
-                    const badge = document.createElement('span');
-                    badge.className = `badge badge-${task.status.toLowerCase()}`;
-                    
-                    let statusText = task.status;
-                    if (task.status === 'PENDING') statusText = '排队中';
-                    if (task.status === 'DOWNLOADING') {
-                        statusText = '下载中';
-                        hasActiveTask = true;
-                    }
-                    if (task.status === 'SUCCESS') statusText = '成功';
-                    if (task.status === 'SKIP') statusText = '跳过';
-                    if (task.status === 'FAILED') statusText = '失败';
-
-                    badge.textContent = statusText;
-                    rightActions.appendChild(badge);
-
-                    if (task.status === 'SUCCESS' || task.status === 'SKIP') {
-                        const revealBtn = document.createElement('button');
-                        revealBtn.className = 'task-locate-btn';
-                        revealBtn.title = '在 Finder / 资源管理器中高亮定位此文件';
-                        revealBtn.textContent = '📂 定位';
-                        revealBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            if (typeof revealSong === 'function') revealSong(task.id, task.name, '', task.filePath || '', task.id);
-                        };
-                        rightActions.appendChild(revealBtn);
-                    }
-
-                    item.appendChild(rightActions);
-                    listContainer.appendChild(item);
-                });
-
-                const activeCount = tasks.filter(t => t.status === 'DOWNLOADING' || t.status === 'PENDING').length;
-                const titleText = activeCount > 0 ? `📥 下载中 (${activeCount})` : `📥 下载完成 (${tasks.length})`;
-                const headerTitle = document.getElementById('monitorHeaderTitle');
-                if (headerTitle) headerTitle.textContent = titleText;
-
-                if (!hasActiveTask && monitorInterval) {
-                    const hasPending = tasks.some(t => t.status === 'PENDING');
-                    if (!hasPending) {
-                        clearInterval(monitorInterval);
-                        monitorInterval = null;
-                    }
+                if (activeCount === 0 && monitorInterval) {
+                    clearInterval(monitorInterval);
+                    monitorInterval = null;
                 }
             }
         })
         .catch(err => console.error("获取下载进度失败:", err));
 }
 
-function toggleMinimizeMonitor() {
-    const widget = document.getElementById('floatingMonitor');
-    if (widget) {
-        widget.classList.toggle('minimized');
-        isMonitorMinimized = widget.classList.contains('minimized');
-    }
-}
-
 function clearMonitorTasks() {
     axios.post('/v2/tasks/clear')
-        .then(() => fetchDownloadTasks())
+        .then(() => {
+            fetchDownloadTasks();
+            showToast("已清空下载任务列表", "info", 1500);
+        })
         .catch(err => showToast("清空失败：" + err, "error"));
-}
-
-function hideMonitor() {
-    const widget = document.getElementById('floatingMonitor');
-    if (widget) widget.style.display = 'none';
-    if (monitorInterval) {
-        clearInterval(monitorInterval);
-        monitorInterval = null;
-    }
 }
 window.downloadSingle = downloadSingle;
 window.fetchDownloadTasks = fetchDownloadTasks;
@@ -1144,4 +1142,103 @@ function showCreatePlaylistModal(onSuccess = null) {
 
 window.showAddToPlaylistModal = showAddToPlaylistModal;
 window.showCreatePlaylistModal = showCreatePlaylistModal;
+
+/**
+ * 📱 移动端 / 桌面端通用暗黑毛玻璃 ActionSheet 菜单抽屉
+ * @param {Object} options
+ * @param {string} [options.title] 菜单标题
+ * @param {string} [options.subtitle] 副标题
+ * @param {string} [options.coverUrl] 可选封面图
+ * @param {Array<{icon: string, text: string, subtext?: string, danger?: boolean, onClick: Function}>} options.items 操作项
+ */
+function showActionSheet(options = {}) {
+    const { title = '', subtitle = '', coverUrl = '', items = [] } = options;
+    if (!items || items.length === 0) return;
+
+    // 移除已存在的 action sheet
+    const existing = document.getElementById("globalActionSheetBackdrop");
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "globalActionSheetBackdrop";
+    backdrop.className = "action-sheet-backdrop";
+
+    const sheet = document.createElement("div");
+    sheet.className = "action-sheet-card";
+
+    let headerHtml = '';
+    if (title || subtitle || coverUrl) {
+        headerHtml = `
+            <div class="action-sheet-header">
+                ${coverUrl ? `<img src="${coverUrl}" class="action-sheet-cover" alt="封面">` : ''}
+                <div class="action-sheet-info">
+                    ${title ? `<div class="action-sheet-title">${escapeHtml(title)}</div>` : ''}
+                    ${subtitle ? `<div class="action-sheet-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                </div>
+                <button class="action-sheet-close-btn" id="actionSheetCloseX">✕</button>
+            </div>
+        `;
+    }
+
+    let itemsHtml = '';
+    items.forEach((item, index) => {
+        const dangerClass = item.danger ? ' danger' : '';
+        itemsHtml += `
+            <button class="action-sheet-item${dangerClass}" data-index="${index}">
+                <span class="action-sheet-item-icon">${item.icon || '📌'}</span>
+                <div class="action-sheet-item-content">
+                    <span class="action-sheet-item-text">${item.text}</span>
+                    ${item.subtext ? `<span class="action-sheet-item-sub">${item.subtext}</span>` : ''}
+                </div>
+            </button>
+        `;
+    });
+
+    sheet.innerHTML = `
+        <div class="action-sheet-handle-bar"></div>
+        ${headerHtml}
+        <div class="action-sheet-body">
+            ${itemsHtml}
+        </div>
+        <div class="action-sheet-footer">
+            <button class="action-sheet-cancel-btn" id="actionSheetCancelBtn">取消</button>
+        </div>
+    `;
+
+    backdrop.appendChild(sheet);
+    document.body.appendChild(backdrop);
+
+    const closeSheet = () => {
+        sheet.classList.add("action-sheet-closing");
+        backdrop.classList.add("action-sheet-closing");
+        setTimeout(() => {
+            if (backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        }, 220);
+    };
+
+    backdrop.onclick = (e) => {
+        if (e.target === backdrop) closeSheet();
+    };
+    const closeBtn = sheet.querySelector("#actionSheetCancelBtn");
+    if (closeBtn) closeBtn.onclick = closeSheet;
+    const closeX = sheet.querySelector("#actionSheetCloseX");
+    if (closeX) closeX.onclick = closeSheet;
+
+    // 绑定 item 点击事件
+    const btnElements = sheet.querySelectorAll(".action-sheet-item");
+    btnElements.forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.getAttribute("data-index"), 10);
+            const item = items[idx];
+            closeSheet();
+            if (item && typeof item.onClick === 'function') {
+                item.onClick();
+            }
+        };
+    });
+}
+window.showActionSheet = showActionSheet;
 

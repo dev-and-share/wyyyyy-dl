@@ -342,7 +342,7 @@ function renderTrackCapsuleSlotsHtml(track, prefix = 'track-') {
 
     const serverBtnText = isLocal ? '📂 定位' : '📥 下载';
     const serverBtnClass = isLocal ? 'track-btn-slot slot-server-locate' : 'track-btn-slot slot-server-download';
-    const serverBtnTitle = isLocal ? '定位 Mac 宿主机物理音频文件' : '下载到电脑磁盘';
+    const serverBtnTitle = isLocal ? '在服务器/宿主机中定位物理文件' : '下载到电脑磁盘';
     const serverBtnAction = isLocal
         ? `revealSong('${id}', '${nameSafe}', '${artistSafe}')`
         : `downloadSingle('${id}')`;
@@ -356,12 +356,72 @@ function renderTrackCapsuleSlotsHtml(track, prefix = 'track-') {
         <div class="track-action-group">
             <button class="${heartClass}" data-song-id="${id}" onclick="event.stopPropagation(); toggleLikeTrack('${id}', '${nameSafe}')" title="${heartTitle}">${heartSvg}</button>
             <button id="${prefix}play-btn-${id}" class="${playBtnClass}" onclick="playSongById('${id}', '${nameSafe}', '${artistSafe}')" title="${playBtnTitle}">${playBtnText}</button>
-            <button id="${prefix}server-btn-${id}" class="${serverBtnClass}" onclick="${serverBtnAction}" title="${serverBtnTitle}">${serverBtnText}</button>
-            <button id="${prefix}cache-btn-${id}" class="track-btn-slot slot-browser-cache" onclick="cacheTracksToPhoneBatch([{id: '${id}', songId: '${id}'}], '${prefix}cache-btn-${id}', '📲 缓存')" title="缓存至手机/浏览器离线播放">📲 缓存</button>
-            <button class="track-btn-slot slot-add-playlist" onclick="event.stopPropagation(); showAddToPlaylistModal('${id}', '${nameSafe}', '${artistSafe}')" title="添加至我的歌单">➕ 歌单</button>
+            
+            <!-- PC 模式展示完整功能胶囊，SP 模式自动隐藏 -->
+            <button id="${prefix}server-btn-${id}" class="${serverBtnClass} sp-hide" onclick="${serverBtnAction}" title="${serverBtnTitle}">${serverBtnText}</button>
+            <button id="${prefix}cache-btn-${id}" class="track-btn-slot slot-browser-cache sp-hide" onclick="cacheTracksToPhoneBatch([{id: '${id}', songId: '${id}'}], '${prefix}cache-btn-${id}', '📲 缓存')" title="缓存至手机/浏览器离线播放">📲 缓存</button>
+            <button class="track-btn-slot slot-add-playlist sp-hide" onclick="event.stopPropagation(); showAddToPlaylistModal('${id}', '${nameSafe}', '${artistSafe}')" title="添加至我的歌单">➕ 歌单</button>
+            
+            <!-- SP 移动端模式专享的收纳更多操作按钮 -->
+            <button class="track-btn-more sp-show" onclick="event.stopPropagation(); showTrackActionMenu('${id}', '${nameSafe}', '${artistSafe}', ${isLocal}, '${prefix}')" title="更多操作">···</button>
         </div>
     `;
 }
+
+/**
+ * 📱 移动端单曲更多操作 ActionSheet
+ */
+function showTrackActionMenu(id, name, artist, isLocal, prefix = 'track-') {
+    const isLiked = (typeof isSongLiked === 'function') ? isSongLiked(id) : false;
+    const heartText = isLiked ? '💔 取消喜欢 (红心)' : '❤️ 喜欢这首歌 (红心)';
+
+    const items = [
+        {
+            icon: isLocal ? '▶️' : '🎧',
+            text: isLocal ? '立即播放 (本地无损秒播)' : '在线试听歌曲',
+            onClick: () => playSongById(id, name, artist)
+        },
+        {
+            icon: isLiked ? '💔' : '❤️',
+            text: heartText,
+            onClick: () => toggleLikeTrack(id, name)
+        },
+        {
+            icon: isLocal ? '📂' : '📥',
+            text: isLocal ? '在服务器/宿主机中定位文件' : '下载到电脑磁盘',
+            subtext: isLocal ? '已落盘' : '异步高品质下载',
+            onClick: () => {
+                if (isLocal) {
+                    revealSong(id, name, artist);
+                } else {
+                    downloadSingle(id);
+                }
+            }
+        },
+        {
+            icon: '📲',
+            text: '离线缓存至手机 / 浏览器',
+            subtext: 'PWA 离线播放免流量',
+            onClick: () => {
+                cacheTracksToPhoneBatch([{ id: id, songId: id, name: name, artist: artist }], `${prefix}cache-btn-${id}`, '📲 缓存');
+            }
+        },
+        {
+            icon: '➕',
+            text: '添加至我的自建歌单...',
+            onClick: () => showAddToPlaylistModal(id, name, artist)
+        }
+    ];
+
+    if (typeof showActionSheet === 'function') {
+        showActionSheet({
+            title: name || '未知歌曲',
+            subtitle: artist || '未知歌手',
+            items: items
+        });
+    }
+}
+window.showTrackActionMenu = showTrackActionMenu;
 
 async function asyncUpdateListBadges(pageTracks, prefix = 'track-') {
     if (!pageTracks || pageTracks.length === 0) return;
@@ -427,7 +487,7 @@ async function asyncUpdateListBadges(pageTracks, prefix = 'track-') {
             if (isServer) {
                 serverBtn.className = "track-btn-slot slot-server-locate";
                 serverBtn.innerHTML = "📂 定位";
-                serverBtn.title = "定位 Mac 宿主机物理音频文件";
+                serverBtn.title = "在服务器/宿主机中定位物理文件";
                 serverBtn.onclick = () => revealSong(id, trackName, trackArtist);
             } else {
                 serverBtn.className = "track-btn-slot slot-server-download";

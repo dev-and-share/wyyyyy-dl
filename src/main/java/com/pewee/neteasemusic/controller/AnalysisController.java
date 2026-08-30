@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pewee.neteasemusic.enums.CommonRespInfo;
 import com.pewee.neteasemusic.models.common.RespEntity;
 import com.pewee.neteasemusic.models.dtos.AlbumAnalysisRespDTO;
+import com.pewee.neteasemusic.models.dtos.ArtistAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.PlaylistAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.SingleMusicAnalysisRespDTO;
 import com.pewee.neteasemusic.models.dtos.TrackDTO;
@@ -60,6 +61,15 @@ public class AnalysisController {
 		}
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
+
+    @RequestMapping(value = "/Artist", method = {RequestMethod.GET, RequestMethod.POST})
+    public RespEntity<?> artist(@RequestParam(required = true) Long id) {
+        ArtistAnalysisRespDTO result = analysisService.analyzeArtist(id);
+        if (result != null && result.getArtist() != null && result.getArtist().getSongs() != null) {
+            downloadHistoryDAO.markLocalStatusBatch(result.getArtist().getSongs());
+        }
+        return RespEntity.apply(CommonRespInfo.SUCCESS, result);
+    }
     
     
     /**
@@ -93,11 +103,16 @@ public class AnalysisController {
     @Autowired
     private com.pewee.neteasemusic.dao.DownloadHistoryDAO downloadHistoryDAO;
 
+    @Autowired
+    private com.pewee.neteasemusic.service.MusicDownloadService musicDownloadService;
+
     @RequestMapping(value = "/Song_V1", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> songV1(@RequestParam(required = true) Long id,
                                 @RequestParam(required = true) String level,
                                 @RequestParam(required = false) String name,
                                 @RequestParam(required = false) String artist,
+                                @RequestParam(required = false) String playlistName,
+                                @RequestParam(required = false) String albumName,
                                 @RequestParam(required = false, defaultValue = "json") String type) {
         SingleMusicAnalysisRespDTO songInfo = analysisService.analyzeSingleSong(id, level);
 
@@ -119,10 +134,150 @@ public class AnalysisController {
         } else {
             if (songInfo != null) {
                 songInfo.setIsLocal(false);
+                if (songInfo.getUrl() != null && !songInfo.getUrl().isEmpty()) {
+                    String rawUrl = songInfo.getUrl();
+                    boolean isTrial = Boolean.TRUE.equals(songInfo.getFreeTrial());
+
+                    // 构造带 CORS 头与分片支持的在线代理播放地址
+                    StringBuilder sb = new StringBuilder("/v2/online/stream?id=").append(id);
+                    try {
+                        sb.append("&url=").append(java.net.URLEncoder.encode(rawUrl, "UTF-8"));
+                    } catch (Exception e) {
+                        sb.append("&url=").append(rawUrl);
+                    }
+                    if (playlistName != null && !playlistName.trim().isEmpty()) {
+                        try {
+                            sb.append("&playlistName=").append(java.net.URLEncoder.encode(playlistName, "UTF-8"));
+                        } catch (Exception ignored) {}
+                    }
+                    if (albumName != null && !albumName.trim().isEmpty()) {
+                        try {
+                            sb.append("&albumName=").append(java.net.URLEncoder.encode(albumName, "UTF-8"));
+                        } catch (Exception ignored) {}
+                    }
+                    if (searchName != null && !searchName.trim().isEmpty()) {
+                        try {
+                            sb.append("&name=").append(java.net.URLEncoder.encode(searchName, "UTF-8"));
+                        } catch (Exception ignored) {}
+                    }
+                    if (isTrial) {
+                        sb.append("&freeTrial=true");
+                    }
+                    songInfo.setUrl(sb.toString());
+
+                    // 🚀 智能边播边存触发：非试听歌曲且本地不存在，后台自动开启异步静默落盘
+                    if (!isTrial && musicDownloadService != null) {
+                        musicDownloadService.asyncDownloadOnPlay(id, playlistName, albumName, searchName);
+                    }
+                }
             }
         }
 
         return RespEntity.apply(CommonRespInfo.SUCCESS, songInfo);
+    }
+
+    /**
+     * 🌐 在线音频 CORS 代理流接口（解决 Web Audio API 均衡器跨域静音，并支持 Range 分片拖拽与边播边存）
+     */
+    @RequestMapping(value = "/v2/online/stream", method = {RequestMethod.GET, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    public void streamOnlineAudio(
+            @RequestParam(required = false) String url,
+            @RequestParam(required = false) Long id,
+            @RequestParam(required = false) String playlistName,
+            @RequestParam(required = false) String albumName,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String artist,
+            @RequestParam(required = false, defaultValue = "false") boolean freeTrial,
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
+
+        // 注入标准 CORS 响应头，确保 Web Audio 均衡器不受沙箱静音拦截
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "Range, Accept, Origin, Content-Type");
+        response.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
+
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
+            return;
+        }
+
+        if (org.apache.commons.lang3.StringUtils.isBlank(url) && id != null && id > 0) {
+            try {
+                SingleMusicAnalysisRespDTO analysis = analysisService.analyzeSingleSong(id, "lossless");
+                if (analysis != null && analysis.getUrl() != null) {
+                    url = analysis.getUrl();
+                    if (analysis.getFreeTrial() != null) {
+                        freeTrial = analysis.getFreeTrial();
+                    }
+                    if (org.apache.commons.lang3.StringUtils.isBlank(name)) name = analysis.getName();
+                    if (org.apache.commons.lang3.StringUtils.isBlank(artist)) artist = analysis.getAr_name();
+                    if (org.apache.commons.lang3.StringUtils.isBlank(albumName)) albumName = analysis.getAl_name();
+                }
+            } catch (Exception e) {
+                log.warn("动态解析在线歌曲流地址异常: id={}", id, e);
+            }
+        }
+
+        if (org.apache.commons.lang3.StringUtils.isBlank(url)) {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        // 边播边存异步触发（非试听歌曲双重保险）
+        if (!freeTrial && id != null && id > 0 && musicDownloadService != null) {
+            musicDownloadService.asyncDownloadOnPlay(id, playlistName, albumName, name);
+        }
+
+        org.apache.http.client.methods.HttpGet httpGet = new org.apache.http.client.methods.HttpGet(url);
+        String rangeHeader = request.getHeader("Range");
+        if (org.apache.commons.lang3.StringUtils.isNotBlank(rangeHeader)) {
+            httpGet.setHeader("Range", rangeHeader);
+        }
+        httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
+        httpGet.setHeader("Referer", "https://music.163.com/");
+
+        org.apache.http.client.config.RequestConfig requestConfig = org.apache.http.client.config.RequestConfig.custom()
+                .setConnectTimeout(15000)
+                .setSocketTimeout(30000)
+                .build();
+        httpGet.setConfig(requestConfig);
+
+        try (org.apache.http.client.methods.CloseableHttpResponse clientResp = com.pewee.neteasemusic.utils.HttpClientUtil.getInstance().execute(httpGet)) {
+            int statusCode = clientResp.getStatusLine().getStatusCode();
+            response.setStatus(statusCode);
+
+            org.apache.http.HttpEntity entity = clientResp.getEntity();
+            if (entity != null) {
+                if (entity.getContentType() != null) {
+                    response.setContentType(entity.getContentType().getValue());
+                } else {
+                    response.setContentType("audio/mpeg");
+                }
+                if (entity.getContentLength() >= 0) {
+                    response.setContentLengthLong(entity.getContentLength());
+                }
+                org.apache.http.Header contentRange = clientResp.getFirstHeader("Content-Range");
+                if (contentRange != null) {
+                    response.setHeader("Content-Range", contentRange.getValue());
+                }
+                response.setHeader("Accept-Ranges", "bytes");
+
+                if (!"HEAD".equalsIgnoreCase(request.getMethod())) {
+                    try (java.io.InputStream in = entity.getContent();
+                         java.io.OutputStream out = response.getOutputStream()) {
+                        byte[] buffer = new byte[16384];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                        out.flush();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("透传在线音频流异常: url={}, id={}, error={}", url, id, e.getMessage());
+        }
     }
 
     @RequestMapping(value = "/v2/stream", method = {RequestMethod.GET})
@@ -149,27 +304,77 @@ public class AnalysisController {
         }
 
         try {
+            response.setHeader("Access-Control-Allow-Origin", "*");
+            response.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+            response.setHeader("Access-Control-Allow-Headers", "Range, Accept, Origin, Content-Type");
+            response.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
+            response.setHeader("Accept-Ranges", "bytes");
+
             String fileName = file.getName().toLowerCase();
             String contentType = "audio/mpeg";
             if (fileName.endsWith(".flac")) contentType = "audio/flac";
             else if (fileName.endsWith(".wav")) contentType = "audio/wav";
             else if (fileName.endsWith(".m4a") || fileName.endsWith(".aac")) contentType = "audio/mp4";
+            else if (fileName.endsWith(".ogg")) contentType = "audio/ogg";
 
             response.setContentType(contentType);
-            response.setHeader("Accept-Ranges", "bytes");
-            response.setContentLengthLong(file.length());
 
-            try (java.io.InputStream in = new java.io.FileInputStream(file);
+            long fileLength = file.length();
+            String rangeHeader = request.getHeader("Range");
+
+            long start = 0;
+            long end = fileLength - 1;
+
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(rangeHeader) && rangeHeader.startsWith("bytes=")) {
+                String rangeValue = rangeHeader.substring(6).trim();
+                String[] parts = rangeValue.split("-");
+                try {
+                    if (parts.length > 0 && !parts[0].isEmpty()) {
+                        start = Long.parseLong(parts[0]);
+                    }
+                    if (parts.length > 1 && !parts[1].isEmpty()) {
+                        end = Long.parseLong(parts[1]);
+                    }
+                } catch (NumberFormatException ignored) {}
+
+                if (start > end || start >= fileLength) {
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE);
+                    response.setHeader("Content-Range", "bytes */" + fileLength);
+                    return;
+                }
+                if (end >= fileLength) {
+                    end = fileLength - 1;
+                }
+
+                long contentLength = end - start + 1;
+                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_PARTIAL_CONTENT);
+                response.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + fileLength);
+                response.setContentLengthLong(contentLength);
+            } else {
+                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
+                response.setContentLengthLong(fileLength);
+            }
+
+            if ("HEAD".equalsIgnoreCase(request.getMethod())) {
+                return;
+            }
+
+            try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(file, "r");
                  java.io.OutputStream out = response.getOutputStream()) {
+                raf.seek(start);
                 byte[] buffer = new byte[16384];
-                int bytesRead;
-                while ((bytesRead = in.read(buffer)) != -1) {
-                    out.write(buffer, 0, bytesRead);
+                long bytesToRead = end - start + 1;
+                while (bytesToRead > 0) {
+                    int len = (int) Math.min(buffer.length, bytesToRead);
+                    int read = raf.read(buffer, 0, len);
+                    if (read == -1) break;
+                    out.write(buffer, 0, read);
+                    bytesToRead -= read;
                 }
                 out.flush();
             }
         } catch (Exception e) {
-            log.error("播放本地音频流异常, songId={}, historyId={}", id, historyId, e);
+            log.warn("播放本地音频流异常或客户端中断: songId={}, historyId={}, msg={}", id, historyId, e.getMessage());
         }
     }
     

@@ -5,15 +5,74 @@
 let drawerFilterType = 'all'; // 'all', 'ready', 'server', 'browser'
 let drawerSearchQuery = '';
 let lastCachedUrlsForDrawer = [];
+let currentDrawerMainTab = 'queue'; // 'queue', 'tasks'
 
 const STORAGE_DRAWER_BOUNDS_KEY = "wyyyy_drawer_bounds";
+
+function scrollToCurrentPlayingDrawerItem(smooth = true) {
+    const list = document.getElementById("playlistDrawerList");
+    if (!list) return;
+    const activeEl = list.querySelector(".drawer-item.active");
+    if (activeEl) {
+        activeEl.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" });
+    }
+}
+
+function switchDrawerMainTab(tab) {
+    currentDrawerMainTab = tab || 'queue';
+    const tabQueue = document.getElementById("drawerTabQueue");
+    const tabTasks = document.getElementById("drawerTabTasks");
+    const viewQueue = document.getElementById("drawerQueueView");
+    const viewTasks = document.getElementById("drawerTasksView");
+    const trimBtn = document.getElementById("btnQueueTrim");
+    const clearBtn = document.getElementById("drawerClearBtn");
+
+    if (tabQueue) tabQueue.classList.toggle("active", currentDrawerMainTab === 'queue');
+    if (tabTasks) tabTasks.classList.toggle("active", currentDrawerMainTab === 'tasks');
+
+    if (viewQueue) viewQueue.style.display = (currentDrawerMainTab === 'queue') ? 'flex' : 'none';
+    if (viewTasks) viewTasks.style.display = (currentDrawerMainTab === 'tasks') ? 'flex' : 'none';
+
+    if (clearBtn) {
+        clearBtn.title = (currentDrawerMainTab === 'queue') ? '清空播放列表' : '清空下载任务列表';
+    }
+
+    if (currentDrawerMainTab === 'queue') {
+        renderPlaylistDrawer();
+    } else {
+        if (trimBtn) trimBtn.style.display = 'none';
+        if (typeof fetchDownloadTasks === 'function') fetchDownloadTasks();
+    }
+}
+
+function handleDrawerClear() {
+    if (currentDrawerMainTab === 'queue') {
+        clearPlaylistQueue();
+    } else {
+        if (typeof clearMonitorTasks === 'function') clearMonitorTasks();
+    }
+}
+
+function openDrawerWithTab(tab) {
+    const drawer = document.getElementById("playlistDrawer");
+    if (drawer) {
+        drawer.style.display = 'flex';
+        switchDrawerMainTab(tab || 'queue');
+        initDraggablePlaylistDrawer();
+    }
+}
 
 function togglePlaylistDrawer() {
     const drawer = document.getElementById("playlistDrawer");
     if (drawer) {
         if (drawer.style.display === 'none' || !drawer.style.display) {
             drawer.style.display = 'flex';
-            renderPlaylistDrawer();
+            switchDrawerMainTab(currentDrawerMainTab);
+            if (currentDrawerMainTab === 'queue') {
+                renderPlaylistDrawer().then(() => {
+                    setTimeout(() => scrollToCurrentPlayingDrawerItem(true), 50);
+                });
+            }
             initDraggablePlaylistDrawer();
         } else {
             drawer.style.display = 'none';
@@ -297,6 +356,11 @@ async function renderPlaylistDrawer() {
         `;
         list.appendChild(li);
     });
+
+    const drawer = document.getElementById("playlistDrawer");
+    if (drawer && drawer.style.display !== 'none') {
+        setTimeout(() => scrollToCurrentPlayingDrawerItem(true), 40);
+    }
 }
 
 function saveDrawerBoundsToStorage() {
@@ -452,6 +516,9 @@ function toggleOfflineOnlyMode(checked) {
 }
 
 window.togglePlaylistDrawer = togglePlaylistDrawer;
+window.switchDrawerMainTab = switchDrawerMainTab;
+window.handleDrawerClear = handleDrawerClear;
+window.openDrawerWithTab = openDrawerWithTab;
 window.updatePlaylistCountUI = updatePlaylistCountUI;
 window.setDrawerFilter = setDrawerFilter;
 window.onDrawerFilterChange = onDrawerFilterChange;

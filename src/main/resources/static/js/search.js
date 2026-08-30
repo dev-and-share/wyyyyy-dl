@@ -104,10 +104,17 @@ function renderSearchPage(page) {
                 </div>
             `;
         } else {
-            // 歌手
+            // 歌手 (type === '100')
+            li.className = "track-item-card";
+            const artistPic = item.picUrl ? `<img src="${item.picUrl}?param=60y60" style="width:36px; height:36px; border-radius:50%; object-fit:cover; margin-right:8px; flex-shrink:0;">` : `<span style="font-size:20px; margin-right:8px; flex-shrink:0;">🎤</span>`;
             li.innerHTML = `
-                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <strong>${index + 1}. ${item.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(ID: ${item.id})</span>
+                <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px; display:flex; align-items:center; cursor:pointer;" onclick="jumpToArtistDetail('${item.id}')">
+                    ${artistPic}
+                    <strong class="clickable-track-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px;">${index + 1}. ${escapeHtml(item.name)}</strong>
+                    <span style="color:var(--text-muted); font-size:12px; margin-left:6px;">(ID: ${item.id})</span>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button class="jump-link-btn" style="background:linear-gradient(135deg, #ec4899, #db2777); color:#fff; border:none; padding:4px 10px;" onclick="jumpToArtistDetail('${item.id}')">👉 查看热门 50 首</button>
                 </div>
             `;
         }
@@ -123,6 +130,168 @@ function renderSearchPage(page) {
     document.getElementById("search-prev").disabled = true;
     document.getElementById("search-next").disabled = true;
 }
+
+/* ==========================================================================
+   🎤 歌手热门 50 首与详情解析逻辑 (Section 3 Tab 模块)
+   ========================================================================== */
+
+let currentArtist = null;
+let currentArtistSongs = [];
+
+function quickLoadArtist(artistId) {
+    const input = document.getElementById("artistId");
+    if (input) input.value = artistId;
+    loadArtistInfo();
+}
+
+function renderArtistDetailUI(artist) {
+    if (!artist) return;
+    currentArtist = artist;
+    currentArtistSongs = artist.songs || [];
+    const artistSongs = currentArtistSongs;
+
+    const infoDiv = document.getElementById("artist-info");
+    if (!infoDiv) return;
+
+    let songsHtml = '';
+    artistSongs.forEach((song, idx) => {
+        const artistDisplay = getValidArtistNames(song) || artist.name;
+        const artistHtml = artistDisplay ? ` - ${artistDisplay}` : '';
+        const albumHtml = song.album ? ` <span style="color:var(--text-muted); font-size:12px;">[专辑: ${escapeHtml(song.album)}]</span>` : '';
+        const localBadge = `<span id="badge-art-${song.id}" class="status-badge icon-only" style="margin-left:6px; display:none;"></span>`;
+        const slotsHtml = renderTrackCapsuleSlotsHtml(song, 'art-');
+
+        songsHtml += `
+            <li class="track-item-card">
+                <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; display:flex; align-items:center;">
+                    <strong class="clickable-track-title" onclick="jumpToSongDetail('${song.id}')" title="点击查看单曲详细信息" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${idx + 1}. ${escapeHtml(song.name)}</strong>${artistHtml}${albumHtml}${localBadge}
+                </div>
+                ${slotsHtml}
+            </li>
+        `;
+    });
+
+    infoDiv.innerHTML = `
+        <div class="detail-header-card" style="margin-bottom:15px;">
+            <img src="${artist.coverImgUrl ? artist.coverImgUrl + '?param=140y140' : '/favicon.png'}" alt="歌手头像" class="detail-cover-img" style="border-radius:50%; width:80px; height:80px; object-fit:cover;">
+            <div class="detail-header-info">
+                <h4 class="detail-header-title">${escapeHtml(artist.name || '未知歌手')}</h4>
+                <div class="detail-header-sub">
+                    ${artist.musicSize ? `单曲：${artist.musicSize} 首 | ` : ''}
+                    ${artist.albumSize ? `专辑：${artist.albumSize} 张 | ` : ''}
+                    <span>🔥 热门 Top ${artistSongs.length}</span>
+                </div>
+                <div class="detail-btn-group">
+                    <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick="playFullCurrentArtist()">▶️ 连播热门</button>
+                    <button class="btn-primary flex-1-btn" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="appendFullCurrentArtist()">➕ 追加全部</button>
+                    <button class="btn-primary flex-1-btn" id="artist-cache-btn" style="background:#0284c7;" onclick="cacheTracksToPhoneBatch(currentArtist ? currentArtist.songs : [], 'artist-cache-btn', '📲 缓存全榜')">📲 缓存全榜 (计算中...)</button>
+                </div>
+            </div>
+        </div>
+        ${artist.briefDesc ? `<div style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:12px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:6px; max-height:65px; overflow-y:auto;">${escapeHtml(artist.briefDesc)}</div>` : ''}
+        <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">🔥 热门 50 首曲目列表 (${artistSongs.length} 首)：</h4>
+        <ul class="data-list scrollable-list" id="artist-tracks">
+            ${songsHtml}
+        </ul>
+    `;
+    refreshPhoneCacheBtn(artistSongs, 'artist-cache-btn', '📲 缓存全榜');
+    asyncUpdateListBadges(artistSongs, 'art-');
+}
+
+function loadArtistInfo() {
+    const id = document.getElementById("artistId")?.value;
+    if (!id) {
+        showToast("请输入歌手 ID", "warning");
+        return;
+    }
+
+    const infoDiv = document.getElementById("artist-info");
+
+    // ⚡ 1. SWR 优先从本地缓存秒开渲染
+    const cacheKey = 'artist_' + id;
+    const cached = typeof getApiCache === 'function' ? getApiCache(cacheKey) : null;
+    let hasRenderedCache = false;
+
+    if (cached && cached.data && cached.data.artist) {
+        renderArtistDetailUI(cached.data.artist);
+        hasRenderedCache = true;
+    } else {
+        if (infoDiv) {
+            infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);"><span class="loading-spinner"></span> 正在解析歌手热门歌曲，请稍候...</div>`;
+        }
+    }
+
+    // 🔄 2. 并行后台请求最新数据
+    axios.get(`/Artist?id=${id}`)
+        .then(resp => {
+            if (!resp.data || !resp.data.data || !resp.data.data.artist) {
+                if (!hasRenderedCache) throw new Error("未查找到对应歌手数据或该歌手 ID 不存在");
+                return;
+            }
+            const artist = resp.data.data.artist;
+            const oldArtist = cached ? cached.data.artist : null;
+            const isChanged = !hasRenderedCache || !isFastDataEqual(oldArtist, artist);
+
+            if (isChanged) {
+                if (typeof setApiCache === 'function') {
+                    setApiCache(cacheKey, resp.data.data);
+                }
+                renderArtistDetailUI(artist);
+            }
+        })
+        .catch(err => {
+            if (!hasRenderedCache) {
+                showToast("解析歌手信息失败：" + (err.message || err), "error");
+                if (infoDiv) {
+                    infoDiv.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">⚠️ 解析歌手信息失败，请检查歌手 ID</div>`;
+                }
+            }
+        });
+}
+
+function playFullCurrentArtist() {
+    if (!currentArtistSongs || currentArtistSongs.length === 0) {
+        showToast("歌手曲目列表为空", "warning");
+        return;
+    }
+    const formattedQueue = currentArtistSongs.map(s => ({
+        id: s.id,
+        name: s.name,
+        artist: getValidArtistNames(s) || currentArtist?.name || '未知歌手',
+        album: s.album || '',
+        cover: s.picUrl || currentArtist?.coverImgUrl || '/favicon.png',
+        isLocal: (s.isLocal === true)
+    }));
+    if (typeof setGlobalPlaylistQueue === 'function') {
+        setGlobalPlaylistQueue(formattedQueue, 0);
+        showToast(`开始连播歌手「${currentArtist?.name || ''}」热门曲目（共 ${formattedQueue.length} 首）`, 'success');
+    }
+}
+
+function appendFullCurrentArtist() {
+    if (!currentArtistSongs || currentArtistSongs.length === 0) {
+        showToast("歌手曲目列表为空", "warning");
+        return;
+    }
+    const formattedQueue = currentArtistSongs.map(s => ({
+        id: s.id,
+        name: s.name,
+        artist: getValidArtistNames(s) || currentArtist?.name || '未知歌手',
+        album: s.album || '',
+        cover: s.picUrl || currentArtist?.coverImgUrl || '/favicon.png',
+        isLocal: (s.isLocal === true)
+    }));
+    if (typeof globalPlaylistQueue !== 'undefined') {
+        globalPlaylistQueue.push(...formattedQueue);
+        if (typeof updatePlaylistCountUI === 'function') updatePlaylistCountUI();
+        showToast(`已追加歌手「${currentArtist?.name || ''}」${formattedQueue.length} 首歌曲到播放列表`, 'success');
+    }
+}
+
+window.loadArtistInfo = loadArtistInfo;
+window.renderArtistDetailUI = renderArtistDetailUI;
+window.playFullCurrentArtist = playFullCurrentArtist;
+window.appendFullCurrentArtist = appendFullCurrentArtist;
 
 function changeSearchPage(delta) {
     // 基础搜索暂按服务端 Limit 分页展示
