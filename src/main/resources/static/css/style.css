@@ -1509,9 +1509,59 @@ ul.data-list li:last-child {
         padding: 10px 12px 15px 12px;
     }
 
-    input[type="text"], input[type="number"], select {
+    .form-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 6px !important;
         width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .form-row input[type="text"] {
+        flex: 1 !important;
+        min-width: 0 !important;
+        width: auto !important;
         box-sizing: border-box;
+    }
+
+    .form-row select {
+        width: auto !important;
+        flex-shrink: 0 !important;
+        padding: 8px 6px !important;
+        box-sizing: border-box;
+    }
+
+    /* 搜索栏：移动端彻底隐藏独立的霸屏搜索按钮与冗余条数，手机键盘回车直接搜索 */
+    .sp-hide-btn {
+        display: none !important;
+    }
+
+    .search-limit-input {
+        display: none !important;
+    }
+
+    .inline-action-btn {
+        width: auto !important;
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    /* 历史记录管理 Bar：4 按钮严格等宽单排 */
+    .history-header-actions {
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 5px !important;
+        margin-left: 0 !important;
+        margin-top: 6px !important;
+    }
+
+    /* 浏览器缓存管理 Bar：2 按钮等宽单排 */
+    .browser-cache-actions {
+        grid-template-columns: repeat(2, 1fr) !important;
     }
 
     /* 列表行项 Mobile 响应式极致美化 */
@@ -2639,7 +2689,7 @@ ul.data-list li.history-item-card .card-sub-row {
     color: var(--text-muted);
     opacity: 0.75;
     padding: 12px 0 6px 0;
-    margin-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
     user-select: none;
     letter-spacing: 0.5px;
 }

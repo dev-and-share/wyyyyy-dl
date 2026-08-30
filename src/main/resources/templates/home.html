@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.5.6">
+    <link rel="stylesheet" href="/css/style.css?v=4.5.7">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -86,9 +86,9 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="playlistId" placeholder="输入歌单 ID" style="flex:1;">
-                        <button class="btn-primary" onclick="loadPlaylistDetail()">查看歌单详情</button>
+                    <div class="form-row flex-input-row">
+                        <input type="text" id="playlistId" placeholder="输入歌单 ID (如 123456，按回车查看)" style="flex:1;" onkeyup="if(event.key==='Enter') loadPlaylistDetail();">
+                        <button class="btn-primary inline-action-btn" onclick="loadPlaylistDetail()">查看<span class="pc-only-text">歌单详情</span></button>
                     </div>
                     <div id="playlist-info"></div>
                     <ul class="data-list scrollable-list" id="playlist-tracks"></ul>
@@ -107,14 +107,14 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="songId" placeholder="输入歌曲 ID" style="flex:1;">
-                        <select id="songLevel">
-                            <option value="standard">standard (标准)</option>
-                            <option value="exhigh">exhigh (极高)</option>
-                            <option value="lossless" selected>lossless (无损)</option>
+                    <div class="form-row flex-input-row">
+                        <input type="text" id="songId" placeholder="输入歌曲 ID (按回车查看)" style="flex:1;" onkeyup="if(event.key==='Enter') loadSongInfo();">
+                        <select id="songLevel" style="width:auto; flex-shrink:0;">
+                            <option value="standard">标准</option>
+                            <option value="exhigh">极高</option>
+                            <option value="lossless" selected>无损</option>
                         </select>
-                        <button class="btn-primary" onclick="loadSongInfo()">查看单曲信息</button>
+                        <button class="btn-primary inline-action-btn" onclick="loadSongInfo()">查看<span class="pc-only-text">单曲信息</span></button>
                     </div>
                     <div id="song-info"></div>
                 </div>
@@ -133,16 +133,16 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row">
-                        <input type="text" id="searchKeyword" placeholder="输入关键词 (歌曲 / 歌手 / 专辑 / 歌单)" style="flex:1;" onkeyup="if(event.key==='Enter') searchSongs();">
-                        <select id="searchType">
+                    <div class="form-row search-form-row">
+                        <input type="text" id="searchKeyword" placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)" style="flex:1;" onkeyup="if(event.key==='Enter') searchSongs();">
+                        <select id="searchType" style="width:auto; flex-shrink:0;">
                             <option value="1">单曲</option>
                             <option value="10">专辑</option>
                             <option value="1000">歌单</option>
                             <option value="100">歌手</option>
                         </select>
-                        <input type="number" id="searchLimit" value="10" min="1" max="100" style="width:70px;">
-                        <button class="btn-primary" onclick="searchSongs()">搜索</button>
+                        <input type="number" id="searchLimit" value="10" min="1" max="100" class="search-limit-input" style="width:60px;" title="单页条数">
+                        <button class="btn-primary sp-hide-btn" onclick="searchSongs()">搜索</button>
                     </div>
                     <ul class="data-list scrollable-list" id="search-results"></ul>
                     <div id="search-pagination" class="pagination-container">
@@ -160,9 +160,9 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row" style="margin-bottom:12px;">
-                        <input type="text" id="albumId" placeholder="输入专辑 ID (如 32311)" style="flex:1;" onkeyup="if(event.key==='Enter') loadAlbumInfo();">
-                        <button class="btn-primary" onclick="loadAlbumInfo()">解析专辑</button>
+                    <div class="form-row flex-input-row" style="margin-bottom:12px;">
+                        <input type="text" id="albumId" placeholder="输入专辑 ID (如 32311，按回车解析)" style="flex:1;" onkeyup="if(event.key==='Enter') loadAlbumInfo();">
+                        <button class="btn-primary inline-action-btn" onclick="loadAlbumInfo()">解析<span class="pc-only-text">专辑</span></button>
                     </div>
                     <div id="album-info">
                         <!-- 🎨 默认优雅空状态 (Empty State Placeholder) -->
@@ -182,9 +182,9 @@
                     <span class="accordion-icon">▼</span>
                 </div>
                 <div class="accordion-body">
-                    <div class="form-row" style="margin-bottom:12px;">
-                        <input type="text" id="artistId" placeholder="输入歌手 ID (如 6452)" style="flex:1;" onkeyup="if(event.key==='Enter') loadArtistInfo();">
-                        <button class="btn-primary" onclick="loadArtistInfo()">解析歌手</button>
+                    <div class="form-row flex-input-row" style="margin-bottom:12px;">
+                        <input type="text" id="artistId" placeholder="输入歌手 ID (如 6452，按回车解析)" style="flex:1;" onkeyup="if(event.key==='Enter') loadArtistInfo();">
+                        <button class="btn-primary inline-action-btn" onclick="loadArtistInfo()">解析<span class="pc-only-text">歌手</span></button>
                     </div>
                     <div id="artist-info">
                         <!-- 🎨 默认优雅空状态 -->
@@ -244,18 +244,18 @@
                         <div style="font-size:14px;"><strong>占用空间：</strong><span id="mgr-stat-size">0 B</span></div>
                         <div style="font-size:14px; color:#ef4444;" id="mgr-stat-missing-box" onclick="showMissingFilesModal()" title="点击查看所有缺失文件清单"><strong>⚠️ 文件缺失：</strong><span id="mgr-stat-missing">0</span> 首 <span class="mgr-stat-missing-tag">查看 ↗</span></div>
                         <div style="font-size:14px; color:#f59e0b;" id="mgr-stat-non-mp3-box" onclick="showNonMp3FilesModal()" title="点击查看所有非 MP3 格式音频记录"><strong>📁 非 MP3 格式：</strong><span id="mgr-stat-non-mp3">0</span> 首 <span class="mgr-stat-non-mp3-tag">查看 ↗</span></div>
-                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部曲库</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #06b6d4, #0891b2);" onclick="scanDiskFiles()">🔍 对齐磁盘</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="cleanMissingHistory()">🧹 清理失效</button>
-                            <button class="btn-primary" onclick="loadDownloadHistory(1)">🔄 刷新</button>
+                        <div class="history-header-actions">
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);" onclick="scanExternalLibrariesUI()" title="同步 .env 中配置的多个外部官方曲库目录">📁 外部<span class="pc-only-text">曲库</span></button>
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #06b6d4, #0891b2);" onclick="scanDiskFiles()">🔍 对齐<span class="pc-only-text">磁盘</span></button>
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="cleanMissingHistory()">🧹 清理<span class="pc-only-text">失效</span></button>
+                            <button class="btn-primary quick-btn-item" onclick="loadDownloadHistory(1)">🔄 刷新</button>
                         </div>
                     </div>
 
                     <!-- 搜索筛选 -->
                     <div class="form-row mgr-search-row" style="margin-bottom:12px;">
-                        <input type="text" id="mgrSearchKeyword" placeholder="搜索已下载歌曲 / 歌手 / 专辑" style="flex:1;" onkeyup="if(event.key==='Enter') loadDownloadHistory(1);">
-                        <button class="btn-primary" onclick="loadDownloadHistory(1)">搜索</button>
+                        <input type="text" id="mgrSearchKeyword" placeholder="🔍 搜索已下载歌曲 / 歌手 / 专辑 (按回车搜索)" style="flex:1;" onkeyup="if(event.key==='Enter') loadDownloadHistory(1);">
+                        <button class="btn-primary sp-hide-btn" onclick="loadDownloadHistory(1)">搜索</button>
                     </div>
 
                     <!-- 扫描诊断结果弹窗/框 -->
@@ -289,9 +289,9 @@
                     <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:12px 16px; border-radius:8px; align-items:center;">
                         <div style="font-size:14px;"><strong>已缓存歌曲：</strong><span id="cache-stat-total">0</span> 首</div>
                         <div style="font-size:14px;"><strong>估算大小：</strong><span id="cache-stat-size">0 B</span></div>
-                        <div class="history-header-actions" style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="btn-primary" onclick="loadBrowserCacheList()">🔄 扫描/刷新缓存</button>
-                            <button class="btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除所有缓存</button>
+                        <div class="history-header-actions browser-cache-actions">
+                            <button class="btn-primary quick-btn-item" onclick="loadBrowserCacheList()">🔄 刷新缓存</button>
+                            <button class="btn-primary quick-btn-item" style="background:linear-gradient(135deg, #ef4444, #dc2626);" onclick="clearAllBrowserCache()">🗑️ 清除缓存</button>
                         </div>
                     </div>
                     <ul class="data-list scrollable-list" id="browser-cache-list">
@@ -300,8 +300,6 @@
                 </div>
             </div>
         </div>
-        <!-- 彻底防止底部播放器遮挡 UI 的死占位 Spacer 块 (自适应移动端 Safe Area) -->
-        <div style="height: calc(140px + env(safe-area-inset-bottom, 0px)); width: 100%; pointer-events: none;"></div>
     </div>
 
     <!-- 右下角悬浮半透明下载监控卡片 (Floating Glassmorphism Widget) -->
@@ -524,20 +522,20 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v4.5.6</div>
+    <div class="app-version-footer">网易云下载器 · PWA v4.5.7</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/ui-core.js?v=4.5.6"></script>
-    <script src="/js/player-core.js?v=4.5.6"></script>
-    <script src="/js/player-peq.js?v=4.5.6"></script>
-    <script src="/js/player-lyric.js?v=4.5.6"></script>
-    <script src="/js/player-drawer.js?v=4.5.6"></script>
-    <script src="/js/pwa-cache.js?v=4.5.6"></script>
-    <script src="/js/playlist.js?v=4.5.6"></script>
-    <script src="/js/album.js?v=4.5.6"></script>
-    <script src="/js/search.js?v=4.5.6"></script>
-    <script src="/js/download-mgr.js?v=4.5.6"></script>
-    <script src="/js/folder-explorer.js?v=4.5.6"></script>
-    <script src="/js/app.js?v=4.5.6"></script>
+    <script src="/js/ui-core.js?v=4.5.7"></script>
+    <script src="/js/player-core.js?v=4.5.7"></script>
+    <script src="/js/player-peq.js?v=4.5.7"></script>
+    <script src="/js/player-lyric.js?v=4.5.7"></script>
+    <script src="/js/player-drawer.js?v=4.5.7"></script>
+    <script src="/js/pwa-cache.js?v=4.5.7"></script>
+    <script src="/js/playlist.js?v=4.5.7"></script>
+    <script src="/js/album.js?v=4.5.7"></script>
+    <script src="/js/search.js?v=4.5.7"></script>
+    <script src="/js/download-mgr.js?v=4.5.7"></script>
+    <script src="/js/folder-explorer.js?v=4.5.7"></script>
+    <script src="/js/app.js?v=4.5.7"></script>
 </body>
 </html>
