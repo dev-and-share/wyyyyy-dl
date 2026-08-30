@@ -41,6 +41,9 @@ public class AnalysisControllerTest {
     @MockBean
     private DownloadHistoryDAO downloadHistoryDAO;
 
+    @MockBean
+    private com.pewee.neteasemusic.service.MusicDownloadService musicDownloadService;
+
     @Test
     @DisplayName("测试 /Song_V1: 当本地存在文件时，自动返回 /v2/stream 本地播放地址")
     public void testSongV1ReturnsLocalStreamUrlWhenFileExists() throws Exception {
@@ -240,5 +243,15 @@ public class AnalysisControllerTest {
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.artist.name").value("周杰伦"))
                 .andExpect(jsonPath("$.data.artist.songs[0].name").value("晴天"));
+    }
+
+    @Test
+    @DisplayName("测试 /v2/online/stream: 跨域 OPTIONS 预检请求与 CORS 响应头注入")
+    public void testOnlineStreamCorsHeaders() throws Exception {
+        mockMvc.perform(options("/v2/online/stream"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "*"))
+                .andExpect(header().string("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS"))
+                .andExpect(header().string("Access-Control-Allow-Headers", "Range, Accept, Origin, Content-Type"));
     }
 }

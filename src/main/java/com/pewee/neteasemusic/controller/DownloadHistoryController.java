@@ -239,8 +239,13 @@ public class DownloadHistoryController {
 
         org.springframework.core.io.FileSystemResource resource = new org.springframework.core.io.FileSystemResource(file);
         return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, HEAD, OPTIONS")
+                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "Range, Accept, Origin, Content-Type")
+                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Range, Content-Length, Accept-Ranges")
                 .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, mimeType)
                 .header(org.springframework.http.HttpHeaders.CONTENT_LENGTH, String.valueOf(file.length()))
+                .header(org.springframework.http.HttpHeaders.ACCEPT_RANGES, "bytes")
                 .body(resource);
     }
 
