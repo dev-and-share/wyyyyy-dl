@@ -119,10 +119,11 @@
     if(cached?.data?.playlist?.tracks?.length){ renderPlaylist(cached.data.playlist); }
     try{
       const j=await api.playlist(playlistId);
+      if(j?.code && j.code!=='000000'){ showToast(j.msg || '获取失败，请先扫码登录设置 Cookie','warning', 4000); return; }
       const pl=j?.data?.playlist;
       if(!pl?.tracks?.length){ if(!cached) showToast('未找到歌单','warning'); return; }
       setApiCache(key, j.data); renderPlaylist(pl);
-    }catch(e){ showToast('获取歌单失败','error'); }
+    }catch(e){ showToast('获取歌单失败: '+e,'error'); }
   }
   function renderPlaylist(pl:any){
     playlist=pl; allTracks=pl.tracks||[]; curPage=1;
@@ -136,11 +137,11 @@
     if(!kw.trim()) return showToast('请输入关键词','warning');
     try{
       const j=await api.search(kw, sType, sLimit);
-      // 后端 Search 返回结构 {songs|albums|playlists|artists}
+      if(j?.code && j.code!=='000000'){ showToast(j.msg || '搜索失败，请先登录','warning'); return; }
       const data=j?.data||{};
       sResults = data.songs||data.albums||data.playlists||data.artists||data.result||[];
       if(sResults.length===0) showToast('无结果','info');
-    }catch{ showToast('搜索失败','error'); }
+    }catch(e){ showToast('搜索失败: '+e,'error'); }
   }
 
   // ---------- 单曲 ----------
@@ -148,7 +149,7 @@
   let songInfo:any=$state(null);
   async function loadSong(){
     if(!songId) return showToast('请输入歌曲ID','warning');
-    try{ const j=await api.songV1(songId, songLevel); songInfo=j?.data||null; if(!songInfo) showToast('无歌曲数据','warning'); }catch{ showToast('获取单曲失败','error'); }
+    try{ const j=await api.songV1(songId, songLevel); if(j?.code && j.code!=='000000'){ showToast(j.msg || '获取失败','warning'); return; } songInfo=j?.data||null; if(!songInfo) showToast('无歌曲数据','warning'); }catch(e){ showToast('获取单曲失败: '+e,'error'); }
   }
 
   // ---------- 下载监控 ----------
@@ -229,14 +230,17 @@
     <div class="accordion-card" class:active={acc.my}>
       <div class="accordion-header" onclick={()=>toggleAcc('my')}><h3 class="accordion-title">📋 1. 我的歌单</h3><span class="accordion-icon">▼</span></div>
       <div class="accordion-body">
-        <div class="my-playlist-filter-bar" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
-          <button class="btn-primary" style="padding:6px 10px; font-size:12px;" onclick={()=>loadMyPlaylists('created')}>📂 创建</button>
-          <button class="btn-primary" style="padding:6px 10px; font-size:12px; background:#0284c7;" onclick={()=>loadMyPlaylists('subscribed')}>⭐ 收藏</button>
-          <button class="btn-primary" style="padding:6px 10px; font-size:12px; background:#64748b;" onclick={()=>loadMyPlaylists('all')}>📋 全部</button>
-          <button class="btn-primary" style="padding:6px 10px; font-size:12px; background:linear-gradient(135deg,#10b981,#059669);" onclick={async()=>{
-            const name=prompt('新歌单名称'); if(!name) return;
-            const j=await api.playlistCreate(name,false); if(j.code==='000000'){ showToast('创建成功','success'); loadMyPlaylists('created'); } else showToast(j.msg,'error');
-          }}>➕ 新建</button>
+        <div class="my-playlist-filter-bar">
+          <span class="filter-bar-label">账号歌单快捷加载：</span>
+          <div class="playlist-quick-btn-group">
+            <button class="btn-primary quick-btn-item btn-created" onclick={()=>loadMyPlaylists('created')}>📂 创建<span class="pc-only-text">的歌单</span></button>
+            <button class="btn-primary quick-btn-item btn-subscribed" onclick={()=>loadMyPlaylists('subscribed')}>⭐ 收藏<span class="pc-only-text">的歌单</span></button>
+            <button class="btn-primary quick-btn-item btn-all" onclick={()=>loadMyPlaylists('all')}>📋 全部</button>
+            <button class="btn-primary quick-btn-item btn-create" onclick={async()=>{
+              const name=prompt('新歌单名称'); if(!name) return;
+              const j=await api.playlistCreate(name,false); if(j.code==='000000'){ showToast('创建成功','success'); loadMyPlaylists('created'); } else showToast(j.msg,'error');
+            }}>➕ 新建<span class="pc-only-text">歌单</span></button>
+          </div>
         </div>
         <ul class="data-list scrollable-list">
           {#each myPlaylists.filter(p=> playlistFilter==='all'|| (playlistFilter==='created'? !p.subscribed : !!p.subscribed)) as pl}
@@ -258,9 +262,9 @@
     <div class="accordion-card" class:active={acc.detail}>
       <div class="accordion-header" onclick={()=>toggleAcc('detail')}><h3 class="accordion-title">🎼 2. 查看歌单详情</h3><span class="accordion-icon">▼</span></div>
       <div class="accordion-body">
-        <div class="form-row flex-input-row" style="display:flex; gap:6px;">
-          <input style="flex:1;" placeholder="输入歌单 ID 按回车" bind:value={playlistId} onkeydown={(e)=> e.key==='Enter' && loadPlaylistDetail()} />
-          <button class="btn-primary inline-action-btn" onclick={loadPlaylistDetail}>查看</button>
+        <div class="form-row flex-input-row">
+          <input type="text" placeholder="输入歌单 ID (如 123456，按回车查看)" style="flex:1;" bind:value={playlistId} onkeydown={(e)=> e.key==='Enter' && loadPlaylistDetail()} />
+          <button class="btn-primary inline-action-btn" onclick={loadPlaylistDetail}>查看<span class="pc-only-text">歌单详情</span></button>
         </div>
         {#if playlist}
           <div class="detail-header-card">
@@ -310,10 +314,10 @@
     <div class="accordion-card" class:active={acc.song}>
       <div class="accordion-header" onclick={()=>toggleAcc('song')}><h3 class="accordion-title">🎧 3. 查看歌曲信息</h3><span class="accordion-icon">▼</span></div>
       <div class="accordion-body">
-        <div class="form-row" style="display:flex; gap:6px;">
-          <input style="flex:1;" placeholder="歌曲ID" bind:value={songId} onkeydown={(e)=> e.key==='Enter' && loadSong()} />
-          <select bind:value={songLevel}><option value="standard">标准</option><option value="exhigh">极高</option><option value="lossless">无损</option></select>
-          <button class="btn-primary" onclick={loadSong}>查看</button>
+        <div class="form-row flex-input-row">
+          <input type="text" placeholder="输入歌曲 ID (按回车查看)" style="flex:1;" bind:value={songId} onkeydown={(e)=> e.key==='Enter' && loadSong()} />
+          <select bind:value={songLevel} style="width:auto; flex-shrink:0;"><option value="standard">标准</option><option value="exhigh">极高</option><option value="lossless">无损</option></select>
+          <button class="btn-primary inline-action-btn" onclick={loadSong}>查看<span class="pc-only-text">单曲信息</span></button>
         </div>
         {#if songInfo}
           <div class="detail-header-card">
@@ -334,11 +338,11 @@
     <div class="accordion-card" class:active={acc.search}>
       <div class="accordion-header" onclick={()=>toggleAcc('search')}><h3 class="accordion-title">🔍 1. 关键词综合搜索</h3><span class="accordion-icon">▼</span></div>
       <div class="accordion-body">
-        <div class="form-row" style="display:flex; gap:6px;">
-          <input style="flex:1;" placeholder="搜索歌曲/歌手/专辑/歌单 回车" bind:value={kw} onkeydown={(e)=> e.key==='Enter' && doSearch()} />
-          <select bind:value={sType}><option value="1">单曲</option><option value="10">专辑</option><option value="1000">歌单</option><option value="100">歌手</option></select>
-          <input type="number" style="width:60px;" bind:value={sLimit} />
-          <button class="btn-primary" onclick={doSearch}>搜索</button>
+        <div class="form-row search-form-row">
+          <input type="text" placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)" style="flex:1;" bind:value={kw} onkeydown={(e)=> e.key==='Enter' && doSearch()} />
+          <select bind:value={sType} style="width:auto; flex-shrink:0;"><option value="1">单曲</option><option value="10">专辑</option><option value="1000">歌单</option><option value="100">歌手</option></select>
+          <input type="number" bind:value={sLimit} min="1" max="100" class="search-limit-input" style="width:60px;" />
+          <button class="btn-primary sp-hide-btn" onclick={doSearch}>搜索</button>
         </div>
         <ul class="data-list scrollable-list">
           {#each sResults as r}
