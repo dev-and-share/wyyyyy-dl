@@ -106,7 +106,7 @@
   }
   function togglePlay(){
     if(!audioEl) return;
-    if(audioEl.paused) ensurePlay().then(()=> audioEl?.paused && audioEl?.play().catch(()=>{})); else audioEl.pause();
+    if(audioEl.paused) ensurePlay().then(()=>{ if(audioEl?.paused) audioEl.play().catch(()=>{}); }); else audioEl.pause();
   }
   async function playAt(i:number){ qIndex=i; await ensurePlay(); setTimeout(()=> audioEl?.play().catch(()=>{}),10); }
   async function next(){

@@ -44,3 +44,4 @@ src/main/resources/static/svelte/
 
 ### Local Env Configuration ###
 .env
+frontend/test-results/
