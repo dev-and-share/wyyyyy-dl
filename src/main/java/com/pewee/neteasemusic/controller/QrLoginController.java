@@ -34,7 +34,16 @@ public class QrLoginController {
     private NeteaseAPIService neteaseAPIService;
 	
 	@GetMapping("/")
-    public String all(Model model) {
+    public String all(Model model,
+                      @RequestParam(value = "v", required = false) String v,
+                      @org.springframework.web.bind.annotation.CookieValue(value = "ui_version", required = false) String ver) {
+        // 双版并存：?v=svelte 或 Cookie 切新版，不覆盖旧版
+        if ("svelte".equals(v) || "svelte".equals(ver)) {
+            if (neteaseAPIService.checkReady()) {
+                return "forward:/svelte/index.html";
+            }
+            return "forward:/svelte/index.html";
+        }
         return generateQr(model); 
     }
 	
@@ -44,13 +53,18 @@ public class QrLoginController {
 	}
 	
 	@GetMapping("/home")
-    public String home(Model model) {
+    public String home(Model model,
+                       @RequestParam(value = "v", required = false) String v,
+                       @org.springframework.web.bind.annotation.CookieValue(value = "ui_version", required = false) String ver) {
+        if ("svelte".equals(v) || "svelte".equals(ver)) {
+            return "forward:/svelte/index.html";
+        }
 		if(neteaseAPIService.checkReady()) {
-    		log.info("已登录,跳转到功能页面");
-    		return "home";
-    	} else {
-    		return generateQr(model);
-    	}
+     		log.info("已登录,跳转到功能页面");
+     		return "home";
+     	} else {
+     		return generateQr(model);
+     	}
     }
 	
 
