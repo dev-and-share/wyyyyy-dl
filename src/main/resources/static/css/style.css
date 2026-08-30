@@ -367,7 +367,7 @@ body {
 
 @media (max-width: 768px) {
     .scrollable-list {
-        max-height: 380px;
+        max-height: min(65vh, 620px);
     }
 }
 
@@ -1520,8 +1520,35 @@ ul.data-list li:last-child {
         flex-direction: column !important;
         align-items: stretch !important;
         justify-content: flex-start !important;
-        padding: 12px 14px !important;
+        padding: 9px 12px !important;
+        gap: 6px !important;
+        margin-bottom: 6px !important;
+    }
+
+    /* 📋 我的歌单列表项：在手机端保持单行横向排布，极致压缩垂直空间，信息密度翻倍 */
+    ul.data-list#playlist-list li {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 9px 10px !important;
         gap: 8px !important;
+    }
+
+    ul.data-list#playlist-list li > div:first-child {
+        width: auto !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        text-overflow: ellipsis !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    ul.data-list#playlist-list li > div:last-child:not(:first-child) {
+        width: auto !important;
+        margin-top: 0 !important;
+        justify-content: flex-end !important;
     }
 
     ul.data-list li > div:first-child,
@@ -1536,8 +1563,8 @@ ul.data-list li:last-child {
         flex-wrap: wrap !important;
         align-items: center !important;
         gap: 4px !important;
-        font-size: 14px !important;
-        line-height: 1.4 !important;
+        font-size: 13.5px !important;
+        line-height: 1.35 !important;
     }
 
     ul.data-list li > div:last-child:not(:first-child),
@@ -3513,7 +3540,7 @@ ul.data-list li.history-item-card .card-sub-row {
     }
 
     .folder-tree-container {
-        max-height: 480px;
+        max-height: min(65vh, 620px);
         padding: 4px 2px;
     }
 
