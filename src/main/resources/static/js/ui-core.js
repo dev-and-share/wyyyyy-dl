@@ -1157,3 +1157,102 @@ function showCreatePlaylistModal(onSuccess = null) {
 window.showAddToPlaylistModal = showAddToPlaylistModal;
 window.showCreatePlaylistModal = showCreatePlaylistModal;
 
+/**
+ * 📱 移动端 / 桌面端通用暗黑毛玻璃 ActionSheet 菜单抽屉
+ * @param {Object} options
+ * @param {string} [options.title] 菜单标题
+ * @param {string} [options.subtitle] 副标题
+ * @param {string} [options.coverUrl] 可选封面图
+ * @param {Array<{icon: string, text: string, subtext?: string, danger?: boolean, onClick: Function}>} options.items 操作项
+ */
+function showActionSheet(options = {}) {
+    const { title = '', subtitle = '', coverUrl = '', items = [] } = options;
+    if (!items || items.length === 0) return;
+
+    // 移除已存在的 action sheet
+    const existing = document.getElementById("globalActionSheetBackdrop");
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "globalActionSheetBackdrop";
+    backdrop.className = "action-sheet-backdrop";
+
+    const sheet = document.createElement("div");
+    sheet.className = "action-sheet-card";
+
+    let headerHtml = '';
+    if (title || subtitle || coverUrl) {
+        headerHtml = `
+            <div class="action-sheet-header">
+                ${coverUrl ? `<img src="${coverUrl}" class="action-sheet-cover" alt="封面">` : ''}
+                <div class="action-sheet-info">
+                    ${title ? `<div class="action-sheet-title">${escapeHtml(title)}</div>` : ''}
+                    ${subtitle ? `<div class="action-sheet-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                </div>
+                <button class="action-sheet-close-btn" id="actionSheetCloseX">✕</button>
+            </div>
+        `;
+    }
+
+    let itemsHtml = '';
+    items.forEach((item, index) => {
+        const dangerClass = item.danger ? ' danger' : '';
+        itemsHtml += `
+            <button class="action-sheet-item${dangerClass}" data-index="${index}">
+                <span class="action-sheet-item-icon">${item.icon || '📌'}</span>
+                <div class="action-sheet-item-content">
+                    <span class="action-sheet-item-text">${item.text}</span>
+                    ${item.subtext ? `<span class="action-sheet-item-sub">${item.subtext}</span>` : ''}
+                </div>
+            </button>
+        `;
+    });
+
+    sheet.innerHTML = `
+        <div class="action-sheet-handle-bar"></div>
+        ${headerHtml}
+        <div class="action-sheet-body">
+            ${itemsHtml}
+        </div>
+        <div class="action-sheet-footer">
+            <button class="action-sheet-cancel-btn" id="actionSheetCancelBtn">取消</button>
+        </div>
+    `;
+
+    backdrop.appendChild(sheet);
+    document.body.appendChild(backdrop);
+
+    const closeSheet = () => {
+        sheet.classList.add("action-sheet-closing");
+        backdrop.classList.add("action-sheet-closing");
+        setTimeout(() => {
+            if (backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        }, 220);
+    };
+
+    backdrop.onclick = (e) => {
+        if (e.target === backdrop) closeSheet();
+    };
+    const closeBtn = sheet.querySelector("#actionSheetCancelBtn");
+    if (closeBtn) closeBtn.onclick = closeSheet;
+    const closeX = sheet.querySelector("#actionSheetCloseX");
+    if (closeX) closeX.onclick = closeSheet;
+
+    // 绑定 item 点击事件
+    const btnElements = sheet.querySelectorAll(".action-sheet-item");
+    btnElements.forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.getAttribute("data-index"), 10);
+            const item = items[idx];
+            closeSheet();
+            if (item && typeof item.onClick === 'function') {
+                item.onClick();
+            }
+        };
+    });
+}
+window.showActionSheet = showActionSheet;
+

@@ -72,11 +72,14 @@ function selectFolderRoot(rootPath, rootName) {
                         <button class="tree-btn tree-btn-play" onclick="playFolderTracks('${escapeJsString(rootPath)}', '${escapeJsString(rootName)}', true)" title="连播整库全部 MP3">
                             ▶ 连播整库
                         </button>
-                        <button class="tree-btn tree-btn-queue" onclick="appendFolderTracksToQueue('${escapeJsString(rootPath)}', '${escapeJsString(rootName)}', true)" title="追加整库到播放列表">
+                        <button class="tree-btn tree-btn-queue sp-hide" onclick="appendFolderTracksToQueue('${escapeJsString(rootPath)}', '${escapeJsString(rootName)}', true)" title="追加整库到播放列表">
                             ➕ 追加
                         </button>
-                        <button class="tree-btn tree-btn-refresh" onclick="refreshTreeNode('${escapeJsString(rootPath)}', 0)" title="重新扫描此目录">
+                        <button class="tree-btn tree-btn-refresh sp-hide" onclick="refreshTreeNode('${escapeJsString(rootPath)}', 0)" title="重新扫描此目录">
                             🔄
+                        </button>
+                        <button class="tree-btn tree-btn-more sp-show" onclick="event.stopPropagation(); showFolderActionMenu('${escapeJsString(rootPath)}', '${escapeJsString(rootName)}', 0, '', 0, 'tree-root-container')" title="更多操作">
+                            ···
                         </button>
                     </div>
                 </div>
@@ -232,23 +235,27 @@ function renderNodeItemsHTML(items, level, containerElement) {
                                     <button class="tree-btn tree-btn-play" onclick="playFolderTracks('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', true)" title="连播此文件夹下所有 MP3">
                                         ▶ 连播
                                     </button>
-                                    <button class="tree-btn tree-btn-queue" onclick="appendFolderTracksToQueue('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', true)" title="追加到播放列表">
+                                    <button class="tree-btn tree-btn-queue sp-hide" onclick="appendFolderTracksToQueue('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', true)" title="追加到播放列表">
                                         ➕ 追加
                                     </button>
                                 ` : ''}
                                 ${item.hostPath ? `
-                                    <button class="tree-btn tree-btn-locate" onclick="revealFile('${escapeJsString(item.hostPath)}')" title="在 Finder/资源管理器中定位">
+                                    <button class="tree-btn tree-btn-locate sp-hide" onclick="revealFile('${escapeJsString(item.hostPath)}')" title="在 Finder/资源管理器中定位">
                                         📂 定位
                                     </button>
                                 ` : ''}
-                                <button class="tree-btn tree-btn-refresh" onclick="refreshTreeNode('${escapeJsString(item.path)}', ${level})" title="刷新此目录">
+                                <button class="tree-btn tree-btn-refresh sp-hide" onclick="refreshTreeNode('${escapeJsString(item.path)}', ${level})" title="刷新此目录">
                                     🔄
                                 </button>
-                                <button class="tree-btn tree-btn-ignore" onclick="confirmIgnoreFolder('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', 'wrapper-of-${safeId}')" title="忽略此文件夹 (创建 .musicignore 并不再扫描)">
+                                <button class="tree-btn tree-btn-ignore sp-hide" onclick="confirmIgnoreFolder('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', 'wrapper-of-${safeId}')" title="忽略此文件夹 (创建 .musicignore 并不再扫描)">
                                     🚫
                                 </button>
-                                <button class="tree-btn tree-btn-delete" onclick="confirmDeleteFolder('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', 'wrapper-of-${safeId}')" title="彻底删除此文件夹 (物理删除磁盘文件)">
+                                <button class="tree-btn tree-btn-delete sp-hide" onclick="confirmDeleteFolder('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', 'wrapper-of-${safeId}')" title="彻底删除此文件夹 (物理删除磁盘文件)">
                                     🗑️
+                                </button>
+                                <!-- SP 模式专属更多操作 -->
+                                <button class="tree-btn tree-btn-more sp-show" onclick="event.stopPropagation(); showFolderActionMenu('${escapeJsString(item.path)}', '${escapeJsString(item.name)}', ${item.trackCount || 0}, '${escapeJsString(item.hostPath || '')}', ${level}, 'wrapper-of-${safeId}')" title="更多文件夹操作">
+                                    ···
                                 </button>
                             </div>
                         </div>
@@ -279,14 +286,17 @@ function renderNodeItemsHTML(items, level, containerElement) {
                             <button class="tree-btn tree-btn-play" onclick="playSingleLocalFile('${escapeJsString(item.streamUrl || item.path)}', '${escapeJsString(item.songName || item.name)}', '${escapeJsString(item.artist || '')}', '${escapeJsString(item.album || '')}')" title="立即播放">
                                 ▶ 播放
                             </button>
-                            <button class="tree-btn tree-btn-queue" onclick="appendSingleTrackToQueue('${escapeJsString(item.streamUrl || item.path)}', '${escapeJsString(item.songName || item.name)}', '${escapeJsString(item.artist || '')}', '${escapeJsString(item.album || '')}')" title="追加到队列末尾">
+                            <button class="tree-btn tree-btn-queue sp-hide" onclick="appendSingleTrackToQueue('${escapeJsString(item.streamUrl || item.path)}', '${escapeJsString(item.songName || item.name)}', '${escapeJsString(item.artist || '')}', '${escapeJsString(item.album || '')}')" title="追加到队列末尾">
                                 ➕
                             </button>
                             ${hostPath ? `
-                                <button class="tree-btn tree-btn-locate" onclick="revealFile('${escapeJsString(hostPath)}')" title="在 Finder 中定位文件">
+                                <button class="tree-btn tree-btn-locate sp-hide" onclick="revealFile('${escapeJsString(hostPath)}')" title="在 Finder 中定位文件">
                                     📂
                                 </button>
                             ` : ''}
+                            <button class="tree-btn tree-btn-more sp-show" onclick="event.stopPropagation(); showSingleFileActionMenu('${escapeJsString(item.streamUrl || item.path)}', '${escapeJsString(item.songName || item.name)}', '${escapeJsString(item.artist || '')}', '${escapeJsString(item.album || '')}', '${escapeJsString(hostPath)}')" title="更多操作">
+                                ···
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -641,6 +651,104 @@ async function confirmDeleteFolder(folderPath, folderName, domWrapperId) {
         showToast("删除目录请求异常: " + err, "error");
     }
 }
+
+/**
+ * 📱 移动端文件夹节点更多操作 ActionSheet
+ */
+function showFolderActionMenu(dirPath, dirName, trackCount, hostPath, level, wrapperId) {
+    const items = [];
+
+    if (trackCount > 0) {
+        items.push({
+            icon: '▶️',
+            text: `连播此文件夹 (${trackCount} 首)`,
+            subtext: '替换当前播放队列并从头播放',
+            onClick: () => playFolderTracks(dirPath, dirName, true)
+        });
+        items.push({
+            icon: '➕',
+            text: '追加到当前播放队列末尾',
+            subtext: '不打断当前歌曲连播',
+            onClick: () => appendFolderTracksToQueue(dirPath, dirName, true)
+        });
+    }
+
+    if (hostPath) {
+        items.push({
+            icon: '📂',
+            text: '在 Finder / 资源管理器中定位',
+            subtext: '在宿主机操作系统中高亮文件',
+            onClick: () => revealFile(hostPath)
+        });
+    }
+
+    items.push({
+        icon: '🔄',
+        text: '刷新此目录内容',
+        subtext: '重新扫描子文件夹与 MP3 文件',
+        onClick: () => refreshTreeNode(dirPath, level)
+    });
+
+    items.push({
+        icon: '🚫',
+        text: '忽略此文件夹 (.musicignore)',
+        subtext: '在目录下创建 .musicignore 并不再扫描',
+        onClick: () => confirmIgnoreFolder(dirPath, dirName, wrapperId)
+    });
+
+    items.push({
+        icon: '🗑️',
+        text: '彻底删除此文件夹 (物理删除)',
+        subtext: '物理删除磁盘上的整个文件夹',
+        danger: true,
+        onClick: () => confirmDeleteFolder(dirPath, dirName, wrapperId)
+    });
+
+    if (typeof showActionSheet === 'function') {
+        showActionSheet({
+            title: `📁 ${dirName || '文件夹'}`,
+            subtitle: trackCount > 0 ? `包含 ${trackCount} 首音乐` : (dirPath || ''),
+            items: items
+        });
+    }
+}
+window.showFolderActionMenu = showFolderActionMenu;
+
+/**
+ * 📱 移动端单个本地文件更多操作 ActionSheet
+ */
+function showSingleFileActionMenu(streamUrl, songName, artist, album, hostPath) {
+    const items = [
+        {
+            icon: '▶️',
+            text: '立即播放此音频',
+            subtext: '0 延迟本地直通解码',
+            onClick: () => playSingleLocalFile(streamUrl, songName, artist, album)
+        },
+        {
+            icon: '➕',
+            text: '追加到播放列表末尾',
+            onClick: () => appendSingleTrackToQueue(streamUrl, songName, artist, album)
+        }
+    ];
+
+    if (hostPath) {
+        items.push({
+            icon: '📂',
+            text: '在 Finder / 资源管理器中定位',
+            onClick: () => revealFile(hostPath)
+        });
+    }
+
+    if (typeof showActionSheet === 'function') {
+        showActionSheet({
+            title: `🎵 ${songName || '本地音乐'}`,
+            subtitle: artist ? `${artist}${album ? ` · 《${album}》` : ''}` : '本地音频',
+            items: items
+        });
+    }
+}
+window.showSingleFileActionMenu = showSingleFileActionMenu;
 
 
 

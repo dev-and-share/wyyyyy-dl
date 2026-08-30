@@ -3977,6 +3977,274 @@ ul.data-list li.history-item-card .card-sub-row {
     }
 }
 
+/* ==========================================================================
+   📱 移动端 SP 智能精简 & 全局 ActionSheet 更多操作菜单
+   ========================================================================== */
+
+/* 默认 PC / 宽屏模式：显示全部完整按钮，隐藏收拢按钮 */
+.sp-show {
+    display: none !important;
+}
+.sp-hide {
+    display: inline-flex !important;
+}
+
+/* 更多操作小胶囊按钮 (···) */
+.track-btn-more,
+.tree-btn-more,
+.action-btn.btn-more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 9px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.16));
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary, #cbd5e1);
+    cursor: pointer;
+    line-height: 1.2;
+    transition: all 0.15s ease;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.track-btn-more:active,
+.tree-btn-more:active,
+.action-btn.btn-more:active {
+    transform: scale(0.92);
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* 📱 移动端 SP 模式断点 */
+@media (max-width: 768px) {
+    .sp-show {
+        display: inline-flex !important;
+    }
+    .sp-hide {
+        display: none !important;
+    }
+}
+
+/* ==========================================================================
+   ✨ 全局通用暗黑毛玻璃 ActionSheet 菜单抽屉
+   ========================================================================== */
+
+.action-sheet-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 100050; /* 绝对置顶 */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
+    box-sizing: border-box;
+    animation: actionSheetFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.action-sheet-backdrop.action-sheet-closing {
+    animation: actionSheetFadeOut 0.2s ease-in forwards;
+}
+
+@keyframes actionSheetFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes actionSheetFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.action-sheet-card {
+    width: 100%;
+    max-width: 500px;
+    background: var(--bg-card, rgba(22, 28, 45, 0.96));
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 25px rgba(56, 189, 248, 0.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: actionSheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.action-sheet-card.action-sheet-closing {
+    animation: actionSheetSlideDown 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes actionSheetSlideUp {
+    from { transform: translateY(100%); opacity: 0.7; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes actionSheetSlideDown {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
+}
+
+.action-sheet-handle-bar {
+    width: 36px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+    margin: 8px auto 0 auto;
+}
+
+.action-sheet-header {
+    padding: 14px 18px 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.action-sheet-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.action-sheet-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.action-sheet-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-main, #f8fafc);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-sheet-subtitle {
+    font-size: 12.5px;
+    color: var(--text-secondary, #94a3b8);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-sheet-close-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: var(--text-muted, #94a3b8);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.action-sheet-body {
+    padding: 6px 8px;
+    max-height: 55vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.action-sheet-item {
+    width: 100%;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    color: var(--text-main, #f8fafc);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, transform 0.1s ease;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.action-sheet-item:active {
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(0.98);
+}
+
+.action-sheet-item-icon {
+    font-size: 19px;
+    width: 26px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.action-sheet-item-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.action-sheet-item-text {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.action-sheet-item-sub {
+    font-size: 11.5px;
+    color: var(--text-muted, #94a3b8);
+    margin-top: 1px;
+}
+
+.action-sheet-item.danger {
+    color: #f87171;
+}
+
+.action-sheet-item.danger .action-sheet-item-sub {
+    color: rgba(248, 113, 113, 0.7);
+}
+
+.action-sheet-footer {
+    padding: 6px 8px 10px 8px;
+    border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.action-sheet-cancel-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary, #cbd5e1);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.action-sheet-cancel-btn:active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
 
 
 
