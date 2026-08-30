@@ -199,8 +199,21 @@
   let songInfo:any=$state(null);
   async function loadSong(){
     if(!songId) return showToast('请输入歌曲ID','warning');
-    try{ const j=await api.songV1(songId, songLevel); if(j?.code && j.code!=='000000'){ showToast(j.msg || '获取失败','warning'); return; } songInfo=j?.data||null; if(!songInfo) showToast('无歌曲数据','warning'); }catch(e){ showToast('获取单曲失败: '+e,'error'); }
+    try{ const j=await api.songV1(songId, songLevel); if(j?.code && j.code!=='000000'){ showToast(j.msg || '获取失败','warning'); return; } songInfo=j?.data||null; if(!songInfo) showToast('无歌曲数据','warning'); else { acc.my=false; acc.detail=false; acc.song=true; } }catch(e){ showToast('获取单曲失败: '+e,'error'); }
   }
+  // ---------- 专辑 ----------
+  let albumId=$state(''), album:any=$state(null);
+  async function loadAlbum(){
+    if(!albumId) return showToast('请输入专辑 ID','warning');
+    try{
+      const j=await api.album(albumId);
+      if(j?.code && j.code!=='000000'){ showToast(j.msg||'获取专辑失败','warning'); return; }
+      album=j?.data?.album || j?.data || null;
+      if(!album) showToast('未找到专辑','warning');
+      else { acc.search=true; acc.album=true; }
+    }catch(e){ showToast('获取专辑失败:'+e,'error'); }
+  }
+  function jumpToAlbum(id:string){ albumId=id; loadAlbum(); switchTab('search'); acc.album=true; }
 
   // ---------- 下载监控 ----------
   let tasks:any[]=$state([]); let monVisible=$state(false);
@@ -447,7 +460,7 @@
                   {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
                   <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
                 </div>
-                <button class="jump-link-btn" onclick={()=>{ acc.album=true; /* TODO loadAlbum */ showToast('专辑 '+r.id+' 详情开发中','info'); }}>👉 查看专辑详情</button>
+                <button class="jump-link-btn" onclick={()=> jumpToAlbum(String(r.id))}>👉 查看专辑详情</button>
               </li>
             {:else if sType==='1000'}
               <li>
@@ -479,9 +492,49 @@
       </div>
     </div>
     <div class="accordion-card" class:active={acc.album}>
-      <div class="accordion-header" onclick={()=>toggleAcc('album')}><h3 class="accordion-title">💽 2. 专辑解析</h3><span class="accordion-icon">▼</span></div>
+      <div class="accordion-header" onclick={()=>toggleAcc('album')}><h3 class="accordion-title">💽 2. 专辑解析与整辑下载</h3><span class="accordion-icon">▼</span></div>
       <div class="accordion-body">
-        <div class="empty-placeholder-card"><div class="empty-icon">💽</div><div class="empty-title">在搜索中选择专辑或输入ID</div></div>
+        <div class="form-row flex-input-row" style="display:flex; gap:6px; margin-bottom:10px;">
+          <input type="text" placeholder="输入专辑 ID (如 258535483，按回车解析)" style="flex:1;" bind:value={albumId} onkeydown={(e)=> e.key==='Enter' && loadAlbum()} />
+          <button class="btn-primary inline-action-btn" onclick={loadAlbum}>解析<span class="pc-only-text">专辑</span></button>
+        </div>
+        {#if album}
+          <div class="detail-header-card" style="margin-bottom:12px;">
+            <img src={album.coverImgUrl || album.picUrl || '/favicon.png'} alt="" class="detail-cover-img" />
+            <div class="detail-header-info">
+              <h4 class="detail-header-title">{album.name || '未知专辑'}</h4>
+              <div class="detail-header-sub">歌手：{album.artist || album.artistName || '未知'} | 发行：{album.publishTime ? new Date(album.publishTime).toLocaleDateString() : '未知'} | 共 {album.songs?.length||0} 首</div>
+              <div class="detail-btn-group" style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn-primary" onclick={()=> api.downloadAlbum(String(album.id)).then(()=>{showToast('已提交专辑下载','success'); fetchTasks();})}>🖥️ 下载到电脑</button>
+                <button class="btn-primary" style="background:#0284c7;" onclick={()=> showToast('缓存开发中','info')}>📲 缓存到浏览器 (0/1)</button>
+                <button class="btn-primary" style="background:#22c55e;" onclick={()=>{
+                  const tracks=(album.songs||[]).map((s:any)=>({id:s.id, name:s.name, artist:s.artist||album.artist||'', cover:album.coverImgUrl||'/favicon.png', isLocal:s.isLocal}));
+                  setQueue(tracks,0); showToast('已播放专辑','success');
+                }}>▶️ 播放专辑</button>
+              </div>
+            </div>
+          </div>
+          <ul class="data-list scrollable-list">
+            {#each (album.songs||[]) as s, idx}
+              <li class="track-item-card" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px;">
+                <div style="flex:1; overflow:hidden; display:flex; align-items:center; gap:6px;">
+                  <strong class="clickable-track-title" onclick={()=>{ songId=String(s.id); loadSong(); }}>{idx+1}. {s.name}</strong>
+                  {#if s.artist}<span style="color:var(--text-muted); font-size:11px;"> - {s.artist}</span>{/if}
+                </div>
+                <div class="track-action-group" style="display:flex; gap:6px;">
+                  <button class="track-btn-slot {s.isLocal?'slot-play-ready':'slot-play-preview'}" onclick={()=>{
+                    const tr={id:s.id, name:s.name, artist:s.artist||'', cover:album.coverImgUrl||'/favicon.png'}; setQueue([tr],0);
+                  }}>{s.isLocal?'▶️ 播放':'▶️ 试听'}</button>
+                  <button class="track-btn-slot {s.isLocal?'slot-server-locate':'slot-server-download'}" onclick={()=> s.isLocal?showToast('定位','info'):api.downloadSingle(String(s.id)).then(()=>showToast('已提交','success'))}>{s.isLocal?'📂 定位':'📥 下载'}</button>
+                  <button class="track-btn-slot slot-browser-cache" onclick={()=> showToast('缓存','info')}>📲 缓存</button>
+                  <button class="track-btn-slot slot-add-playlist" onclick={()=> showToast('歌单','info')}>➕ 歌单</button>
+                </div>
+              </li>
+            {/each}
+          </ul>
+        {:else}
+          <div class="empty-placeholder-card"><div class="empty-icon">💽</div><div class="empty-title">在搜索中选择专辑或输入ID解析</div><div class="empty-desc">支持整辑下载或播放</div></div>
+        {/if}
       </div>
     </div>
   {:else}
