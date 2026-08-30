@@ -272,11 +272,14 @@ function playFullCurrentPlaylist() {
         showToast("暂无歌单歌曲数据！", "warning");
         return;
     }
+    const plName = currentPlaylist ? currentPlaylist.name : '';
     const formattedQueue = allTracks.map(t => ({
         id: t.id,
         name: t.name,
         artist: getValidArtistNames(t),
         cover: (t.al && t.al.picUrl) ? t.al.picUrl : '/favicon.png',
+        album: (t.al && t.al.name) ? t.al.name : '',
+        playlistName: plName,
         isLocal: (t.isLocal === true)
     }));
     if (typeof setGlobalPlaylistQueue === 'function') {

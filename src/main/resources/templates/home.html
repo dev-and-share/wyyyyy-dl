@@ -25,7 +25,7 @@
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="shortcut icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css?v=4.5.9">
+    <link rel="stylesheet" href="/css/style.css?v=4.6.7">
 </head>
 <body>
     <!-- 🚀 现代一体化 App 顶栏导航 (Integrated App Top Bar) -->
@@ -302,25 +302,10 @@
         </div>
     </div>
 
-    <!-- 右下角悬浮半透明下载监控卡片 (Floating Glassmorphism Widget) -->
-    <div class="floating-monitor" id="floatingMonitor" style="display: none;">
-        <div class="monitor-header" onclick="toggleMinimizeMonitor()">
-            <span class="monitor-header-title" id="monitorHeaderTitle">📥 下载监控</span>
-            <div class="monitor-header-actions" onclick="event.stopPropagation();">
-                <button class="btn-icon" onclick="clearMonitorTasks()" title="清空历史记录">🗑️</button>
-                <button class="btn-icon" onclick="toggleMinimizeMonitor()" title="最小化 / 展开">➖</button>
-                <button class="btn-icon" onclick="hideMonitor()" title="关闭监控">✕</button>
-            </div>
-        </div>
-        <div class="monitor-body">
-            <div class="monitor-task-list" id="monitorTaskList"></div>
-        </div>
-    </div>
-
     <!-- 🎬 现代暗黑极简三段式音频播放器 (Modern Dark Audio Player Bar) -->
     <div class="bottom-audio-bar" id="globalAudioBar" style="display: none;">
         <!-- 隐藏的原生 audio 标签引擎 -->
-        <audio id="globalAudioPlayer" style="display: none;"></audio>
+        <audio id="globalAudioPlayer" crossorigin="anonymous" style="display: none;"></audio>
 
         <div class="audio-bar-inner">
             <!-- 1. 左侧：封面与歌名信息 (点击调起全屏黑胶播放器) -->
@@ -379,47 +364,64 @@
         </div>
     </div>
 
-    <!-- 📜 播放列表 Drawer 弹窗卡片 (Playlist Drawer) -->
+    <!-- 📜 播放列表 & 下载任务 Drawer 统一抽屉 (Playlist & Tasks Drawer) -->
     <div class="playlist-drawer" id="playlistDrawer" style="display: none;">
         <div class="playlist-drawer-header">
-            <span>📜 播放队列 (<span id="playlistDrawerCount">0</span> 首)</span>
+            <div class="drawer-header-tabs">
+                <button class="drawer-main-tab active" id="drawerTabQueue" onclick="switchDrawerMainTab('queue')">
+                    📜 播放队列 (<span id="playlistDrawerCount">0</span>)
+                </button>
+                <button class="drawer-main-tab" id="drawerTabTasks" onclick="switchDrawerMainTab('tasks')">
+                    📥 下载任务 <span id="drawerTasksBadge" class="drawer-badge-pill" style="display:none;">0</span>
+                </button>
+            </div>
             <div style="display:flex; gap:6px; align-items:center;">
                 <button id="btnQueueTrim" class="drawer-header-btn" style="display:none; color:#38bdf8; border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.12);" onclick="applyQueueTrim()" title="将当前筛选结果保留为新播放列表">✂️ 仅保留筛选曲目</button>
-                <button class="drawer-header-btn" onclick="clearPlaylistQueue()" title="清空播放列表">🗑️ 清空</button>
+                <button class="drawer-header-btn" id="drawerClearBtn" onclick="handleDrawerClear()" title="清空当前列表">🗑️ 清空</button>
                 <button class="drawer-header-btn" onclick="togglePlaylistDrawer()" title="关闭">✕</button>
             </div>
         </div>
 
-        <!-- 🔍 队列内搜索与快速过滤栏 -->
-        <div class="playlist-drawer-filter-bar">
-            <div class="drawer-search-wrap">
-                <input type="text" id="drawerSearchInput" class="drawer-search-input" placeholder="🔍 筛选当前列表 (歌名 / 歌手)..." oninput="onDrawerFilterChange()">
-                <button id="drawerSearchClear" class="drawer-search-clear-btn" style="display:none;" onclick="clearDrawerSearch()">✕</button>
-            </div>
-            
-            <!-- 🏷️ 筛选 Tab 按钮组 -->
-            <div class="drawer-filter-tabs">
-                <button class="drawer-tab-btn active" id="tab-q-all" onclick="setDrawerFilter('all')">全部 <span id="qCountAll">0</span></button>
-                <button class="drawer-tab-btn" id="tab-q-ready" onclick="setDrawerFilter('ready')" title="服务器或本机浏览器已有的曲目">✨ 离线就绪 <span id="qCountReady">0</span></button>
-                <button class="drawer-tab-btn" id="tab-q-server" onclick="setDrawerFilter('server')" title="已在服务器磁盘">🖥️ 本地 <span id="qCountServer">0</span></button>
-                <button class="drawer-tab-btn" id="tab-q-browser" onclick="setDrawerFilter('browser')" title="已在当前浏览器缓存">📲 缓存 <span id="qCountBrowser">0</span></button>
+        <!-- 1. 播放队列视图 -->
+        <div id="drawerQueueView" class="drawer-view-panel" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
+            <!-- 🔍 队列内搜索与快速过滤栏 -->
+            <div class="playlist-drawer-filter-bar">
+                <div class="drawer-search-wrap">
+                    <input type="text" id="drawerSearchInput" class="drawer-search-input" placeholder="🔍 筛选当前列表 (歌名 / 歌手)..." oninput="onDrawerFilterChange()">
+                    <button id="drawerSearchClear" class="drawer-search-clear-btn" style="display:none;" onclick="clearDrawerSearch()">✕</button>
+                </div>
+                
+                <!-- 🏷️ 筛选 Tab 按钮组 -->
+                <div class="drawer-filter-tabs">
+                    <button class="drawer-tab-btn active" id="tab-q-all" onclick="setDrawerFilter('all')">全部 <span id="qCountAll">0</span></button>
+                    <button class="drawer-tab-btn" id="tab-q-ready" onclick="setDrawerFilter('ready')" title="服务器或本机浏览器已有的曲目">✨ 离线就绪 <span id="qCountReady">0</span></button>
+                    <button class="drawer-tab-btn" id="tab-q-server" onclick="setDrawerFilter('server')" title="已在服务器磁盘">🖥️ 本地 <span id="qCountServer">0</span></button>
+                    <button class="drawer-tab-btn" id="tab-q-browser" onclick="setDrawerFilter('browser')" title="已在当前浏览器缓存">📲 缓存 <span id="qCountBrowser">0</span></button>
+                </div>
+
+                <!-- ⚙️ 智能跳过与播放策略开关 -->
+                <div class="drawer-switches-row">
+                    <label class="drawer-switch-label" title="播放遇到 30 秒试听曲目时，自动跳过并播放下一首完整歌曲">
+                        <input type="checkbox" id="chkAutoSkipTrial" onchange="toggleAutoSkipTrial(this.checked)">
+                        <span>🛡️ 自动跳过试听</span>
+                    </label>
+                    <label class="drawer-switch-label" title="仅播放服务器或本机已缓存的歌曲，完全无需消耗外网流量">
+                        <input type="checkbox" id="chkOfflineOnly" onchange="toggleOfflineOnlyMode(this.checked)">
+                        <span>📴 纯离线模式</span>
+                    </label>
+                </div>
             </div>
 
-            <!-- ⚙️ 智能跳过与播放策略开关 -->
-            <div class="drawer-switches-row">
-                <label class="drawer-switch-label" title="播放遇到 30 秒试听曲目时，自动跳过并播放下一首完整歌曲">
-                    <input type="checkbox" id="chkAutoSkipTrial" onchange="toggleAutoSkipTrial(this.checked)">
-                    <span>🛡️ 自动跳过试听</span>
-                </label>
-                <label class="drawer-switch-label" title="仅播放服务器或本机已缓存的歌曲，完全无需消耗外网流量">
-                    <input type="checkbox" id="chkOfflineOnly" onchange="toggleOfflineOnlyMode(this.checked)">
-                    <span>📴 纯离线模式</span>
-                </label>
+            <div class="playlist-drawer-body">
+                <ul class="playlist-drawer-list" id="playlistDrawerList"></ul>
             </div>
         </div>
 
-        <div class="playlist-drawer-body">
-            <ul class="playlist-drawer-list" id="playlistDrawerList"></ul>
+        <!-- 2. 下载任务视图 -->
+        <div id="drawerTasksView" class="drawer-view-panel" style="display:none; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
+            <div class="playlist-drawer-body" style="flex:1; overflow-y:auto; padding:8px;">
+                <div class="monitor-task-list" id="monitorTaskList"></div>
+            </div>
         </div>
     </div>
 
@@ -462,7 +464,7 @@
             <div class="fullscreen-controls-bar">
                 <div class="audio-progress-container" style="width: 100%; max-width: 650px; margin: 0 auto 10px auto;">
                     <span id="fullscreenCurrentTime" class="time-stamp">00:00</span>
-                    <div class="progress-bar-wrapper" onclick="seekAudio(event)">
+                    <div class="progress-bar-wrapper" id="fullscreenProgressBarWrapper">
                         <div class="progress-bar-bg"></div>
                         <div class="progress-bar-fill" id="fullscreenProgressBarFill"></div>
                         <div class="progress-bar-handle" id="fullscreenProgressBarHandle"></div>
@@ -522,20 +524,20 @@
     </div>
 
     <!-- 📱 微型低调 App 版本号 Footer -->
-    <div class="app-version-footer">网易云下载器 · PWA v4.5.9</div>
+    <div class="app-version-footer">网易云下载器 · PWA v4.6.7</div>
 
     <!-- JavaScript 模块化控制引擎 -->
-    <script src="/js/ui-core.js?v=4.5.9"></script>
-    <script src="/js/player-core.js?v=4.5.9"></script>
-    <script src="/js/player-peq.js?v=4.5.9"></script>
-    <script src="/js/player-lyric.js?v=4.5.9"></script>
-    <script src="/js/player-drawer.js?v=4.5.9"></script>
-    <script src="/js/pwa-cache.js?v=4.5.9"></script>
-    <script src="/js/playlist.js?v=4.5.9"></script>
-    <script src="/js/album.js?v=4.5.9"></script>
-    <script src="/js/search.js?v=4.5.9"></script>
-    <script src="/js/download-mgr.js?v=4.5.9"></script>
-    <script src="/js/folder-explorer.js?v=4.5.9"></script>
-    <script src="/js/app.js?v=4.5.9"></script>
+    <script src="/js/ui-core.js?v=4.6.7"></script>
+    <script src="/js/player-core.js?v=4.6.7"></script>
+    <script src="/js/player-peq.js?v=4.6.7"></script>
+    <script src="/js/player-lyric.js?v=4.6.7"></script>
+    <script src="/js/player-drawer.js?v=4.6.7"></script>
+    <script src="/js/pwa-cache.js?v=4.6.7"></script>
+    <script src="/js/playlist.js?v=4.6.7"></script>
+    <script src="/js/album.js?v=4.6.7"></script>
+    <script src="/js/search.js?v=4.6.7"></script>
+    <script src="/js/download-mgr.js?v=4.6.7"></script>
+    <script src="/js/folder-explorer.js?v=4.6.7"></script>
+    <script src="/js/app.js?v=4.6.7"></script>
 </body>
 </html>

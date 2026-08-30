@@ -523,115 +523,101 @@ function fetchDownloadTasks() {
         .then(resp => {
             if (resp.data.code === '000000') {
                 const tasks = resp.data.data || [];
-                const widget = document.getElementById('floatingMonitor');
+                const badge = document.getElementById('drawerTasksBadge');
                 const listContainer = document.getElementById('monitorTaskList');
 
-                if (!widget || !listContainer) return;
+                const activeCount = tasks.filter(t => t.status === 'DOWNLOADING' || t.status === 'PENDING').length;
 
-                if (tasks.length === 0) {
-                    widget.style.display = 'none';
-                    return;
+                // 🔄 动态更新抽屉 Header 上的下载任务徽标：只显示正在下载中的数字！
+                if (badge) {
+                    if (activeCount > 0) {
+                        badge.style.display = 'inline-flex';
+                        badge.textContent = activeCount;
+                    } else {
+                        badge.style.display = 'none';
+                        badge.textContent = '0';
+                    }
                 }
 
-                widget.style.display = 'block';
-                listContainer.innerHTML = '';
+                if (listContainer) {
+                    if (tasks.length === 0) {
+                        listContainer.innerHTML = `
+                            <div style="padding: 36px 16px; text-align: center; color: #94a3b8; font-size: 13px;">
+                                📥 暂无下载任务记录
+                            </div>`;
+                    } else {
+                        listContainer.innerHTML = '';
+                        tasks.forEach(task => {
+                            const item = document.createElement('div');
+                            item.className = 'monitor-task-item';
 
-                let hasActiveTask = false;
+                            const taskInfo = document.createElement('div');
+                            taskInfo.className = 'task-info';
 
-                tasks.forEach(task => {
-                    const item = document.createElement('div');
-                    item.className = 'monitor-task-item';
+                            const nameSpan = document.createElement('span');
+                            nameSpan.className = 'task-name';
+                            nameSpan.textContent = task.name || `未知歌曲 (${task.id})`;
+                            taskInfo.appendChild(nameSpan);
 
-                    const taskInfo = document.createElement('div');
-                    taskInfo.className = 'task-info';
+                            if (task.status === 'FAILED' && task.errorMsg) {
+                                const errorDiv = document.createElement('div');
+                                errorDiv.className = 'task-error';
+                                errorDiv.textContent = `❌ ${task.errorMsg}`;
+                                taskInfo.appendChild(errorDiv);
+                            }
 
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'task-name';
-                    nameSpan.textContent = task.name || `未知歌曲 (${task.id})`;
-                    taskInfo.appendChild(nameSpan);
+                            item.appendChild(taskInfo);
 
-                    if (task.status === 'FAILED' && task.errorMsg) {
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'task-error';
-                        errorDiv.textContent = `❌ ${task.errorMsg}`;
-                        taskInfo.appendChild(errorDiv);
+                            const rightActions = document.createElement('div');
+                            rightActions.className = 'task-actions-right';
+
+                            const badgeEl = document.createElement('span');
+                            badgeEl.className = `badge badge-${task.status.toLowerCase()}`;
+                            
+                            let statusText = task.status;
+                            if (task.status === 'PENDING') statusText = '排队中';
+                            if (task.status === 'DOWNLOADING') statusText = '下载中';
+                            if (task.status === 'SUCCESS') statusText = '成功';
+                            if (task.status === 'SKIP') statusText = '跳过';
+                            if (task.status === 'FAILED') statusText = '失败';
+
+                            badgeEl.textContent = statusText;
+                            rightActions.appendChild(badgeEl);
+
+                            if (task.status === 'SUCCESS' || task.status === 'SKIP') {
+                                const revealBtn = document.createElement('button');
+                                revealBtn.className = 'task-locate-btn';
+                                revealBtn.title = '在文件管理器/服务器中定位此文件';
+                                revealBtn.textContent = '📂 定位';
+                                revealBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    if (typeof revealSong === 'function') revealSong(task.id, task.name, '', task.filePath || '', task.id);
+                                };
+                                rightActions.appendChild(revealBtn);
+                            }
+
+                            item.appendChild(rightActions);
+                            listContainer.appendChild(item);
+                        });
                     }
+                }
 
-                    item.appendChild(taskInfo);
-
-                    const rightActions = document.createElement('div');
-                    rightActions.className = 'task-actions-right';
-
-                    const badge = document.createElement('span');
-                    badge.className = `badge badge-${task.status.toLowerCase()}`;
-                    
-                    let statusText = task.status;
-                    if (task.status === 'PENDING') statusText = '排队中';
-                    if (task.status === 'DOWNLOADING') {
-                        statusText = '下载中';
-                        hasActiveTask = true;
-                    }
-                    if (task.status === 'SUCCESS') statusText = '成功';
-                    if (task.status === 'SKIP') statusText = '跳过';
-                    if (task.status === 'FAILED') statusText = '失败';
-
-                    badge.textContent = statusText;
-                    rightActions.appendChild(badge);
-
-                    if (task.status === 'SUCCESS' || task.status === 'SKIP') {
-                        const revealBtn = document.createElement('button');
-                        revealBtn.className = 'task-locate-btn';
-                        revealBtn.title = '在文件管理器/服务器中定位此文件';
-                        revealBtn.textContent = '📂 定位';
-                        revealBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            if (typeof revealSong === 'function') revealSong(task.id, task.name, '', task.filePath || '', task.id);
-                        };
-                        rightActions.appendChild(revealBtn);
-                    }
-
-                    item.appendChild(rightActions);
-                    listContainer.appendChild(item);
-                });
-
-                const activeCount = tasks.filter(t => t.status === 'DOWNLOADING' || t.status === 'PENDING').length;
-                const titleText = activeCount > 0 ? `📥 下载中 (${activeCount})` : `📥 下载完成 (${tasks.length})`;
-                const headerTitle = document.getElementById('monitorHeaderTitle');
-                if (headerTitle) headerTitle.textContent = titleText;
-
-                if (!hasActiveTask && monitorInterval) {
-                    const hasPending = tasks.some(t => t.status === 'PENDING');
-                    if (!hasPending) {
-                        clearInterval(monitorInterval);
-                        monitorInterval = null;
-                    }
+                if (activeCount === 0 && monitorInterval) {
+                    clearInterval(monitorInterval);
+                    monitorInterval = null;
                 }
             }
         })
         .catch(err => console.error("获取下载进度失败:", err));
 }
 
-function toggleMinimizeMonitor() {
-    const widget = document.getElementById('floatingMonitor');
-    if (widget) {
-        widget.classList.toggle('minimized');
-        isMonitorMinimized = widget.classList.contains('minimized');
-    }
-}
-
 function clearMonitorTasks() {
     axios.post('/v2/tasks/clear')
-        .then(() => fetchDownloadTasks())
+        .then(() => {
+            fetchDownloadTasks();
+            showToast("已清空下载任务列表", "info", 1500);
+        })
         .catch(err => showToast("清空失败：" + err, "error"));
-}
-
-function hideMonitor() {
-    const widget = document.getElementById('floatingMonitor');
-    if (widget) widget.style.display = 'none';
-    if (monitorInterval) {
-        clearInterval(monitorInterval);
-        monitorInterval = null;
-    }
 }
 window.downloadSingle = downloadSingle;
 window.fetchDownloadTasks = fetchDownloadTasks;

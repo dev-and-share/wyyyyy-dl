@@ -146,11 +146,14 @@ function playFullCurrentAlbum() {
         showToast("暂无专辑歌曲数据！", "warning");
         return;
     }
+    const aName = (currentAlbum && currentAlbum.name) ? currentAlbum.name : '';
     const formattedQueue = currentAlbumSongs.map(s => ({
         id: s.id,
         name: s.name,
         artist: getValidArtistNames(s),
-        cover: currentAlbumCover
+        album: aName || (s.al && s.al.name) || '',
+        cover: currentAlbumCover,
+        isLocal: (s.isLocal === true)
     }));
     if (typeof setGlobalPlaylistQueue === 'function') {
         setGlobalPlaylistQueue(formattedQueue, 0);
