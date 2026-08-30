@@ -76,6 +76,10 @@
   let showPeq = $state(false);
   let drawerFilter = $state('');
   let drawerTab: 'all'|'ready'|'server'|'browser' = $state('all');
+  let drawerMainTab: 'queue'|'tasks' = $state('queue');
+  let autoSkipTrial = $state(false);
+  let offlineOnly = $state(false);
+  let drawerPos = $state({x:0,y:0, dragging:false, startX:0, startY:0});
 
   let curTrack = $derived(queue[qIndex] || null);
   let filteredQueue = $derived(queue.filter(t=> !drawerFilter || (t.name+t.artist).toLowerCase().includes(drawerFilter.toLowerCase())));
@@ -101,8 +105,30 @@
     if(audioEl.paused) ensurePlay().then(()=> audioEl?.paused && audioEl?.play().catch(()=>{})); else audioEl.pause();
   }
   async function playAt(i:number){ qIndex=i; await ensurePlay(); setTimeout(()=> audioEl?.play().catch(()=>{}),10); }
-  async function next(){ if(queue.length===0) return; if(playMode==='shuffle') qIndex=Math.floor(Math.random()*queue.length); else qIndex=(qIndex+1)%queue.length; await ensurePlay(); setTimeout(()=>audioEl?.play().catch(()=>{}),10); }
-  async function prev(){ if(queue.length===0) return; qIndex=(qIndex-1+queue.length)%queue.length; await ensurePlay(); setTimeout(()=>audioEl?.play().catch(()=>{}),10); }
+  async function next(){
+    if(queue.length===0) return;
+    let attempts=0;
+    do{
+      if(playMode==='shuffle') qIndex=Math.floor(Math.random()*queue.length); else qIndex=(qIndex+1)%queue.length;
+      attempts++;
+      if(!offlineOnly) break;
+      if(queue[qIndex]?.isLocal) break;
+    }while(attempts<queue.length);
+    // autoSkipTrial: if not isLocal and is trial, skip
+    if(autoSkipTrial && !queue[qIndex]?.isLocal && queue[qIndex]){ if(attempts<queue.length) return next(); }
+    await ensurePlay(); setTimeout(()=>audioEl?.play().catch(()=>{}),10);
+  }
+  async function prev(){
+    if(queue.length===0) return;
+    let attempts=0;
+    do{
+      qIndex=(qIndex-1+queue.length)%queue.length;
+      attempts++;
+      if(!offlineOnly) break;
+      if(queue[qIndex]?.isLocal) break;
+    }while(attempts<queue.length);
+    await ensurePlay(); setTimeout(()=>audioEl?.play().catch(()=>{}),10);
+  }
   function seek(e:MouseEvent){ if(!audioEl||!duration) return; const rect=(e.currentTarget as HTMLElement).getBoundingClientRect(); const p=(e.clientX-rect.left)/rect.width; audioEl.currentTime=p*duration; }
   function setQueue(tracks:Track[], idx=0){ queue=tracks; qIndex=idx; setTimeout(()=>ensurePlay(),50); }
 
@@ -384,23 +410,60 @@
           <button class="btn-primary sp-hide-btn" onclick={doSearch}>搜索</button>
         </div>
         <ul class="data-list scrollable-list">
-          {#each sResults as r}
-            <li>
-              <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                <strong>{r.name || r.title || r.nickname || '未知'}</strong>
-                <span style="color:var(--text-muted); font-size:11px; margin-left:6px;">ID:{r.id}</span>
-              </div>
-              <button class="jump-link-btn" onclick={()=>{
-                if(sType==='1'){ songId=String(r.id); loadSong(); switchTab('playlist'); acc.song=true; }
-                else if(sType==='10'){ showToast('专辑ID:'+r.id,'info'); }
-                else if(sType==='1000'){ jumpToPlaylist(String(r.id)); }
-                else if(sType==='100'){ showToast('歌手ID:'+r.id,'info'); }
-              }}>👉 查看</button>
-            </li>
+          {#each sResults as r, idx}
+            {#if sType==='1'}
+              {@const isL = r.isLocal===true}
+              <li class="track-item-card">
+                <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px; display:flex; align-items:center;">
+                  <strong class="clickable-track-title" onclick={()=>{ songId=String(r.id); loadSong(); switchTab('playlist'); acc.song=true; }}>{idx+1}. {r.name}</strong>
+                  {#if r.artists || r.artist}<span style="color:var(--text-secondary); font-size:12px; margin-left:4px;"> - {r.artists || r.artist}</span>{/if}
+                  {#if r.album}<span style="color:var(--text-muted); font-size:11px; margin-left:4px;">[专辑: {r.album}]</span>{/if}
+                  {#if isL}<span class="audio-source-badge icon-only badge-server" style="margin-left:6px;">🖥️</span>{/if}
+                </div>
+                <div class="track-action-group">
+                  <button class={isL ? 'track-btn-slot slot-play-ready' : 'track-btn-slot slot-play-preview'} onclick={()=>{
+                    const tr={id:r.id, name:r.name, artist:r.artists||r.artist||'', cover:r.picUrl||'/favicon.png'}; setQueue([tr],0);
+                  }}>{isL?'▶️ 播放':'▶️ 试听'}</button>
+                  <button class={isL ? 'track-btn-slot slot-server-locate' : 'track-btn-slot slot-server-download'} onclick={()=> isL ? showToast('已在服务器','info') : api.downloadSingle(String(r.id)).then(()=>showToast('已提交下载','success'))}>{isL?'📂 定位':'📥 下载'}</button>
+                </div>
+              </li>
+            {:else if sType==='10'}
+              <li>
+                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  <strong>{idx+1}. {r.name}</strong>
+                  {#if r.artist}<span style="color:var(--text-secondary);"> - {typeof r.artist==='object'?r.artist.name:r.artist}</span>{/if}
+                  {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
+                  <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
+                </div>
+                <button class="jump-link-btn" onclick={()=>{ acc.album=true; /* TODO loadAlbum */ showToast('专辑 '+r.id+' 详情开发中','info'); }}>👉 查看专辑详情</button>
+              </li>
+            {:else if sType==='1000'}
+              <li>
+                <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;">
+                  <strong>{idx+1}. {r.name}</strong>
+                  {#if r.creator}<span style="color:var(--text-secondary);"> - {typeof r.creator==='object'?r.creator.nickname:r.creator}</span>{/if}
+                  {#if r.trackCount}<span style="color:var(--text-muted); font-size:12px;"> ({r.trackCount} 首)</span>{/if}
+                  <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                  <button class="jump-link-btn" style="background:rgba(245,158,11,0.12); color:#fbbf24; border-color:rgba(245,158,11,0.3);" onclick={()=> api.playlistSubscribe(String(r.id), true).then(j=> j.code==='000000'?showToast('已收藏','success'):showToast(j.msg,'warning'))}>⭐ 收藏</button>
+                  <button class="jump-link-btn" onclick={()=>jumpToPlaylist(String(r.id))}>👉 查看详情</button>
+                </div>
+              </li>
+            {:else}
+              <li class="track-item-card">
+                <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:8px; cursor:pointer;" onclick={()=> showToast('歌手 '+r.id,'info')}>
+                  {#if r.picUrl}<img src={r.picUrl+'?param=60y60'} alt="" style="width:36px; height:36px; border-radius:50%; object-fit:cover;" />{:else}<span>🎤</span>{/if}
+                  <strong>{idx+1}. {r.name}</strong><span style="color:var(--text-muted); font-size:12px;">(ID:{r.id})</span>
+                </div>
+                <button class="jump-link-btn" style="background:linear-gradient(135deg,#ec4899,#db2777); color:#fff; border:none;" onclick={()=> showToast('歌手热门50开发中','info')}>👉 查看热门 50 首</button>
+              </li>
+            {/if}
           {:else}
             <li style="justify-content:center; color:var(--text-muted);">输入关键词搜索</li>
           {/each}
         </ul>
+        <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
       </div>
     </div>
     <div class="accordion-card" class:active={acc.album}>
@@ -520,26 +583,77 @@
   </div>
 {/if}
 
-<!-- 抽屉 -->
+<!-- 抽屉：对齐旧版播放队列 + 下载任务双 Tab + 拖拽 -->
 {#if showDrawer}
-  <div class="playlist-drawer" style="display:flex;">
-    <div class="playlist-drawer-header"><span>📜 队列 ({queue.length})</span><button class="drawer-header-btn" onclick={()=>showDrawer=false}>✕</button></div>
+  {@const serverCount = queue.filter(t=>t.isLocal).length}
+  {@const readyCount = serverCount}
+  {@const cacheCount = 0}
+  {@const drawerList = drawerTab==='all' ? filteredQueue : drawerTab==='ready' ? filteredQueue.filter(t=>t.isLocal) : drawerTab==='server' ? filteredQueue.filter(t=>t.isLocal) : filteredQueue.filter(t=>false)}
+  <div class="playlist-drawer" style="display:flex; {drawerPos.dragging ? `transform:translate(${drawerPos.x}px,${drawerPos.y}px);` : ''}"
+       onmousedown={(e)=>{
+         const target = e.target as HTMLElement;
+         if(!target.closest('.playlist-drawer-header')) return;
+         drawerPos.dragging=true; drawerPos.startX=e.clientX-drawerPos.x; drawerPos.startY=e.clientY-drawerPos.y;
+         const move=(ev:MouseEvent)=>{ drawerPos.x=ev.clientX-drawerPos.startX; drawerPos.y=ev.clientY-drawerPos.startY; };
+         const up=()=>{ drawerPos.dragging=false; window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); };
+         window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+       }}>
+    <div class="playlist-drawer-header" style="cursor:move; user-select:none;" title="拖拽移动">
+      <div class="drawer-header-tabs" style="display:flex; gap:4px;">
+        <button class="drawer-main-tab" style="background:{drawerMainTab==='queue'?'rgba(255,255,255,0.16)':'transparent'}; color:{drawerMainTab==='queue'?'#fff':'#94a3b8'}; padding:4px 10px; border-radius:6px; border:none; font-size:12px; font-weight:600;" onclick={()=>drawerMainTab='queue'}>📜 播放队列 ({queue.length})</button>
+        <button class="drawer-main-tab" style="background:{drawerMainTab==='tasks'?'rgba(255,255,255,0.16)':'transparent'}; color:{drawerMainTab==='tasks'?'#fff':'#94a3b8'}; padding:4px 10px; border-radius:6px; border:none; font-size:12px;" onclick={()=>drawerMainTab='tasks'}>📥 下载任务 <span style="background:#f59e0b; color:#fff; padding:1px 5px; border-radius:8px; font-size:10px; display:{tasks.filter(t=>t.status==='DOWNLOADING'||t.status==='PENDING').length?'inline':'none'};">{tasks.filter(t=>t.status==='DOWNLOADING'||t.status==='PENDING').length}</span></button>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="drawer-header-btn" onclick={()=>{ if(drawerMainTab==='queue'){ queue=[]; showToast('已清空队列','info'); } else { clearTasks(); }}}>🗑️ 清空</button>
+        <button class="drawer-header-btn" onclick={()=>showDrawer=false}>✕</button>
+      </div>
+    </div>
     <div class="playlist-drawer-filter-bar">
-      <div class="drawer-search-wrap"><input class="drawer-search-input" placeholder="筛选 歌名/歌手" bind:value={drawerFilter} /></div>
-      <div class="drawer-filter-tabs">
-        <button class="drawer-tab-btn" class:active={drawerTab==='all'} onclick={()=>drawerTab='all'}>全部</button>
-        <button class="drawer-tab-btn" class:active={drawerTab==='ready'} onclick={()=>drawerTab='ready'}>就绪</button>
+      <div class="drawer-search-wrap"><input class="drawer-search-input" placeholder="🔍 筛选当前列表 (歌名 / 歌手)..." bind:value={drawerFilter} /><button style="display:{drawerFilter?'block':'none'}; position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; color:#94a3b8; cursor:pointer;" onclick={()=>drawerFilter=''}>✕</button></div>
+      <div class="drawer-filter-tabs" style="display:flex; gap:4px; overflow-x:auto;">
+        <button class="drawer-tab-btn" class:active={drawerTab==='all'} onclick={()=>drawerTab='all'}>全部 {queue.length}</button>
+        <button class="drawer-tab-btn" class:active={drawerTab==='ready'} onclick={()=>drawerTab='ready'}>✨ 离线就绪 {readyCount}</button>
+        <button class="drawer-tab-btn" class:active={drawerTab==='server'} onclick={()=>drawerTab='server'}>🖥️ 本地 {serverCount}</button>
+        <button class="drawer-tab-btn" class:active={drawerTab==='browser'} onclick={()=>drawerTab='browser'}>📲 缓存 {cacheCount}</button>
+      </div>
+      <div class="drawer-switches-row" style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px; color:#94a3b8;">
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" checked={autoSkipTrial} onchange={(e)=>autoSkipTrial=(e.target as HTMLInputElement).checked} /> 🛡️ 自动跳过试听</label>
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" checked={offlineOnly} onchange={(e)=>offlineOnly=(e.target as HTMLInputElement).checked} /> 📴 纯离线模式</label>
       </div>
     </div>
     <div class="playlist-drawer-body">
+      {#if drawerMainTab==='tasks'}
+        <ul class="playlist-drawer-list">
+          {#each tasks as t}
+            <li class="drawer-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;">
+              <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px;">{t.name || t.id}</span>
+              <span class="badge" style="padding:2px 6px; border-radius:8px; font-size:10px; background:{t.status==='DOWNLOADING'?'#f59e0b':t.status==='PENDING'?'#64748b':t.status==='SUCCESS'?'#10b981':'#ef4444'}; color:#fff;">{t.status}</span>
+            </li>
+          {:else}
+            <li style="padding:20px; text-align:center; color:var(--text-muted);">暂无下载任务</li>
+          {/each}
+        </ul>
+      {:else}
       <ul class="playlist-drawer-list">
-        {#each filteredQueue as t,i}
-          <li class="drawer-item" class:active={i===qIndex} onclick={()=>playAt(i)}>
-            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{i+1}. {t.name} - {t.artist}</span>
-            <button class="drawer-item-del-btn" onclick={(e)=>{e.stopPropagation(); queue=queue.filter((_,idx)=>idx!==i); if(qIndex>=queue.length) qIndex=Math.max(0,queue.length-1);}}>🗑️</button>
+        {#each drawerList.filter(t=> !offlineOnly || t.isLocal) as t,i}
+          {@const realIdx = queue.indexOf(t)}
+          <li class="drawer-item" class:active={realIdx===qIndex} onclick={()=>playAt(realIdx)} style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; gap:8px;">
+            <div style="flex:1; overflow:hidden; display:flex; align-items:center; gap:6px;">
+              <span style="font-weight:{realIdx===qIndex?700:500}; color:{realIdx===qIndex?'#4ade80':'inherit'};">{realIdx+1}. {t.name}</span>
+              <span style="color:var(--text-muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">- {t.artist}</span>
+              {#if t.isLocal}<span style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); padding:1px 4px; border-radius:6px; font-size:10px; margin-left:4px;">🖥️</span>{/if}
+              {#if realIdx===qIndex}<span style="color:#f87171; font-size:12px; margin-left:4px;">▶ 播放中</span>{/if}
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="drawer-like-btn" style="background:none; border:none; cursor:pointer; font-size:14px;" onclick={(e)=>{e.stopPropagation(); toggleLike(Number(t.id), t.name);}}>{likedSet.has(Number(t.id))?'❤️':'🤍'}</button>
+              <button class="drawer-item-del-btn" onclick={(e)=>{e.stopPropagation(); queue=queue.filter((_,idx)=>idx!==realIdx); if(qIndex>=queue.length) qIndex=Math.max(0,queue.length-1);}}>✕</button>
+            </div>
           </li>
+        {:else}
+          <li style="padding:20px; text-align:center; color:var(--text-muted);">暂无队列</li>
         {/each}
       </ul>
+      {/if}
     </div>
   </div>
 {/if}

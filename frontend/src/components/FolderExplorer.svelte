@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
+  import FolderNode from './FolderNode.svelte';
 
   let roots:any[] = $state([]);
   let curRoot:any = $state(null);
@@ -24,15 +25,14 @@
     }catch{}
   }
 
-  // 简单渲染：按目录/文件分组，显示 6 按钮
+  // 子目录全体检查：递归展开/折叠
+  function expandAll(){ document.querySelectorAll('[data-folder-node]').forEach(el=> (el as HTMLElement).click()); }
   function playFolder(path:string, name:string){
     api.folderTracks(path,true).then((j:any)=>{
       const tracks=j?.data||[];
-      // 简化：走全局 player 队列（通过事件）
       window.dispatchEvent(new CustomEvent('svelte:playFolder',{detail:{tracks, name}}));
     });
   }
-
   onMount(loadRoots);
 </script>
 
@@ -73,32 +73,10 @@
     </div>
   {/if}
 
-  <!-- 列表 -->
-  <div style="border:1px solid var(--border-subtle); border-radius:10px; overflow:hidden;">
+  <!-- 列表：递归子树，支持折叠与 … 抽屉 -->
+  <div style="border:1px solid var(--border-subtle); border-radius:10px; overflow:hidden; background:var(--card-bg);">
     {#each tree.filter((t:any)=> !filterKw || (t.name+t.path).toLowerCase().includes(filterKw.toLowerCase())) as item}
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border-bottom:1px solid var(--border-subtle); gap:8px; background:var(--card-bg);">
-        <div style="flex:1; overflow:hidden; display:flex; align-items:center; gap:8px;">
-          <span>{item.directory ? '📁' : '🎵'}</span>
-          <span style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{item.name}</span>
-          {#if item.directory && item.trackCount}<span style="background:rgba(16,185,129,0.12); padding:2px 6px; border-radius:10px; font-size:11px;">{item.trackCount}首</span>{/if}
-          {#if !item.directory && item.size}<span style="color:var(--text-muted); font-size:11px;">{item.size}</span>{/if}
-        </div>
-        <div style="display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
-          {#if item.directory}
-            <button class="tree-btn tree-btn-play" style="background:#10b981; color:#fff; padding:5px 10px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={()=>playFolder(item.path, item.name)}>▶ 连播</button>
-            <button class="tree-btn sp-hide" style="background:#8b5cf6; color:#fff; padding:5px 10px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={()=>playFolder(item.path, item.name)}>➕ 追加</button>
-            {#if item.hostPath}<button class="tree-btn sp-hide" style="background:#0284c7; color:#fff; padding:5px 10px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={()=> alert(item.hostPath)}>📂 定位</button>{/if}
-            <button class="tree-btn sp-hide" style="background:#f59e0b; color:#fff; padding:5px 10px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={()=>loadBrowse(item.path)}>🔄</button>
-            <button class="tree-btn sp-hide" style="background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.25); padding:5px 8px; border-radius:8px; font-size:11px; cursor:pointer;" onclick={()=> alert('忽略 '+item.name)}>🚫</button>
-            <button class="tree-btn sp-hide" style="background:#ef4444; color:#fff; padding:5px 8px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={()=> {if(confirm('彻底删除 '+item.name+'?')) alert('删除');}}>🗑️</button>
-            <!-- SP 更多 -->
-            <button class="tree-btn sp-show" style="background:var(--tag-btn-bg); border:1px solid var(--border-color); padding:5px 8px; border-radius:8px; font-size:11px; cursor:pointer;" onclick={()=> alert('更多: '+item.name)}>···</button>
-          {:else}
-            <button class="tree-btn" style="background:#10b981; color:#fff; padding:5px 10px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={()=>playFolder(item.path, item.name)}>▶ 播放</button>
-            <button class="tree-btn sp-show" style="background:var(--tag-btn-bg); border:1px solid var(--border-color); padding:5px 8px; border-radius:8px; font-size:11px; cursor:pointer;" onclick={()=> alert(item.name)}>···</button>
-          {/if}
-        </div>
-      </div>
+      <FolderNode item={item} level={0} onPlay={playFolder} />
     {:else}
       <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;">暂无目录 · 试试切换根或刷新</div>
     {/each}

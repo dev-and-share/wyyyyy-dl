@@ -27,7 +27,6 @@ test.describe('Svelte 5 双版并存', () => {
   });
   test('搜索回车应发 /Search', async ({ page }) => {
     await page.goto(`${BASE}/svelte/index.html`);
-    // 切到搜索 tab
     await page.click('button:has-text("搜索")');
     await page.fill('input[placeholder*="搜索歌曲"]', 'test');
     const [req] = await Promise.all([
@@ -35,5 +34,28 @@ test.describe('Svelte 5 双版并存', () => {
       page.press('input[placeholder*="搜索歌曲"]', 'Enter')
     ]);
     expect(req.url()).toContain('/Search');
+  });
+  test('专辑检索 Jay 应渲染 1. Jay - Favor (1首) 且按钮为查看专辑详情', async ({ page }) => {
+    await page.goto(`${BASE}/svelte/index.html`);
+    await page.click('button:has-text("搜索")');
+    await page.selectOption('select', '10');
+    await page.fill('input[placeholder*="搜索歌曲"]', 'Jay');
+    await page.click('button:has-text("搜索")');
+    await expect(page.locator('text=Jay - Favor')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button:has-text("查看专辑详情")')).toBeVisible();
+  });
+  test('单曲/歌单/歌手检索均应发对应 type', async ({ page }) => {
+    await page.goto(`${BASE}/svelte/index.html`);
+    await page.click('button:has-text("搜索")');
+    for (const t of ['1','1000','100']) {
+      await page.selectOption('select', t);
+      await page.fill('input[placeholder*="搜索歌曲"]', 'Jay');
+      const [req] = await Promise.all([
+        page.waitForRequest(r => r.url().includes('/Search')),
+        page.click('button:has-text("搜索")')
+      ]);
+      expect(req.postData()).toContain(`type=${t}`);
+      await page.waitForTimeout(500);
+    }
   });
 });
