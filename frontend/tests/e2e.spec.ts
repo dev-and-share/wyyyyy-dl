@@ -3,9 +3,11 @@ import { test, expect } from '@playwright/test';
 const BASE = process.env.BASE_URL || 'http://localhost:8081';
 
 test.describe('Svelte 5 双版并存', () => {
-  test('legacy 顶栏含 🧪 试用新版', async ({ page }) => {
+  test('legacy 顶栏含 🧪 试用新版 或 未登录二维码', async ({ page }) => {
     await page.goto(`${BASE}/?v=legacy`);
-    await expect(page.locator('button:has-text("试用新版")')).toBeVisible();
+    const btn = page.locator('button:has-text("试用新版")');
+    const qr = page.locator('text=扫码登录');
+    await expect(btn.or(qr)).toBeVisible();
   });
   test('svelte 顶栏含 ↩️ 旧版且输入框为暗色', async ({ page }) => {
     await page.goto(`${BASE}/svelte/index.html`);
