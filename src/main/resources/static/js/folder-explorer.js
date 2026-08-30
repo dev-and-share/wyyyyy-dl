@@ -70,7 +70,7 @@ function selectFolderRoot(rootPath, rootName) {
                     </div>
                     <div class="tree-actions-group">
                         <button class="tree-btn tree-btn-play" onclick="playFolderTracks('${escapeJsString(rootPath)}', '${escapeJsString(rootName)}', true)" title="连播整库全部 MP3">
-                            ▶ 连播整库
+                            ▶ 连播<span class="pc-only-text">整库</span>
                         </button>
                         <button class="tree-btn tree-btn-queue sp-hide" onclick="appendFolderTracksToQueue('${escapeJsString(rootPath)}', '${escapeJsString(rootName)}', true)" title="追加整库到播放列表">
                             ➕ 追加
@@ -189,7 +189,7 @@ async function loadAndRenderNodeChildren(dirPath, level, containerElement, custo
                 if (rootBadge) {
                     const dirCount = items.filter(i => i.directory).length;
                     const mp3Count = items.filter(i => !i.directory).length;
-                    rootBadge.textContent = `含 ${dirCount} 文件夹 · ${mp3Count} 根歌曲`;
+                    rootBadge.textContent = `${dirCount}目录 · ${mp3Count}首`;
                 }
             }
 
@@ -228,7 +228,7 @@ function renderNodeItemsHTML(items, level, containerElement) {
                                 <span class="tree-expander" id="expander-of-${safeId}">▶</span>
                                 <span class="tree-icon" id="icon-of-${safeId}">📁</span>
                                 <span class="tree-node-name tree-dir-name">${escapeHtml(item.name)}</span>
-                                ${item.trackCount > 0 ? `<span class="tree-badge-count">含 ${item.trackCount} 首</span>` : ''}
+                                ${item.trackCount > 0 ? `<span class="tree-badge-count">${item.trackCount}首</span>` : ''}
                             </div>
                             <div class="tree-actions-group">
                                 ${item.trackCount > 0 ? `
