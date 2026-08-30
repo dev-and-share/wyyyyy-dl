@@ -97,6 +97,22 @@ function togglePlayMode() {
     savePlayerStateToStorage();
 }
 
+function buildSongV1Params(track) {
+    if (!track) return {};
+    const params = {
+        id: track.id || track.songId,
+        name: track.name || '',
+        artist: track.artist || '',
+        level: 'lossless',
+        type: 'json'
+    };
+    const pName = track.playlistName || (typeof currentPlaylist !== 'undefined' && currentPlaylist ? currentPlaylist.name : '');
+    const aName = track.album || track.albumName || (track.al ? track.al.name : (typeof currentAlbum !== 'undefined' && currentAlbum ? currentAlbum.name : ''));
+    if (pName) params.playlistName = pName;
+    if (aName) params.albumName = aName;
+    return params;
+}
+
 function prepareTrackInUI(track, seekTime) {
     if (!track) return;
     seekTime = seekTime || 0;
@@ -142,7 +158,7 @@ function prepareTrackInUI(track, seekTime) {
     }
 
     // 2. 线上未解析歌曲：异步请求解析
-    axios.post('/Song_V1', new URLSearchParams({ id: track.id, name: track.name || '', artist: track.artist || '', level: 'lossless', type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams(buildSongV1Params(track)))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url && player) {
@@ -203,7 +219,7 @@ function preloadTrackStreamUrl(index) {
     }
     if (track.resolvedUrl && Date.now() - (track.resolvedAt || 0) < 1200000) return; // 20分钟内有效则跳过
 
-    axios.post('/Song_V1', new URLSearchParams({ id: track.id, name: track.name || '', artist: track.artist || '', level: 'lossless', type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams(buildSongV1Params(track)))
         .then(resp => {
             if (resp.data && resp.data.data && resp.data.data.url) {
                 track.resolvedUrl = resp.data.data.url;
@@ -282,7 +298,7 @@ function playTrackInQueue(index) {
         return;
     }
     
-    axios.post('/Song_V1', new URLSearchParams({ id: track.id, name: track.name || '', artist: track.artist || '', level: 'lossless', type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams(buildSongV1Params(track)))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url) {
@@ -410,10 +426,91 @@ function togglePlayPause() {
     }
 }
 
+let isSeekingAudio = false;
+
+function initProgressBarDragging() {
+    const player = document.getElementById("globalAudioPlayer");
+    if (!player) return;
+
+    function bindBar(wrapperId) {
+        const wrapper = document.getElementById(wrapperId);
+        if (!wrapper || wrapper._hasBoundDrag) return;
+        wrapper._hasBoundDrag = true;
+
+        let isDragging = false;
+
+        function updateProgressByPointer(e) {
+            const rect = wrapper.getBoundingClientRect();
+            if (rect.width <= 0) return 0;
+            const clickX = e.clientX - rect.left;
+            const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+            const percentage = ratio * 100;
+
+            const bFill = document.getElementById("progressBarFill");
+            const bHandle = document.getElementById("progressBarHandle");
+            const bCurTime = document.getElementById("audioCurrentTime");
+
+            const fFill = document.getElementById("fullscreenProgressBarFill");
+            const fHandle = document.getElementById("fullscreenProgressBarHandle");
+            const fCurTime = document.getElementById("fullscreenCurrentTime");
+
+            if (bFill) bFill.style.width = percentage + "%";
+            if (bHandle) bHandle.style.left = percentage + "%";
+            if (fFill) fFill.style.width = percentage + "%";
+            if (fHandle) fHandle.style.left = percentage + "%";
+
+            if (player.duration && isFinite(player.duration)) {
+                const formatted = typeof formatTime === 'function' ? formatTime(ratio * player.duration) : '00:00';
+                if (bCurTime) bCurTime.textContent = formatted;
+                if (fCurTime) fCurTime.textContent = formatted;
+            }
+
+            return ratio;
+        }
+
+        wrapper.addEventListener('pointerdown', (e) => {
+            if (!player.duration || !isFinite(player.duration)) return;
+            isDragging = true;
+            isSeekingAudio = true;
+            try { wrapper.setPointerCapture(e.pointerId); } catch(err) {}
+            wrapper.classList.add('seeking');
+            updateProgressByPointer(e);
+        });
+
+        wrapper.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            updateProgressByPointer(e);
+        });
+
+        const stopDrag = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            try { wrapper.releasePointerCapture(e.pointerId); } catch (err) {}
+            wrapper.classList.remove('seeking');
+
+            const ratio = updateProgressByPointer(e);
+            if (player.duration && isFinite(player.duration)) {
+                player.currentTime = ratio * player.duration;
+                savePlayerStateToStorage();
+            }
+
+            setTimeout(() => {
+                isSeekingAudio = false;
+            }, 60);
+        };
+
+        wrapper.addEventListener('pointerup', stopDrag);
+        wrapper.addEventListener('pointercancel', stopDrag);
+    }
+
+    bindBar("progressBarWrapper");
+    bindBar("fullscreenProgressBarWrapper");
+}
+
 function seekAudio(e) {
     const player = document.getElementById("globalAudioPlayer");
     const wrapper = document.getElementById("progressBarWrapper") || (e.currentTarget ? e.currentTarget : null);
-    if (!player || !player.duration || !wrapper) return;
+    if (!player || !player.duration || !isFinite(player.duration) || !wrapper) return;
 
     const rect = wrapper.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
@@ -516,6 +613,7 @@ function playAudioOnline(url, name, artist, cover, lyric, album) {
         if (handle) handle.style.left = "0%";
         if (curTime) curTime.textContent = "00:00";
 
+        player.crossOrigin = "anonymous";
         player.src = url;
         player.currentTime = 0;
         bar.style.display = "flex";
@@ -526,6 +624,9 @@ function playAudioOnline(url, name, artist, cover, lyric, album) {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 player.currentTime = 0;
+                if (typeof peqAudioCtx !== 'undefined' && peqAudioCtx && peqAudioCtx.state === 'suspended') {
+                    peqAudioCtx.resume().catch(() => {});
+                }
             }).catch(e => {
                 console.warn("自动播放受阻或中断:", e);
                 if (playBtn) playBtn.innerHTML = "▶";
@@ -644,7 +745,7 @@ function playSongById(songId, name, artist) {
         if (typeof updatePlaylistCountUI === 'function') updatePlaylistCountUI();
     }
 
-    axios.post('/Song_V1', new URLSearchParams({ id: songId, name: name || '', artist: artist || '', level: 'lossless', type: 'json' }))
+    axios.post('/Song_V1', new URLSearchParams(buildSongV1Params({ id: songId, name: name || '', artist: artist || '' })))
         .then(resp => {
             const song = resp.data.data;
             if (song && song.url) {
@@ -675,6 +776,7 @@ window.playPrevTrack = playPrevTrack;
 window.closeAudioPlayer = closeAudioPlayer;
 window.togglePlayPause = togglePlayPause;
 window.seekAudio = seekAudio;
+window.initProgressBarDragging = initProgressBarDragging;
 window.changeVolume = changeVolume;
 window.toggleMute = toggleMute;
 window.playAudioOnline = playAudioOnline;

@@ -235,7 +235,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
         let lastSaveProgressTs = 0;
         player.ontimeupdate = function() {
-            if (!player.duration) return;
+            if (typeof isSeekingAudio !== 'undefined' && isSeekingAudio) return;
+            if (!player.duration || isNaN(player.duration) || !isFinite(player.duration)) return;
             const current = player.currentTime;
             const duration = player.duration;
             const percentage = (current / duration) * 100;
@@ -292,7 +293,12 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 
-    // 12. 全局键盘快捷键监听
+    // 12. 初始化音频进度条平滑拖拽监听
+    if (typeof initProgressBarDragging === 'function') {
+        initProgressBarDragging();
+    }
+
+    // 13. 全局键盘快捷键监听
     document.addEventListener("keydown", function(e) {
         if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
             return;
