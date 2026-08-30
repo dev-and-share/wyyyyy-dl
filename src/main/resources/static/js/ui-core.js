@@ -581,7 +581,7 @@ function fetchDownloadTasks() {
                     if (task.status === 'SUCCESS' || task.status === 'SKIP') {
                         const revealBtn = document.createElement('button');
                         revealBtn.className = 'task-locate-btn';
-                        revealBtn.title = '在 Finder / 资源管理器中高亮定位此文件';
+                        revealBtn.title = '在文件管理器/服务器中定位此文件';
                         revealBtn.textContent = '📂 定位';
                         revealBtn.onclick = (e) => {
                             e.stopPropagation();

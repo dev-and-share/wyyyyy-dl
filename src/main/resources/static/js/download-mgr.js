@@ -50,7 +50,7 @@ function revealFile(path, taskId) {
                 navigator.clipboard.writeText(fpath).catch(() => {});
             }
             if (resp.data.code === '000000') {
-                showRevealModal(fpath, rawPath, '📂 已为您复制 Mac 宿主机真实物理路径到剪贴板！');
+                showRevealModal(fpath, rawPath, '📂 已为您复制服务器真实物理路径到剪贴板！');
             } else {
                 showRevealModal(fpath, rawPath, '定位提示：' + (resp.data.msg || resp.data.message));
             }
@@ -184,8 +184,8 @@ function showHistoryActionMenu(id, songName, artist, encodedHostPath, fileExists
         if (encodedHostPath) {
             items.push({
                 icon: '📂',
-                text: '在 Finder / 资源管理器中定位',
-                subtext: '在宿主机中高亮物理文件',
+                text: '在文件管理器/服务器中定位',
+                subtext: '查看或定位服务器物理文件',
                 onClick: () => revealFile(encodedHostPath)
             });
         }

@@ -342,7 +342,7 @@ function renderTrackCapsuleSlotsHtml(track, prefix = 'track-') {
 
     const serverBtnText = isLocal ? '📂 定位' : '📥 下载';
     const serverBtnClass = isLocal ? 'track-btn-slot slot-server-locate' : 'track-btn-slot slot-server-download';
-    const serverBtnTitle = isLocal ? '定位 Mac 宿主机物理音频文件' : '下载到电脑磁盘';
+    const serverBtnTitle = isLocal ? '在服务器/宿主机中定位物理文件' : '下载到电脑磁盘';
     const serverBtnAction = isLocal
         ? `revealSong('${id}', '${nameSafe}', '${artistSafe}')`
         : `downloadSingle('${id}')`;
@@ -388,7 +388,7 @@ function showTrackActionMenu(id, name, artist, isLocal, prefix = 'track-') {
         },
         {
             icon: isLocal ? '📂' : '📥',
-            text: isLocal ? '在 Mac 宿主机中定位物理文件' : '下载到电脑磁盘',
+            text: isLocal ? '在服务器/宿主机中定位文件' : '下载到电脑磁盘',
             subtext: isLocal ? '已落盘' : '异步高品质下载',
             onClick: () => {
                 if (isLocal) {
@@ -487,7 +487,7 @@ async function asyncUpdateListBadges(pageTracks, prefix = 'track-') {
             if (isServer) {
                 serverBtn.className = "track-btn-slot slot-server-locate";
                 serverBtn.innerHTML = "📂 定位";
-                serverBtn.title = "定位 Mac 宿主机物理音频文件";
+                serverBtn.title = "在服务器/宿主机中定位物理文件";
                 serverBtn.onclick = () => revealSong(id, trackName, trackArtist);
             } else {
                 serverBtn.className = "track-btn-slot slot-server-download";

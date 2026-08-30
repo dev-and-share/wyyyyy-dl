@@ -240,7 +240,7 @@ function renderNodeItemsHTML(items, level, containerElement) {
                                     </button>
                                 ` : ''}
                                 ${item.hostPath ? `
-                                    <button class="tree-btn tree-btn-locate sp-hide" onclick="revealFile('${escapeJsString(item.hostPath)}')" title="在 Finder/资源管理器中定位">
+                                    <button class="tree-btn tree-btn-locate sp-hide" onclick="revealFile('${escapeJsString(item.hostPath)}')" title="在文件管理器/服务器中定位">
                                         📂 定位
                                     </button>
                                 ` : ''}
@@ -290,7 +290,7 @@ function renderNodeItemsHTML(items, level, containerElement) {
                                 ➕
                             </button>
                             ${hostPath ? `
-                                <button class="tree-btn tree-btn-locate sp-hide" onclick="revealFile('${escapeJsString(hostPath)}')" title="在 Finder 中定位文件">
+                                <button class="tree-btn tree-btn-locate sp-hide" onclick="revealFile('${escapeJsString(hostPath)}')" title="在文件管理器/服务器中定位">
                                     📂
                                 </button>
                             ` : ''}
@@ -608,7 +608,7 @@ async function confirmDeleteFolder(folderPath, folderName, domWrapperId) {
 
         bodyHtml += `
             <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">
-                💻 在 Mac 终端中定位此目录：
+                💻 在终端中定位此目录：
             </div>
             <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-subtle); padding:8px 12px; border-radius:6px; font-family:monospace; font-size:11.5px; color:#38bdf8; word-break:break-all; user-select:all;">
                 ${escapeHtml(openCmd)}
@@ -624,7 +624,7 @@ async function confirmDeleteFolder(folderPath, folderName, domWrapperId) {
             showCancel: true,
             danger: true,
             cmdText: openCmd,
-            cmdLabel: '💻 复制 Finder 定位命令'
+            cmdLabel: '💻 复制终端定位命令'
         });
 
         if (!confirmed) return;
@@ -676,8 +676,8 @@ function showFolderActionMenu(dirPath, dirName, trackCount, hostPath, level, wra
     if (hostPath) {
         items.push({
             icon: '📂',
-            text: '在 Finder / 资源管理器中定位',
-            subtext: '在宿主机操作系统中高亮文件',
+            text: '在文件管理器/服务器中定位',
+            subtext: '查看或定位服务器物理文件',
             onClick: () => revealFile(hostPath)
         });
     }
@@ -735,7 +735,8 @@ function showSingleFileActionMenu(streamUrl, songName, artist, album, hostPath) 
     if (hostPath) {
         items.push({
             icon: '📂',
-            text: '在 Finder / 资源管理器中定位',
+            text: '在文件管理器/服务器中定位',
+            subtext: '查看或定位服务器物理文件',
             onClick: () => revealFile(hostPath)
         });
     }
