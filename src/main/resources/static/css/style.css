@@ -2105,31 +2105,6 @@ ul.data-list li:last-child {
     color: #ffffff;
 }
 
-/* 播放器最小化胶囊状态 (Compact Capsule Mode) */
-.bottom-audio-bar.minimized {
-    left: 20px;
-    right: auto;
-    bottom: 20px;
-    width: 280px !important;
-    border-radius: 30px;
-    padding: 8px 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.bottom-audio-bar.minimized .audio-bar-inner {
-    gap: 10px;
-}
-
-.bottom-audio-bar.minimized .audio-track-info {
-    min-width: 0;
-    flex: 1;
-}
-
-.bottom-audio-bar.minimized .audio-controls {
-    display: none;
-}
-
 /* ==========================================================================
    🎤 全屏沉浸式现代大黑胶音乐播放器 Modal (Fullscreen Dynamic Player)
    ========================================================================== */

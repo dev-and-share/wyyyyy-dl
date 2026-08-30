@@ -15,7 +15,6 @@ let currentQueueIndex = -1;
 let playMode = 'loop'; // 'loop' (列表) | 'single' (单曲) | 'random' (随机)
 let autoSkipTrial = localStorage.getItem(STORAGE_AUTO_SKIP_KEY) === 'true';
 let offlineOnlyMode = localStorage.getItem(STORAGE_OFFLINE_ONLY_KEY) === 'true';
-let isAudioPlayerMinimized = false;
 
 function savePlayerStateToStorage() {
     try {
@@ -360,13 +359,6 @@ function playPrevTrack() {
     playTrackInQueue(prevIdx);
 }
 
-function toggleMinimizeAudioPlayer() {
-    const bar = document.getElementById("globalAudioBar");
-    if (bar) {
-        bar.classList.toggle("minimized");
-    }
-}
-
 function closeAudioPlayer() {
     const bar = document.getElementById("globalAudioBar");
     const player = document.getElementById("globalAudioPlayer");
@@ -680,7 +672,6 @@ window.playTrackInQueue = playTrackInQueue;
 window.playNextTrackSync = playNextTrackSync;
 window.playNextTrack = playNextTrack;
 window.playPrevTrack = playPrevTrack;
-window.toggleMinimizeAudioPlayer = toggleMinimizeAudioPlayer;
 window.closeAudioPlayer = closeAudioPlayer;
 window.togglePlayPause = togglePlayPause;
 window.seekAudio = seekAudio;
