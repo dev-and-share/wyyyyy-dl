@@ -1,28 +1,33 @@
 import { getApiCache, setApiCache } from './utils';
 import { api } from './api';
 
-export let myPlaylists = $state<any[]>([]);
-export let playlistFilter = $state<'created'|'subscribed'|'all'>('created');
-export let playlist = $state<any|null>(null);
-export let allTracks = $state<any[]>([]);
-export let curPage = $state(1);
+export const myPlaylists = $state<any[]>([]);
+export const allTracks = $state<any[]>([]);
+export const playlistState = $state({ filter: 'created' as any, playlist: null as any, curPage: 1 });
 export const pageSize = 10;
-export const paged = $derived(allTracks.slice((curPage-1)*pageSize, curPage*pageSize));
+export const paged = $derived(allTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
 export const totalPages = $derived(Math.max(1, Math.ceil(allTracks.length/pageSize)));
+export const playlist = $derived(playlistState.playlist);
+export const playlistFilter = $derived(playlistState.filter);
+export const curPage = $derived(playlistState.curPage);
+export function setCurPage(v:number){ playlistState.curPage=v; }
+export function incPage(d:number){ playlistState.curPage=Math.max(1, Math.min(totalPages, playlistState.curPage+d)); }
 
-export async function loadMyPlaylists(f:any=playlistFilter){
-  playlistFilter=f;
+export async function loadMyPlaylists(f:any=playlistState.filter){
+  playlistState.filter=f;
   const cached=getApiCache('my_playlists');
-  if(cached?.data?.playlists) myPlaylists=cached.data.playlists;
+  if(cached?.data?.playlists){ myPlaylists.length=0; myPlaylists.push(...cached.data.playlists); }
   try{
     const j=await api.myPlaylist();
     if(j?.code && j.code!=='000000') throw new Error(j.msg);
     const pls=j?.data?.playlists||[];
-    if(JSON.stringify(pls)!==JSON.stringify(cached?.data?.playlists||[])){ setApiCache('my_playlists', j.data); myPlaylists=pls; }
-  }catch(e){ /* keep cache */ throw e; }
+    if(JSON.stringify(pls)!==JSON.stringify(cached?.data?.playlists||[])){ setApiCache('my_playlists', j.data); myPlaylists.length=0; myPlaylists.push(...pls); }
+  }catch(e){ throw e; }
 }
 export function renderPlaylist(pl:any){
-  playlist=pl; allTracks=pl.tracks||[]; curPage=1;
+  playlistState.playlist=pl;
+  allTracks.length=0; allTracks.push(...(pl.tracks||[]));
+  playlistState.curPage=1;
 }
 export async function loadPlaylistDetail(playlistId:string){
   if(!playlistId) throw new Error('请输入歌单 ID');
