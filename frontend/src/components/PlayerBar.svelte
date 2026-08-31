@@ -1,11 +1,12 @@
 <script lang="ts">
   import { formatTime } from '../lib/utils';
-  import { queue, playerState, curTrack } from '../lib/player.svelte';
+  import { queue, playerState, getCurTrack } from '../lib/player.svelte';
   let { audioEl, playing, curTime, duration, onToggle, onPrev, onNext, onSeek, onLyric, onQueue } = $props<{
     audioEl?: HTMLAudioElement, playing:boolean, curTime:number, duration:number,
     onToggle:()=>void, onPrev:()=>void, onNext:()=>void, onSeek:(e:MouseEvent)=>void, onLyric:()=>void, onQueue:()=>void
   }>();
   let vol=$state(playerState.volume);
+  let curTrack=$derived(getCurTrack());
   $effect(()=>{ if(audioEl) audioEl.volume=vol; playerState.volume=vol; });
 </script>
 

@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { myPlaylists, playlistFilter, playlist, allTracks, curPage, pageSize, paged, totalPages, loadMyPlaylists, loadPlaylistDetail, renderPlaylist, incPage } from '../lib/playlist.svelte';
+  import { myPlaylists, allTracks, pageSize, getPaged, getTotalPages, getPlaylist, getPlaylistFilter, getCurPage, loadMyPlaylists, loadPlaylistDetail, renderPlaylist, incPage, playlistState } from '../lib/playlist.svelte';
+  let paged = $derived(getPaged());
+  let totalPages = $derived(getTotalPages());
+  let playlist = $derived(getPlaylist());
+  let playlistFilter = $derived(getPlaylistFilter());
+  let curPage = $derived(getCurPage());
   import { api } from '../lib/api';
   let { playlistId, likedSet, onToggleLike, onPlayQueue, showToast } = $props<{
     playlistId:string, likedSet:Set<number>, onToggleLike:(id:number,name:string)=>void, onPlayQueue:(tracks:any[],idx?:number)=>void, showToast:(m:string,t?:string)=>void

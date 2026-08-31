@@ -7,6 +7,7 @@
   import PeqDrawer from './components/PeqDrawer.svelte';
   import CreatePlaylistModal from './components/CreatePlaylistModal.svelte';
   import PlaylistTab from './components/PlaylistTab.svelte';
+  import { hydrateQueue, persistQueue } from './lib/player.svelte';
   import SearchTab from './components/SearchTab.svelte';
   import HistoryTab from './components/HistoryTab.svelte';
   import PlayerBar from './components/PlayerBar.svelte';
@@ -249,9 +250,9 @@
   // ---------- 生命周期 ----------
   onMount(()=>{
     applyTheme(themeMode);
+    hydrateQueue();
     const h=location.hash.replace('#',''); if(h) tab=h as any;
     window.addEventListener('hashchange',()=>{ const hh=location.hash.replace('#',''); if(hh) tab=hh as any; });
-    // 监听曲库连播事件（来自 FolderExplorer）
     window.addEventListener('svelte:playFolder', ((e:CustomEvent)=>{
       const {tracks, name} = (e as CustomEvent).detail;
       if(!tracks?.length){ showToast('该目录无可播文件','warning'); return; }
@@ -271,9 +272,8 @@
     loadMyPlaylists(); loadRoots(); loadHistory(1);
     const c=getApiCache('liked_song_ids'); if(c?.data) likedSet=new Set(c.data.map((n:any)=>Number(n)));
     api.likeList().then((j:any)=>{ if(j?.code==='000000'&&Array.isArray(j.data)){ likedSet=new Set(j.data.map((n:any)=>Number(n))); setApiCache('liked_song_ids', j.data);} }).catch(()=>{});
-    try{ const q=JSON.parse(localStorage.getItem('svelte_queue')||'null'); if(q?.queue?.length){ queue=q.queue; qIndex=q.qIndex||0; } }catch{}
   });
-  $effect(()=>{ try{ localStorage.setItem('svelte_queue', JSON.stringify({queue,qIndex})) }catch{} });
+  $effect(()=>{ persistQueue(); });
 
   function toggleRepeat(){ repeat=!repeat; api.setRepeat(repeat); }
   function formatBytesLocal(n:number){ return formatBytes(n); }

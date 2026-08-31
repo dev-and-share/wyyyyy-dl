@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-
-const BASE = process.env.BASE_URL || 'http://localhost:8081';
+// @ts-ignore - process provided by Node
+const BASE = (globalThis as any).process?.env?.BASE_URL || 'http://localhost:8081';
 
 test.describe('Svelte 5 双版并存', () => {
   test('legacy 顶栏含 🧪 试用新版 或 未登录二维码', async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe('Svelte 5 双版并存', () => {
   });
   test('点击查看歌单详情未登录应弹 还未设置cookie! toast', async ({ page }) => {
     await page.goto(`${BASE}/svelte/index.html`);
-    const input = page.getByPlaceholderText(/歌单 ID/);
+    const input = page.getByPlaceholder(/歌单 ID/);
     await input.fill('123456');
     const btn = page.locator('.accordion-card:has-text("查看歌单详情") button:has-text("查看")');
     await btn.click();
@@ -43,7 +43,7 @@ test.describe('Svelte 5 双版并存', () => {
     // 切到搜索 tab 确保可见
     await page.locator('.accordion-card:has-text("关键词综合搜索")').click().catch(()=>{});
     await page.selectOption('select', '10');
-    const sInput = page.getByPlaceholderText(/搜索歌曲/);
+    const sInput = page.getByPlaceholder(/搜索歌曲/);
     await sInput.fill('Jay');
     await page.getByRole('button', { name: '搜索' }).last().click();
     await expect(page.locator('text=Jay').first()).toBeVisible({ timeout: 8000 });
@@ -54,7 +54,7 @@ test.describe('Svelte 5 双版并存', () => {
     await page.locator('.accordion-card:has-text("关键词综合搜索")').click().catch(()=>{});
     for (const t of ['1','1000','100']) {
       await page.selectOption('select', t);
-      const sInput = page.getByPlaceholderText(/搜索歌曲/);
+      const sInput = page.getByPlaceholder(/搜索歌曲/);
       await sInput.fill('Jay');
       const [req] = await Promise.all([
         page.waitForRequest(r => r.url().includes('/Search'), { timeout: 8000 }),
