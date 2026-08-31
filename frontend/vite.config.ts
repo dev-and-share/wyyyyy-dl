@@ -11,9 +11,18 @@ export default defineConfig({
     proxy: {
       '/MyPlaylist': 'http://localhost:8080',
       '/Playlist': 'http://localhost:8080',
+      '/Song_V1': 'http://localhost:8080',
+      '/Search': 'http://localhost:8080',
+      '/Album': 'http://localhost:8080',
+      '/Artist': 'http://localhost:8080',
+      '/setCookie': 'http://localhost:8080',
+      '/api': 'http://localhost:8080',
       '/v2': 'http://localhost:8080',
       '/login': 'http://localhost:8080',
-      '/qr': 'http://localhost:8080'
+      '/qr': 'http://localhost:8080',
+      '/sw.js': 'http://localhost:8080',
+      '/favicon.png': 'http://localhost:8080',
+      '/favicon.ico': 'http://localhost:8080'
     }
   },
   build: {
