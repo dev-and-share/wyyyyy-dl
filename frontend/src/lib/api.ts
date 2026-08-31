@@ -33,6 +33,14 @@ export const api = {
   tasksClear: () => req('/v2/tasks/clear', {method:'POST'}),
   historyStats: () => get('/v2/history/stats'),
   historyList: (kw:string, page:number) => get(`/v2/history/list?keyword=${encodeURIComponent(kw)}&page=${page}&pageSize=10`),
+  historyScanExternal: () => req('/v2/history/scan_external', {method:'POST'}),
+  historyScan: () => req('/v2/history/scan', {method:'POST'}),
+  historyImportUntracked: () => req('/v2/history/importUntracked', {method:'POST'}),
+  historyCleanMissing: () => req('/v2/history/cleanMissing', {method:'POST'}),
+  historyMissing: () => get('/v2/history/missing'),
+  historyNonMp3: () => get('/v2/history/non_mp3'),
+  historyCleanNonMp3: () => req('/v2/history/cleanNonMp3', {method:'POST'}),
+  historyDelete: (id: number|string) => req(`/v2/history/delete?id=${encodeURIComponent(id)}`, {method:'DELETE'}),
   playlistCreate: (name:string, isPrivate:boolean) => postForm('/v2/playlist/create', {name, isPrivate:String(isPrivate)}),
   playlistFork: (name:string, isPrivate:boolean, trackIds:string) => postForm('/v2/playlist/fork', {name, isPrivate:String(isPrivate), trackIds}),
   playlistSubscribe: (id:string, subscribe:boolean) => postForm('/v2/playlist/subscribe', {id, subscribe:String(subscribe)}),
@@ -44,4 +52,13 @@ export const api = {
   folderRoots: () => get('/v2/folder/roots'),
   folderBrowse: (p:string) => get(`/v2/folder/browse?path=${encodeURIComponent(p)}`),
   folderTracks: (p:string, rec:boolean) => get(`/v2/folder/tracks?path=${encodeURIComponent(p)}&recursive=${rec}`),
+  reveal: (params: { id?: string|number; name?: string; artist?: string; path?: string; taskId?: string|number }) => {
+    const q = new URLSearchParams();
+    if (params.id) q.set('id', String(params.id));
+    if (params.name) q.set('name', params.name);
+    if (params.artist) q.set('artist', params.artist);
+    if (params.path) q.set('path', params.path);
+    if (params.taskId) q.set('taskId', String(params.taskId));
+    return get(`/v2/reveal?${q.toString()}`);
+  }
 }
