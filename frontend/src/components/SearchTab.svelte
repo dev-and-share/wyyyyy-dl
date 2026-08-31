@@ -17,9 +17,11 @@
   }
   async function loadAlbum(){
     if(!albumId) return showToast('请输入专辑 ID','warning');
-    try{ const j=await api.album(albumId); if(j?.code && j.code!=='000000'){ showToast(j.msg,'warning'); return; } album=j?.data?.album||j?.data||null; accAlbum=true; }catch(e){ showToast('获取专辑失败:'+e,'error'); }
+    // 立即折叠搜索、展开专辑，显示 loading
+    accSearch=false; accAlbum=true; album=null;
+    try{ const j=await api.album(albumId); if(j?.code && j.code!=='000000'){ showToast(j.msg,'warning'); return; } album=j?.data?.album||j?.data||null; }catch(e){ showToast('获取专辑失败:'+e,'error'); }
   }
-  function handleAlbum(id:string){ albumId=id; loadAlbum(); }
+  function handleAlbum(id:string){ albumId=id; accSearch=false; accAlbum=true; album=null; loadAlbum(); }
 </script>
 
 <div class="accordion-card" class:active={accSearch}>
