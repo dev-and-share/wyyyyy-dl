@@ -27,9 +27,9 @@ templates/home.html:46  🧪 试用新版  ↔  App.svelte:222 ↩️ 旧版
 - `static/svelte` `gitignore`，镜像内自建，本地 `npm run build` 亦可。
 
 ## 3. 组件化与状态
-
+ 
+- **单文件代码规模（< 500 行红线）**：所有 `.svelte` 单组件文件严格控制在 500 行以内（推荐 100~300 行）。严禁在单个文件中堆砌全量业务逻辑；按 `Tab`（`PlaylistTab / SearchTab / DownloadMgrTab`）、`Modal`（`LyricModal / RevealModal / CreatePlaylistModal`）、`Widget`（`TopBar / FloatingMonitor / PlayerBar / PeqDrawer`）进行模块化拆分。
 - **Runes stores**：`lib/player.svelte.ts`（queue/qIndex/mode/volume + localStorage 持久化 + `resolveUrl` 经 `/Song_V1 lossless` 取真实流）、`playlist.svelte.ts`（`SWR pwa_api_cache_*`）、`search.svelte.ts`（`Array.isArray` 兼容 `/Search` 回 `array|object`）。
-- **拆分**：`TopBar / PlaylistTab / SearchTab / PlayerBar / LyricModal / PeqDrawer / FolderNode / CreatePlaylistModal`。`App.svelte 700+` 已拆，后续按 `player → queue/drawer → folder/history` 分阶段。
 - **样式**：全量复用 `style.css` 变量（`--card-bg --input-bg` 等），类名 `app-top-bar/accordion-card/bottom-audio-bar/playlist-drawer` 1:1，`pc-only-text/sp-hide` 响应式与旧版同，`input[type=text]` 白底 bug 即 `type` 缺失所致。
 
 ## 4. 关键坑与解法
