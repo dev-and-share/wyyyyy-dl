@@ -61,19 +61,18 @@
   }
 
   // 初始化自动拉取/读取 SWR 缓存
-  onMount(async () => {
-    try {
-      await loadMyPlaylists('created');
-    } catch (e: any) {
-      // 首次未登录等情况静默容错
-    }
-    // 刷新页面后自动维持并恢复上次查看的歌单
-    if (pid) {
-      handleViewPlaylist(pid, false);
+  onMount(() => {
+    // 1. 优先即时恢复上次查看的歌单详情（SWR 缓存优先秒显）
+    const targetPid = pid || playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
+    if (targetPid) {
+      pid = targetPid;
+      loadPlaylistDetail(targetPid).catch(() => {});
     }
     if (accSong && songId) {
-      handleViewSong(songId, false);
+      handleViewSong(songId, false).catch(() => {});
     }
+    // 2. 异步拉取账号歌单列表
+    loadMyPlaylists('created').catch(() => {});
   });
 
   // 监听外部传入的歌单 ID 变动
@@ -91,7 +90,10 @@
       return;
     }
     pid = id;
-    try { localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, id); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, id);
+      history.replaceState(null, '', `#/playlist?id=${id}`);
+    } catch {}
     if (switchCards) {
       accMy = false;
       accDetail = true;
@@ -181,7 +183,7 @@
   </div>
   <div class="accordion-body">
     <div class="form-row flex-input-row">
-      <input type="text" placeholder="输入歌单 ID (如 123456，按回车查看)" style="flex:1;" bind:value={pid} onkeydown={(e) => e.key === 'Enter' && handleViewPlaylist(pid)} />
+      <input type="text" placeholder="输入歌单 ID (如 123456，按回车查看)" style="flex:1;" bind:value={pid} oninput={() => { if (pid) { try { localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, pid); } catch {} } }} onkeydown={(e) => e.key === 'Enter' && handleViewPlaylist(pid)} />
       <button class="btn-primary inline-action-btn" onclick={() => handleViewPlaylist(pid)}>查看<span class="pc-only-text">歌单详情</span></button>
     </div>
     {#if playlist}

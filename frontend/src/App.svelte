@@ -15,17 +15,27 @@
 
   function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
     if (typeof window !== 'undefined') {
-      const h = location.hash.replace('#', '');
-      if (h === 'playlist' || h === 'search' || h === 'download-mgr') return h as any;
+      const raw = location.hash.replace('#', '').split('?')[0];
+      if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr') return raw as any;
       const saved = localStorage.getItem('wyyyy_active_tab');
       if (saved === 'playlist' || saved === 'search' || saved === 'download-mgr') return saved as any;
     }
     return 'playlist';
   }
 
+  function getInitialPlaylistId(): string {
+    if (typeof window !== 'undefined') {
+      const match = location.hash.match(/id=([0-9]+)/);
+      if (match && match[1]) return match[1];
+      const saved = localStorage.getItem('wyyyy_last_playlist_id');
+      if (saved) return saved;
+    }
+    return '';
+  }
+
   // ---------- 全局状态 ----------
   let tab: 'playlist' | 'search' | 'download-mgr' = $state(getInitialTab());
-  let playlistId = $state('');
+  let playlistId = $state(getInitialPlaylistId());
   let albumId = $state('');
   let repeat = $state(false);
   let themeMode: 'dark' | 'light' | 'auto' = $state((typeof localStorage !== 'undefined' ? localStorage.getItem('theme_mode') : 'dark') as any || 'dark');

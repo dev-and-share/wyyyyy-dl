@@ -1,28 +1,89 @@
 <script lang="ts">
   let { onClose } = $props<{onClose:()=>void}>();
-  type Band={freq:number,gain:number,q:number, label:string};
-  let enabled=$state(true);
-  let bands=$state<Band[]>([
-    {freq:60,gain:0,q:1,label:'低频'},
-    {freq:230,gain:0,q:1,label:'中低'},
-    {freq:910,gain:0,q:1,label:'中频'},
-    {freq:3600,gain:0,q:1,label:'中高'},
-    {freq:14000,gain:0,q:1,label:'高频'},
+  type Band = { freq: number, gain: number, q: number, label: string, desc: string };
+  let enabled = $state(true);
+  let bands = $state<Band[]>([
+    { freq: 60, gain: 0, q: 1.4, label: '低频下潜', desc: '60Hz' },
+    { freq: 230, gain: 0, q: 1.4, label: '去箱声/闷', desc: '230Hz' },
+    { freq: 910, gain: 0, q: 2.0, label: '人声主体', desc: '910Hz' },
+    { freq: 3600, gain: 0, q: 2.5, label: '细节提亮', desc: '3.6kHz' },
+    { freq: 14000, gain: 0, q: 0.7, label: '空气感', desc: '14kHz' },
   ]);
-  let preset=$state('flat');
-  const presets:Record<string,number[]> = {
-    flat:[0,0,0,0,0],
-    rock:[4,2,0,2,4],
-    pop:[-1,2,3,2,-1],
-    jazz:[3,2,0,2,3],
-    bass:[6,4,0,-2,-2]
+  let preset = $state('flat');
+
+  const BUILTIN_PRESETS: Record<string, { name: string, desc: string, bands: { freq: number, gain: number, q: number }[] }> = {
+    flat: {
+      name: '平直原音 (Flat)',
+      desc: '原汁原味无调色',
+      bands: [
+        { freq: 60, gain: 0, q: 1.4 },
+        { freq: 230, gain: 0, q: 1.4 },
+        { freq: 910, gain: 0, q: 2.0 },
+        { freq: 3600, gain: 0, q: 2.5 },
+        { freq: 14000, gain: 0, q: 0.7 }
+      ]
+    },
+    macbook: {
+      name: 'MacBook 外放校正 (去箱鸣)',
+      desc: '削弱 130Hz 浑浊共振，补偿 60Hz 与 14kHz 空气感',
+      bands: [
+        { freq: 60, gain: 2.5, q: 1.4 },
+        { freq: 230, gain: -3.5, q: 2.0 },
+        { freq: 910, gain: 0, q: 2.0 },
+        { freq: 3600, gain: 1.5, q: 2.2 },
+        { freq: 14000, gain: 2.0, q: 0.7 }
+      ]
+    },
+    vocal: {
+      name: '人声毒药 (清澈温暖)',
+      desc: '清理 230Hz 箱鸣，提亮 3.6kHz 人声细节并平抑齿音',
+      bands: [
+        { freq: 60, gain: -0.5, q: 1.4 },
+        { freq: 230, gain: -2.0, q: 1.8 },
+        { freq: 910, gain: 1.5, q: 1.8 },
+        { freq: 3600, gain: 2.5, q: 2.2 },
+        { freq: 14000, gain: -1.5, q: 1.2 }
+      ]
+    },
+    bass: {
+      name: '澎湃重低音 (Bass Boost)',
+      desc: '强劲极低频下潜，适度收敛中低频防浑浊',
+      bands: [
+        { freq: 60, gain: 5.0, q: 1.2 },
+        { freq: 230, gain: -1.0, q: 1.4 },
+        { freq: 910, gain: 0, q: 2.0 },
+        { freq: 3600, gain: 1.0, q: 2.0 },
+        { freq: 14000, gain: 1.0, q: 0.7 }
+      ]
+    },
+    air: {
+      name: '通透耳机 (Headphone Air)',
+      desc: '提升 14kHz 极高频空气感与开阔声场',
+      bands: [
+        { freq: 60, gain: 1.5, q: 1.4 },
+        { freq: 230, gain: -1.0, q: 1.4 },
+        { freq: 910, gain: 0.5, q: 2.0 },
+        { freq: 3600, gain: 2.0, q: 2.5 },
+        { freq: 14000, gain: 3.5, q: 0.7 }
+      ]
+    }
   };
-  function applyPreset(v:string){
-    preset=v;
-    const gains=presets[v]||[0,0,0,0,0];
-    bands=bands.map((b,i)=> ({...b, gain:gains[i]}));
+
+  function applyPreset(v: string) {
+    preset = v;
+    const target = BUILTIN_PRESETS[v];
+    if (target && target.bands) {
+      bands = bands.map((b, i) => ({
+        ...b,
+        gain: target.bands[i]?.gain ?? 0,
+        q: target.bands[i]?.q ?? b.q
+      }));
+    }
   }
-  function reset(){ bands=bands.map(b=> ({...b,gain:0,q:1})); preset='flat'; }
+
+  function reset() {
+    applyPreset('flat');
+  }
   // Web Audio graph (simplified, no actual connection for MVP, but UI ready)
   let canvas:HTMLCanvasElement;
   $effect(()=>{
@@ -56,13 +117,14 @@
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
       <label style="display:flex; align-items:center; gap:6px; color:#cbd5e1; font-size:13px;"><input type="checkbox" checked={enabled} onchange={(e)=>enabled=(e.target as HTMLInputElement).checked} /> ⚡ 启用</label>
       <select value={preset} onchange={(e)=>applyPreset((e.target as HTMLSelectElement).value)} style="padding:6px 10px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.12);">
-        <option value="flat">Flat  flat</option>
-        <option value="rock">Rock</option>
-        <option value="pop">Pop</option>
-        <option value="jazz">Jazz</option>
-        <option value="bass">Bass</option>
+        {#each Object.entries(BUILTIN_PRESETS) as [k, item]}
+          <option value={k}>{item.name}</option>
+        {/each}
       </select>
-      <span style="margin-left:auto; font-size:11px; color:#64748b;">5段频率/增益/Q 全可调 · 实时生效</span>
+      {#if BUILTIN_PRESETS[preset]}
+        <span style="font-size:11px; color:#94a3b8; margin-left:4px;">💡 {BUILTIN_PRESETS[preset].desc}</span>
+      {/if}
+      <span style="margin-left:auto; font-size:11px; color:#64748b;">5段频率/增益/Q 全可调</span>
     </div>
     <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:8px; margin-bottom:12px;">
       <canvas bind:this={canvas} style="width:100%; height:120px; display:block; border-radius:8px;"></canvas>
