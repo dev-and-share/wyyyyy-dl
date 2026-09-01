@@ -48,7 +48,10 @@
   function copyText(text: string, successMsg: string) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text)
-        .then(() => showToast(successMsg, 'success'))
+        .then(() => {
+          showToast(successMsg, 'success');
+          onClose();
+        })
         .catch(() => showToast('复制失败，请手动选择复制', 'warning'));
     } else {
       showToast('复制失败，请手动选择复制', 'warning');
@@ -84,14 +87,14 @@
         💡 <b>终端秒开提示</b>：点击下方「⚡ 复制 {sysCmdInfo.os} 命令」，在终端中直接粘贴回车，即可秒级打开并高亮选中该文件！
       </div>
     </div>
-    <div class="app-modal-footer" style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+    <div class="app-modal-footer">
       {#if path}
-        <button class="app-modal-btn" style="background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.3); color:#60a5fa;" onclick={() => copyText(path, '📋 物理路径已复制！')}>
+        <button class="app-modal-btn btn-copy-path" onclick={() => copyText(path, '📋 物理路径已复制！')}>
           📋 复制物理路径
         </button>
       {/if}
       {#if sysCmdInfo.cmd}
-        <button class="app-modal-btn" style="background:rgba(139,92,246,0.15); border-color:rgba(139,92,246,0.3); color:#a78bfa;" onclick={() => copyText(sysCmdInfo.cmd, '💻 终端命令已复制！')}>
+        <button class="app-modal-btn btn-copy-cmd" onclick={() => copyText(sysCmdInfo.cmd, '💻 终端命令已复制！')}>
           ⚡ 复制 {sysCmdInfo.os} 命令
         </button>
       {/if}
@@ -101,3 +104,50 @@
     </div>
   </div>
 </div>
+
+<style>
+  .app-modal-backdrop {
+    box-sizing: border-box;
+    padding: 12px;
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .app-modal-card {
+    width: 100%;
+    max-width: min(560px, calc(100vw - 24px));
+    box-sizing: border-box;
+  }
+  .app-modal-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+  }
+  .btn-copy-path {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+  }
+  .btn-copy-cmd {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+    color: #a78bfa;
+  }
+  @media (max-width: 768px) {
+    .app-modal-footer {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+    .app-modal-footer .app-modal-btn {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+    }
+  }
+</style>
+
