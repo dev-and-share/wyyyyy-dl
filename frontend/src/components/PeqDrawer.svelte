@@ -108,45 +108,47 @@
   });
 </script>
 
-<div style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10002; display:flex; align-items:flex-end; justify-content:center;" onclick={onClose}>
-  <div onclick={(e)=>e.stopPropagation()} style="background:rgba(15,23,42,0.98); border:1px solid rgba(255,255,255,0.12); border-radius:16px 16px 0 0; width:100%; max-width:720px; max-height:85vh; overflow:auto; padding:16px;">
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div style="position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:10002; display:flex; align-items:flex-end; justify-content:center;" onclick={onClose}>
+  <div onclick={(e)=>e.stopPropagation()} style="background:var(--card-bg-solid, #111827); border:1px solid var(--border-color, rgba(255,255,255,0.12)); border-radius:18px 18px 0 0; width:100%; max-width:720px; max-height:85vh; overflow:auto; padding:16px; color:var(--text-main, #f8fafc); box-shadow:0 -10px 30px rgba(0,0,0,0.2);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <h3 style="margin:0; color:#fff;">🎛️ 5 段参量均衡器 (PEQ)</h3>
-      <button onclick={onClose} style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer;">✕</button>
+      <h3 style="margin:0; color:var(--text-main, #ffffff); font-size:16px;">🎛️ 5 段参量均衡器 (PEQ)</h3>
+      <button onclick={onClose} style="background:none; border:none; color:var(--text-secondary, #94a3b8); font-size:18px; cursor:pointer;">✕</button>
     </div>
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
-      <label style="display:flex; align-items:center; gap:6px; color:#cbd5e1; font-size:13px;"><input type="checkbox" checked={enabled} onchange={(e)=>enabled=(e.target as HTMLInputElement).checked} /> ⚡ 启用</label>
-      <select value={preset} onchange={(e)=>applyPreset((e.target as HTMLSelectElement).value)} style="padding:6px 10px; border-radius:8px; background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.12);">
+      <label style="display:flex; align-items:center; gap:6px; color:var(--text-secondary, #cbd5e1); font-size:13px;"><input type="checkbox" checked={enabled} onchange={(e)=>enabled=(e.target as HTMLInputElement).checked} /> ⚡ 启用</label>
+      <select value={preset} onchange={(e)=>applyPreset((e.target as HTMLSelectElement).value)} style="padding:6px 10px; border-radius:8px; background:var(--btn-slot-bg, #1e293b); color:var(--text-main, #fff); border:1px solid var(--border-subtle, rgba(255,255,255,0.12));">
         {#each Object.entries(BUILTIN_PRESETS) as [k, item]}
           <option value={k}>{item.name}</option>
         {/each}
       </select>
       {#if BUILTIN_PRESETS[preset]}
-        <span style="font-size:11px; color:#94a3b8; margin-left:4px;">💡 {BUILTIN_PRESETS[preset].desc}</span>
+        <span style="font-size:11px; color:var(--text-muted, #94a3b8); margin-left:4px;">💡 {BUILTIN_PRESETS[preset].desc}</span>
       {/if}
-      <span style="margin-left:auto; font-size:11px; color:#64748b;">5段频率/增益/Q 全可调</span>
+      <span style="margin-left:auto; font-size:11px; color:var(--text-muted, #64748b);">5段频率/增益/Q 全可调</span>
     </div>
-    <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:8px; margin-bottom:12px;">
+    <div style="background:var(--btn-slot-bg, rgba(0,0,0,0.3)); border:1px solid var(--border-subtle); border-radius:12px; padding:8px; margin-bottom:12px;">
       <canvas bind:this={canvas} style="width:100%; height:120px; display:block; border-radius:8px;"></canvas>
     </div>
     <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:8px;">
       {#each bands as b,i}
-        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 8px; text-align:center;">
-          <div style="font-size:11px; color:#94a3b8; margin-bottom:4px;">{b.label}</div>
-          <div style="font-size:10px; color:#64748b;">{b.freq}Hz</div>
+        <div style="background:var(--btn-slot-bg, rgba(255,255,255,0.04)); border:1px solid var(--border-subtle, rgba(255,255,255,0.08)); border-radius:10px; padding:10px 8px; text-align:center;">
+          <div style="font-size:11px; color:var(--text-secondary, #94a3b8); margin-bottom:4px;">{b.label}</div>
+          <div style="font-size:10px; color:var(--text-muted, #64748b);">{b.freq}Hz</div>
           <input type="range" min="-12" max="12" step="0.5" value={b.gain} oninput={(e)=>{ bands[i].gain=parseFloat((e.target as HTMLInputElement).value); bands=bands; }} style="width:100%; margin:6px 0;" />
-          <div style="font-size:11px; color:{b.gain>0?'#4ade80':b.gain<0?'#f87171':'#94a3b8'};">{b.gain>0?'+':''}{b.gain}dB</div>
+          <div style="font-size:11px; color:{b.gain>0?'#10b981':b.gain<0?'#ef4444':'var(--text-muted)'}; font-weight:600;">{b.gain>0?'+':''}{b.gain}dB</div>
           <div style="margin-top:6px;">
-            <div style="font-size:10px; color:#64748b;">Q {b.q.toFixed(1)}</div>
+            <div style="font-size:10px; color:var(--text-muted, #64748b);">Q {b.q.toFixed(1)}</div>
             <input type="range" min="0.5" max="3" step="0.1" value={b.q} oninput={(e)=>{ bands[i].q=parseFloat((e.target as HTMLInputElement).value); bands=bands; }} style="width:100%;" />
           </div>
-          <div style="font-size:10px; color:#64748b; margin-top:4px;">{b.freq}Hz</div>
+          <div style="font-size:10px; color:var(--text-muted, #64748b); margin-top:4px;">{b.freq}Hz</div>
         </div>
       {/each}
     </div>
     <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-      <button onclick={reset} style="padding:7px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:#fff; font-size:12px; cursor:pointer;">🔄 重置</button>
-      <button onclick={onClose} style="margin-left:auto; padding:7px 12px; border-radius:8px; border:none; background:#ef4444; color:#fff; font-size:12px; cursor:pointer;">✕ 完成关闭</button>
+      <button onclick={reset} class="btn-secondary" style="padding:7px 14px; font-size:12px;">🔄 重置</button>
+      <button onclick={onClose} class="btn-primary" style="margin-left:auto; padding:7px 16px; font-size:12px;">✕ 完成关闭</button>
     </div>
   </div>
 </div>
