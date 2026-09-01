@@ -22,47 +22,83 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let accSearch = $state(true);
-  let accAlbum = $state(false);
+  import { onMount } from 'svelte';
+
+  const STORAGE_KEY_SEARCH_KW = 'wyyyy_search_kw';
+  const STORAGE_KEY_SEARCH_TYPE = 'wyyyy_search_type';
+  const STORAGE_KEY_ALBUM_ID = 'wyyyy_search_album_id';
+  const STORAGE_KEY_ACC_SEARCH = 'wyyyy_search_acc_search';
+  const STORAGE_KEY_ACC_ALBUM = 'wyyyy_search_acc_album';
+
+  function getStored(key: string, def: string) {
+    if (typeof localStorage === 'undefined') return def;
+    const v = localStorage.getItem(key);
+    return v !== null ? v : def;
+  }
+
+  let accSearch = $state(getStored(STORAGE_KEY_ACC_SEARCH, 'true') === 'true');
+  let accAlbum = $state(getStored(STORAGE_KEY_ACC_ALBUM, 'false') === 'true');
 
   // 搜索相关状态
-  let kw = $state('');
-  let sType = $state('1');
+  let kw = $state(getStored(STORAGE_KEY_SEARCH_KW, ''));
+  let sType = $state(getStored(STORAGE_KEY_SEARCH_TYPE, '1'));
   let sLimit = $state('10');
   let sResults: any[] = $state([]);
 
   // 专辑相关状态
-  let currentAlbumId = $state('');
+  let currentAlbumId = $state(albumId || getStored(STORAGE_KEY_ALBUM_ID, ''));
   let album: any = $state(null);
   let albumLoading = $state(false);
 
+  function saveSearchAccState() {
+    try {
+      localStorage.setItem(STORAGE_KEY_ACC_SEARCH, String(accSearch));
+      localStorage.setItem(STORAGE_KEY_ACC_ALBUM, String(accAlbum));
+    } catch {}
+  }
+
+  onMount(() => {
+    if (kw.trim()) {
+      doSearch(false);
+    }
+    if (currentAlbumId && accAlbum) {
+      loadAlbum(currentAlbumId);
+    }
+  });
+
   // 监听外部传入的 albumId（如从单曲详情点击“查看专辑”）
   $effect(() => {
-    if (albumId) {
+    if (albumId && albumId !== currentAlbumId) {
       currentAlbumId = albumId;
       accSearch = false;
       accAlbum = true;
+      saveSearchAccState();
+      try { localStorage.setItem(STORAGE_KEY_ALBUM_ID, albumId); } catch {}
       loadAlbum(albumId);
     }
   });
 
-  async function doSearch() {
+  async function doSearch(showEmptyToast = true) {
     if (!kw.trim()) {
-      showToast('请输入关键词', 'warning');
+      if (showEmptyToast) showToast('请输入关键词', 'warning');
       return;
     }
     try {
+      localStorage.setItem(STORAGE_KEY_SEARCH_KW, kw);
+      localStorage.setItem(STORAGE_KEY_SEARCH_TYPE, sType);
+    } catch {}
+    try {
       const j = await api.search(kw, sType, sLimit);
       if (j?.code && j.code !== '000000') {
-        showToast(j.msg || '搜索失败', 'warning');
+        if (showEmptyToast) showToast(j.msg || '搜索失败', 'warning');
         return;
       }
       const d = j?.data;
       if (Array.isArray(d)) sResults = d;
       else sResults = (d as any)?.songs || (d as any)?.albums || (d as any)?.playlists || (d as any)?.artists || (d as any)?.result || [];
-      if (!sResults.length) showToast('无结果', 'info');
+      if (!sResults.length && showEmptyToast) showToast('无结果', 'info');
     } catch (e: any) {
-      showToast('搜索失败: ' + e.message, 'error');
+      if (showEmptyToast) showToast('搜索失败: ' + e.message, 'error');
     }
   }
 

@@ -30,15 +30,35 @@
     showToast: (m: string, t?: string) => void
   }>();
 
-  let pid = $state(playlistId);
-  let accMy = $state(true);
-  let accDetail = $state(true);
-  let accSong = $state(false);
+  const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
+  const STORAGE_KEY_ACC_MY = 'wyyyy_pl_acc_my';
+  const STORAGE_KEY_ACC_DETAIL = 'wyyyy_pl_acc_detail';
+  const STORAGE_KEY_ACC_SONG = 'wyyyy_pl_acc_song';
+  const STORAGE_KEY_SONG_ID = 'wyyyy_last_song_id';
+
+  function getStored(key: string, def: string) {
+    if (typeof localStorage === 'undefined') return def;
+    const v = localStorage.getItem(key);
+    return v !== null ? v : def;
+  }
+
+  let pid = $state(playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, ''));
+  let accMy = $state(getStored(STORAGE_KEY_ACC_MY, 'true') === 'true');
+  let accDetail = $state(getStored(STORAGE_KEY_ACC_DETAIL, 'true') === 'true');
+  let accSong = $state(getStored(STORAGE_KEY_ACC_SONG, 'false') === 'true');
 
   // 单曲信息状态
-  let songId = $state('');
+  let songId = $state(getStored(STORAGE_KEY_SONG_ID, ''));
   let songLevel = $state('lossless');
   let songInfo: any = $state(null);
+
+  function saveAccState() {
+    try {
+      localStorage.setItem(STORAGE_KEY_ACC_MY, String(accMy));
+      localStorage.setItem(STORAGE_KEY_ACC_DETAIL, String(accDetail));
+      localStorage.setItem(STORAGE_KEY_ACC_SONG, String(accSong));
+    } catch {}
+  }
 
   // 初始化自动拉取/读取 SWR 缓存
   onMount(async () => {
@@ -46,6 +66,13 @@
       await loadMyPlaylists('created');
     } catch (e: any) {
       // 首次未登录等情况静默容错
+    }
+    // 刷新页面后自动维持并恢复上次查看的歌单
+    if (pid) {
+      handleViewPlaylist(pid, false);
+    }
+    if (accSong && songId) {
+      handleViewSong(songId, false);
     }
   });
 
@@ -58,49 +85,57 @@
   });
 
   // 查看歌单详情交互：瞬间收起卡片1，展开卡片2
-  async function handleViewPlaylist(id: string) {
+  async function handleViewPlaylist(id: string, switchCards = true) {
     if (!id) {
       showToast('请输入歌单 ID', 'warning');
       return;
     }
     pid = id;
-    accMy = false;
-    accDetail = true;
-    accSong = false;
+    try { localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, id); } catch {}
+    if (switchCards) {
+      accMy = false;
+      accDetail = true;
+      accSong = false;
+      saveAccState();
+    }
     try {
       await loadPlaylistDetail(pid);
     } catch (e: any) {
-      showToast(e.message || '获取歌单失败', 'warning');
+      if (switchCards) showToast(e.message || '获取歌单失败', 'warning');
     }
   }
 
   // 查看单曲信息交互：瞬间收起其他卡片，展开卡片3
-  async function handleViewSong(id: string) {
+  async function handleViewSong(id: string, switchCards = true) {
     if (!id) {
       showToast('请输入歌曲 ID', 'warning');
       return;
     }
     songId = id;
-    accMy = false;
-    accDetail = false;
-    accSong = true;
+    try { localStorage.setItem(STORAGE_KEY_SONG_ID, id); } catch {}
+    if (switchCards) {
+      accMy = false;
+      accDetail = false;
+      accSong = true;
+      saveAccState();
+    }
     try {
       const j = await api.songV1(songId, songLevel);
       if (j?.code && j.code !== '000000') {
-        showToast(j.msg || '获取失败', 'warning');
+        if (switchCards) showToast(j.msg || '获取失败', 'warning');
         return;
       }
       songInfo = j?.data || null;
-      if (!songInfo) showToast('无歌曲数据', 'warning');
+      if (!songInfo && switchCards) showToast('无歌曲数据', 'warning');
     } catch (e: any) {
-      showToast('获取单曲失败: ' + (e.message || e), 'error');
+      if (switchCards) showToast('获取单曲失败: ' + (e.message || e), 'error');
     }
   }
 </script>
 
 <!-- Section 1: 我的歌单 -->
 <div class="accordion-card" class:active={accMy}>
-  <div class="accordion-header" onclick={() => accMy = !accMy}>
+  <div class="accordion-header" onclick={() => { accMy = !accMy; saveAccState(); }}>
     <h3 class="accordion-title">📋 1. 我的歌单</h3>
     <span class="accordion-icon">▼</span>
   </div>
@@ -140,7 +175,7 @@
 
 <!-- Section 2: 查看歌单详情 -->
 <div class="accordion-card" class:active={accDetail}>
-  <div class="accordion-header" onclick={() => accDetail = !accDetail}>
+  <div class="accordion-header" onclick={() => { accDetail = !accDetail; saveAccState(); }}>
     <h3 class="accordion-title">🎼 2. 查看歌单详情</h3>
     <span class="accordion-icon">▼</span>
   </div>
@@ -196,7 +231,7 @@
 
 <!-- Section 3: 查看歌曲信息 -->
 <div class="accordion-card" class:active={accSong}>
-  <div class="accordion-header" onclick={() => accSong = !accSong}>
+  <div class="accordion-header" onclick={() => { accSong = !accSong; saveAccState(); }}>
     <h3 class="accordion-title">🎧 3. 查看歌曲信息</h3>
     <span class="accordion-icon">▼</span>
   </div>

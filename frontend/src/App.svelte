@@ -13,8 +13,18 @@
   import PlaylistDrawer from './components/PlaylistDrawer.svelte';
   import RevealModal from './components/RevealModal.svelte';
 
+  function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
+    if (typeof window !== 'undefined') {
+      const h = location.hash.replace('#', '');
+      if (h === 'playlist' || h === 'search' || h === 'download-mgr') return h as any;
+      const saved = localStorage.getItem('wyyyy_active_tab');
+      if (saved === 'playlist' || saved === 'search' || saved === 'download-mgr') return saved as any;
+    }
+    return 'playlist';
+  }
+
   // ---------- 全局状态 ----------
-  let tab: 'playlist' | 'search' | 'download-mgr' = $state('playlist');
+  let tab: 'playlist' | 'search' | 'download-mgr' = $state(getInitialTab());
   let playlistId = $state('');
   let albumId = $state('');
   let repeat = $state(false);
@@ -320,6 +330,9 @@
   function switchTab(n: 'playlist' | 'search' | 'download-mgr') {
     tab = n;
     history.pushState(null, '', '#' + n);
+    try {
+      localStorage.setItem('wyyyy_active_tab', n);
+    } catch {}
   }
 
   function jumpToAlbum(id: string) {
