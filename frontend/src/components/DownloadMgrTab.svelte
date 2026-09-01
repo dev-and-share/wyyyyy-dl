@@ -3,6 +3,7 @@
   import FolderExplorer from './FolderExplorer.svelte';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
+  import Modal from './Modal.svelte';
   import { api } from '../lib/api';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
   import type { Track } from '../lib/types';
@@ -346,48 +347,44 @@
     </div>
 </AccordionCard>
 
-<!-- 📋 缺失文件 / 非MP3 格式 清单弹窗 (对齐旧版) -->
+<!-- 📋 缺失文件 / 非MP3 格式 清单弹窗 -->
 {#if modalType}
-  <div class="app-modal-backdrop" style="opacity:1;" onclick={(e) => e.target === e.currentTarget && (modalType = null)}>
-    <div class="app-modal-card" style="transform:scale(1); max-width:620px;">
-      <div class="app-modal-header">
-        <span>{modalType === 'missing' ? '⚠️ 文件已缺失的历史记录' : '📁 非 MP3 格式音频记录'} ({modalList.length} 项)</span>
-        <button class="app-modal-close-btn" onclick={() => modalType = null}>✕</button>
+  <Modal
+    title="{modalType === 'missing' ? '文件已缺失的历史记录' : '非 MP3 格式音频记录'} ({modalList.length} 项)"
+    icon={modalType === 'missing' ? '⚠️' : '📁'}
+    maxWidth="max-w-[620px]"
+    onClose={() => modalType = null}
+  >
+    {#if modalLoading}
+      <div class="py-5 text-center text-[var(--text-muted)] text-xs">🔄 正在加载清单...</div>
+    {:else if modalList.length > 0}
+      <div class="mb-2.5 text-xs text-[var(--text-secondary)]">
+        {modalType === 'missing' ? '以下数据库记录在物理磁盘上已不存在对应文件：' : '以下音频为 FLAC / WAV / M4A / AAC 等高解析格式文件：'}
       </div>
-      <div class="app-modal-body" style="max-height:60vh; overflow-y:auto;">
-        {#if modalLoading}
-          <div style="padding:20px; text-align:center; color:var(--text-muted);">🔄 正在加载清单...</div>
-        {:else if modalList.length > 0}
-          <div style="margin-bottom:10px; font-size:12px; color:var(--text-secondary);">
-            {modalType === 'missing' ? '以下数据库记录在物理磁盘上已不存在对应文件：' : '以下音频为 FLAC / WAV / M4A / AAC 等高解析格式文件：'}
-          </div>
-          <ul class="data-list scrollable-list" style="margin:0; padding:0;">
-            {#each modalList as item, i}
-              {@const mArtist = formatArtist(item.artist)}
-              <li style="padding:6px 10px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12px;">
-                <div style="font-weight:600; color:var(--text-main);">{i + 1}. {item.songName}{mArtist ? ' - ' + mArtist : ''}</div>
-                <div style="color:var(--text-muted); font-size:11px; font-family:monospace; word-break:break-all;">{item.filePath}</div>
-              </li>
-            {/each}
-          </ul>
-        {:else}
-          <div style="padding:30px; text-align:center; color:#22c55e;">✅ 没有找到相关异常记录！</div>
-        {/if}
-      </div>
-      <div class="app-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
-        {#if modalType === 'missing' && modalList.length > 0}
-          <button class="btn-primary" style="background:linear-gradient(135deg,#ef4444,#dc2626); font-size:12px;" onclick={cleanMissingRecords}>
-            🧹 一键清理全部失效记录
-          </button>
-        {:else if modalType === 'non_mp3' && modalList.length > 0}
-          <button class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706); font-size:12px;" onclick={cleanNonMp3Records}>
-            🧹 批量清理非 MP3 记录
-          </button>
-        {:else}
-          <div></div>
-        {/if}
-        <button class="app-modal-btn app-modal-btn-confirm" onclick={() => modalType = null}>关闭</button>
-      </div>
-    </div>
-  </div>
+      <ul class="divide-y divide-black/5 dark:divide-white/5 max-h-[50vh] overflow-y-auto">
+        {#each modalList as item, i}
+          {@const mArtist = formatArtist(item.artist)}
+          <li class="py-2 px-1 text-xs">
+            <div class="font-semibold text-[var(--text-main)]">{i + 1}. {item.songName}{mArtist ? ' - ' + mArtist : ''}</div>
+            <div class="text-[var(--text-muted)] text-[11px] font-mono break-all mt-0.5">{item.filePath}</div>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <div class="py-8 text-center text-emerald-500 font-medium text-xs">✅ 没有找到相关异常记录！</div>
+    {/if}
+
+    {#snippet footer()}
+      {#if modalType === 'missing' && modalList.length > 0}
+        <button class="btn-primary bg-gradient-to-br from-red-500 to-rose-600 text-xs" onclick={cleanMissingRecords}>
+          🧹 一键清理全部失效记录
+        </button>
+      {:else if modalType === 'non_mp3' && modalList.length > 0}
+        <button class="btn-primary bg-gradient-to-br from-amber-500 to-orange-600 text-xs" onclick={cleanNonMp3Records}>
+          🧹 批量清理非 MP3 记录
+        </button>
+      {/if}
+      <button class="btn-secondary text-xs" onclick={() => modalType = null}>关闭</button>
+    {/snippet}
+  </Modal>
 {/if}

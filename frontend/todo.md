@@ -137,9 +137,12 @@
 ```
 
 ### 4-F 模态框系统
-- [ ] `RevealModal.svelte`
-- [ ] `CreatePlaylistModal.svelte`
-- [ ] `LyricModal.svelte` — 全屏歌词播放器（黑胶唱片动画保留在 animations.css）
+- [x] 新增通用组件 `Modal.svelte`（毛玻璃背景蒙层、圆角微光拟态、Esc/Outside 关闭支持）
+- [x] `RevealModal.svelte` — 彻底废除 100 行 `<style>` 标签，终端直达复制卡片纯 Tailwind 化（代码降至 109 行）
+- [x] `CreatePlaylistModal.svelte` — 接入 `Modal.svelte`，清理全部行内硬编码样式并消灭 a11y 警告
+- [x] `LyricModal.svelte` — 彻底废除 160 行 `<style>` 标签，全屏黑胶旋转与滚动歌词纯 Tailwind 化（代码降至 260 行）
+- [x] `DownloadMgrTab.svelte` — 异常文件清单弹窗接入 `Modal.svelte`
+- [x] `style.svelte.css` — 彻底删除遗留的 `.app-modal-*`、`.lyric-modal-*`、`.fullscreen-*` 全套规则（共 584 行）
 
 ```
 .app-modal-backdrop → fixed inset-0 w-screen h-screen bg-black/65 backdrop-blur-[8px] z-[100000] flex items-center justify-center p-4
