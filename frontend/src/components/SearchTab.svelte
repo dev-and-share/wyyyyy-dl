@@ -2,6 +2,8 @@
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
   import type { Track } from '../lib/types';
+  import AccordionCard from './AccordionCard.svelte';
+  import DetailHeaderCard from './DetailHeaderCard.svelte';
 
   let {
     albumId = '',
@@ -213,281 +215,197 @@
 </script>
 
 <!-- Section 1: 关键词综合搜索 -->
-<div class="accordion-card" class:active={accSearch}>
-  <div class="accordion-header" onclick={() => accSearch = !accSearch}>
-    <h3 class="accordion-title">🔍 1. 关键词综合搜索</h3>
-    <span class="accordion-icon">▼</span>
-  </div>
-  <div class="accordion-body">
-    <!-- 4 个单选 Radio (保证 SP / 移动端严格一排) -->
-    <div class="search-type-radios">
-      <span class="search-type-label pc-only-text">搜索类型：</span>
-      <div class="search-radio-group">
-        <label class="search-radio-item" class:active={sType==='1'}>
-          <input type="radio" name="searchType" value="1" checked={sType==='1'} onchange={()=>handleTypeChange('1')} />
-          <span>🎵 单曲</span>
-        </label>
-        <label class="search-radio-item" class:active={sType==='10'}>
-          <input type="radio" name="searchType" value="10" checked={sType==='10'} onchange={()=>handleTypeChange('10')} />
-          <span>💽 专辑</span>
-        </label>
-        <label class="search-radio-item" class:active={sType==='1000'}>
-          <input type="radio" name="searchType" value="1000" checked={sType==='1000'} onchange={()=>handleTypeChange('1000')} />
-          <span>📁 歌单</span>
-        </label>
-        <label class="search-radio-item" class:active={sType==='100'}>
-          <input type="radio" name="searchType" value="100" checked={sType==='100'} onchange={()=>handleTypeChange('100')} />
-          <span>🎤 歌手</span>
-        </label>
-      </div>
-      <select bind:value={sType} onchange={(e)=>handleTypeChange((e.target as HTMLSelectElement).value)} style="display:none;" aria-label="搜索类型">
-        <option value="1">单曲</option>
-        <option value="10">专辑</option>
-        <option value="1000">歌单</option>
-        <option value="100">歌手</option>
-      </select>
+<AccordionCard title="🔍 1. 关键词综合搜索" bind:open={accSearch}>
+  <!-- 4 个单选 Radio (保证 SP / 移动端严格一排) -->
+  <div class="flex gap-3 mb-2.5 items-center flex-nowrap text-[13px] py-0.5 w-full max-md:gap-0 max-md:mb-2">
+    <span class="text-[var(--text-secondary)] font-semibold shrink-0 hidden sm:inline">搜索类型：</span>
+    <div class="flex items-center gap-3.5 flex-nowrap flex-1 max-md:w-full max-md:grid max-md:grid-cols-4 max-md:gap-0.5 max-md:justify-items-center">
+      <label class="inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 select-none max-md:text-xs max-md:gap-0.5 max-md:justify-center max-md:w-full {sType==='1' ? 'text-[var(--primary-color)] font-bold' : 'text-[var(--text-secondary)] font-normal'}">
+        <input type="radio" name="searchType" value="1" checked={sType==='1'} onchange={()=>handleTypeChange('1')} class="cursor-pointer m-0" />
+        <span>🎵 单曲</span>
+      </label>
+      <label class="inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 select-none max-md:text-xs max-md:gap-0.5 max-md:justify-center max-md:w-full {sType==='10' ? 'text-[var(--primary-color)] font-bold' : 'text-[var(--text-secondary)] font-normal'}">
+        <input type="radio" name="searchType" value="10" checked={sType==='10'} onchange={()=>handleTypeChange('10')} class="cursor-pointer m-0" />
+        <span>💽 专辑</span>
+      </label>
+      <label class="inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 select-none max-md:text-xs max-md:gap-0.5 max-md:justify-center max-md:w-full {sType==='1000' ? 'text-[var(--primary-color)] font-bold' : 'text-[var(--text-secondary)] font-normal'}">
+        <input type="radio" name="searchType" value="1000" checked={sType==='1000'} onchange={()=>handleTypeChange('1000')} class="cursor-pointer m-0" />
+        <span>📁 歌单</span>
+      </label>
+      <label class="inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 select-none max-md:text-xs max-md:gap-0.5 max-md:justify-center max-md:w-full {sType==='100' ? 'text-[var(--primary-color)] font-bold' : 'text-[var(--text-secondary)] font-normal'}">
+        <input type="radio" name="searchType" value="100" checked={sType==='100'} onchange={()=>handleTypeChange('100')} class="cursor-pointer m-0" />
+        <span>🎤 歌手</span>
+      </label>
     </div>
-    <div class="form-row search-form-row">
-      <input type="text" placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)" style="flex:1;" bind:value={kw} onkeydown={(e) => e.key === 'Enter' && doSearch().catch((e:any) => showToast(e.message, 'warning'))} />
-      <input type="number" bind:value={sLimit} min="1" max="100" class="search-limit-input" style="width:60px;" title="单页条数" />
-      <button class="btn-primary sp-hide-btn" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
-    </div>
-    <ul class="data-list scrollable-list">
-      {#if searchLoading}
-        <li style="justify-content:center; color:var(--text-secondary); padding:20px 0; font-size:13px;">🔄 正在检索，请稍候...</li>
-      {:else}
-        {#each sResults as r, idx}
-          {#if sType === '1'}
-            {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
-            {@const isLocal = (downloadedSet && downloadedSet.has(Number(r.id))) || r.isLocal === true}
-            {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
-            <li class="track-item-card" class:is-active-playing={isPlayingThis}>
-              <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>{idx + 1}. {r.name}</strong>
-                {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
-                {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 本地服务器已下载">🖥️</span>{/if}
-                <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
-              </div>
-              <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
-                {#if onToggleLike}
-                  <button
-                    class="track-like-btn"
-                    class:active={likedSet.has(Number(r.id))}
-                    onclick={() => onToggleLike(Number(r.id), r.name, artistName)}
-                    title={likedSet.has(Number(r.id)) ? '取消红心' : '添加红心收藏'}
-                  >
-                    {likedSet.has(Number(r.id)) ? '❤️' : '🤍'}
-                  </button>
-                {/if}
-                {#if onPlayQueue}
-                  <button
-                    class="jump-link-btn"
-                    class:is-playing-btn={isPlayingThis}
-                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
-                  >
-                    {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
-                  </button>
-                {/if}
-                {#if isLocal}
-                  <button class="jump-link-btn" onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</button>
-                {/if}
-                {#if onSong}
-                  <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
-                {/if}
-              </div>
-            </li>
-          {:else if sType === '10'}
-            {@const albumArtist = formatArtist(r.artist || r.artists)}
-            <li>
-              <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleAlbum(String(r.id))}>{idx + 1}. {r.name}</strong>
-                {#if albumArtist}<span style="color:var(--text-secondary);"> - {albumArtist}</span>{/if}
-                {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
-                <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
-              </div>
-              <button class="jump-link-btn" onclick={() => handleAlbum(String(r.id))}>👉 查看专辑详情</button>
-            </li>
-          {:else if sType === '1000'}
-            <li>
-              <div style="flex:1; overflow:hidden; white-space:nowrap;">
-                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlaylist(String(r.id))}>{idx + 1}. {r.name}</strong>
-                <span style="color:var(--text-muted);"> (ID:{r.id})</span>
-              </div>
-              <button class="jump-link-btn" onclick={() => onPlaylist(String(r.id))}>👉 查看详情</button>
-            </li>
-          {:else}
-            <li>
-              <strong>{idx + 1}. {r.name}</strong>
-              <span style="color:var(--text-muted);"> (ID:{r.id})</span>
-              <button class="jump-link-btn" onclick={() => showToast('歌手功能开发中', 'info')}>查看</button>
-            </li>
-          {/if}
-        {:else}
-          <li style="justify-content:center; color:var(--text-muted);">输入关键词搜索</li>
-        {/each}
-      {/if}
-    </ul>
-    <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
+    <select bind:value={sType} onchange={(e)=>handleTypeChange((e.target as HTMLSelectElement).value)} class="hidden" aria-label="搜索类型">
+      <option value="1">单曲</option>
+      <option value="10">专辑</option>
+      <option value="1000">歌单</option>
+      <option value="100">歌手</option>
+    </select>
   </div>
-</div>
-
-<!-- Section 2: 专辑解析与整辑下载 -->
-<div class="accordion-card" class:active={accAlbum}>
-  <div class="accordion-header" onclick={() => accAlbum = !accAlbum}>
-    <h3 class="accordion-title">💽 2. 专辑解析与整辑下载</h3>
-    <span class="accordion-icon">▼</span>
+  <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
+    <input type="text" placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)" class="flex-1 min-w-0" bind:value={kw} onkeydown={(e) => e.key === 'Enter' && doSearch().catch((e:any) => showToast(e.message, 'warning'))} />
+    <input type="number" bind:value={sLimit} min="1" max="100" class="w-[60px] text-center shrink-0" title="单页条数" />
+    <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
   </div>
-  <div class="accordion-body">
-    <div class="form-row flex-input-row" style="display:flex; gap:6px; margin-bottom:12px;">
-      <input type="text" placeholder="输入专辑 ID (如 258535483，按回车解析)" style="flex:1;" bind:value={currentAlbumId} onkeydown={(e) => e.key === 'Enter' && loadAlbum()} />
-      <button class="btn-primary inline-action-btn" onclick={() => loadAlbum()}>解析<span class="pc-only-text">专辑</span></button>
-    </div>
-
-    {#if albumLoading}
-      <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">🔄 正在解析专辑数据，请稍候...</div>
-    {:else if album}
-      {@const headerArtist = formatArtist(album.artist || album.artists) || '未知歌手'}
-      <div class="detail-header-card" style="margin-bottom:15px;">
-        <img
-          src={album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER}
-          alt="封面"
-          class="detail-cover-img"
-          referrerpolicy="no-referrer"
-          onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
-        />
-        <div class="detail-header-info">
-          <h4 class="detail-header-title">{album.name || '未知专辑'}</h4>
-          <div class="detail-header-sub">歌手：{headerArtist} | 发行时间：{album.publishTime || '-'}</div>
-          <div class="detail-header-sub" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">共包含 {album.songs?.length || 0} 首曲目</div>
-          <div class="detail-btn-group" style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="btn-primary flex-1-btn" onclick={downloadFullAlbum}>🖥️ 下载到电脑</button>
-            <button class="btn-secondary flex-1-btn" onclick={playFullAlbum}>▶️ 播放专辑</button>
-          </div>
-        </div>
-      </div>
-
-      <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">专辑曲目列表 ({album.songs ? album.songs.length : 0} 首)：</h4>
-      <ul class="data-list scrollable-list">
-        {#each (album.songs || []) as s, i}
-          {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
-          {@const isLocal = (downloadedSet && downloadedSet.has(Number(s.id))) || s.isLocal === true}
-          {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
-          <li class="track-item-card" class:is-active-playing={isPlayingThis} style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
-            <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>
-                {i + 1}. {s.name}
-              </strong>
-              {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
-              {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 已下载到本地">🖥️</span>{/if}
+  <ul class="data-list scrollable-list">
+    {#if searchLoading}
+      <li style="justify-content:center; color:var(--text-secondary); padding:20px 0; font-size:13px;">🔄 正在检索，请稍候...</li>
+    {:else}
+      {#each sResults as r, idx}
+        {#if sType === '1'}
+          {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
+          {@const isLocal = (downloadedSet && downloadedSet.has(Number(r.id))) || r.isLocal === true}
+          {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
+          <li class="track-item-card" class:is-active-playing={isPlayingThis}>
+            <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
+              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>{idx + 1}. {r.name}</strong>
+              {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
+              {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 本地服务器已下载">🖥️</span>{/if}
+              <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
             </div>
-            <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+            <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
               {#if onToggleLike}
                 <button
                   class="track-like-btn"
-                  class:active={likedSet.has(Number(s.id))}
-                  onclick={() => onToggleLike(Number(s.id), s.name, artistName)}
-                  title={likedSet.has(Number(s.id)) ? '取消红心' : '添加红心收藏'}
+                  class:active={likedSet.has(Number(r.id))}
+                  onclick={() => onToggleLike(Number(r.id), r.name, artistName)}
+                  title={likedSet.has(Number(r.id)) ? '取消红心' : '添加红心收藏'}
                 >
-                  {likedSet.has(Number(s.id)) ? '❤️' : '🤍'}
+                  {likedSet.has(Number(r.id)) ? '❤️' : '🤍'}
                 </button>
               {/if}
               {#if onPlayQueue}
                 <button
                   class="jump-link-btn"
                   class:is-playing-btn={isPlayingThis}
-                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                  onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
                 >
                   {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
                 </button>
               {/if}
               {#if isLocal}
-                <button
-                  class="jump-link-btn"
-                  onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
-                  title="在文件管理器中定位"
-                >
-                  📂 定位
-                </button>
-              {:else}
-                <button class="jump-link-btn" onclick={() => api.downloadSingle(String(s.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>
-                  📥 下载
-                </button>
+                <button class="jump-link-btn" onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</button>
               {/if}
               {#if onSong}
-                <button class="jump-link-btn" onclick={() => onSong(String(s.id))}>🎧 详情</button>
+                <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
               {/if}
             </div>
           </li>
-        {/each}
-      </ul>
-    {:else}
-      <div class="empty-placeholder-card">
-        <div class="empty-icon">💽</div>
-        <div class="empty-title">在搜索中选择专辑或输入 ID 解析</div>
-      </div>
+        {:else if sType === '10'}
+          {@const albumArtist = formatArtist(r.artist || r.artists)}
+          <li>
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleAlbum(String(r.id))}>{idx + 1}. {r.name}</strong>
+              {#if albumArtist}<span style="color:var(--text-secondary);"> - {albumArtist}</span>{/if}
+              {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
+              <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
+            </div>
+            <button class="jump-link-btn" onclick={() => handleAlbum(String(r.id))}>👉 查看专辑详情</button>
+          </li>
+        {:else if sType === '1000'}
+          <li>
+            <div style="flex:1; overflow:hidden; white-space:nowrap;">
+              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlaylist(String(r.id))}>{idx + 1}. {r.name}</strong>
+              <span style="color:var(--text-muted);"> (ID:{r.id})</span>
+            </div>
+            <button class="jump-link-btn" onclick={() => onPlaylist(String(r.id))}>👉 查看详情</button>
+          </li>
+        {:else}
+          <li>
+            <strong>{idx + 1}. {r.name}</strong>
+            <span style="color:var(--text-muted);"> (ID:{r.id})</span>
+            <button class="jump-link-btn" onclick={() => showToast('歌手功能开发中', 'info')}>查看</button>
+          </li>
+        {/if}
+      {:else}
+        <li style="justify-content:center; color:var(--text-muted);">输入关键词搜索</li>
+      {/each}
     {/if}
-  </div>
-</div>
+  </ul>
+  <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
+</AccordionCard>
 
-<style>
-  .search-type-radios {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 10px;
-    align-items: center;
-    flex-wrap: nowrap;
-    font-size: 13px;
-    padding: 2px 0;
-    width: 100%;
-  }
-  .search-type-label {
-    color: var(--text-secondary);
-    font-weight: 600;
-    flex-shrink: 0;
-  }
-  .search-radio-group {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: nowrap;
-    flex: 1;
-  }
-  .search-radio-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-weight: 400;
-    white-space: nowrap;
-    flex-shrink: 0;
-    user-select: none;
-  }
-  .search-radio-item.active {
-    color: var(--primary-color, #38bdf8);
-    font-weight: 700;
-  }
-  .search-radio-item input[type="radio"] {
-    cursor: pointer;
-    margin: 0;
-  }
-  @media (max-width: 768px) {
-    .search-type-radios {
-      gap: 0;
-      margin-bottom: 8px;
-    }
-    .search-radio-group {
-      width: 100%;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 2px;
-      justify-items: center;
-    }
-    .search-radio-item {
-      font-size: 12px;
-      gap: 2px;
-      justify-content: center;
-      width: 100%;
-    }
-  }
-</style>
+<!-- Section 2: 专辑解析与整辑下载 -->
+<AccordionCard title="💽 2. 专辑解析与整辑下载" bind:open={accAlbum}>
+  <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
+    <input type="text" placeholder="输入专辑 ID (如 258535483，按回车解析)" class="flex-1 min-w-0" bind:value={currentAlbumId} onkeydown={(e) => e.key === 'Enter' && loadAlbum()} />
+    <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => loadAlbum()}>解析<span class="hidden sm:inline">专辑</span></button>
+  </div>
+
+  {#if albumLoading}
+    <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">🔄 正在解析专辑数据，请稍候...</div>
+  {:else if album}
+    {@const headerArtist = formatArtist(album.artist || album.artists) || '未知歌手'}
+    <DetailHeaderCard
+      cover={album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER}
+      title={album.name || '未知专辑'}
+      subtitle={`歌手：${headerArtist} | 发行时间：${album.publishTime || '-'}`}
+      subDetail={`共包含 ${album.songs?.length || 0} 首曲目`}
+    >
+      <button class="btn-primary" onclick={downloadFullAlbum}>🖥️ 下载到电脑</button>
+      <button class="btn-secondary" onclick={playFullAlbum}>▶️ 播放专辑</button>
+    </DetailHeaderCard>
+
+    <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">专辑曲目列表 ({album.songs ? album.songs.length : 0} 首)：</h4>
+    <ul class="data-list scrollable-list">
+      {#each (album.songs || []) as s, i}
+        {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
+        {@const isLocal = (downloadedSet && downloadedSet.has(Number(s.id))) || s.isLocal === true}
+        {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
+        <li class="track-item-card" class:is-active-playing={isPlayingThis} style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
+          <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>
+              {i + 1}. {s.name}
+            </strong>
+            {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
+            {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 已下载到本地">🖥️</span>{/if}
+          </div>
+          <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+            {#if onToggleLike}
+              <button
+                class="track-like-btn"
+                class:active={likedSet.has(Number(s.id))}
+                onclick={() => onToggleLike(Number(s.id), s.name, artistName)}
+                title={likedSet.has(Number(s.id)) ? '取消红心' : '添加红心收藏'}
+              >
+                {likedSet.has(Number(s.id)) ? '❤️' : '🤍'}
+              </button>
+            {/if}
+            {#if onPlayQueue}
+              <button
+                class="jump-link-btn"
+                class:is-playing-btn={isPlayingThis}
+                onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+              >
+                {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+              </button>
+            {/if}
+            {#if isLocal}
+              <button
+                class="jump-link-btn"
+                onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
+                title="在文件管理器中定位"
+              >
+                📂 定位
+              </button>
+            {:else}
+              <button class="jump-link-btn" onclick={() => api.downloadSingle(String(s.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>
+                📥 下载
+              </button>
+            {/if}
+            {#if onSong}
+              <button class="jump-link-btn" onclick={() => onSong(String(s.id))}>🎧 详情</button>
+            {/if}
+          </div>
+        </li>
+      {/each}
+    </ul>
+  {:else}
+    <div class="empty-placeholder-card">
+      <div class="empty-icon">💽</div>
+      <div class="empty-title">在搜索中选择专辑或输入 ID 解析</div>
+    </div>
+  {/if}
+</AccordionCard>

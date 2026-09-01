@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from '../lib/api';
   import { formatBytes } from '../lib/utils';
+  import AccordionCard from './AccordionCard.svelte';
   let histKw=$state(''), histPage=$state(1), histList:any[]=$state([]), histStats:any=$state(null), histTotal=$state(0);
   let histTotalPages=$derived(Math.max(1, Math.ceil(histTotal/10)));
   async function loadHistory(p=1){
@@ -13,9 +14,7 @@
   function copy(t:string){ navigator.clipboard?.writeText(t); }
 </script>
 
-<div class="accordion-card active">
-  <div class="accordion-header"><h3 class="accordion-title">📥 2. 本地下载历史与文件管理</h3><span class="accordion-icon">▼</span></div>
-  <div class="accordion-body">
+<AccordionCard title="📥 2. 本地下载历史与文件管理" open={true}>
     <div style="display:flex; flex-wrap:wrap; gap:8px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:8px; margin-bottom:10px; align-items:center; font-size:13px;">
       <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
       <span>占用空间：<strong>{histStats?.totalSize ? formatBytes(histStats.totalSize) : '-'}</strong></span>
@@ -55,5 +54,4 @@
       <span style="font-size:12px; color:var(--text-secondary);">第 {histPage} / 共 {histTotalPages} 页 (共 {histTotal} 条)</span>
       <button class="btn-primary" disabled={histPage>=histTotalPages} onclick={()=>loadHistory(histPage+1)}>下一页</button>
     </div>
-  </div>
-</div>
+</AccordionCard>

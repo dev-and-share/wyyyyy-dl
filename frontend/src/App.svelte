@@ -400,7 +400,7 @@
 />
 
 <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
-<div class="accordion-wrapper">
+<div class="max-w-[900px] mx-auto flex flex-col gap-3 pb-[120px]">
   <div style="display: {tab === 'playlist' ? 'contents' : 'none'};">
     <PlaylistTab
       {playlistId} {curTrack} {playing} {likedSet} {downloadedSet}

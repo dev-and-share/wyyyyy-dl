@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import FolderExplorer from './FolderExplorer.svelte';
+  import AccordionCard from './AccordionCard.svelte';
   import { api } from '../lib/api';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
   import type { Track } from '../lib/types';
@@ -217,23 +218,12 @@
 </script>
 
 <!-- Section 1: 本地曲库与文件夹树连播 -->
-<div class="accordion-card" class:active={accFolder}>
-  <div class="accordion-header" onclick={() => accFolder = !accFolder}>
-    <h3 class="accordion-title">📁 1. 本地曲库与文件夹树连播</h3>
-    <span class="accordion-icon">▼</span>
-  </div>
-  <div class="accordion-body">
-    <FolderExplorer />
-  </div>
-</div>
+<AccordionCard title="📁 1. 本地曲库与文件夹树连播" bind:open={accFolder}>
+  <FolderExplorer />
+</AccordionCard>
 
 <!-- Section 2: 本地下载历史与文件管理 -->
-<div class="accordion-card" class:active={accHistory}>
-  <div class="accordion-header" onclick={() => accHistory = !accHistory}>
-    <h3 class="accordion-title">📥 2. 本地下载历史与文件管理</h3>
-    <span class="accordion-icon">▼</span>
-  </div>
-  <div class="accordion-body">
+<AccordionCard title="📥 2. 本地下载历史与文件管理" bind:open={accHistory}>
     <!-- 统计数据条 -->
     <div style="display:flex; flex-wrap:wrap; gap:8px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:8px; margin-bottom:10px; align-items:center; font-size:13px;">
       <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
@@ -354,8 +344,7 @@
       <span style="font-size:12px; color:var(--text-secondary);">第 {histPage} / {histTotalPages} 页 (共 {histTotal} 首)</span>
       <button class="btn-secondary" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>下一页</button>
     </div>
-  </div>
-</div>
+</AccordionCard>
 
 <!-- 📋 缺失文件 / 非MP3 格式 清单弹窗 (对齐旧版) -->
 {#if modalType}

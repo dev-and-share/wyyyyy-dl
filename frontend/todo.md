@@ -94,8 +94,9 @@
 ```
 
 ### 4-B 手风琴卡片
-- [ ] `PlaylistTab.svelte` — 手风琴列表、歌单 header、按钮组
-- [ ] `SearchTab.svelte` — 手风琴、搜索栏、分页、轨道列表
+- [x] `PlaylistTab.svelte` — 手风琴列表、歌单 header、按钮组（抽象出 AccordionCard + DetailHeaderCard）
+- [x] `SearchTab.svelte` — 手风琴、搜索栏、单选过滤组、专辑详情卡片（抽象出 DetailHeaderCard）
+- [x] `DownloadMgrTab.svelte` & `HistoryTab.svelte` — 统一接入 AccordionCard，彻底清空 style.svelte.css 中的 `.accordion-*` 与 `.detail-header-card`
 
 ```
 .accordion-card   → bg-[var(--card-bg)] backdrop-blur-sm rounded-[16px] shadow-md overflow-hidden border border-[var(--border-color)] transition-all

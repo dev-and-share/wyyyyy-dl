@@ -4,79 +4,6 @@
    ========================================================================== */
 
 
-/* Accordion Layout */
-.accordion-wrapper {
-    max-width: 900px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-bottom: 120px;
-}
-
-.tab-content {
-    padding-bottom: 120px;
-}
-
-.accordion-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.accordion-header {
-    padding: 14px 20px;
-    background: var(--card-header-bg);
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    user-select: none;
-    transition: background 0.2s ease;
-}
-
-.accordion-header:hover {
-    background: var(--card-header-hover);
-}
-
-.accordion-title {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-main);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.accordion-icon {
-    font-size: 13px;
-    color: var(--text-muted);
-    transition: transform 0.3s ease;
-}
-
-.accordion-card.active .accordion-icon {
-    transform: rotate(180deg);
-}
-
-.accordion-body {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.35s cubic-bezier(0, 1, 0, 1);
-    padding: 0 20px;
-}
-
-.accordion-card.active .accordion-body {
-    max-height: 8000px;
-    padding: 14px 20px 20px 20px;
-    transition: max-height 0.35s ease-in-out;
-}
-
 /* 📱 极顺畅滚动列表容器 (Scrollable List Container) */
 .scrollable-list {
     max-height: 520px;
@@ -310,81 +237,6 @@ ul.data-list li:last-child {
     z-index: 9999;
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 🎼 歌单/专辑详情 Header 响应式美化卡片 */
-.detail-header-card {
-    display: flex;
-    gap: 16px;
-    margin-top: 10px;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.02);
-    padding: 12px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-subtle);
-}
-
-[data-theme="light"] .detail-header-card {
-    background: #f8fafc;
-}
-
-.detail-cover-img {
-    width: 110px;
-    height: 110px;
-    border-radius: var(--radius-md);
-    object-fit: cover;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-    flex-shrink: 0;
-    border: 1px solid var(--border-color);
-}
-
-.detail-header-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.detail-header-title {
-    margin: 0 0 6px 0;
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--text-main);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.detail-header-sub {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
-}
-
-.detail-btn-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-    margin-top: 8px;
-}
-
-.detail-btn-group .btn-primary,
-.detail-btn-group .btn-secondary,
-.detail-btn-group .flex-1-btn {
-    flex: initial;
-    width: auto;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 🎨 现代高颜值 Empty State 空状态占位卡片 */
@@ -1300,59 +1152,8 @@ ul.data-list li:last-child {
         flex-shrink: 0;
     }
 
-    .detail-header-card {
-        gap: 10px;
-    }
-
-    .detail-cover-img {
-        width: 80px;
-        height: 80px;
-    }
-
-    .detail-header-title {
-        font-size: 15px;
-    }
-
-    .detail-header-sub {
-        font-size: 11px;
-        margin-bottom: 6px;
-    }
-
-    .detail-btn-group {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 6px !important;
-    }
-
-    .detail-btn-group .btn-primary,
-    .detail-btn-group .flex-1-btn {
-        flex: 1 1 calc(50% - 4px) !important;
-        min-width: 0 !important;
-        padding: 7px 6px !important;
-        font-size: 11.5px !important;
-        box-sizing: border-box !important;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
     body {
         padding: 10px;
-    }
-
-    .accordion-header {
-        padding: 12px 15px;
-    }
-
-    .accordion-title {
-        font-size: 14px;
-    }
-
-    .accordion-body {
-        padding: 0 12px;
-    }
-
-    .accordion-card.active .accordion-body {
-        padding: 10px 12px 15px 12px;
     }
 
     .form-row {
