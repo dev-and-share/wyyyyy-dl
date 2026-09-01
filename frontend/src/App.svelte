@@ -62,6 +62,7 @@
   let playMode: 'list' | 'single' | 'shuffle' = $state('list');
   let curTime = $state(0);
   let duration = $state(0);
+  let vol = $state(typeof localStorage !== 'undefined' ? (Number(localStorage.getItem('wyyyy_player_vol')) || 0.8) : 0.8);
   let playing = $state(false);
   let autoSkipTrial = $state(true);
   let offlineOnly = $state(false);
@@ -69,6 +70,11 @@
   let showLyric = $state(false);
   let showPeq = $state(false);
   let audioEl: HTMLAudioElement | null = $state(null);
+
+  $effect(() => {
+    if (audioEl) audioEl.volume = vol;
+    try { localStorage.setItem('wyyyy_player_vol', String(vol)); } catch {}
+  });
 
   let curTrack = $derived(queue[qIndex] || null);
 
@@ -436,7 +442,7 @@
 
 <!-- 🎬 现代专业音频播放控制栏 (SP 大触控 / PC 优雅三段式) -->
 <PlayerBar
-  {curTrack} {queue} {playing} {curTime} {duration} {playMode}
+  {curTrack} {queue} {playing} {curTime} {duration} {playMode} bind:vol
   onTogglePlay={togglePlay} onPrev={prev} onNext={next}
   onToggleMode={() => playMode = playMode === 'list' ? 'single' : playMode === 'single' ? 'shuffle' : 'list'}
   onSeek={seek} onLyric={() => showLyric = !showLyric} onPeq={() => showPeq = !showPeq}
@@ -461,7 +467,7 @@
 <!-- 全屏黑胶歌词 -->
 {#if showLyric && curTrack}
   <LyricModal
-    track={curTrack} currentTime={curTime} {duration} {playing} {playMode}
+    track={curTrack} currentTime={curTime} {duration} {playing} {playMode} bind:vol
     isLiked={likedSet.has(Number(curTrack.id))}
     onTogglePlay={togglePlay} onPrev={prev} onNext={next}
     onToggleMode={() => playMode = playMode === 'list' ? 'single' : playMode === 'single' ? 'shuffle' : 'list'}

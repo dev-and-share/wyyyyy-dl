@@ -365,6 +365,32 @@
 </div>
 
 <style>
+  .jump-link-btn {
+    background: var(--btn-slot-bg);
+    border: 1px solid var(--btn-slot-border);
+    color: var(--btn-slot-color);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .jump-link-btn:hover {
+    background: var(--btn-slot-hover-bg);
+    border-color: var(--border-color);
+    color: var(--btn-slot-hover-color);
+    transform: translateY(-1px);
+  }
+  .jump-link-btn:active {
+    background: var(--btn-slot-active-bg);
+    transform: translateY(0);
+  }
   :global(.quick-btn-item) {
     color: #ffffff !important;
     font-weight: 700 !important;

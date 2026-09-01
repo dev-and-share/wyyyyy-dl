@@ -16,7 +16,9 @@ function getAllFiles(dir, fileList = []) {
     if (stat.isDirectory()) {
       getAllFiles(filePath, fileList);
     } else if (EXTENSIONS.has(path.extname(filePath))) {
-      fileList.push(filePath);
+      if (file !== 'style.svelte.css') {
+        fileList.push(filePath);
+      }
     }
   }
   return fileList;

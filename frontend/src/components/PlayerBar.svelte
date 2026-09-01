@@ -11,6 +11,7 @@
     curTime = 0,
     duration = 0,
     playMode = 'list',
+    vol = $bindable(0.8),
     onTogglePlay,
     onPrev,
     onNext,
@@ -27,6 +28,7 @@
     curTime: number;
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
+    vol?: number;
     onTogglePlay: () => void;
     onPrev: () => void;
     onNext: () => void;
@@ -38,7 +40,6 @@
     onClearQueue: () => void;
   }>();
 
-  let vol = $state(0.8);
   let minimized = $state(false);
 
   // 环形进度计算 (半径 r=23, 周长 2*pi*23 ≈ 144.513)
