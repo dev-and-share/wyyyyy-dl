@@ -1,31 +1,58 @@
 /* ==========================================================================
-   🎵 NetEase Music Downloader Modern Style System (Dark Mode First)
+   🎵 NetEase Music Downloader Design System Framework (Global Token System)
    ========================================================================== */
 
 :root, [data-theme="dark"] {
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
-    --primary-glow: rgba(59, 130, 246, 0.3);
-    --bg-color: #0a0e1a;
-    --bg-gradient: radial-gradient(ellipse at 20% 40%, rgba(59, 130, 246, 0.05) 0%, transparent 60%),
-                   radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 60%);
-    --card-bg: rgba(17, 24, 39, 0.85);
+    /* 1. 基础表面与背景 (Surfaces) */
+    --bg-color: #090d16;
+    --bg-gradient: radial-gradient(ellipse at 20% 30%, rgba(30, 41, 59, 0.35) 0%, transparent 70%);
+    --card-bg: rgba(17, 24, 39, 0.9);
     --card-bg-solid: #111827;
     --card-header-bg: rgba(17, 24, 39, 0.95);
     --card-header-hover: rgba(255, 255, 255, 0.04);
-    --text-main: #f1f5f9;
+    --border-color: rgba(255, 255, 255, 0.09);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+
+    /* 2. 文本系统 (Typography) */
+    --text-main: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-subtle: rgba(255, 255, 255, 0.04);
+
+    /* 3. 强调主按钮 (Primary Action Buttons) */
+    --primary-color: #ef4444;
+    --primary-hover: #dc2626;
+    --primary-glow: rgba(239, 68, 68, 0.35);
+    --btn-primary-bg: linear-gradient(135deg, #ef4444, #dc2626);
+    --btn-primary-color: #ffffff;
+    --btn-primary-hover: #b91c1c;
+
+    /* 4. 次主按钮 (Secondary Action Buttons) */
+    --btn-secondary-bg: rgba(255, 255, 255, 0.08);
+    --btn-secondary-color: #f1f5f9;
+    --btn-secondary-border: rgba(255, 255, 255, 0.14);
+    --btn-secondary-hover-bg: rgba(255, 255, 255, 0.15);
+
+    /* 5. 极简统一列表槽位小胶囊按钮 (Unified Minimalist Slot Buttons) */
+    --btn-slot-bg: rgba(255, 255, 255, 0.06);
+    --btn-slot-border: rgba(255, 255, 255, 0.1);
+    --btn-slot-color: #e2e8f0;
+    --btn-slot-hover-bg: rgba(255, 255, 255, 0.13);
+    --btn-slot-hover-color: #ffffff;
+    --btn-slot-active-bg: rgba(255, 255, 255, 0.18);
+
+    /* 6. 输入框系统 (Inputs) */
     --input-bg: rgba(255, 255, 255, 0.06);
     --input-border: rgba(255, 255, 255, 0.12);
-    --topbar-bg: rgba(17, 24, 39, 0.85);
-    --topbar-border: rgba(255, 255, 255, 0.08);
+    --input-focus-border: #ef4444;
+    --input-focus-glow: rgba(239, 68, 68, 0.2);
+
+    /* 7. 导航与微件 (Navigation & Widgets) */
+    --topbar-bg: rgba(17, 24, 39, 0.9);
+    --topbar-border: rgba(255, 255, 255, 0.09);
     --nav-tabs-bg: rgba(255, 255, 255, 0.06);
-    --nav-tab-active-bg: rgba(59, 130, 246, 0.18);
-    --nav-tab-active-color: #60a5fa;
-    --monitor-bg: rgba(17, 24, 39, 0.92);
+    --nav-tab-active-bg: rgba(239, 68, 68, 0.15);
+    --nav-tab-active-color: #f87171;
+    --monitor-bg: rgba(17, 24, 39, 0.94);
     --monitor-item-bg: rgba(255, 255, 255, 0.04);
     --list-hover-bg: rgba(255, 255, 255, 0.04);
     --history-card-border: rgba(255, 255, 255, 0.06);
@@ -36,38 +63,67 @@
     --stat-bar-bg: rgba(255, 255, 255, 0.03);
     --scan-box-bg: rgba(245, 158, 11, 0.08);
     --scan-box-border: rgba(245, 158, 11, 0.25);
-    --untracked-box-bg: rgba(59, 130, 246, 0.08);
-    --untracked-box-border: rgba(59, 130, 246, 0.25);
-    --radius-lg: 14px;
-    --radius-md: 8px;
-    --radius-sm: 4px;
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+    --untracked-box-bg: rgba(239, 68, 68, 0.08);
+    --untracked-box-border: rgba(239, 68, 68, 0.25);
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.65);
 }
 
 [data-theme="light"] {
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --primary-glow: rgba(37, 99, 235, 0.2);
-    --bg-color: #f1f5f9;
+    /* 1. 基础表面与背景 (Surfaces - 极简珍珠白与纯白卡片) */
+    --bg-color: #f8fafc;
     --bg-gradient: none;
-    --card-bg: rgba(255, 255, 255, 0.95);
+    --card-bg: #ffffff;
     --card-bg-solid: #ffffff;
     --card-header-bg: #ffffff;
     --card-header-hover: #f8fafc;
+    --border-color: #e2e8f0;
+    --border-subtle: #f1f5f9;
+
+    /* 2. 文本系统 (Typography) */
     --text-main: #0f172a;
     --text-secondary: #475569;
-    --text-muted: #64748b;
-    --border-color: rgba(0, 0, 0, 0.08);
-    --border-subtle: rgba(0, 0, 0, 0.04);
+    --text-muted: #94a3b8;
+
+    /* 3. 强调主按钮 (Primary Action Buttons - 经典网易红渐变) */
+    --primary-color: #ef4444;
+    --primary-hover: #dc2626;
+    --primary-glow: rgba(239, 68, 68, 0.2);
+    --btn-primary-bg: linear-gradient(135deg, #ef4444, #dc2626);
+    --btn-primary-color: #ffffff;
+    --btn-primary-hover: #b91c1c;
+
+    /* 4. 次主按钮 (Secondary Action Buttons - 素雅高级中性灰胶囊) */
+    --btn-secondary-bg: #f1f5f9;
+    --btn-secondary-color: #334155;
+    --btn-secondary-border: #e2e8f0;
+    --btn-secondary-hover-bg: #e2e8f0;
+    --btn-secondary-hover-color: #0f172a;
+
+    /* 5. 极简统一列表槽位小胶囊按钮 (Unified Minimalist Slot Buttons - 纯净素雅灰度) */
+    --btn-slot-bg: #f8fafc;
+    --btn-slot-border: #e2e8f0;
+    --btn-slot-color: #334155;
+    --btn-slot-hover-bg: #e2e8f0;
+    --btn-slot-hover-color: #0f172a;
+    --btn-slot-active-bg: #cbd5e1;
+
+    /* 6. 输入框系统 (Inputs) */
     --input-bg: #ffffff;
     --input-border: #cbd5e1;
-    --topbar-bg: rgba(255, 255, 255, 0.92);
+    --input-focus-border: #ef4444;
+    --input-focus-glow: rgba(239, 68, 68, 0.15);
+
+    /* 7. 导航与微件 (Navigation & Widgets) */
+    --topbar-bg: rgba(255, 255, 255, 0.95);
     --topbar-border: rgba(0, 0, 0, 0.06);
-    --nav-tabs-bg: #e2e8f0;
+    --nav-tabs-bg: #f1f5f9;
     --nav-tab-active-bg: #ffffff;
-    --nav-tab-active-color: #2563eb;
-    --monitor-bg: rgba(255, 255, 255, 0.95);
+    --nav-tab-active-color: #0f172a;
+    --monitor-bg: rgba(255, 255, 255, 0.96);
     --monitor-item-bg: #f8fafc;
     --list-hover-bg: #f8fafc;
     --history-card-border: #e2e8f0;
@@ -78,13 +134,13 @@
     --stat-bar-bg: rgba(0, 0, 0, 0.03);
     --scan-box-bg: #fff8dc;
     --scan-box-border: #f0e68c;
-    --untracked-box-bg: #e6f7ff;
-    --untracked-box-border: #91d5ff;
-    --radius-lg: 14px;
-    --radius-md: 8px;
-    --radius-sm: 4px;
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+    --untracked-box-bg: #f8fafc;
+    --untracked-box-border: #e2e8f0;
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 body {
@@ -399,8 +455,8 @@ select option {
 }
 
 button.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-    color: #ffffff;
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-color);
     border: none;
     padding: 8px 16px;
     border-radius: var(--radius-md);
@@ -416,9 +472,9 @@ button.btn-primary {
 }
 
 button.btn-primary:hover {
+    background: var(--btn-primary-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 14px var(--primary-glow);
-    filter: brightness(1.08);
 }
 
 button.btn-primary:active {
@@ -426,17 +482,38 @@ button.btn-primary:active {
 }
 
 button.btn-primary:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
 }
 
-/* Link Jump Buttons */
+button.btn-secondary {
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-color);
+    border: 1px solid var(--btn-secondary-border);
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+button.btn-secondary:hover {
+    background: var(--btn-secondary-hover-bg);
+    transform: translateY(-1px);
+}
+
+/* Link Jump Buttons (统一 Token 驱动) */
 .jump-link-btn {
-    background: rgba(59, 130, 246, 0.12);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.25);
+    background: var(--btn-slot-bg);
+    color: var(--btn-slot-color);
+    border: 1px solid var(--btn-slot-border);
     padding: 4px 10px;
     border-radius: 12px;
     font-size: 12px;
@@ -451,21 +528,14 @@ button.btn-primary:disabled {
     user-select: none;
 }
 
-[data-theme="light"] .jump-link-btn {
-    background: #eef5ff;
-    color: #2563eb;
-    border: 1px solid #cce5ff;
-}
-
 .jump-link-btn:hover {
-    background: var(--primary-color);
-    color: #ffffff;
-    border-color: var(--primary-color);
+    background: var(--btn-slot-hover-bg);
+    color: var(--btn-slot-hover-color);
     transform: translateY(-1px);
 }
 
 /* ==========================================================================
-   🎵 固定三槽位「动态状态胶囊」按钮组 (3-Slot Action Capsule System)
+   🎵 统一极简列表胶囊按钮系统 (Unified Minimalist Slot System)
    ========================================================================== */
 .track-action-group {
     display: inline-flex;
@@ -475,7 +545,7 @@ button.btn-primary:disabled {
 }
 
 .track-btn-slot {
-    min-width: 68px;
+    min-width: 64px;
     height: 28px;
     padding: 0 10px;
     border-radius: 14px;
@@ -490,84 +560,49 @@ button.btn-primary:disabled {
     margin: 0 !important;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
-    border: 1px solid transparent;
+    background: var(--btn-slot-bg);
+    border: 1px solid var(--btn-slot-border);
+    color: var(--btn-slot-color);
 }
 
-/* 槽位 1：播放/试听 */
-.track-btn-slot.slot-play-preview {
-    background: rgba(59, 130, 246, 0.12);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.track-btn-slot.slot-play-ready {
-    background: rgba(34, 197, 94, 0.18);
-    color: #4ade80;
-    border: 1px solid rgba(34, 197, 94, 0.35);
-}
-
-.track-btn-slot.slot-play-ready:hover {
-    background: #22c55e;
-    color: #ffffff;
-}
-
-/* 槽位 2：下载 / 定位 */
-.track-btn-slot.slot-server-download {
-    background: var(--primary-color, #e11d48);
-    color: #ffffff;
-    border: 1px solid transparent;
-}
-
-.track-btn-slot.slot-server-locate {
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.track-btn-slot.slot-server-locate:hover {
-    filter: brightness(1.15);
+.track-btn-slot:hover {
+    background: var(--btn-slot-hover-bg);
+    color: var(--btn-slot-hover-color);
+    border-color: var(--btn-slot-border);
     transform: translateY(-1px);
 }
 
-/* 槽位 3：离线缓存 / 已离线 */
-.track-btn-slot.slot-browser-cache {
-    background: #0284c7;
-    color: #ffffff;
-    border: 1px solid transparent;
+.track-btn-slot:active {
+    background: var(--btn-slot-active-bg);
+    transform: translateY(0);
 }
 
-.track-btn-slot.slot-browser-cached {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.35);
+.track-like-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.65;
+    transition: transform 0.15s, opacity 0.15s;
 }
-
-.track-btn-slot.slot-browser-cached:hover {
-    background: #10b981;
-    color: #ffffff;
-}
-
-/* 槽位 4：添加至歌单 */
-.track-btn-slot.slot-add-playlist {
-    background: rgba(139, 92, 246, 0.14);
-    color: #a78bfa;
-    border: 1px solid rgba(139, 92, 246, 0.32);
-}
-
-.track-btn-slot.slot-add-playlist:hover {
-    background: #8b5cf6;
-    color: #ffffff;
-    border-color: #8b5cf6;
-    transform: translateY(-1px);
+.track-like-btn:hover, .track-like-btn.active {
+    opacity: 1;
+    transform: scale(1.15);
 }
 
 .clickable-track-title {
     cursor: pointer;
     transition: color 0.15s ease;
+    color: var(--text-main);
 }
 
 .clickable-track-title:hover {
-    color: var(--primary-color, #e11d48);
+    color: var(--primary-color);
     text-decoration: underline;
 }
 

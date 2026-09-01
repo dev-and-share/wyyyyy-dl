@@ -145,27 +145,27 @@
     <div class="my-playlist-filter-bar">
       <span class="filter-bar-label">账号歌单快捷加载：</span>
       <div class="playlist-quick-btn-group">
-        <button class="btn-primary quick-btn-item btn-created" onclick={() => loadMyPlaylists('created')}>📂 创建<span class="pc-only-text">的歌单</span></button>
-        <button class="btn-primary quick-btn-item btn-subscribed" onclick={() => loadMyPlaylists('subscribed')}>⭐ 收藏<span class="pc-only-text">的歌单</span></button>
-        <button class="btn-primary quick-btn-item btn-all" onclick={() => loadMyPlaylists('all')}>📋 全部</button>
-        <button class="btn-primary quick-btn-item btn-create" onclick={() => showToast('新建见外层弹窗', 'info')}>➕ 新建<span class="pc-only-text">歌单</span></button>
+        <button class="btn-secondary quick-btn-item btn-created" onclick={() => loadMyPlaylists('created')}>📂 创建<span class="pc-only-text">的歌单</span></button>
+        <button class="btn-secondary quick-btn-item btn-subscribed" onclick={() => loadMyPlaylists('subscribed')}>⭐ 收藏<span class="pc-only-text">的歌单</span></button>
+        <button class="btn-secondary quick-btn-item btn-all" onclick={() => loadMyPlaylists('all')}>📋 全部</button>
+        <button class="btn-secondary quick-btn-item btn-create" onclick={() => showToast('新建见外层弹窗', 'info')}>➕ 新建<span class="pc-only-text">歌单</span></button>
       </div>
     </div>
     <ul class="data-list scrollable-list">
       {#each myPlaylists.filter(p => playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed)) as pl, idx}
         <li>
           <div style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-            <span class="status-badge" style="background:{pl.subscribed ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)'}; color:{pl.subscribed ? '#60a5fa' : '#4ade80'}; border:1px solid {pl.subscribed ? 'rgba(59,130,246,0.25)' : 'rgba(34,197,94,0.25)'}; font-weight:600; padding:2px 6px; border-radius:6px; font-size:11px;">{pl.subscribed ? '收藏' : '创建'}</span>
+            <span class="status-badge">{pl.subscribed ? '收藏' : '创建'}</span>
             <strong class="clickable-track-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" onclick={() => handleViewPlaylist(String(pl.id))}>{pl.name}</strong>
             <span style="color:var(--text-muted); font-size:11px;">({pl.trackCount || 0}首)</span>
           </div>
           <div style="display:flex; gap:6px;">
             {#if pl.subscribed}
-              <button class="jump-link-btn" style="background:rgba(239,68,68,0.1); color:#f87171;" onclick={() => api.playlistSubscribe(String(pl.id), false).then(j => j.code === '000000' ? showToast('已取消', 'success') : showToast(j.msg, 'warning'))}>💔 取消收藏</button>
+              <button class="jump-link-btn" onclick={() => api.playlistSubscribe(String(pl.id), false).then(j => j.code === '000000' ? showToast('已取消', 'success') : showToast(j.msg, 'warning'))}>💔 取消</button>
             {:else if idx > 0}
-              <button class="jump-link-btn" style="background:rgba(239,68,68,0.08); color:#f87171;" onclick={() => api.playlistDelete(String(pl.id)).then(j => j.code === '000000' ? showToast('已删除', 'success') : showToast(j.msg, 'warning'))}>🗑️ 删除</button>
+              <button class="jump-link-btn" onclick={() => api.playlistDelete(String(pl.id)).then(j => j.code === '000000' ? showToast('已删除', 'success') : showToast(j.msg, 'warning'))}>🗑️ 删除</button>
             {/if}
-            <button class="jump-link-btn" onclick={() => handleViewPlaylist(String(pl.id))}>👉 查看详情</button>
+            <button class="jump-link-btn" onclick={() => handleViewPlaylist(String(pl.id))}>👉 详情</button>
           </div>
         </li>
       {:else}
@@ -194,7 +194,7 @@
           <div class="detail-header-sub">{playlist.creator || '未知'} | 共 {allTracks.length} 首</div>
           <div class="detail-btn-group">
             <button class="btn-primary" onclick={() => api.downloadPlaylist(String(playlist.id)).then(() => showToast('已提交下载', 'success'))}>🖥️ 下载到电脑</button>
-            <button class="btn-primary" style="background:#22c55e;" onclick={() => onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })))}>▶️ 播放歌单</button>
+            <button class="btn-secondary" onclick={() => onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })))}>▶️ 播放歌单</button>
           </div>
         </div>
       </div>
@@ -210,22 +210,22 @@
               <button class="track-like-btn" class:active={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)}>{likedSet.has(Number(t.id)) ? '❤️' : '🤍'}</button>
             </div>
             <div class="track-action-group">
-              <button class={isLocal ? 'track-btn-slot slot-play-ready' : 'track-btn-slot slot-play-preview'} onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || '/favicon.png', isLocal }])}>{isLocal ? '▶️ 播放' : '▶️ 试听'}</button>
+              <button class="track-btn-slot" onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || '/favicon.png', isLocal }])}>{isLocal ? '▶️ 播放' : '▶️ 试听'}</button>
               {#if isLocal}
-                <button class="track-btn-slot slot-server-locate" onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</button>
+                <button class="track-btn-slot" onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</button>
               {:else}
-                <button class="track-btn-slot slot-server-download" onclick={() => api.downloadSingle(String(t.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>📥 下载</button>
+                <button class="track-btn-slot" onclick={() => api.downloadSingle(String(t.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>📥 下载</button>
               {/if}
-              <button class="track-btn-slot slot-browser-cache" onclick={() => showToast('缓存功能开发中', 'info')}>📲 缓存</button>
-              <button class="track-btn-slot slot-add-playlist" onclick={() => showToast('添加歌单功能开发中', 'info')}>➕ 歌单</button>
+              <button class="track-btn-slot" onclick={() => showToast('缓存功能开发中', 'info')}>📲 缓存</button>
+              <button class="track-btn-slot" onclick={() => showToast('添加歌单功能开发中', 'info')}>➕ 歌单</button>
             </div>
           </li>
         {/each}
       </ul>
-      <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center;">
-        <button class="btn-primary" disabled={curPage <= 1} onclick={() => incPage(-1)}>上一页</button>
+      <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+        <button class="btn-secondary" disabled={curPage <= 1} onclick={() => incPage(-1)}>上一页</button>
         <span style="font-size:12px; color:var(--text-secondary);">第 {curPage} / {totalPages} 页 ({allTracks.length}首)</span>
-        <button class="btn-primary" disabled={curPage >= totalPages} onclick={() => incPage(1)}>下一页</button>
+        <button class="btn-secondary" disabled={curPage >= totalPages} onclick={() => incPage(1)}>下一页</button>
       </div>
     {/if}
   </div>
@@ -269,7 +269,6 @@
           <div class="detail-btn-group" style="display:flex; gap:6px; flex-wrap:wrap;">
             <button
               class="btn-primary"
-              style="background:linear-gradient(135deg, #10b981, #059669);"
               onclick={() => onPlayQueue([{
                 id: songInfo.id || songId,
                 name: songInfo.name || '单曲',
@@ -279,26 +278,25 @@
                 lyric: songInfo.lyric
               }])}
             >
-              ▶️ 在线试听
+              ▶️ 试听
+            </button>
+            <button
+              class="btn-secondary"
+              onclick={() => api.downloadSingle(String(songInfo.id || songId)).then(() => showToast('已提交单曲下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}
+            >
+              📥 下载
             </button>
             {#if songInfo.al_id || songInfo.albumId || songInfo.al?.id}
               <button
-                class="btn-primary"
-                style="background:linear-gradient(135deg, #8b5cf6, #7c3aed);"
+                class="btn-secondary"
                 onclick={() => {
                   const aid = songInfo.al_id || songInfo.albumId || songInfo.al?.id;
                   if (aid && onAlbum) onAlbum(String(aid));
                 }}
               >
-                💽 查看专辑
+                💽 专辑
               </button>
             {/if}
-            <button
-              class="btn-primary"
-              onclick={() => api.downloadSingle(String(songInfo.id || songId)).then(() => showToast('已提交单曲下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}
-            >
-              📥 下载单曲
-            </button>
           </div>
         </div>
       </div>

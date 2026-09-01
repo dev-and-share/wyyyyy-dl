@@ -85,15 +85,6 @@
         />
         <div class="bubble-center-dot"></div>
       </div>
-
-      <!-- 右上角微型彻底关闭按钮 -->
-      <button
-        class="bubble-close-btn"
-        onclick={(e) => { e.stopPropagation(); onClearQueue(); }}
-        title="彻底停止播放并清空"
-      >
-        ✕
-      </button>
     </div>
   {:else}
     <!-- 🎬 完整展开播放栏 (PC三段式 / SP大触控三排) -->
@@ -298,32 +289,6 @@
     border: 2px solid #fff;
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
     pointer-events: none;
-  }
-
-  /* 悬浮球关闭小叉 */
-  .bubble-close-btn {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #ef4444;
-    color: white;
-    border: 1.5px solid rgba(255, 255, 255, 0.9);
-    font-size: 9px;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-    opacity: 0.85;
-    transition: transform 0.15s, opacity 0.15s;
-  }
-  .bubble-close-btn:hover {
-    transform: scale(1.2);
-    opacity: 1;
   }
 
   /* --------------------------------------------------------------------------

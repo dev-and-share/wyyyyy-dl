@@ -288,7 +288,7 @@
           <div class="detail-header-sub" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">共包含 {album.songs?.length || 0} 首曲目</div>
           <div class="detail-btn-group" style="display:flex; gap:6px; flex-wrap:wrap;">
             <button class="btn-primary flex-1-btn" onclick={downloadFullAlbum}>🖥️ 下载到电脑</button>
-            <button class="btn-primary flex-1-btn" style="background:#22c55e;" onclick={playFullAlbum}>▶️ 播放专辑</button>
+            <button class="btn-secondary flex-1-btn" onclick={playFullAlbum}>▶️ 播放专辑</button>
           </div>
         </div>
       </div>
@@ -315,7 +315,6 @@
               {#if isLocal}
                 <button
                   class="jump-link-btn"
-                  style="background:rgba(6,182,212,0.15); color:#22d3ee; border-color:rgba(6,182,212,0.3);"
                   onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
                   title="在文件管理器中定位"
                 >
