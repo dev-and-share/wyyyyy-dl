@@ -66,30 +66,50 @@
   });
 </script>
 
+<svelte:window onkeydown={(e) => e.key === 'Escape' && onClose()} />
+
 <!-- 🎛️ 5 段参量均衡器统一抽屉 (支持全套白天/黑夜主题 + 移动端底部滑出 Bottom Sheet) -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="peq-drawer-overlay" onclick={onClose}>
-  <div class="peq-drawer-modal" onclick={(e) => e.stopPropagation()}>
+<div
+  class="fixed inset-0 bg-black/45 backdrop-blur-sm z-[10002] flex justify-end items-end box-border animate-[modalFadeIn_0.2s_ease-out]"
+  onclick={onClose}
+>
+  <div
+    class="mr-5 mb-[75px] w-[680px] max-w-[calc(100vw-30px)] max-h-[calc(100vh-100px)] rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl p-5 overflow-y-auto text-[var(--text-main)] box-border max-md:mr-0 max-md:mb-0 max-md:w-full max-md:rounded-b-none max-md:rounded-t-[20px] max-md:max-h-[85vh] max-md:pb-[calc(16px+env(safe-area-inset-bottom,0px))] animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)]"
+    onclick={(e) => e.stopPropagation()}
+  >
     <!-- 头部栏 -->
-    <div class="peq-header">
-      <div class="peq-title-row">
-        <span class="peq-icon">🎛️</span>
-        <h3 class="peq-title">5 段参量均衡器 (PEQ)</h3>
+    <div class="flex justify-between items-center mb-3">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🎛️</span>
+        <h3 class="m-0 text-base font-bold text-[var(--text-main)]">5 段参量均衡器 (PEQ)</h3>
       </div>
-      <button class="peq-close-btn" onclick={onClose} title="关闭均衡器">✕</button>
+      <button
+        type="button"
+        class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        onclick={onClose}
+        title="关闭均衡器"
+      >
+        ✕
+      </button>
     </div>
 
     <!-- 预设与启用开关栏 -->
-    <div class="peq-toolbar">
-      <div class="peq-toolbar-row">
-        <label class="peq-enable-switch">
-          <input type="checkbox" checked={enabled} onchange={(e) => (enabled = (e.target as HTMLInputElement).checked)} />
+    <div class="flex flex-col gap-2 mb-3 bg-black/5 dark:bg-white/[0.03] p-3 rounded-xl border border-black/5 dark:border-white/5">
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[var(--text-main)] select-none">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onchange={(e) => (enabled = (e.target as HTMLInputElement).checked)}
+            class="w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer"
+          />
           <span>⚡ 启用</span>
         </label>
 
         <select
-          class="peq-preset-select"
+          class="px-2.5 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] focus:outline-none focus:border-emerald-500 cursor-pointer"
           value={preset}
           onchange={(e) => applyPreset((e.target as HTMLSelectElement).value)}
         >
@@ -98,28 +118,28 @@
           {/each}
         </select>
 
-        <span class="peq-tip-text">5段频率/增益/Q全可调</span>
+        <span class="text-[11px] text-[var(--text-muted)] ml-auto">5段频率/增益/Q全可调</span>
       </div>
 
       {#if BUILTIN_PRESETS[preset]}
-        <div class="peq-preset-desc-badge">
-          <span class="desc-badge-icon">💡</span>
-          <span class="desc-badge-text">{BUILTIN_PRESETS[preset].desc}</span>
+        <div class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] bg-black/5 dark:bg-white/[0.03] px-2.5 py-1 rounded-lg">
+          <span class="text-xs">💡</span>
+          <span class="text-[11px]">{BUILTIN_PRESETS[preset].desc}</span>
         </div>
       {/if}
     </div>
 
     <!-- 频谱响应曲线 Canvas 画布 -->
-    <div class="peq-canvas-card">
-      <canvas bind:this={canvas} class="peq-canvas"></canvas>
+    <div class="rounded-xl overflow-hidden bg-black/20 dark:bg-black/40 border border-black/5 dark:border-white/5 mb-3">
+      <canvas bind:this={canvas} class="w-full h-[120px] block"></canvas>
     </div>
 
     <!-- 5 段调节推杆卡片网格 -->
-    <div class="peq-bands-grid">
+    <div class="grid grid-cols-5 gap-2 mb-4">
       {#each bands as b, i}
-        <div class="peq-band-col">
-          <div class="peq-band-label">{b.label}</div>
-          <div class="peq-band-freq-sub">{b.freq}Hz</div>
+        <div class="flex flex-col items-center bg-black/5 dark:bg-white/[0.03] p-2.5 rounded-xl border border-black/5 dark:border-white/5 gap-1.5">
+          <div class="text-xs font-bold text-[var(--text-main)]">{b.label}</div>
+          <div class="text-[10px] text-[var(--text-muted)] font-mono">{b.freq}Hz</div>
           <input
             type="range"
             min="-12"
@@ -130,16 +150,13 @@
               bands[i].gain = parseFloat((e.target as HTMLInputElement).value);
               bands = bands;
             }}
-            class="peq-slider"
+            class="w-full h-1.5 accent-emerald-500 cursor-pointer my-1"
           />
-          <div
-            class="peq-band-gain"
-            style="color: {b.gain > 0 ? '#10b981' : b.gain < 0 ? '#ef4444' : 'var(--text-muted)'};"
-          >
+          <div class="text-xs font-bold font-mono {b.gain > 0 ? 'text-emerald-500' : b.gain < 0 ? 'text-red-500' : 'text-[var(--text-muted)]'}">
             {b.gain > 0 ? '+' : ''}{b.gain}dB
           </div>
-          <div class="peq-band-q-wrap">
-            <div class="peq-band-q-label">Q {b.q.toFixed(1)}</div>
+          <div class="w-full flex flex-col items-center gap-1 mt-1 pt-1.5 border-t border-black/5 dark:border-white/5">
+            <div class="text-[10px] text-[var(--text-muted)] font-mono">Q {b.q.toFixed(1)}</div>
             <input
               type="range"
               min="0.5"
@@ -150,7 +167,7 @@
                 bands[i].q = parseFloat((e.target as HTMLInputElement).value);
                 bands = bands;
               }}
-              class="peq-slider-small"
+              class="w-full h-1 accent-emerald-500/70 cursor-pointer"
             />
           </div>
         </div>
@@ -158,301 +175,9 @@
     </div>
 
     <!-- 底部操作按钮栏 -->
-    <div class="peq-footer">
-      <button onclick={reset} class="btn-secondary peq-footer-btn">🔄 重置原音</button>
-      <button onclick={onClose} class="btn-primary peq-footer-btn peq-confirm-btn">✕ 完成关闭</button>
+    <div class="flex justify-end gap-2.5 pt-2 border-t border-black/5 dark:border-white/5">
+      <button type="button" onclick={reset} class="btn-secondary text-xs px-3.5 py-1.5">🔄 重置原音</button>
+      <button type="button" onclick={onClose} class="btn-primary bg-gradient-to-br from-emerald-500 to-teal-600 text-xs px-4 py-1.5 font-semibold">✕ 完成关闭</button>
     </div>
   </div>
 </div>
-
-<style>
-  .peq-drawer-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 10002;
-    display: flex;
-    justify-content: flex-end;
-    align-items: flex-end;
-    animation: peqFadeIn 0.2s ease-out;
-  }
-
-  @keyframes peqFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  .peq-drawer-modal {
-    background: var(--card-bg-solid, #ffffff);
-    border: 1px solid var(--border-color, #e2e8f0);
-    color: var(--text-main, #0f172a);
-    box-shadow: var(--shadow-lg, 0 16px 40px rgba(0, 0, 0, 0.25));
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    margin-right: 20px;
-    margin-bottom: 75px;
-    width: 680px;
-    max-width: calc(100vw - 30px);
-    max-height: calc(100vh - 100px);
-    border-radius: 16px;
-    padding: 16px 20px;
-    animation: peqSlideUpPC 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  @keyframes peqSlideUpPC {
-    from { opacity: 0; transform: translateY(16px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  .peq-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .peq-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .peq-icon {
-    font-size: 18px;
-  }
-
-  .peq-title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-main, #0f172a);
-  }
-
-  .peq-close-btn {
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    color: var(--text-secondary, #64748b);
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: background 0.2s ease;
-  }
-
-  .peq-close-btn:hover {
-    background: var(--btn-slot-hover-bg, rgba(0, 0, 0, 0.06));
-    color: var(--text-main);
-  }
-
-  .peq-toolbar {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .peq-toolbar-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    width: 100%;
-  }
-
-  .peq-enable-switch {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-main, #0f172a);
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .peq-enable-switch input[type="checkbox"] {
-    accent-color: var(--primary-color, #10b981);
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
-  }
-
-  .peq-preset-select {
-    flex: 1;
-    min-width: 200px;
-    padding: 7px 12px;
-    border-radius: 8px;
-    background: var(--input-bg, #f8fafc);
-    color: var(--text-main, #0f172a);
-    border: 1px solid var(--input-border, #cbd5e1);
-    font-size: 13px;
-    font-weight: 600;
-    outline: none;
-    cursor: pointer;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .peq-preset-select:focus {
-    border-color: var(--primary-color, #10b981);
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-  }
-
-  .peq-preset-select option {
-    background: var(--card-bg-solid, #ffffff);
-    color: var(--text-main, #0f172a);
-    padding: 6px 10px;
-  }
-
-  .peq-tip-text {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--text-muted, #94a3b8);
-    flex-shrink: 0;
-  }
-
-  .peq-preset-desc-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    background: var(--btn-slot-bg, #f1f5f9);
-    border: 1px solid var(--border-subtle, #e2e8f0);
-    font-size: 12px;
-    color: var(--text-secondary, #475569);
-  }
-
-  .desc-badge-icon {
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .desc-badge-text {
-    line-height: 1.4;
-  }
-
-  .peq-canvas-card {
-    background: var(--btn-slot-bg, #f1f5f9);
-    border: 1px solid var(--border-subtle, #e2e8f0);
-    border-radius: 12px;
-    padding: 8px;
-    margin-bottom: 12px;
-  }
-
-  .peq-canvas {
-    width: 100%;
-    height: 110px;
-    display: block;
-    border-radius: 8px;
-  }
-
-  .peq-bands-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-  }
-
-  .peq-band-col {
-    background: var(--btn-slot-bg, #ffffff);
-    border: 1px solid var(--border-subtle, #e2e8f0);
-    border-radius: 10px;
-    padding: 10px 6px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  }
-
-  .peq-band-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-main, #0f172a);
-    margin-bottom: 2px;
-  }
-
-  .peq-band-freq-sub {
-    font-size: 10px;
-    color: var(--text-muted, #64748b);
-  }
-
-  .peq-slider {
-    width: 100%;
-    margin: 8px 0 4px 0;
-    accent-color: var(--primary-color, #10b981);
-    cursor: pointer;
-  }
-
-  .peq-band-gain {
-    font-size: 12px;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-
-  .peq-band-q-wrap {
-    margin-top: 4px;
-    padding-top: 4px;
-    border-top: 1px dashed var(--border-subtle, #e2e8f0);
-  }
-
-  .peq-band-q-label {
-    font-size: 10px;
-    color: var(--text-muted, #64748b);
-  }
-
-  .peq-slider-small {
-    width: 90%;
-    margin-top: 2px;
-    accent-color: var(--primary-color, #10b981);
-    cursor: pointer;
-  }
-
-  .peq-footer {
-    display: flex;
-    gap: 8px;
-    margin-top: 14px;
-    align-items: center;
-  }
-
-  .peq-footer-btn {
-    padding: 7px 14px;
-    font-size: 12px;
-  }
-
-  .peq-confirm-btn {
-    margin-left: auto;
-    padding: 7px 18px;
-  }
-
-  /* 📱 移动端 SP：底部滑升抽屉（Bottom Sheet），与播放队列完全一致 */
-  @media (max-width: 768px) {
-    .peq-drawer-overlay {
-      justify-content: center !important;
-      align-items: flex-end !important;
-    }
-
-    .peq-drawer-modal {
-      margin: 0 !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      height: 75vh !important;
-      max-height: 82vh !important;
-      border-radius: 20px 20px 0 0 !important;
-      border-bottom: none !important;
-      border-left: none !important;
-      border-right: none !important;
-      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25) !important;
-      animation: peqSlideUpSP 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
-      padding-bottom: env(safe-area-inset-bottom, 16px) !important;
-    }
-
-    @keyframes peqSlideUpSP {
-      from { transform: translateY(100%); opacity: 0.5; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    .peq-bands-grid {
-      grid-template-columns: repeat(5, 1fr);
-      gap: 4px;
-    }
-  }
-</style>

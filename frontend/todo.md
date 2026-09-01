@@ -151,8 +151,9 @@
 ```
 
 ### 4-G 抽屉系统
-- [ ] `PlaylistDrawer.svelte` — PC popup + SP bottom-sheet 双形态
-- [ ] `PeqDrawer.svelte` — 5 段参量均衡器模态
+- [x] `PlaylistDrawer.svelte` — PC 右下微光弹窗 + SP 底部升起 Bottom Sheet 双形态纯 Tailwind 化，接入 `TrackLikeBtn`
+- [x] `PeqDrawer.svelte` — 彻底废除 290 行 `<style>` 标签，5段频率/增益/Q调节与响应曲线纯 Tailwind 化（代码降至 184 行）
+- [x] `style.svelte.css` — 彻底删除遗留的 `.playlist-drawer-*`、`.peq-drawer-*`、`.monitor-header`、旧版 `.like-btn` 等规则（共 442 行）
 
 ### 4-H 本地曲库文件夹树
 - [ ] `FolderExplorer.svelte` — 工具栏、根节点按钮
