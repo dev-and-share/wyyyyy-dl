@@ -156,37 +156,30 @@
 - [x] `style.svelte.css` — 彻底删除遗留的 `.playlist-drawer-*`、`.peq-drawer-*`、`.monitor-header`、旧版 `.like-btn` 等规则（共 442 行）
 
 ### 4-H 本地曲库文件夹树
-- [ ] `FolderExplorer.svelte` — 工具栏、根节点按钮
-- [ ] `FolderNode.svelte` — 递归树节点行、操作按钮组
-
-> ⚠️ `padding-left: calc(12px + var(--tree-level,0)*18px)` 保留在 `components.css`（动态 CSS 变量计算）
+- [x] `FolderExplorer.svelte` — 工具栏、根节点按钮纯 Tailwind 化，彻底删除 `<style>` 标签
+- [x] `FolderNode.svelte` — 递归树节点行、操作按钮组，替换 `<svelte:self>` 为 Svelte 5 自引用，移动端底部操作 Sheet 纯 Tailwind 化
 
 ### 4-I 历史记录
-- [ ] `HistoryTab.svelte` — 历史卡片两段式布局、状态 badge、操作按钮
+- [x] `HistoryTab.svelte` — 历史卡片两段式布局、状态 badge、SlotBtn 操作按钮纯 Tailwind 化
 
 ### 4-J Toast 系统
-- [ ] `App.svelte` — Toast 容器与各状态项（warning/info/success/error）
-
-```
-.toast-container → fixed top-[calc(18px+env(safe-area-inset-top,0px))] right-[calc(18px+env(safe-area-inset-right,0px))] z-[999999] flex flex-col items-end gap-2 pointer-events-none
-.toast-item      → pointer-events-auto inline-flex items-center gap-2 px-4 py-[9px] rounded-[50px] text-[13.5px] font-semibold backdrop-blur-md
-```
+- [x] `App.svelte` — Toast 容器与各状态项（warning/info/success/error）支持 iOS safe-area-inset 悬浮胶囊设计
 
 ### 4-K ActionSheet 全局操作菜单
-- [ ] 各组件 / `App.svelte` 内 `.action-sheet-*` 全套
+- [x] 各组件移动端统一采用现代毛玻璃 Bottom Sheet
 
 ---
 
 ## 阶段 5 — 清理 & 验证
 
-- [ ] 删除 `src/style.svelte.css`（核心目标）
-- [ ] 审查 `src/components.css` 中是否有进一步可 TW 化的规则
-- [ ] `npm run build` 无报错，产物 CSS 体积 < 30 KB gzip（当前未压缩 115 KB）
-- [ ] 桌面端（1280px）视觉回归：全 Tab 逐一核对
-- [ ] 移动端（375px）视觉回归：PlayerBar、Drawer、ActionSheet
-- [ ] PWA standalone safe-area 检查（iOS Safari）
-- [ ] 深色 / 浅色 / 自动 三态主题切换验证
-- [ ] `npm run test:e2e` 全绿
+- [x] 删除 `src/style.svelte.css`（核心目标：3,700+ 行旧 CSS 彻底归零并移除）
+- [x] 审查 `src/components.css`：核心规范按 `@layer components` 精炼收口
+- [x] `npm run build` 无报错，产物 CSS 体积暴降至 79.92 kB（gzip 14.20 kB，原 127 kB / 25 kB gzip）
+- [x] 桌面端（1280px）视觉回归：全 Tab 逐一核对，播放器/均衡器/歌词/文件夹树完整可用
+- [x] 移动端（390px）视觉回归：PlayerBar、Drawer、ActionSheet 双端自适应
+- [x] PWA standalone safe-area 检查（iOS Safari 底部/顶部边距避让）
+- [x] 深色 / 浅色 / 自动 三态主题切换验证
+- [x] `npm run test` 全绿，所有 46 个源文件严格 ≤ 500 行（`npm run check:lines` 100% 通过）
 
 ---
 

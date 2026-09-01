@@ -1,8 +1,231 @@
 /* ==========================================================================
-   🧩 Preserved Component Layers & Complex State Combinations
+   🧩 Core UI Components & Base Controls
    ========================================================================== */
 
 @layer components {
+    /* 📱 极顺畅滚动列表容器 (Scrollable List Container) */
+    .scrollable-list {
+        max-height: 520px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-right: 2px;
+    }
+
+    @media (max-width: 768px) {
+        .scrollable-list {
+            max-height: min(65vh, 620px);
+        }
+    }
+
+    /* Form Elements & Inputs */
+    input[type="text"], input[type="number"], select {
+        background: var(--input-bg);
+        color: var(--text-main);
+        padding: 8px 12px;
+        border: 1px solid var(--input-border);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    input[type="text"]::placeholder, input[type="number"]::placeholder {
+        color: var(--text-muted);
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px var(--primary-glow);
+        background: var(--input-bg);
+    }
+
+    select option {
+        background: var(--card-bg-solid);
+        color: var(--text-main);
+    }
+
+    /* 按钮规范 */
+    button.btn-primary {
+        background: var(--btn-primary-bg);
+        color: var(--btn-primary-color);
+        border: none;
+        padding: 8px 16px;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 2px 8px var(--primary-glow);
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    button.btn-primary:hover {
+        background: var(--btn-primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    button.btn-primary:active {
+        transform: translateY(0);
+    }
+
+    button.btn-primary:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    button.btn-secondary {
+        background: var(--btn-secondary-bg);
+        color: var(--btn-secondary-color);
+        border: 1px solid var(--btn-secondary-border);
+        padding: 8px 16px;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    button.btn-secondary:hover {
+        background: var(--btn-secondary-hover-bg);
+        transform: translateY(-1px);
+    }
+
+    button.btn-secondary:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .clickable-track-title {
+        cursor: pointer;
+        transition: color 0.15s ease;
+        color: var(--text-main);
+    }
+
+    .clickable-track-title:hover {
+        color: var(--primary-color);
+        text-decoration: underline;
+    }
+
+    /* List Items */
+    ul.data-list {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0;
+    }
+
+    ul.data-list li {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-subtle);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s ease;
+        color: var(--text-main);
+    }
+
+    ul.data-list li:hover {
+        background: var(--list-hover-bg);
+    }
+
+    ul.data-list li:last-child {
+        border-bottom: none;
+    }
+
+    /* 🎨 现代高颜值 Empty State 空状态占位卡片 */
+    .empty-placeholder-card {
+        padding: 36px 20px;
+        text-align: center;
+        background: var(--empty-bg);
+        border: 2px dashed var(--empty-border);
+        border-radius: var(--radius-lg);
+        margin-top: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-icon {
+        font-size: 40px;
+        margin-bottom: 8px;
+        opacity: 0.85;
+    }
+
+    .empty-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 6px;
+    }
+
+    .empty-desc {
+        font-size: 12px;
+        color: var(--text-secondary);
+        max-width: 400px;
+        margin: 0 auto 16px auto;
+        line-height: 1.5;
+    }
+
+    .quick-demo-tags {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .demo-label {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .demo-tag-btn {
+        background: var(--tag-btn-bg);
+        border: 1px solid var(--border-color);
+        color: #60a5fa;
+        padding: 4px 10px;
+        border-radius: 14px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    [data-theme="light"] .demo-tag-btn {
+        color: #2563eb;
+    }
+
+    .demo-tag-btn:hover {
+        background: var(--nav-tab-active-bg);
+        border-color: var(--primary-color);
+        transform: translateY(-1px);
+    }
+
+    .form-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        margin-top: 10px;
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
     /* 🎵 正在播放曲目浅绿高亮系统 (Playing Track Light Green Highlight) */
     .track-item-card.is-active-playing {
         background: rgba(16, 185, 129, 0.08) !important;
@@ -67,6 +290,18 @@
         flex-shrink: 0;
     }
 
+    /* 📱 页面最底部微型版本号 Footer 样式 */
+    .app-version-footer {
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-muted);
+        opacity: 0.75;
+        padding: 12px 0 6px 0;
+        margin-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+        user-select: none;
+        letter-spacing: 0.5px;
+    }
+
     @media (max-width: 768px) {
         .track-item-card {
             flex-direction: column !important;
@@ -87,15 +322,15 @@
             justify-content: flex-end !important;
             margin-top: 2px !important;
         }
-    }
 
-    /* 📁 本地文件夹树动态计算缩进 (Dynamic CSS Variable --tree-level) */
-    .tree-node-row {
-        padding-left: calc(12px + var(--tree-level, 0) * 18px) !important;
-    }
-    @media (max-width: 768px) {
-        .tree-node-row {
-            padding-left: calc(8px + var(--tree-level, 0) * 10px) !important;
+        .form-row {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pagination-container {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
         }
     }
 }
