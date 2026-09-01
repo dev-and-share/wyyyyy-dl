@@ -136,25 +136,27 @@
     <span class="accordion-icon">▼</span>
   </div>
   <div class="accordion-body">
-    <!-- 4 个单选 Radio -->
-    <div class="search-type-radios" style="display:flex; gap:16px; margin-bottom:10px; align-items:center; flex-wrap:wrap; font-size:13px; padding:2px 0;">
-      <span style="color:var(--text-secondary); font-weight:600;">搜索类型：</span>
-      <label class="search-radio-item" style="display:flex; align-items:center; gap:4px; cursor:pointer; color:{sType==='1'?'var(--primary-color)':'var(--text-secondary)'}; font-weight:{sType==='1'?'700':'400'};">
-        <input type="radio" name="searchType" value="1" bind:group={sType} style="cursor:pointer;" />
-        <span>🎵 单曲</span>
-      </label>
-      <label class="search-radio-item" style="display:flex; align-items:center; gap:4px; cursor:pointer; color:{sType==='10'?'var(--primary-color)':'var(--text-secondary)'}; font-weight:{sType==='10'?'700':'400'};">
-        <input type="radio" name="searchType" value="10" bind:group={sType} style="cursor:pointer;" />
-        <span>💽 专辑</span>
-      </label>
-      <label class="search-radio-item" style="display:flex; align-items:center; gap:4px; cursor:pointer; color:{sType==='1000'?'var(--primary-color)':'var(--text-secondary)'}; font-weight:{sType==='1000'?'700':'400'};">
-        <input type="radio" name="searchType" value="1000" bind:group={sType} style="cursor:pointer;" />
-        <span>📁 歌单</span>
-      </label>
-      <label class="search-radio-item" style="display:flex; align-items:center; gap:4px; cursor:pointer; color:{sType==='100'?'var(--primary-color)':'var(--text-secondary)'}; font-weight:{sType==='100'?'700':'400'};">
-        <input type="radio" name="searchType" value="100" bind:group={sType} style="cursor:pointer;" />
-        <span>🎤 歌手</span>
-      </label>
+    <!-- 4 个单选 Radio (保证 SP / 移动端严格一排) -->
+    <div class="search-type-radios">
+      <span class="search-type-label pc-only-text">搜索类型：</span>
+      <div class="search-radio-group">
+        <label class="search-radio-item" class:active={sType==='1'}>
+          <input type="radio" name="searchType" value="1" bind:group={sType} />
+          <span>🎵 单曲</span>
+        </label>
+        <label class="search-radio-item" class:active={sType==='10'}>
+          <input type="radio" name="searchType" value="10" bind:group={sType} />
+          <span>💽 专辑</span>
+        </label>
+        <label class="search-radio-item" class:active={sType==='1000'}>
+          <input type="radio" name="searchType" value="1000" bind:group={sType} />
+          <span>📁 歌单</span>
+        </label>
+        <label class="search-radio-item" class:active={sType==='100'}>
+          <input type="radio" name="searchType" value="100" bind:group={sType} />
+          <span>🎤 歌手</span>
+        </label>
+      </div>
       <select bind:value={sType} style="display:none;" aria-label="搜索类型">
         <option value="1">单曲</option>
         <option value="10">专辑</option>
@@ -303,3 +305,66 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .search-type-radios {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    align-items: center;
+    flex-wrap: nowrap;
+    font-size: 13px;
+    padding: 2px 0;
+    width: 100%;
+  }
+  .search-type-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .search-radio-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: nowrap;
+    flex: 1;
+  }
+  .search-radio-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-weight: 400;
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .search-radio-item.active {
+    color: var(--primary-color, #38bdf8);
+    font-weight: 700;
+  }
+  .search-radio-item input[type="radio"] {
+    cursor: pointer;
+    margin: 0;
+  }
+  @media (max-width: 768px) {
+    .search-type-radios {
+      gap: 0;
+      margin-bottom: 8px;
+    }
+    .search-radio-group {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2px;
+      justify-items: center;
+    }
+    .search-radio-item {
+      font-size: 12px;
+      gap: 2px;
+      justify-content: center;
+      width: 100%;
+    }
+  }
+</style>
