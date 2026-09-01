@@ -1,61 +1,48 @@
 <script lang="ts">
   import { formatTime, formatArtist } from '../lib/utils';
-  import { queue, playerState, getCurTrack } from '../lib/player.svelte';
+  import type { Track } from '../lib/types';
 
   let {
-    audioEl,
-    playing,
-    curTime,
-    duration,
-    onToggle,
+    curTrack,
+    queue = [],
+    playing = false,
+    curTime = 0,
+    duration = 0,
+    playMode = 'list',
+    onTogglePlay,
     onPrev,
     onNext,
+    onToggleMode,
     onSeek,
     onLyric,
-    onQueue
+    onPeq,
+    onQueue,
+    onClearQueue
   } = $props<{
-    audioEl?: HTMLAudioElement;
+    curTrack: Track | null;
+    queue: Track[];
     playing: boolean;
     curTime: number;
     duration: number;
-    onToggle: () => void;
+    playMode: 'list' | 'single' | 'shuffle';
+    onTogglePlay: () => void;
     onPrev: () => void;
     onNext: () => void;
+    onToggleMode: () => void;
     onSeek: (e: MouseEvent) => void;
     onLyric: () => void;
+    onPeq: () => void;
     onQueue: () => void;
+    onClearQueue: () => void;
   }>();
 
-  let vol = $state(playerState.volume);
-  let curTrack = $derived(getCurTrack());
-
-  $effect(() => {
-    if (audioEl) audioEl.volume = vol;
-    playerState.volume = vol;
-  });
-
-  // 顶部极细进度条点击/Seek
-  function handleTopSeek(e: MouseEvent) {
-    if (!duration || !audioEl) return;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    audioEl.currentTime = pos * duration;
-  }
+  let vol = $state(0.8);
 </script>
 
-{#if queue.length}
+{#if queue.length > 0 && curTrack}
 <div class="bottom-audio-bar">
-  <audio bind:this={audioEl} src={curTrack?.url || ''}></audio>
-
-  <!-- 📱 移动端顶部微型发光进度条 (可直接点击快进) -->
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="mini-top-progress-bar sp-only-flex" onclick={handleTopSeek}>
-    <div class="mini-top-progress-fill" style="width: {duration ? (curTime / duration) * 100 : 0}%;"></div>
-  </div>
-
   <div class="audio-bar-inner">
-    <!-- 1. 左侧：封面与歌曲信息 (移动端点击直接呼出沉浸式大黑胶歌词) -->
+    <!-- 1. 顶部：歌曲信息与顶部功能键 (SP 端第一排，PC 端左侧) -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="audio-left-section" onclick={onLyric} title="点击展开全屏播放器与歌词">
@@ -65,6 +52,7 @@
           alt="封面"
           class="audio-cover"
           class:playing={playing}
+          referrerpolicy="no-referrer"
           onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = '/favicon.png'; }}
         />
       </div>
@@ -79,62 +67,56 @@
       </div>
     </div>
 
-    <!-- 2. 中间：PC 端核心控制与可拖拽全尺寸进度条 (移动端隐藏，留给右上角大按键与全屏播放器) -->
-    <div class="audio-center-section pc-only">
-      <div class="audio-main-controls">
-        <button
-          class="ctrl-btn sub-btn"
-          onclick={() => { playerState.playMode = playerState.playMode === 'single' ? 'list' : (playerState.playMode === 'list' ? 'shuffle' : 'single'); }}
-          title={playerState.playMode === 'single' ? '单曲循环' : (playerState.playMode === 'shuffle' ? '随机播放' : '列表循环')}
-        >
-          {playerState.playMode === 'single' ? '🔂' : (playerState.playMode === 'shuffle' ? '🔀' : '🔁')}
-        </button>
-        <button class="ctrl-btn sub-btn" onclick={onPrev} title="上一首">⏮</button>
-        <button class="ctrl-btn play-main-btn" onclick={onToggle} title={playing ? '暂停' : '播放'}>
-          {playing ? '⏸' : '▶'}
-        </button>
-        <button class="ctrl-btn sub-btn" onclick={onNext} title="下一首">⏭</button>
-      </div>
+    <!-- 2. 中间：进度条与主控键 (SP 端多排大触控，PC 端居中) -->
+    <div class="audio-center-section">
+      <!-- 进度条区 (SP 端满宽第二排) -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="audio-progress-container">
         <span class="time-stamp">{formatTime(curTime)}</span>
         <div class="progress-bar-wrapper" onclick={onSeek}>
           <div class="progress-bar-bg"></div>
-          <div class="progress-bar-fill" style="width: {duration ? (curTime / duration) * 100 : 0}%;"></div>
-          <div class="progress-bar-handle" style="left: {duration ? (curTime / duration) * 100 : 0}%;"></div>
+          <div class="progress-bar-fill" style="width: {duration ? (curTime / duration * 100) : 0}%;"></div>
+          <div class="progress-bar-handle" style="left: {duration ? (curTime / duration * 100) : 0}%;"></div>
         </div>
         <span class="time-stamp">{formatTime(duration)}</span>
       </div>
+
+      <!-- 核心控制按键 (SP 端超大触控第三排) -->
+      <div class="audio-main-controls">
+        <button
+          class="ctrl-btn sub-btn sp-touch-sub-btn"
+          onclick={onToggleMode}
+          title={playMode === 'single' ? '单曲循环' : (playMode === 'shuffle' ? '随机播放' : '列表循环')}
+        >
+          {playMode === 'single' ? '🔂' : (playMode === 'shuffle' ? '🔀' : '🔁')}
+        </button>
+        <button class="ctrl-btn sub-btn sp-touch-side-btn" onclick={onPrev} title="上一首">⏮</button>
+        <button class="ctrl-btn play-main-btn sp-touch-play-btn" onclick={onTogglePlay} title={playing ? '暂停' : '播放'}>
+          {playing ? '⏸' : '▶'}
+        </button>
+        <button class="ctrl-btn sub-btn sp-touch-side-btn" onclick={onNext} title="下一首">⏭</button>
+        <button class="ctrl-btn sub-btn sp-touch-sub-btn sp-only-flex" onclick={onClearQueue} title="清空/关闭">✕</button>
+      </div>
     </div>
 
-    <!-- 3. 右侧：功能控制区 -->
+    <!-- 3. 右侧：功能控制区 (PC 端右侧，SP 端融入右上角) -->
     <div class="audio-right-section">
-      <!-- 移动端专享：大触控核心播放/暂停键 + 下一曲 -->
-      <button class="ctrl-btn mini-capsule-play-btn sp-only-flex" onclick={onToggle} title={playing ? '暂停' : '播放'}>
-        {playing ? '⏸' : '▶'}
-      </button>
-      <button class="ctrl-btn mini-capsule-btn sp-only-flex" onclick={onNext} title="下一曲">
-        ⏭
-      </button>
-
-      <!-- 全局通用：歌词 & 播放列表抽屉 -->
-      <button class="ctrl-btn sub-btn pc-only" onclick={onLyric} title="全屏沉浸歌词">🎤</button>
-      <button class="ctrl-btn mini-capsule-btn playlist-btn-wrap" onclick={onQueue} title="当前播放列表">
+      <button class="ctrl-btn sub-btn sp-touch-top-action" onclick={onLyric} title="全屏沉浸歌词">🎤</button>
+      <button class="ctrl-btn sub-btn sp-touch-top-action" onclick={onPeq} title="5段参量均衡器 (PEQ)">🎛️</button>
+      <button class="ctrl-btn sub-btn playlist-btn-wrap sp-touch-top-action" onclick={onQueue} title="当前播放列表">
         📜
         <span class="badge-count-pill">{queue.length}</span>
       </button>
 
-      <!-- PC 端专享：音量滑块 -->
+      <!-- PC 端专享：音量滑块与关闭 -->
       <div class="volume-container pc-only">
         <span class="vol-icon" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="静音切换">
           {vol === 0 ? '🔇' : '🔊'}
         </span>
         <input type="range" min="0" max="1" step="0.05" bind:value={vol} class="volume-slider" style="width: 70px;" />
       </div>
-
-      <!-- 关闭播放器 -->
-      <button class="ctrl-btn mini-close-btn" onclick={() => { queue.length = 0; }} title="关闭播放器">✕</button>
+      <button class="ctrl-btn mini-close-btn pc-only" onclick={onClearQueue} title="关闭播放器">✕</button>
     </div>
   </div>
 </div>
@@ -142,63 +124,41 @@
 
 <style>
   /* --------------------------------------------------------------------------
-     🎵 现代极简悬浮 Mini Player Bar (Spotify / Apple Music 风格)
+     🎵 现代三段式音频播放器 (PC 极简横排 / SP 移动端大按键三排布局)
      -------------------------------------------------------------------------- */
   .bottom-audio-bar {
     position: fixed;
-    bottom: 12px;
-    left: 16px;
-    right: 16px;
-    max-width: 1200px;
-    margin: 0 auto;
-    height: 64px;
-    background: rgba(15, 23, 42, 0.94);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 74px;
+    background: rgba(15, 23, 42, 0.96);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 16px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
     z-index: 9998;
-    padding: 0 16px;
+    padding: 0 24px;
     display: flex;
     align-items: center;
-    overflow: hidden;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .audio-bar-inner {
     width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    position: relative;
-    z-index: 2;
-  }
-
-  /* 顶部发光微进度条 (移动端展示) */
-  .mini-top-progress-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.08);
-    cursor: pointer;
-    z-index: 3;
-  }
-  .mini-top-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ef4444, #f97316);
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
-    transition: width 0.15s linear;
   }
 
   /* 1. 左侧歌曲元信息 */
   .audio-left-section {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     flex: 1;
     min-width: 0;
     max-width: 320px;
@@ -273,7 +233,7 @@
     align-items: center;
     gap: 4px;
     flex: 1.6;
-    max-width: 540px;
+    max-width: 560px;
   }
 
   .audio-main-controls {
@@ -296,8 +256,8 @@
 
   .ctrl-btn.sub-btn {
     font-size: 16px;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     color: #cbd5e1;
   }
@@ -307,12 +267,12 @@
   }
 
   .ctrl-btn.play-main-btn {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, #ef4444, #dc2626);
     color: #ffffff;
-    font-size: 16px;
+    font-size: 17px;
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
   }
   .ctrl-btn.play-main-btn:hover {
@@ -339,7 +299,7 @@
 
   .progress-bar-wrapper {
     flex: 1;
-    height: 16px;
+    height: 18px;
     display: flex;
     align-items: center;
     position: relative;
@@ -347,27 +307,27 @@
   }
   .progress-bar-bg {
     width: 100%;
-    height: 4px;
+    height: 5px;
     background: rgba(255, 255, 255, 0.12);
-    border-radius: 2px;
+    border-radius: 3px;
   }
   .progress-bar-fill {
-    height: 4px;
+    height: 5px;
     background: linear-gradient(90deg, #ef4444, #f97316);
-    border-radius: 2px;
+    border-radius: 3px;
     position: absolute;
     left: 0;
-    top: 6px;
+    top: 6.5px;
     pointer-events: none;
   }
   .progress-bar-handle {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     background: #ffffff;
     border-radius: 50%;
     position: absolute;
     top: 3px;
-    margin-left: -5px;
+    margin-left: -6px;
     box-shadow: 0 0 6px rgba(0,0,0,0.6);
     pointer-events: none;
     opacity: 0;
@@ -429,13 +389,13 @@
     background: rgba(239, 68, 68, 0.1);
   }
 
-  /* --------------------------------------------------------------------------
-     📱 移动端 (SP) 专属悬浮胶囊样式 (Spotify / Apple Music 现代 Mini Bar)
-     -------------------------------------------------------------------------- */
   .sp-only-flex {
     display: none;
   }
 
+  /* --------------------------------------------------------------------------
+     📱 移动端 (SP) 超大触控靶心布局 (彻底解决按错/难按问题)
+     -------------------------------------------------------------------------- */
   @media (max-width: 768px) {
     .pc-only {
       display: none !important;
@@ -445,84 +405,172 @@
     }
 
     .bottom-audio-bar {
+      height: auto !important;
+      min-height: 148px !important;
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
       left: 10px !important;
       right: 10px !important;
-      bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
-      height: 58px !important;
-      padding: 0 12px !important;
-      border-radius: 14px !important;
-      background: rgba(18, 24, 38, 0.96) !important;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6) !important;
-      border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      padding: 12px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px !important;
+      border-radius: 20px !important;
+      background: rgba(18, 24, 38, 0.98) !important;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      display: block !important;
     }
 
     .audio-bar-inner {
+      display: flex !important;
+      flex-direction: column !important;
       gap: 8px !important;
+      width: 100% !important;
+      position: relative !important;
     }
 
+    /* 1. 第一排：左侧大封面+歌名，右上角 🎤 🎛️ 📜 大按钮 */
     .audio-left-section {
+      display: flex !important;
+      align-items: center !important;
       max-width: calc(100% - 135px) !important;
-      gap: 10px !important;
+      width: 100% !important;
+      gap: 12px !important;
     }
 
     .vinyl-cover-wrapper, .audio-cover {
-      width: 40px !important;
-      height: 40px !important;
+      width: 44px !important;
+      height: 44px !important;
     }
 
     .audio-title {
-      font-size: 13.5px !important;
+      font-size: 14.5px !important;
       font-weight: 700 !important;
       line-height: 1.2 !important;
     }
 
     .audio-artist {
-      font-size: 11px !important;
+      font-size: 12px !important;
       color: #94a3b8 !important;
-      margin-top: 1px !important;
+      margin-top: 2px !important;
     }
 
     .audio-right-section {
+      position: absolute !important;
+      right: 0 !important;
+      top: 0 !important;
+      display: flex !important;
+      gap: 8px !important;
+      align-items: center !important;
       min-width: unset !important;
-      flex: initial !important;
-      gap: 6px !important;
     }
 
-    /* 移动端核心播放大键 (40px 优雅触控圆形) */
-    .mini-capsule-play-btn {
+    .sp-touch-top-action {
       width: 38px !important;
       height: 38px !important;
-      border-radius: 50% !important;
-      background: linear-gradient(135deg, #ef4444, #dc2626) !important;
-      color: #ffffff !important;
+      border-radius: 10px !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
       font-size: 16px !important;
-      box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
-    .mini-capsule-play-btn:active {
-      transform: scale(0.9) !important;
+    .sp-touch-top-action:active {
+      transform: scale(0.92) !important;
+      background: rgba(255, 255, 255, 0.16) !important;
     }
 
-    /* 移动端下一曲与播放列表 (34px 独立触控胶囊) */
-    .mini-capsule-btn {
-      width: 34px !important;
-      height: 34px !important;
-      border-radius: 50% !important;
-      background: rgba(255, 255, 255, 0.08) !important;
-      border: 1px solid rgba(255, 255, 255, 0.12) !important;
-      color: #f8fafc !important;
-      font-size: 14px !important;
+    /* 2. 第二排：满宽进度条与时间显示 (上下扩大点击感应区) */
+    .audio-center-section {
+      width: 100% !important;
+      max-width: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 8px !important;
+      margin-top: 2px !important;
     }
-    .mini-capsule-btn:active {
+
+    .audio-progress-container {
+      width: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+    }
+
+    .time-stamp {
+      font-size: 12px !important;
+      color: #94a3b8 !important;
+      font-weight: 500 !important;
+    }
+
+    .progress-bar-wrapper {
+      height: 24px !important;
+    }
+    .progress-bar-bg {
+      height: 6px !important;
+      border-radius: 3px !important;
+    }
+    .progress-bar-fill {
+      height: 6px !important;
+      border-radius: 3px !important;
+      top: 9px !important;
+    }
+    .progress-bar-handle {
+      width: 16px !important;
+      height: 16px !important;
+      margin-left: -8px !important;
+      top: 4px !important;
+      opacity: 1 !important;
+      background: #ffffff !important;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.7) !important;
+    }
+
+    /* 3. 第三排：超大按键控制条 (等距宽阔，绝不误触) */
+    .audio-main-controls {
+      width: 100% !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 0 4px !important;
+    }
+
+    .sp-touch-sub-btn {
+      width: 44px !important;
+      height: 44px !important;
+      border-radius: 50% !important;
+      background: rgba(255, 255, 255, 0.07) !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      font-size: 17px !important;
+    }
+    .sp-touch-sub-btn:active {
       transform: scale(0.9) !important;
       background: rgba(255, 255, 255, 0.18) !important;
     }
 
-    .ctrl-btn.mini-close-btn {
-      width: 24px !important;
-      height: 24px !important;
-      font-size: 11px !important;
-      color: #64748b !important;
-      margin-left: 2px !important;
+    .sp-touch-side-btn {
+      width: 48px !important;
+      height: 48px !important;
+      border-radius: 50% !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      font-size: 19px !important;
+      font-weight: 700 !important;
+    }
+    .sp-touch-side-btn:active {
+      transform: scale(0.9) !important;
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .sp-touch-play-btn {
+      width: 58px !important;
+      height: 58px !important;
+      border-radius: 50% !important;
+      background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+      box-shadow: 0 4px 18px rgba(239, 68, 68, 0.6) !important;
+      font-size: 24px !important;
+      border: none !important;
+    }
+    .sp-touch-play-btn:active {
+      transform: scale(0.9) !important;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
     }
   }
 </style>

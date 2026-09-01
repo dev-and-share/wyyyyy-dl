@@ -12,6 +12,7 @@
   import PeqDrawer from './components/PeqDrawer.svelte';
   import PlaylistDrawer from './components/PlaylistDrawer.svelte';
   import RevealModal from './components/RevealModal.svelte';
+  import PlayerBar from './components/PlayerBar.svelte';
 
   function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
     if (typeof window !== 'undefined') {
@@ -473,66 +474,41 @@
   {/if}
 </div>
 
-<!-- 底部播放栏 -->
-<div class="bottom-audio-bar">
-  <audio
-    bind:this={audioEl}
-    onplay={() => playing = true}
-    onpause={() => playing = false}
-    ontimeupdate={(e) => {
-      const a = e.currentTarget;
-      curTime = a.currentTime;
-      duration = a.duration || 0;
-      if (curTime > 0) {
-        try { localStorage.setItem('wyyyy_player_time', String(curTime)); } catch {}
-      }
-    }}
-    onloadedmetadata={(e) => { duration = (e.currentTarget as HTMLAudioElement).duration || 0; }}
-    onended={() => { if (playMode === 'single') { if (audioEl) audioEl.currentTime = 0; audioEl?.play(); } else next(); }}
-  ></audio>
-  <div class="audio-bar-inner">
-    <div class="audio-left-section" onclick={() => showLyric = !showLyric} style="cursor:pointer;">
-      <div class="vinyl-cover-wrapper">
-        <img
-          src={curTrack?.cover || '/favicon.png'}
-          alt=""
-          class="audio-cover"
-          class:playing={playing}
-          referrerpolicy="no-referrer"
-          onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = '/favicon.png'; }}
-        />
-      </div>
-      <div class="audio-text">
-        <div class="audio-title-row"><div class="audio-title">{curTrack?.name || '未在播放'}</div></div>
-        <div class="audio-artist">{curTrack?.artist || ''}</div>
-      </div>
-    </div>
-    <div class="audio-center-section">
-      <div class="audio-main-controls">
-        <button class="ctrl-btn sub-btn" onclick={() => playMode = playMode === 'list' ? 'single' : playMode === 'single' ? 'shuffle' : 'list'} title={playMode}>
-          {playMode === 'single' ? '🔂' : playMode === 'shuffle' ? '🔀' : '🔁'}
-        </button>
-        <button class="ctrl-btn sub-btn" onclick={prev}>⏮</button>
-        <button class="ctrl-btn play-main-btn" onclick={togglePlay}>{playing ? '⏸' : '▶'}</button>
-        <button class="ctrl-btn sub-btn" onclick={next}>⏭</button>
-      </div>
-      <div class="audio-progress-container">
-        <span class="time-stamp">{formatTime(curTime)}</span>
-        <div class="progress-bar-wrapper" onclick={seek}>
-          <div class="progress-bar-bg"></div>
-          <div class="progress-bar-fill" style="width:{duration ? (curTime / duration * 100) : 0}%"></div>
-          <div class="progress-bar-handle" style="left:{duration ? (curTime / duration * 100) : 0}%"></div>
-        </div>
-        <span class="time-stamp">{formatTime(duration)}</span>
-      </div>
-    </div>
-    <div class="audio-right-section">
-      <button class="ctrl-btn sub-btn" onclick={() => showLyric = !showLyric} title="全屏黑胶歌词">🎤</button>
-      <button class="ctrl-btn sub-btn" onclick={() => showPeq = !showPeq} title="5段参量均衡器">🎛️</button>
-      <button class="ctrl-btn sub-btn" onclick={() => showDrawer = !showDrawer} title="播放列表">📜</button>
-    </div>
-  </div>
-</div>
+<!-- 全局原生 Audio 引擎 (静默挂载) -->
+<audio
+  bind:this={audioEl}
+  onplay={() => playing = true}
+  onpause={() => playing = false}
+  ontimeupdate={(e) => {
+    const a = e.currentTarget;
+    curTime = a.currentTime;
+    duration = a.duration || 0;
+    if (curTime > 0) {
+      try { localStorage.setItem('wyyyy_player_time', String(curTime)); } catch {}
+    }
+  }}
+  onloadedmetadata={(e) => { duration = (e.currentTarget as HTMLAudioElement).duration || 0; }}
+  onended={() => { if (playMode === 'single') { if (audioEl) audioEl.currentTime = 0; audioEl?.play(); } else next(); }}
+></audio>
+
+<!-- 🎬 现代专业音频播放控制栏 (SP 大触控 / PC 优雅三段式) -->
+<PlayerBar
+  curTrack={curTrack}
+  queue={queue}
+  playing={playing}
+  curTime={curTime}
+  duration={duration}
+  playMode={playMode}
+  onTogglePlay={togglePlay}
+  onPrev={prev}
+  onNext={next}
+  onToggleMode={() => playMode = playMode === 'list' ? 'single' : playMode === 'single' ? 'shuffle' : 'list'}
+  onSeek={seek}
+  onLyric={() => showLyric = !showLyric}
+  onPeq={() => showPeq = !showPeq}
+  onQueue={() => showDrawer = !showDrawer}
+  onClearQueue={() => { queue = []; qIndex = 0; savePlayerState(); showToast('播放队列已清空', 'info'); }}
+/>
 
 <!-- 📜 播放列表 & 下载任务 统一抽屉 (就算歌单空也能打开，内含下载任务 Tab) -->
 {#if showDrawer}
