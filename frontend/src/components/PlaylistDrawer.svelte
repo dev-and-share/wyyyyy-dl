@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Track } from '../lib/types';
   import { formatArtist } from '../lib/utils';
+  import TaskStatusBadge from './TaskStatusBadge.svelte';
 
   let {
     queue = [],
@@ -226,30 +227,30 @@
       <!-- 2. 后台下载任务视图 -->
       <div class="drawer-view-panel" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
         <div class="playlist-drawer-body" style="flex:1; overflow-y:auto; padding:10px;">
-          <div class="monitor-task-list">
+          <div class="flex flex-col gap-1.5">
             {#each tasks as t}
-              <div class="monitor-task-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border-subtle); gap:8px;">
-                <div class="task-info" style="flex:1; min-width:0;">
-                  <span class="task-name" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; font-size:13px;">
+              <div class="flex justify-between items-center px-2.5 py-2 border-b border-[var(--border-subtle)] gap-2">
+                <div class="flex-1 min-w-0">
+                  <span class="truncate block text-[13px] text-[var(--text-main)]">
                     {t.name || t.id}
                   </span>
                 </div>
-                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                <div class="flex items-center gap-1.5 shrink-0">
                   {#if t.status === 'SUCCESS'}
                     <button
-                      class="btn-primary"
-                      style="padding:2px 8px; font-size:11px; border-radius:4px;"
+                      type="button"
+                      class="btn-primary px-2 py-0.5 text-[11px] rounded"
                       onclick={() => onReveal(t)}
                       title="在系统文件管理器中定位真实物理路径"
                     >
                       📂 定位
                     </button>
                   {/if}
-                  <span class="badge badge-{String(t.status).toLowerCase()}">{t.status}</span>
+                  <TaskStatusBadge status={t.status} />
                 </div>
               </div>
             {:else}
-              <div style="padding:32px 16px; text-align:center; color:var(--text-muted); font-size:13px;">暂无下载任务</div>
+              <div class="py-8 px-4 text-center text-[var(--text-muted)] text-[13px]">暂无下载任务</div>
             {/each}
           </div>
         </div>

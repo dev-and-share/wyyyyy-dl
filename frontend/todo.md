@@ -117,7 +117,8 @@
 ```
 
 ### 4-D 浮动下载监控组件
-- [ ] `DownloadMgrTab.svelte` — floating-monitor、task-item、badge 状态色
+- [x] `PlaylistDrawer.svelte` — 抽象出 `TaskStatusBadge.svelte`，将任务列表项重构为 Tailwind flex 布局
+- [x] `style.svelte.css` — 彻底删除遗留的 `.floating-monitor`、`.monitor-task-*`、`.badge`、`.badge-*` 规则（共 134 行）
 
 ```
 .floating-monitor → fixed bottom-[85px] right-6 w-[360px] bg-[var(--monitor-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-xl rounded-[16px] z-[9999] overflow-hidden transition-all
