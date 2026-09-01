@@ -47,15 +47,15 @@
     {/each}
   </div>
 
-  <!-- 工具栏 -->
-  <div class="tree-control-bar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:8px 10px; border-radius:8px; margin-bottom:8px;">
-    <div style="flex:1; min-width:200px; position:relative;">
-      <input type="text" placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..." bind:value={filterKw} style="width:100%; padding:7px 10px; border-radius:8px;" />
+  <!-- 树形全局控制与搜索 Bar -->
+  <div class="tree-control-bar">
+    <div class="tree-search-wrap">
+      <input type="text" class="tree-filter-input" placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..." bind:value={filterKw} />
     </div>
-    <div style="display:flex; gap:6px;">
-      <button class="tree-tool-btn" onclick={()=>expanded=new Set(tree.filter((t:any)=>t.directory).map((t:any)=>t.path))} style="padding:6px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--tag-btn-bg); font-size:12px; cursor:pointer;">📂 全部展开</button>
-      <button class="tree-tool-btn" onclick={()=>expanded.clear()} style="padding:6px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--tag-btn-bg); font-size:12px; cursor:pointer;">📁 全部折叠</button>
-      <button class="tree-tool-btn" onclick={()=> curRoot && loadBrowse(curRoot.path,true)} style="padding:6px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--tag-btn-bg); font-size:12px; cursor:pointer;">🔄 刷新</button>
+    <div class="tree-global-actions">
+      <button class="tree-tool-btn" onclick={()=>expanded=new Set(tree.filter((t:any)=>t.directory).map((t:any)=>t.path))} title="展开所有子文件夹">📂 全部展开</button>
+      <button class="tree-tool-btn" onclick={()=>expanded.clear()} title="折叠所有子文件夹">📁 全部折叠</button>
+      <button class="tree-tool-btn" onclick={()=> curRoot && loadBrowse(curRoot.path,true)} title="刷新整库">🔄 刷新</button>
     </div>
   </div>
 

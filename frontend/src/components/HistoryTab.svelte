@@ -19,8 +19,12 @@
     <div style="display:flex; flex-wrap:wrap; gap:8px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:8px; margin-bottom:10px; align-items:center; font-size:13px;">
       <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
       <span>占用空间：<strong>{histStats?.totalSize ? formatBytes(histStats.totalSize) : '-'}</strong></span>
-      <span style="color:#ef4444;">⚠️ 文件缺失：{histStats?.missingCount ?? 0} 首</span>
-      <span style="color:#f59e0b;">📁 非 MP3：{histStats?.nonMp3Count ?? 0} 首</span>
+      {#if (histStats?.missingCount ?? 0) > 0}
+        <span style="color:#ef4444;">⚠️ 文件缺失：{histStats.missingCount} 首</span>
+      {/if}
+      {#if (histStats?.nonMp3Count ?? 0) > 0}
+        <span style="color:#f59e0b;">📁 非 MP3：{histStats.nonMp3Count} 首</span>
+      {/if}
       <div style="margin-left:auto; display:flex; gap:6px;">
         <button class="btn-primary" onclick={()=>loadHistory(1)}>🔄 刷新</button>
         <button class="btn-primary" style="background:#6366f1;" onclick={()=>{ const v=prompt('搜索'); if(v!==null){ histKw=v; loadHistory(1); }}}>🔍 搜索</button>

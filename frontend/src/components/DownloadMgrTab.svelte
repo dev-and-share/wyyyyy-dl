@@ -215,12 +215,16 @@
     <div style="display:flex; flex-wrap:wrap; gap:8px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:8px; margin-bottom:10px; align-items:center; font-size:13px;">
       <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
       <span>占用空间：<strong>{histStats?.totalSize ? formatBytes(histStats.totalSize) : '-'}</strong></span>
-      <span style="color:#ef4444; cursor:pointer;" onclick={openMissingModal} title="点击查看所有缺失文件清单">
-        ⚠️ 文件缺失：{histStats?.missingCount ?? 0} 首 <span style="font-size:10px; border:1px solid rgba(239,68,68,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
-      </span>
-      <span style="color:#f59e0b; cursor:pointer;" onclick={openNonMp3Modal} title="点击查看所有非 MP3 音频清单">
-        📁 非 MP3 格式：{histStats?.nonMp3Count ?? 0} 首 <span style="font-size:10px; border:1px solid rgba(245,158,11,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
-      </span>
+      {#if (histStats?.missingCount ?? 0) > 0}
+        <span style="color:#ef4444; cursor:pointer;" onclick={openMissingModal} title="点击查看所有缺失文件清单">
+          ⚠️ 文件缺失：{histStats.missingCount} 首 <span style="font-size:10px; border:1px solid rgba(239,68,68,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
+        </span>
+      {/if}
+      {#if (histStats?.nonMp3Count ?? 0) > 0}
+        <span style="color:#f59e0b; cursor:pointer;" onclick={openNonMp3Modal} title="点击查看所有非 MP3 音频清单">
+          📁 非 MP3 格式：{histStats.nonMp3Count} 首 <span style="font-size:10px; border:1px solid rgba(245,158,11,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
+        </span>
+      {/if}
       <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn-primary" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed); padding:6px 10px; font-size:12px;" onclick={scanExternalLibraries}>📁 外部曲库</button>
         <button class="btn-primary" style="background:linear-gradient(135deg,#06b6d4,#0891b2); padding:6px 10px; font-size:12px;" onclick={scanDiskFiles}>🔍 对齐磁盘</button>
