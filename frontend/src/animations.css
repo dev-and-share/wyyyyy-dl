@@ -1,0 +1,117 @@
+/* ==========================================================================
+   🎬 NetEase Music Downloader Keyframe Animations
+   ========================================================================== */
+
+/* 1. Modal & Overlay */
+@keyframes modalBackdropFadeIn {
+    to { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+    to { transform: scale(1) translateY(0); }
+}
+
+/* 2. Playlist Drawer (PC & SP) */
+@keyframes drawerFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes drawerSlideUpPC {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes drawerSlideUpSP {
+    from { transform: translateY(100%); opacity: 0.5; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes drawerBadgePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.08); }
+}
+
+/* 3. Audio & Interactive */
+@keyframes pulse-ring {
+    from { opacity: 0.65; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes heartPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.36); }
+    100% { transform: scale(1); }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 4. Toast Notifications */
+@keyframes toast-fade-in {
+    from {
+        opacity: 0;
+        transform: translateX(16px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes toast-fade-out {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(16px) scale(0.96);
+    }
+}
+
+/* 5. Batch Manage Bar */
+@keyframes bar-slide-up {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+/* 6. PEQ Parametric Equalizer */
+@keyframes peqOverlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes peqModalPopIn {
+    from { opacity: 0; transform: scale(0.94) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 7. ActionSheet (Mobile Menu) */
+@keyframes actionSheetFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes actionSheetFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes actionSheetSlideUp {
+    from { transform: translateY(100%); opacity: 0.7; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes actionSheetSlideDown {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
+}

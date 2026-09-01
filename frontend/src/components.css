@@ -1,0 +1,45 @@
+/* ==========================================================================
+   🧩 Preserved Component Layers & Complex State Combinations
+   ========================================================================== */
+
+@layer components {
+    /* 🎵 正在播放曲目浅绿高亮系统 (Playing Track Light Green Highlight) */
+    .track-item-card.is-active-playing {
+        background: rgba(16, 185, 129, 0.08) !important;
+        border-color: rgba(16, 185, 129, 0.3) !important;
+    }
+    .track-item-card.is-active-playing .clickable-track-title {
+        color: #059669 !important;
+        font-weight: 700 !important;
+    }
+    [data-theme="dark"] .track-item-card.is-active-playing {
+        background: rgba(16, 185, 129, 0.12) !important;
+        border-color: rgba(16, 185, 129, 0.35) !important;
+    }
+    [data-theme="dark"] .track-item-card.is-active-playing .clickable-track-title {
+        color: #34d399 !important;
+    }
+    .track-btn-slot.is-playing-btn,
+    .jump-link-btn.is-playing-btn {
+        background: rgba(16, 185, 129, 0.12) !important;
+        border-color: rgba(16, 185, 129, 0.35) !important;
+        color: #059669 !important;
+        font-weight: 600 !important;
+    }
+    [data-theme="dark"] .track-btn-slot.is-playing-btn,
+    [data-theme="dark"] .jump-link-btn.is-playing-btn {
+        background: rgba(16, 185, 129, 0.2) !important;
+        border-color: rgba(16, 185, 129, 0.45) !important;
+        color: #34d399 !important;
+    }
+
+    /* 📁 本地文件夹树动态计算缩进 (Dynamic CSS Variable --tree-level) */
+    .tree-node-row {
+        padding-left: calc(12px + var(--tree-level, 0) * 18px) !important;
+    }
+    @media (max-width: 768px) {
+        .tree-node-row {
+            padding-left: calc(8px + var(--tree-level, 0) * 10px) !important;
+        }
+    }
+}

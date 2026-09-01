@@ -1,10 +1,11 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 // 双版并存：产物隔离至 ../src/main/resources/static/svelte，不覆盖 static/js|css|sw.js
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte(), tailwindcss()],
   base: '/svelte/',
   server: {
     port: 5173,
