@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { formatTime } from '../lib/utils';
+  import { formatTime, formatArtist } from '../lib/utils';
   import { api } from '../lib/api';
 
   type Lrc = { time: number; text: string };
@@ -142,7 +142,7 @@
               </svg>
             </button>
           </div>
-          <div class="fullscreen-artist">{track?.artist || '未知歌手'}</div>
+          <div class="fullscreen-artist">{formatArtist(track?.artist) || '未知歌手'}</div>
         </div>
       </div>
 

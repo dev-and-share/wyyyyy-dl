@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Track } from '../lib/types';
+  import { formatArtist } from '../lib/utils';
 
   let {
     queue = [],
@@ -180,9 +181,11 @@
                 <span style="font-weight:{realIdx === qIndex ? 700 : 500}; color:{realIdx === qIndex ? '#38bdf8' : 'inherit'}; font-size:13px;">
                   {realIdx + 1}. {t.name}
                 </span>
-                <span style="color:var(--text-muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                  - {t.artist}
-                </span>
+                {#if formatArtist(t.artist)}
+                  <span style="color:var(--text-muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    - {formatArtist(t.artist)}
+                  </span>
+                {/if}
                 {#if isServer}
                   <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地已下载">🖥️</span>
                 {/if}

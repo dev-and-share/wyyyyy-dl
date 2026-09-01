@@ -4,3 +4,37 @@ export function formatBytes(b:number, d=2){ if(!b) return '0 B'; const k=1024, s
 export function getApiCache(key:string){ try{ const r=localStorage.getItem('pwa_api_cache_'+key); return r?JSON.parse(r):null }catch{return null}}
 export function setApiCache(key:string, data:any){ try{ localStorage.setItem('pwa_api_cache_'+key, JSON.stringify({data, timestamp:Date.now()}))}catch{}}
 export function deleteApiCache(key:string){ try{ localStorage.removeItem('pwa_api_cache_'+key)}catch{}}
+
+export function formatArtist(trackOrArtist: any): string {
+  if (!trackOrArtist) return '';
+  if (typeof trackOrArtist === 'string') {
+    const s = trackOrArtist.trim();
+    if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return '';
+    return s;
+  }
+  if (Array.isArray(trackOrArtist)) {
+    return trackOrArtist
+      .map((a: any) => (typeof a === 'string' ? a.trim() : (a?.name ? String(a.name).trim() : '')))
+      .filter((n: string) => n && n.toLowerCase() !== 'null' && n.toLowerCase() !== 'undefined')
+      .join('/');
+  }
+  if (typeof trackOrArtist === 'object') {
+    const arList = trackOrArtist.ar || trackOrArtist.artists;
+    if (Array.isArray(arList)) {
+      const formatted = formatArtist(arList);
+      if (formatted) return formatted;
+    } else if (typeof arList === 'string') {
+      const formatted = formatArtist(arList);
+      if (formatted) return formatted;
+    }
+    const single = trackOrArtist.artist || trackOrArtist.ar_name;
+    if (typeof single === 'string') {
+      const formatted = formatArtist(single);
+      if (formatted) return formatted;
+    } else if (typeof single === 'object' && single?.name) {
+      const formatted = formatArtist(single.name);
+      if (formatted) return formatted;
+    }
+  }
+  return '';
+}

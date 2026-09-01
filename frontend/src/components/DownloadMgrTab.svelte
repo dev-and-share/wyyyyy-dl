@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import { api } from '../lib/api';
-  import { formatBytes } from '../lib/utils';
+  import { formatBytes, formatArtist } from '../lib/utils';
 
   let {
     onPlayQueue,
@@ -285,12 +285,13 @@
     <!-- 历史曲目列表 -->
     <ul class="data-list scrollable-list">
       {#each histList as h, idx}
+        {@const artistName = formatArtist(h.artist)}
         <li class="track-item-card" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
           <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: h.artist, cover: '/favicon.png', url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
+            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: '/favicon.png', url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
               {(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || '未知歌曲'}
             </strong>
-            {#if h.artist}<span style="color:var(--text-secondary); font-size:12px;"> - {h.artist}</span>{/if}
+            {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
             <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地已下载">🖥️</span>
             {#if h.fileExists === false}
               <span style="font-size:10px; background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); padding:1px 4px; border-radius:4px;">⚠️ 失效</span>
@@ -298,7 +299,7 @@
           </div>
           <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0;">
             {#if h.fileExists !== false}
-              <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: h.artist, cover: '/favicon.png', url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
+              <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: '/favicon.png', url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
                 ▶️ 播放
               </button>
               <button class="jump-link-btn" style="background:rgba(6,182,212,0.15); color:#22d3ee; border-color:rgba(6,182,212,0.3);" onclick={() => onReveal(h)}>
@@ -341,8 +342,9 @@
           </div>
           <ul class="data-list scrollable-list" style="margin:0; padding:0;">
             {#each modalList as item, i}
+              {@const mArtist = formatArtist(item.artist)}
               <li style="padding:6px 10px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12px;">
-                <div style="font-weight:600; color:var(--text-main);">{i + 1}. {item.songName} - {item.artist}</div>
+                <div style="font-weight:600; color:var(--text-main);">{i + 1}. {item.songName}{mArtist ? ' - ' + mArtist : ''}</div>
                 <div style="color:var(--text-muted); font-size:11px; font-family:monospace; word-break:break-all;">{item.filePath}</div>
               </li>
             {/each}

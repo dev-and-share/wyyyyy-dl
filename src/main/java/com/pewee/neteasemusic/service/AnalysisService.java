@@ -213,24 +213,26 @@ public class AnalysisService {
         }
     }
 	
-	/**
-     * 搜索 
-     * @param keyword 关键词
-     * @param limit 每页条数
-     * @param offset 偏移量
-     * @param type  搜索类型
-     * 	单曲	1
-		歌手	100
-		专辑	10
-		歌单	1000
-     * @return
-     * @throws Exception
-     */
-    public List<?> searchMusic(String keywords, Integer limit,int offset,Integer type) {
+    private String parseArtists(JSONArray arArray) {
+        if (arArray == null || arArray.isEmpty()) {
+            return null;
+        }
+        String artists = arArray.stream()
+            .map(ar -> {
+                if (ar instanceof JSONObject) {
+                    return ((JSONObject) ar).getString("name");
+                } else if (ar instanceof String) {
+                    return (String) ar;
+                }
+                return null;
+            })
+            .filter(name -> name != null && !name.trim().isEmpty() && !"null".equalsIgnoreCase(name.trim()) && !"undefined".equalsIgnoreCase(name.trim()))
+            .collect(Collectors.joining("/"));
+        return (artists != null && !artists.trim().isEmpty()) ? artists.trim() : null;
+    }
+
+    public List<?> searchMusic(String keywords, int limit, int offset, int type) {
     	checkReady();
-    	if (null == type) {
-    		type = 1;
-    	}
         try {
             String respStr = neteaseAPIService.searchMusic(keywords, limit,offset,type);
             JSONObject resp = JSON.parseObject(respStr);
@@ -244,11 +246,11 @@ public class AnalysisService {
                     TrackDTO dto = new TrackDTO();
                     dto.setId(song.getLong("id"));
                     dto.setName(song.getString("name"));
-                    dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
-                    dto.setAlbum(song.getJSONObject("al").getString("name"));
-                    dto.setArtists(song.getJSONArray("ar").stream()
-                        .map(ar -> ((JSONObject) ar).getString("name"))
-                        .collect(Collectors.joining("/")));
+                    if (song.getJSONObject("al") != null) {
+                        dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
+                        dto.setAlbum(song.getJSONObject("al").getString("name"));
+                    }
+                    dto.setArtists(parseArtists(song.getJSONArray("ar")));
                     trackList.add(dto);
                 }
                 return trackList;
@@ -316,7 +318,8 @@ public class AnalysisService {
             } else {
                 playlistInfo.setCreator(playlist.getString("creator"));
             }
-            playlistInfo.setTrackCount(playlist.getIntValue("trackCount"));
+            int rawTrackCount = playlist.getIntValue("trackCount") + playlist.getIntValue("cloudTrackCount");
+            playlistInfo.setTrackCount(rawTrackCount);
 
             Long creatorUserId = playlist.getLong("userId");
             if (creatorUserId == null && playlist.getJSONObject("creator") != null) {
@@ -350,11 +353,7 @@ public class AnalysisService {
                         dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
                         dto.setAlbum(track.getJSONObject("al").getString("name"));
                     }
-                    if (track.getJSONArray("ar") != null) {
-                        dto.setArtists(track.getJSONArray("ar").stream()
-                            .map(ar -> ((JSONObject) ar).getString("name"))
-                            .collect(Collectors.joining("/")));
-                    }
+                    dto.setArtists(parseArtists(track.getJSONArray("ar")));
                     trackList.add(dto);
                 }
             }
@@ -390,11 +389,7 @@ public class AnalysisService {
                                         dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
                                         dto.setAlbum(song.getJSONObject("al").getString("name"));
                                     }
-                                    if (song.getJSONArray("ar") != null) {
-                                        dto.setArtists(song.getJSONArray("ar").stream()
-                                            .map(ar -> ((JSONObject) ar).getString("name"))
-                                            .collect(Collectors.joining("/")));
-                                    }
+                                    dto.setArtists(parseArtists(song.getJSONArray("ar")));
                                     chunkTracks.add(dto);
                                 }
                             }
@@ -414,6 +409,12 @@ public class AnalysisService {
                     }
                 }
                 log.info("歌单详情全量解析完毕, 实际获得歌曲数: {}", trackList.size());
+            }
+
+            if (playlistInfo.getTrackCount() == null || playlistInfo.getTrackCount() == 0) {
+                playlistInfo.setTrackCount(trackList.size());
+            } else {
+                playlistInfo.setTrackCount(Math.max(playlistInfo.getTrackCount(), trackList.size()));
             }
 
             playlistInfo.setTracks(trackList);
@@ -439,21 +440,23 @@ public class AnalysisService {
             albumInfo.setName(album.getString("name"));
             albumInfo.setCoverImgUrl(album.getString("picUrl"));
             albumInfo.setPublishTime(album.getLong("publishTime"));
-            albumInfo.setArtist(album.getJSONObject("artist").getString("name"));
+            albumInfo.setArtist(album.getJSONObject("artist") != null ? album.getJSONObject("artist").getString("name") : null);
 
             JSONArray songs = json.getJSONArray("songs");
             List<TrackDTO> trackList = new ArrayList<>();
-            for (int i = 0; i < songs.size(); i++) {
-                JSONObject track = songs.getJSONObject(i);
-                TrackDTO dto = new TrackDTO();
-                dto.setId(track.getLong("id"));
-                dto.setName(track.getString("name"));
-                dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
-                dto.setAlbum(track.getJSONObject("al").getString("name"));
-                dto.setArtists(track.getJSONArray("ar").stream()
-                    .map(ar -> ((JSONObject) ar).getString("name"))
-                    .collect(Collectors.joining("/")));
-                trackList.add(dto);
+            if (songs != null) {
+                for (int i = 0; i < songs.size(); i++) {
+                    JSONObject track = songs.getJSONObject(i);
+                    TrackDTO dto = new TrackDTO();
+                    dto.setId(track.getLong("id"));
+                    dto.setName(track.getString("name"));
+                    if (track.getJSONObject("al") != null) {
+                        dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
+                        dto.setAlbum(track.getJSONObject("al").getString("name"));
+                    }
+                    dto.setArtists(parseArtists(track.getJSONArray("ar")));
+                    trackList.add(dto);
+                }
             }
             albumInfo.setSongs(trackList);
             result.setAlbum(albumInfo);
@@ -494,11 +497,7 @@ public class AnalysisService {
                         dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
                         dto.setAlbum(track.getJSONObject("al").getString("name"));
                     }
-                    if (track.containsKey("ar") && track.getJSONArray("ar") != null) {
-                        dto.setArtists(track.getJSONArray("ar").stream()
-                            .map(ar -> ((JSONObject) ar).getString("name"))
-                            .collect(Collectors.joining("/")));
-                    }
+                    dto.setArtists(parseArtists(track.getJSONArray("ar")));
                     trackList.add(dto);
                 }
             }
@@ -544,7 +543,8 @@ public class AnalysisService {
                         JSONObject creator = pl.getJSONObject("creator");
                         dto.setCreator(creator != null ? creator.getString("nickname") : null);
 
-                        dto.setTrackCount(pl.getIntValue("trackCount"));
+                        int totalTrackCount = pl.getIntValue("trackCount") + pl.getIntValue("cloudTrackCount");
+                        dto.setTrackCount(totalTrackCount);
                         dto.setDescription(pl.getString("description"));
                         dto.setSubscribed(pl.getBoolean("subscribed"));
                         if (creator != null) {

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { myPlaylists, allTracks, pageSize, getPaged, getTotalPages, getPlaylist, getPlaylistFilter, getCurPage, loadMyPlaylists, loadPlaylistDetail, incPage } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
+  import { formatArtist } from '../lib/utils';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -156,7 +157,7 @@
           <div class="detail-header-sub">{playlist.creator || '未知'} | 共 {allTracks.length} 首</div>
           <div class="detail-btn-group">
             <button class="btn-primary" onclick={() => api.downloadPlaylist(String(playlist.id)).then(() => showToast('已提交下载', 'success'))}>🖥️ 下载到电脑</button>
-            <button class="btn-primary" style="background:#22c55e;" onclick={() => onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: (t.ar?.map((a: any) => a.name).join('/') || t.artists || ''), cover: t.al?.picUrl || '/favicon.png' })))}>▶️ 播放歌单</button>
+            <button class="btn-primary" style="background:#22c55e;" onclick={() => onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })))}>▶️ 播放歌单</button>
           </div>
         </div>
       </div>
@@ -164,7 +165,7 @@
         {#each paged as t, i}
           {@const idx = (curPage - 1) * pageSize + i + 1}
           {@const isLocal = (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true}
-          {@const artist = t.ar?.map((a: any) => a.name).join('/') || t.artists || ''}
+          {@const artist = formatArtist(t)}
           <li>
             <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
               <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleViewSong(String(t.id))}>{idx}. {t.name}{artist ? ' - ' + artist : ''}</strong>
@@ -210,7 +211,7 @@
       <button class="btn-primary inline-action-btn" onclick={() => handleViewSong(songId)}>查看<span class="pc-only-text">单曲信息</span></button>
     </div>
     {#if songInfo}
-      {@const arText = songInfo.ar_name || songInfo.artist || '群星 / 未知'}
+      {@const arText = formatArtist(songInfo) || '群星 / 未知'}
       {@const alText = songInfo.al_name || songInfo.album || '暂无专辑'}
       {@const sizeText = songInfo.size || '未知大小'}
       {@const levelText = songInfo.level || songLevel}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '../lib/api';
+  import { formatArtist } from '../lib/utils';
 
   let {
     albumId = '',
@@ -169,15 +170,16 @@
     <ul class="data-list scrollable-list">
       {#each sResults as r, idx}
         {#if sType === '1'}
+          {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
           <li class="track-item-card">
             <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: r.artists || '', cover: '/favicon.png' }]))}>{idx + 1}. {r.name}</strong>
-              {#if r.artists}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {r.artists}</span>{/if}
+              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }]))}>{idx + 1}. {r.name}</strong>
+              {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
               <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
             </div>
             <div style="display:flex; gap:6px; flex-shrink:0;">
               {#if onPlayQueue}
-                <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: r.artists || '', cover: '/favicon.png' }])}>▶️ 播放</button>
+                <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }])}>▶️ 播放</button>
               {/if}
               {#if onSong}
                 <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
@@ -185,10 +187,11 @@
             </div>
           </li>
         {:else if sType === '10'}
+          {@const albumArtist = formatArtist(r.artist || r.artists)}
           <li>
             <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
               <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleAlbum(String(r.id))}>{idx + 1}. {r.name}</strong>
-              {#if r.artist}<span style="color:var(--text-secondary);"> - {typeof r.artist === 'object' ? r.artist.name : r.artist}</span>{/if}
+              {#if albumArtist}<span style="color:var(--text-secondary);"> - {albumArtist}</span>{/if}
               {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
               <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
             </div>
@@ -232,6 +235,7 @@
     {#if albumLoading}
       <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">🔄 正在解析专辑数据，请稍候...</div>
     {:else if album}
+      {@const headerArtist = formatArtist(album.artist || album.artists) || '未知歌手'}
       <div class="detail-header-card" style="margin-bottom:15px;">
         <img
           src={album.coverImgUrl || album.picUrl || '/favicon.png'}
@@ -242,7 +246,7 @@
         />
         <div class="detail-header-info">
           <h4 class="detail-header-title">{album.name || '未知专辑'}</h4>
-          <div class="detail-header-sub">歌手：{typeof album.artist === 'object' ? album.artist.name : (album.artist || '未知歌手')} | 发行时间：{album.publishTime || '-'}</div>
+          <div class="detail-header-sub">歌手：{headerArtist} | 发行时间：{album.publishTime || '-'}</div>
           <div class="detail-header-sub" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">共包含 {album.songs?.length || 0} 首曲目</div>
           <div class="detail-btn-group" style="display:flex; gap:6px; flex-wrap:wrap;">
             <button class="btn-primary flex-1-btn" onclick={downloadFullAlbum}>🖥️ 下载到电脑</button>
@@ -254,7 +258,7 @@
       <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">专辑曲目列表 ({album.songs ? album.songs.length : 0} 首)：</h4>
       <ul class="data-list scrollable-list">
         {#each (album.songs || []) as s, i}
-          {@const artistName = typeof s.artist === 'object' ? s.artist.name : (s.artist || album.artist || '')}
+          {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
           {@const isLocal = (downloadedSet && downloadedSet.has(Number(s.id))) || s.isLocal === true}
           <li class="track-item-card" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
             <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">

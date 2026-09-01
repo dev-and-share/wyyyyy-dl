@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatTime } from '../lib/utils';
+  import { formatTime, formatArtist } from '../lib/utils';
   import { queue, playerState, getCurTrack } from '../lib/player.svelte';
   let { audioEl, playing, curTime, duration, onToggle, onPrev, onNext, onSeek, onLyric, onQueue } = $props<{
     audioEl?: HTMLAudioElement, playing:boolean, curTime:number, duration:number,
@@ -18,7 +18,7 @@
       <div class="vinyl-cover-wrapper"><img src={curTrack?.cover||'/favicon.png'} alt="" class="audio-cover" class:playing={playing} /></div>
       <div class="audio-text">
         <div class="audio-title-row"><div class="audio-title">{curTrack?.name||'未在播放'}</div></div>
-        <div class="audio-artist">{curTrack?.artist||''}</div>
+        <div class="audio-artist">{formatArtist(curTrack?.artist)}</div>
       </div>
     </div>
     <div class="audio-center-section">
