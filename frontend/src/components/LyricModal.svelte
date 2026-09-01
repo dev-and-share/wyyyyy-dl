@@ -126,9 +126,9 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="sv-lyric-card" onclick={(e) => e.stopPropagation()}>
-    <!-- 头部栏 (安全区避让灵动岛，两端按钮 100% 对称) -->
+    <!-- 头部栏 (安全区避让灵动岛，标题正中居中，右侧关闭按钮) -->
     <div class="sv-lyric-header">
-      <button class="sv-lyric-icon-btn" onclick={onClose} title="收起全屏播放器">🔽</button>
+      <div class="sv-lyric-header-placeholder" aria-hidden="true"></div>
       <h3 class="sv-lyric-title">🎵 全屏沉浸播放</h3>
       <button class="sv-lyric-icon-btn" onclick={onClose} title="关闭全屏">✕</button>
     </div>
@@ -290,6 +290,9 @@
   .sv-lyric-title {
     font-size: 16.5px; font-weight: 700; margin: 0; color: var(--text-main, #f8fafc);
     flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px;
+  }
+  .sv-lyric-header-placeholder {
+    width: 38px; height: 38px; flex-shrink: 0; pointer-events: none;
   }
   .sv-lyric-icon-btn {
     background: var(--btn-slot-bg, rgba(255, 255, 255, 0.1)); border: none;

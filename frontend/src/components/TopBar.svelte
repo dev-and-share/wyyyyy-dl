@@ -6,7 +6,8 @@
     onSwitchTab,
     onToggleTheme,
     onToggleRepeat,
-    onSwitchToLegacy
+    onSwitchToLegacy,
+    onRefresh
   } = $props<{
     tab: 'playlist' | 'search' | 'download-mgr';
     themeMode: 'dark' | 'light' | 'auto';
@@ -15,12 +16,15 @@
     onToggleTheme: () => void;
     onToggleRepeat: () => void;
     onSwitchToLegacy: () => void;
+    onRefresh?: () => void;
   }>();
 </script>
 
 <!-- 顶栏 (TopBar) -->
 <div class="app-top-bar">
-  <div class="app-brand">
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="app-brand" onclick={onRefresh} title="点击刷新数据" style="cursor:pointer;">
     <span class="brand-logo">🎵</span>
     <span class="brand-title">网易云下载器</span>
     <span class="brand-badge">Svelte 5</span>

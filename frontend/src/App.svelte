@@ -15,6 +15,8 @@
   import PlaylistDrawer from './components/PlaylistDrawer.svelte';
   import RevealModal from './components/RevealModal.svelte';
   import PlayerBar from './components/PlayerBar.svelte';
+  import PullToRefresh from './components/PullToRefresh.svelte';
+  import { executeReveal } from './lib/revealHelper';
 
   function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
     const raw = typeof window !== 'undefined' ? location.hash.replace('#', '').split('?')[0] : '';
@@ -276,24 +278,7 @@
   // ---------- 定位处理 (触发 RevealModal 弹窗) ----------
   async function handleReveal(item: any) {
     try {
-      const j = await api.reveal({
-        id: item.songId || item.id,
-        name: item.name || item.songName,
-        artist: item.artist || item.ar_name,
-        path: item.path || item.filePath,
-        taskId: item.taskId
-      });
-      if (j?.code === '000000') {
-        revealData = {
-          path: j.data || item.path || item.filePath || '',
-          msg: '🚀 已为您在系统文件管理器中定位物理文件！'
-        };
-      } else {
-        revealData = {
-          path: item.path || item.filePath || j?.data || '',
-          msg: j?.msg || '未找到文件物理路径'
-        };
-      }
+      revealData = await executeReveal(item);
     } catch (e: any) {
       showToast('定位失败: ' + (e.message || e), 'error');
     }
@@ -306,17 +291,8 @@
         downloadedSet = new Set(j.data.map(Number));
         return;
       }
-    } catch {}
-
-    // 降级兜底
-    try {
-      const j = await api.historyList('', 1);
-      const list = j?.data?.list || [];
-      const s = new Set<number>();
-      list.forEach((item: any) => {
-        if (item.songId) s.add(Number(item.songId));
-      });
-      downloadedSet = s;
+      const h = await api.historyList('', 1);
+      downloadedSet = new Set((h?.data?.list || []).map((x: any) => Number(x.songId)).filter(Boolean));
     } catch {}
   }
 
@@ -394,7 +370,24 @@
       }
     }).catch(() => {});
   });
+
+  async function handleRefresh() {
+    showToast('正在刷新数据...', 'info', 1200);
+    try {
+      const j = await api.likeList();
+      if (j?.code === '000000' && Array.isArray(j.data)) {
+        likedSet = new Set(j.data.map((n: any) => Number(n)));
+        setApiCache('liked_song_ids', j.data);
+      }
+      showToast('刷新完成', 'success', 1500);
+    } catch {
+      window.location.reload();
+    }
+  }
 </script>
+
+<!-- 📱 手机端下拉刷新指示器 -->
+<PullToRefresh onRefresh={handleRefresh} />
 
 <!-- 顶栏导航 -->
 <TopBar
@@ -403,6 +396,7 @@
   onToggleTheme={toggleTheme}
   onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
   onSwitchToLegacy={switchToLegacy}
+  onRefresh={handleRefresh}
 />
 
 <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->

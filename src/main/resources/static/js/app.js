@@ -324,4 +324,99 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
     });
+
+    // 14. 📱 初始化 iOS PWA 独立模式全局下拉刷新手势 (Pull-to-Refresh)
+    initPullToRefresh();
 });
+
+/**
+ * 📱 初始化 iOS PWA 独立全屏模式下拉刷新 (Pull-to-Refresh)
+ */
+function initPullToRefresh() {
+    let startY = 0;
+    let isDragging = false;
+    let isRefreshing = false;
+    const THRESHOLD = 65;
+
+    // 动态创建极简下拉提示胶囊 DOM
+    const pill = document.createElement('div');
+    pill.id = 'legacy-pull-refresh';
+    pill.style.cssText = 'position:fixed; top:-50px; left:0; right:0; display:flex; justify-content:center; align-items:center; z-index:99999; pointer-events:none; transition:transform 0.15s ease-out, opacity 0.15s ease-out;';
+    pill.innerHTML = `
+        <div style="background:rgba(17,24,39,0.92); border:1px solid rgba(255,255,255,0.15); backdrop-filter:blur(16px); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px; box-shadow:0 6px 20px rgba(0,0,0,0.3);">
+            <span id="legacy-pull-icon" style="display:inline-block; font-size:13px; transition:transform 0.05s linear;">🔄</span>
+            <span id="legacy-pull-text">下拉刷新</span>
+        </div>
+    `;
+    document.body.appendChild(pill);
+
+    const icon = pill.querySelector('#legacy-pull-icon');
+    const text = pill.querySelector('#legacy-pull-text');
+
+    window.addEventListener('touchstart', function(e) {
+        if (window.scrollY > 5 || isRefreshing) return;
+        if (e.touches.length === 1) {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+        }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', function(e) {
+        if (!isDragging || isRefreshing) return;
+        if (window.scrollY > 0) {
+            isDragging = false;
+            pill.style.transform = 'translateY(0px)';
+            pill.style.opacity = '0';
+            return;
+        }
+        const diff = e.touches[0].clientY - startY;
+        if (diff > 0) {
+            const pullDistance = Math.min(85, Math.pow(diff, 0.84));
+            pill.style.transform = `translateY(${pullDistance}px)`;
+            pill.style.opacity = Math.min(1, pullDistance / 25).toString();
+            if (icon) icon.style.transform = `rotate(${pullDistance * 4}deg)`;
+            if (text) text.textContent = pullDistance >= THRESHOLD ? '释放立即刷新' : '下拉刷新';
+        }
+    }, { passive: true });
+
+    window.addEventListener('touchend', async function() {
+        if (!isDragging || isRefreshing) return;
+        isDragging = false;
+        const currentTransform = pill.style.transform;
+        const match = currentTransform.match(/translateY\(([^p]+)px\)/);
+        const dist = match ? parseFloat(match[1]) : 0;
+
+        if (dist >= THRESHOLD) {
+            isRefreshing = true;
+            pill.style.transform = 'translateY(54px)';
+            if (text) text.textContent = '正在刷新...';
+            if (icon) icon.style.animation = 'refreshSpin 0.7s linear infinite';
+            try {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(15);
+            } catch (e) {}
+
+            // 执行刷新：优先重新加载当前 Tab 数据，或刷新页面
+            setTimeout(function() {
+                const activeTab = document.querySelector('.tab-content.active');
+                const tabId = activeTab ? activeTab.id : '';
+                if (tabId === 'tab-playlist' && typeof loadMyPlaylists === 'function') {
+                    loadMyPlaylists();
+                } else if (tabId === 'tab-download-mgr' && typeof loadDownloadHistory === 'function') {
+                    loadDownloadHistory(1);
+                } else {
+                    window.location.reload();
+                }
+                setTimeout(function() {
+                    isRefreshing = false;
+                    pill.style.transform = 'translateY(0px)';
+                    pill.style.opacity = '0';
+                    if (icon) icon.style.animation = 'none';
+                }, 400);
+            }, 600);
+        } else {
+            pill.style.transform = 'translateY(0px)';
+            pill.style.opacity = '0';
+        }
+    }, { passive: true });
+}
+
