@@ -72,11 +72,11 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 bg-black/45 backdrop-blur-sm z-[10002] flex justify-end items-end box-border animate-[modalFadeIn_0.2s_ease-out]"
+  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002] flex items-end justify-center md:justify-end md:items-end box-border animate-[modalFadeIn_0.2s_ease-out]"
   onclick={onClose}
 >
   <div
-    class="mr-5 mb-[75px] w-[680px] max-w-[calc(100vw-30px)] max-h-[calc(100vh-100px)] rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl p-5 overflow-y-auto text-[var(--text-main)] box-border max-md:mr-0 max-md:mb-0 max-md:w-full max-md:rounded-b-none max-md:rounded-t-[20px] max-md:max-h-[85vh] max-md:pb-[calc(16px+env(safe-area-inset-bottom,0px))] animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)]"
+    class="w-full max-md:max-w-full max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(16px+env(safe-area-inset-bottom,0px))] max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:w-[680px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl md:animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)] bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl p-5 overflow-y-auto text-[var(--text-main)] box-border"
     onclick={(e) => e.stopPropagation()}
   >
     <!-- 头部栏 -->
