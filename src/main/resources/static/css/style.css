@@ -730,18 +730,27 @@ ul.data-list li:last-child {
 .detail-btn-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
-    margin-top: 4px;
+    margin-top: 8px;
 }
 
 .detail-btn-group .btn-primary,
+.detail-btn-group .btn-secondary,
 .detail-btn-group .flex-1-btn {
-    flex: 1 1 auto;
-    min-width: 110px;
-    text-align: center;
+    flex: initial;
+    width: auto;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
+    gap: 6px;
     white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 🎨 现代高颜值 Empty State 空状态占位卡片 */
@@ -1623,6 +1632,26 @@ ul.data-list li:last-child {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
     }
+    .detail-btn-group {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .detail-btn-group .btn-primary,
+    .detail-btn-group .btn-secondary,
+    .detail-btn-group .flex-1-btn {
+        flex: initial !important;
+        width: auto !important;
+        padding: 5px 12px !important;
+        font-size: 12px !important;
+    }
+    .pagination-container span {
+        white-space: nowrap !important;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
     .pagination-container button.btn-primary {
         width: auto !important;
         flex: 1;

@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { api } from './lib/api';
   import { formatTime, getApiCache, setApiCache } from './lib/utils';
+  import { savePlayerStateToStorage, loadPlayerStateFromStorage } from './lib/playerStorage';
+  import { applyTheme, getInitialTheme, switchToLegacy, type ThemeMode } from './lib/theme';
   import type { Track } from './lib/types';
 
   import TopBar from './components/TopBar.svelte';
@@ -15,23 +17,16 @@
   import PlayerBar from './components/PlayerBar.svelte';
 
   function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
-    if (typeof window !== 'undefined') {
-      const raw = location.hash.replace('#', '').split('?')[0];
-      if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr') return raw as any;
-      const saved = localStorage.getItem('wyyyy_active_tab');
-      if (saved === 'playlist' || saved === 'search' || saved === 'download-mgr') return saved as any;
-    }
-    return 'playlist';
+    const raw = typeof window !== 'undefined' ? location.hash.replace('#', '').split('?')[0] : '';
+    if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr') return raw;
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_active_tab') : '';
+    return (saved === 'playlist' || saved === 'search' || saved === 'download-mgr') ? saved : 'playlist';
   }
 
   function getInitialPlaylistId(): string {
-    if (typeof window !== 'undefined') {
-      const match = location.hash.match(/id=([0-9]+)/);
-      if (match && match[1]) return match[1];
-      const saved = localStorage.getItem('wyyyy_last_playlist_id');
-      if (saved) return saved;
-    }
-    return '';
+    if (typeof window === 'undefined') return '';
+    const match = location.hash.match(/id=([0-9]+)/);
+    return match?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
   }
 
   // ---------- 全局状态 ----------
@@ -39,7 +34,7 @@
   let playlistId = $state(getInitialPlaylistId());
   let albumId = $state('');
   let repeat = $state(false);
-  let themeMode: 'dark' | 'light' | 'auto' = $state((typeof localStorage !== 'undefined' ? localStorage.getItem('theme_mode') : 'dark') as any || 'dark');
+  let themeMode: ThemeMode = $state(getInitialTheme());
 
   // ---------- 响应式数据集合 (类似 Redux Store) ----------
   let likedSet = $state(new Set<number>());
@@ -106,15 +101,7 @@
   }
 
   function savePlayerState() {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      localStorage.setItem('wyyyy_player_queue', JSON.stringify(queue));
-      localStorage.setItem('wyyyy_player_index', String(qIndex));
-      localStorage.setItem('wyyyy_player_mode', playMode === 'list' ? 'loop' : playMode === 'shuffle' ? 'random' : 'single');
-      if (curTime > 0) localStorage.setItem('wyyyy_player_time', String(curTime));
-      localStorage.setItem('wyyyy_player_auto_skip_trial', String(autoSkipTrial));
-      localStorage.setItem('wyyyy_player_offline_only', String(offlineOnly));
-    } catch (e) {}
+    savePlayerStateToStorage({ queue, qIndex, playMode, curTime, autoSkipTrial, offlineOnly });
   }
 
   async function prepareTrackInUI(track: Track, seekTime: number) {
@@ -123,54 +110,29 @@
       audioEl.src = url;
       if (seekTime > 0) {
         const onMeta = () => {
-          try {
-            if (audioEl) audioEl.currentTime = seekTime;
-          } catch (e) {}
+          try { if (audioEl) audioEl.currentTime = seekTime; } catch (e) {}
           audioEl?.removeEventListener('loadedmetadata', onMeta);
         };
         audioEl.addEventListener('loadedmetadata', onMeta);
         if (audioEl.duration) {
-          try {
-            audioEl.currentTime = seekTime;
-          } catch (e) {}
+          try { audioEl.currentTime = seekTime; } catch (e) {}
         }
       }
     }
   }
 
   function restorePlayerState() {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      const qStr = localStorage.getItem('wyyyy_player_queue');
-      const idxStr = localStorage.getItem('wyyyy_player_index');
-      const modeStr = localStorage.getItem('wyyyy_player_mode');
-      const timeStr = localStorage.getItem('wyyyy_player_time');
-      const skipTrialStr = localStorage.getItem('wyyyy_player_auto_skip_trial');
-      const offlineStr = localStorage.getItem('wyyyy_player_offline_only');
-
-      if (qStr) {
-        const savedQueue = JSON.parse(qStr);
-        if (Array.isArray(savedQueue) && savedQueue.length > 0) {
-          queue = savedQueue;
-          let idx = parseInt(idxStr || '0', 10);
-          if (isNaN(idx) || idx < 0 || idx >= queue.length) idx = 0;
-          qIndex = idx;
-
-          if (modeStr === 'single') playMode = 'single';
-          else if (modeStr === 'random') playMode = 'shuffle';
-          else playMode = 'list';
-
-          if (skipTrialStr !== null) autoSkipTrial = skipTrialStr === 'true';
-          if (offlineStr !== null) offlineOnly = offlineStr === 'true';
-
-          const seekTime = parseFloat(timeStr || '0') || 0;
-          if (seekTime > 0) curTime = seekTime;
-
-          const t = queue[qIndex];
-          if (t) prepareTrackInUI(t, seekTime);
-        }
-      }
-    } catch (e) {}
+    const saved = loadPlayerStateFromStorage();
+    if (saved.queue?.length) {
+      queue = saved.queue;
+      qIndex = saved.qIndex ?? 0;
+      if (saved.playMode) playMode = saved.playMode;
+      if (saved.autoSkipTrial !== undefined) autoSkipTrial = saved.autoSkipTrial;
+      if (saved.offlineOnly !== undefined) offlineOnly = saved.offlineOnly;
+      if (saved.curTime) curTime = saved.curTime;
+      const t = queue[qIndex];
+      if (t) prepareTrackInUI(t, saved.curTime || 0);
+    }
   }
 
   async function ensurePlay() {
@@ -371,26 +333,9 @@
     switchTab('playlist');
   }
 
-  function applyTheme(mode: 'dark' | 'light' | 'auto') {
-    const root = document.documentElement;
-    let eff = mode;
-    if (mode === 'auto') {
-      eff = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    if (eff === 'light') root.setAttribute('data-theme', 'light');
-    else root.removeAttribute('data-theme');
-    localStorage.setItem('theme_mode', mode);
-  }
-
   function toggleTheme() {
     themeMode = themeMode === 'dark' ? 'light' : themeMode === 'light' ? 'auto' : 'dark';
     applyTheme(themeMode);
-  }
-
-  function switchToLegacy() {
-    document.cookie = 'ui_version=legacy; path=/; max-age=31536000';
-    localStorage.setItem('wyyyy_ui_version', 'legacy');
-    window.location.href = '/?v=legacy';
   }
 
   onMount(() => {
@@ -447,9 +392,7 @@
 
 <!-- 顶栏导航 -->
 <TopBar
-  tab={tab}
-  themeMode={themeMode}
-  repeat={repeat}
+  {tab} {themeMode} {repeat}
   onSwitchTab={switchTab}
   onToggleTheme={toggleTheme}
   onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
@@ -460,42 +403,19 @@
 <div class="accordion-wrapper">
   <div style="display: {tab === 'playlist' ? 'contents' : 'none'};">
     <PlaylistTab
-      playlistId={playlistId}
-      curTrack={curTrack}
-      playing={playing}
-      likedSet={likedSet}
-      downloadedSet={downloadedSet}
-      onToggleLike={toggleLike}
-      onPlayQueue={setQueue}
-      onAlbum={jumpToAlbum}
-      onReveal={handleReveal}
-      showToast={showToast}
+      {playlistId} {curTrack} {playing} {likedSet} {downloadedSet}
+      onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal} {showToast}
     />
   </div>
   <div style="display: {tab === 'search' ? 'contents' : 'none'};">
     <SearchTab
-      albumId={albumId}
-      curTrack={curTrack}
-      playing={playing}
-      downloadedSet={downloadedSet}
-      likedSet={likedSet}
-      onToggleLike={toggleLike}
-      onPlayQueue={setQueue}
-      onAlbum={jumpToAlbum}
-      onPlaylist={jumpToPlaylist}
-      onSong={(sid) => { playlistId = sid; switchTab('playlist'); }}
-      onReveal={handleReveal}
-      showToast={showToast}
+      {albumId} {curTrack} {playing} {downloadedSet} {likedSet}
+      onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
+      onSong={(sid) => { playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal} {showToast}
     />
   </div>
   <div style="display: {tab === 'download-mgr' ? 'contents' : 'none'};">
-    <DownloadMgrTab
-      curTrack={curTrack}
-      playing={playing}
-      onPlayQueue={setQueue}
-      onReveal={handleReveal}
-      showToast={showToast}
-    />
+    <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
   </div>
 </div>
 
@@ -508,9 +428,7 @@
     const a = e.currentTarget;
     curTime = a.currentTime;
     duration = a.duration || 0;
-    if (curTime > 0) {
-      try { localStorage.setItem('wyyyy_player_time', String(curTime)); } catch {}
-    }
+    if (curTime > 0) { try { localStorage.setItem('wyyyy_player_time', String(curTime)); } catch {} }
   }}
   onloadedmetadata={(e) => { duration = (e.currentTarget as HTMLAudioElement).duration || 0; }}
   onended={() => { if (playMode === 'single') { if (audioEl) audioEl.currentTime = 0; audioEl?.play(); } else next(); }}
@@ -518,83 +436,50 @@
 
 <!-- 🎬 现代专业音频播放控制栏 (SP 大触控 / PC 优雅三段式) -->
 <PlayerBar
-  curTrack={curTrack}
-  queue={queue}
-  playing={playing}
-  curTime={curTime}
-  duration={duration}
-  playMode={playMode}
-  onTogglePlay={togglePlay}
-  onPrev={prev}
-  onNext={next}
+  {curTrack} {queue} {playing} {curTime} {duration} {playMode}
+  onTogglePlay={togglePlay} onPrev={prev} onNext={next}
   onToggleMode={() => playMode = playMode === 'list' ? 'single' : playMode === 'single' ? 'shuffle' : 'list'}
-  onSeek={seek}
-  onLyric={() => showLyric = !showLyric}
-  onPeq={() => showPeq = !showPeq}
+  onSeek={seek} onLyric={() => showLyric = !showLyric} onPeq={() => showPeq = !showPeq}
   onQueue={() => showDrawer = !showDrawer}
   onClearQueue={() => { queue = []; qIndex = 0; savePlayerState(); showToast('播放队列已清空', 'info'); }}
 />
 
-<!-- 📜 播放列表 & 下载任务 统一抽屉 (就算歌单空也能打开，内含下载任务 Tab) -->
+<!-- 📜 播放列表 & 下载任务 统一抽屉 -->
 {#if showDrawer}
   <PlaylistDrawer
-    queue={queue}
-    qIndex={qIndex}
-    tasks={tasks}
-    likedSet={likedSet}
-    autoSkipTrial={autoSkipTrial}
-    offlineOnly={offlineOnly}
-    downloadedSet={downloadedSet}
+    {queue} {qIndex} {tasks} {likedSet} {autoSkipTrial} {offlineOnly} {downloadedSet}
     onPlayIndex={(idx) => { qIndex = idx; curTime = 0; ensurePlay(); }}
     onClearQueue={() => { queue = []; qIndex = 0; savePlayerState(); showToast('播放队列已清空', 'info'); }}
     onRemoveItem={(realIdx) => { queue = queue.filter((_, idx) => idx !== realIdx); if (qIndex >= queue.length) qIndex = Math.max(0, queue.length - 1); savePlayerState(); }}
     onToggleLike={toggleLike}
     onToggleAutoSkip={(val) => { autoSkipTrial = val; savePlayerState(); }}
     onToggleOfflineOnly={(val) => { offlineOnly = val; savePlayerState(); }}
-    onClearTasks={clearTasks}
-    onReveal={handleReveal}
-    onClose={() => showDrawer = false}
+    onClearTasks={clearTasks} onReveal={handleReveal} onClose={() => showDrawer = false}
   />
 {/if}
 
 <!-- 全屏黑胶歌词 -->
 {#if showLyric && curTrack}
   <LyricModal
-    track={curTrack}
-    currentTime={curTime}
-    duration={duration}
-    playing={playing}
-    playMode={playMode}
+    track={curTrack} currentTime={curTime} {duration} {playing} {playMode}
     isLiked={likedSet.has(Number(curTrack.id))}
-    onTogglePlay={togglePlay}
-    onPrev={prev}
-    onNext={next}
+    onTogglePlay={togglePlay} onPrev={prev} onNext={next}
     onToggleMode={() => playMode = playMode === 'list' ? 'single' : playMode === 'single' ? 'shuffle' : 'list'}
-    onSeek={seek}
-    onSeekTime={(t) => { if (audioEl) { audioEl.currentTime = t; curTime = t; } }}
+    onSeek={seek} onSeekTime={(t) => { if (audioEl) { audioEl.currentTime = t; curTime = t; } }}
     onToggleLike={() => toggleLike(Number(curTrack.id), curTrack.name)}
-    onTogglePeq={() => showPeq = !showPeq}
-    onToggleDrawer={() => showDrawer = !showDrawer}
+    onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer}
     onClose={() => showLyric = false}
   />
 {/if}
 
-<!-- 5段均衡器 -->
 {#if showPeq}
   <PeqDrawer onClose={() => showPeq = false} />
 {/if}
 
-<!-- 📂 文件物理定位弹窗 (对齐旧版) -->
 {#if revealData}
-  <RevealModal
-    path={revealData.path}
-    msg={revealData.msg}
-    onClose={() => revealData = null}
-    showToast={showToast}
-  />
+  <RevealModal path={revealData.path} msg={revealData.msg} onClose={() => revealData = null} {showToast} />
 {/if}
 
-<!-- 全局 Toast 容器 -->
 <div id="globalToastContainer" class="toast-container" style="position:fixed; top:16px; right:16px; z-index:100000; display:flex; flex-direction:column; gap:8px;">
   {#each toasts as t (t.id)}
     <div class="toast-item toast-{t.type}" style="background:{t.type === 'error' ? '#ef4444' : t.type === 'success' ? '#10b981' : t.type === 'warning' ? '#f59e0b' : '#334155'}; color:#fff; padding:10px 14px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.3); font-size:13px; max-width:360px;">
