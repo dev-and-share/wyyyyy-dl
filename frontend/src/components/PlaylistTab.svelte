@@ -137,6 +137,33 @@
       if (switchCards) showToast('获取单曲失败: ' + (e.message || e), 'error');
     }
   }
+
+  // 一键直接播放整张歌单
+  async function playPlaylistDirect(id: string, name: string) {
+    if (!id) return;
+    try {
+      showToast(`正在载入《${name}》...`, 'info', 1500);
+      const res = await api.playlist(id);
+      const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
+      if (tracks && tracks.length > 0) {
+        const queueTracks = tracks.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          artist: formatArtist(t.artists || t.ar || t.artist),
+          cover: t.picUrl || t.al?.picUrl || DEFAULT_VINYL_COVER,
+          isLocal: (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true
+        }));
+        if (onPlayQueue) {
+          onPlayQueue(queueTracks, 0);
+          showToast(`已开始播放歌单《${name}》(${queueTracks.length} 首)`, 'success', 2000);
+        }
+      } else {
+        showToast('歌单内暂无曲目', 'warning');
+      }
+    } catch (e: any) {
+      showToast('播放歌单失败: ' + (e.message || e), 'error');
+    }
+  }
 </script>
 
 <!-- Section 1: 我的歌单 -->
@@ -163,7 +190,14 @@
             <strong class="clickable-track-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" onclick={() => handleViewPlaylist(String(pl.id))}>{pl.name}</strong>
             <span style="color:var(--text-muted); font-size:11px;">({pl.trackCount || 0}首)</span>
           </div>
-          <div style="display:flex; gap:6px;">
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button
+              class="jump-link-btn"
+              onclick={() => playPlaylistDirect(String(pl.id), pl.name)}
+              title="立即播放整张歌单"
+            >
+              ▶️ 播放
+            </button>
             {#if pl.subscribed}
               <button class="jump-link-btn" onclick={() => api.playlistSubscribe(String(pl.id), false).then(j => j.code === '000000' ? showToast('已取消', 'success') : showToast(j.msg, 'warning'))}>💔 取消</button>
             {:else if idx > 0}
@@ -329,3 +363,27 @@
     {/if}
   </div>
 </div>
+
+<style>
+  :global(.quick-btn-item) {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+  }
+  :global(.quick-btn-item.btn-created) {
+    background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+    color: #ffffff !important;
+  }
+  :global(.quick-btn-item.btn-subscribed) {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+    color: #ffffff !important;
+  }
+  :global(.quick-btn-item.btn-all) {
+    background: linear-gradient(135deg, #475569, #334155) !important;
+    color: #ffffff !important;
+  }
+  :global(.quick-btn-item.btn-create) {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    color: #ffffff !important;
+  }
+</style>

@@ -246,6 +246,14 @@
     curTime = 0;
     savePlayerState();
     setTimeout(() => ensurePlay(), 50);
+
+    // 🌟 共通逻辑提取：当点播/试听非本地服务器曲目时，自动提交后台下载任务
+    const targetTrack = tracks[idx];
+    if (targetTrack && !targetTrack.isLocal && targetTrack.id) {
+      api.downloadSingle(String(targetTrack.id)).then(() => {
+        showToast(`已将《${targetTrack.name || '歌曲'}》加入自动下载任务`, 'info', 2000);
+      }).catch(() => {});
+    }
   }
 
   // ---------- 喜欢与任务监控 ----------
@@ -470,9 +478,11 @@
       curTrack={curTrack}
       playing={playing}
       downloadedSet={downloadedSet}
+      likedSet={likedSet}
+      onToggleLike={toggleLike}
+      onPlayQueue={setQueue}
       onAlbum={jumpToAlbum}
       onPlaylist={jumpToPlaylist}
-      onPlayQueue={setQueue}
       onSong={(sid) => { playlistId = sid; switchTab('playlist'); }}
       onReveal={handleReveal}
       showToast={showToast}

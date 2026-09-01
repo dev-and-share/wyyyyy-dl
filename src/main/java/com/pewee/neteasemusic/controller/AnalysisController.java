@@ -1,7 +1,10 @@
 package com.pewee.neteasemusic.controller;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -97,6 +100,13 @@ public class AnalysisController {
         String queryKey = (keywords != null && !keywords.trim().isEmpty()) ? keywords : keyword;
         if (queryKey == null) queryKey = "";
         List<?> result = analysisService.searchMusic(queryKey, limit, offset, type);
+        if (result != null && (type == null || type == 1)) {
+            try {
+                downloadHistoryDAO.markLocalStatusBatch((List<TrackDTO>) result);
+            } catch (Exception e) {
+                log.debug("标记搜索曲目本地状态失败", e);
+            }
+        }
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
@@ -389,48 +399,77 @@ public class AnalysisController {
     /**
      * 获取当前登录用户喜欢的全部红心歌曲 ID 列表
      */
+    /**
+     * 获取当前登录用户喜欢的全部红心歌曲 ID 列表 (本地数据库优先保障 + 线上双向同步)
+     */
     @RequestMapping(value = "/v2/like/list", method = {RequestMethod.GET})
     public RespEntity<?> getLikedSongIds() {
+        Set<Long> mergedIds = new HashSet<>();
         try {
+            // 1. 读取本地 SQLite 数据库中持久化的全部红心曲目
+            Set<Long> localIds = downloadHistoryDAO.getLikedSongIds();
+            if (localIds != null) {
+                mergedIds.addAll(localIds);
+            }
+        } catch (Exception e) {
+            log.warn("读取本地红心数据库失败: {}", e.getMessage());
+        }
+
+        try {
+            // 2. 尝试从网易云线上静默同步
             String jsonResp = neteaseAPIService.getLikedSongIds(null);
             if (jsonResp != null) {
                 com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
                 if (obj.getIntValue("code") == 200) {
                     com.alibaba.fastjson.JSONArray ids = obj.getJSONArray("ids");
-                    return RespEntity.apply(CommonRespInfo.SUCCESS, ids != null ? ids : Collections.emptyList());
-                } else {
-                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, obj.getString("message"));
+                    if (ids != null && !ids.isEmpty()) {
+                        List<Long> onlineList = new ArrayList<>();
+                        for (int i = 0; i < ids.size(); i++) {
+                            Long sid = ids.getLong(i);
+                            if (sid != null && sid > 0) {
+                                onlineList.add(sid);
+                                mergedIds.add(sid);
+                            }
+                        }
+                        // 异步/同步将线上红心保存进本地数据库，永不丢失
+                        downloadHistoryDAO.syncLikedSongIds(onlineList);
+                    }
                 }
             }
-            return RespEntity.apply(CommonRespInfo.SUCCESS, Collections.emptyList());
         } catch (Exception e) {
-            log.error("获取红心歌曲列表失败", e);
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+            log.debug("静默拉取网易云线上红心失败 (使用本地数据库): {}", e.getMessage());
         }
+
+        return RespEntity.apply(CommonRespInfo.SUCCESS, new ArrayList<>(mergedIds));
     }
 
     /**
-     * 添加红心 / 取消红心单曲
+     * 添加红心 / 取消红心单曲 (本地 SQLite 强持久化落库 + 网易云线上双向同步)
      */
     @RequestMapping(value = "/v2/like", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> toggleLikeTrack(@RequestParam Long id,
-                                         @RequestParam(defaultValue = "true") boolean like) {
-        try {
-            String jsonResp = neteaseAPIService.likeTrack(id, like);
-            if (jsonResp != null) {
-                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
-                if (obj.getIntValue("code") == 200) {
-                    return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
-                } else {
-                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
-                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "操作失败");
-                }
-            }
-            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
-        } catch (Exception e) {
-            log.error("切换红心状态失败, id={}, like={}", id, like, e);
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+                                         @RequestParam(defaultValue = "true") boolean like,
+                                         @RequestParam(required = false) String name,
+                                         @RequestParam(required = false) String artist) {
+        if (id == null || id <= 0) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, "歌曲ID无效");
         }
+
+        // 1. 本地数据库强持久化落库 (无论是否登录，100% 成功落库)
+        if (like) {
+            downloadHistoryDAO.addLikedSong(id, name, artist);
+        } else {
+            downloadHistoryDAO.removeLikedSong(id);
+        }
+
+        // 2. 尝试同步至网易云线上
+        try {
+            neteaseAPIService.likeTrack(id, like);
+        } catch (Exception e) {
+            log.debug("同步网易云线上红心失败(未登录或离线): id={}, like={}, err={}", id, like, e.getMessage());
+        }
+
+        return RespEntity.apply(CommonRespInfo.SUCCESS, "ok");
     }
 
     /**

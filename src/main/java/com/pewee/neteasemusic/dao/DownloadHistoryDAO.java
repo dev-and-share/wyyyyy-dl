@@ -115,6 +115,14 @@ public class DownloadHistoryDAO {
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ")";
                 stmt.execute(ignoredSql);
+
+                String likedSql = "CREATE TABLE IF NOT EXISTS liked_songs (" +
+                        "song_id BIGINT PRIMARY KEY, " +
+                        "song_name TEXT, " +
+                        "artist TEXT, " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        ")";
+                stmt.execute(likedSql);
             }
 
             loadIgnoredFolders();
@@ -1396,6 +1404,82 @@ public class DownloadHistoryDAO {
             log.warn("获取全部已下载歌曲ID失败: {}", e.getMessage());
         }
         return ids;
+    }
+
+    /**
+     * 添加歌曲到本地红心收藏 (落库)
+     */
+    public boolean addLikedSong(Long songId, String songName, String artist) {
+        if (songId == null || songId <= 0) return false;
+        String sql = "INSERT OR REPLACE INTO liked_songs (song_id, song_name, artist, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, songId);
+            pstmt.setString(2, songName != null ? songName : "");
+            pstmt.setString(3, artist != null ? artist : "");
+            return pstmt.executeUpdate() > 0;
+        } catch (Exception e) {
+            log.error("添加本地红心失败: songId={}, name={}", songId, songName, e);
+            return false;
+        }
+    }
+
+    /**
+     * 从本地红心收藏中移除 (落库)
+     */
+    public boolean removeLikedSong(Long songId) {
+        if (songId == null || songId <= 0) return false;
+        String sql = "DELETE FROM liked_songs WHERE song_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, songId);
+            return pstmt.executeUpdate() > 0;
+        } catch (Exception e) {
+            log.error("移除本地红心失败: songId={}", songId, e);
+            return false;
+        }
+    }
+
+    /**
+     * 获取本地数据库中所有红心歌曲 ID 集合
+     */
+    public Set<Long> getLikedSongIds() {
+        Set<Long> set = new HashSet<>();
+        String sql = "SELECT song_id FROM liked_songs";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                long sid = rs.getLong("song_id");
+                if (sid > 0) set.add(sid);
+            }
+        } catch (Exception e) {
+            log.warn("获取本地红心列表失败: {}", e.getMessage());
+        }
+        return set;
+    }
+
+    /**
+     * 批量将线上红心 ID 同步合并进本地数据库
+     */
+    public void syncLikedSongIds(List<Long> onlineIds) {
+        if (onlineIds == null || onlineIds.isEmpty()) return;
+        String sql = "INSERT OR IGNORE INTO liked_songs (song_id, created_at) VALUES (?, CURRENT_TIMESTAMP)";
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                for (Long id : onlineIds) {
+                    if (id != null && id > 0) {
+                        pstmt.setLong(1, id);
+                        pstmt.addBatch();
+                    }
+                }
+                pstmt.executeBatch();
+            }
+            conn.commit();
+        } catch (Exception e) {
+            log.warn("同步线上红心至本地数据库失败: {}", e.getMessage());
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { formatTime, formatArtist } from '../lib/utils';
+  import { formatTime, formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import { api } from '../lib/api';
 
   type Lrc = { time: number; text: string };
@@ -123,10 +123,12 @@
         <div class="fullscreen-vinyl-container">
           <div class="fullscreen-vinyl-disk-wrapper">
             <img
-              src={track?.cover || '/favicon.png'}
+              src={track?.cover || DEFAULT_VINYL_COVER}
               class="fullscreen-cover-img vinyl-disk"
               class:playing={playing}
               alt="大图封面"
+              referrerpolicy="no-referrer"
+              onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
             />
           </div>
         </div>

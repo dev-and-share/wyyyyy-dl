@@ -49,7 +49,7 @@ export const api = {
   playlistAdd: (pid:string, ids:string) => postForm('/v2/playlist/tracks/add', {playlistId:pid, trackIds:ids}),
   playlistRemove: (pid:string, ids:string) => postForm('/v2/playlist/tracks/remove', {playlistId:pid, trackIds:ids}),
   likeList: () => get('/v2/like/list'),
-  like: (id:number, like:boolean) => postForm('/v2/like', {id:String(id), like:String(like)}),
+  like: (id:number, like:boolean, name?:string, artist?:string) => postForm('/v2/like', {id:String(id), like:String(like), name:name||'', artist:artist||''}),
   folderRoots: () => get('/v2/folder/roots'),
   folderBrowse: (p:string) => get(`/v2/folder/browse?path=${encodeURIComponent(p)}`),
   folderTracks: (p:string, rec:boolean) => get(`/v2/folder/tracks?path=${encodeURIComponent(p)}&recursive=${rec}`),

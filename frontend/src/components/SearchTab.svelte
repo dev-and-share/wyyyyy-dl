@@ -8,6 +8,8 @@
     curTrack = null,
     playing = false,
     downloadedSet = new Set<number>(),
+    likedSet = new Set<number>(),
+    onToggleLike,
     onAlbum,
     onPlaylist,
     onPlayQueue,
@@ -19,6 +21,8 @@
     curTrack?: Track | null;
     playing?: boolean;
     downloadedSet?: Set<number>;
+    likedSet?: Set<number>;
+    onToggleLike?: (id: number, name: string, artist?: string) => void;
     onAlbum?: (id: string) => void;
     onPlaylist: (id: string) => void;
     onPlayQueue?: (tracks: any[], idx?: number) => void;
@@ -264,7 +268,17 @@
                 {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 本地服务器已下载">🖥️</span>{/if}
                 <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
               </div>
-              <div style="display:flex; gap:6px; flex-shrink:0;">
+              <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+                {#if onToggleLike}
+                  <button
+                    class="track-like-btn"
+                    class:active={likedSet.has(Number(r.id))}
+                    onclick={() => onToggleLike(Number(r.id), r.name, artistName)}
+                    title={likedSet.has(Number(r.id)) ? '取消红心' : '添加红心收藏'}
+                  >
+                    {likedSet.has(Number(r.id)) ? '❤️' : '🤍'}
+                  </button>
+                {/if}
                 {#if onPlayQueue}
                   <button
                     class="jump-link-btn"
@@ -366,7 +380,17 @@
               {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
               {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 已下载到本地">🖥️</span>{/if}
             </div>
-            <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0;">
+            <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+              {#if onToggleLike}
+                <button
+                  class="track-like-btn"
+                  class:active={likedSet.has(Number(s.id))}
+                  onclick={() => onToggleLike(Number(s.id), s.name, artistName)}
+                  title={likedSet.has(Number(s.id)) ? '取消红心' : '添加红心收藏'}
+                >
+                  {likedSet.has(Number(s.id)) ? '❤️' : '🤍'}
+                </button>
+              {/if}
               {#if onPlayQueue}
                 <button
                   class="jump-link-btn"
