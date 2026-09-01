@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  let { onRefresh } = $props<{
+  let {
+    disabled = false,
+    onRefresh
+  } = $props<{
+    disabled?: boolean;
     onRefresh?: () => Promise<void> | void;
   }>();
 
@@ -13,7 +17,17 @@
   const THRESHOLD = 65;
 
   function handleTouchStart(e: TouchEvent) {
-    if (window.scrollY > 5 || isRefreshing) return;
+    if (disabled || window.scrollY > 5 || isRefreshing) return;
+    const target = e.target as HTMLElement | null;
+    // 如果触摸在弹窗、抽屉、固定层、输入框、按钮或滚动列表中，忽略全屏下拉刷新
+    if (
+      !target ||
+      target.closest(
+        '[class*="z-[100"], [class*="z-[999"], [role="dialog"], .fixed, input, textarea, button, select, .scrollable-list, .data-list'
+      )
+    ) {
+      return;
+    }
     if (e.touches.length === 1) {
       startY = e.touches[0].clientY;
       isDragging = true;
@@ -21,7 +35,7 @@
   }
 
   function handleTouchMove(e: TouchEvent) {
-    if (!isDragging || isRefreshing) return;
+    if (!isDragging || isRefreshing || disabled) return;
     if (window.scrollY > 0) {
       isDragging = false;
       pullDistance = 0;
@@ -38,7 +52,7 @@
   }
 
   async function handleTouchEnd() {
-    if (!isDragging || isRefreshing) return;
+    if (!isDragging || isRefreshing || disabled) return;
     isDragging = false;
     if (pullDistance >= THRESHOLD) {
       isRefreshing = true;
@@ -76,7 +90,7 @@
   });
 </script>
 
-{#if pullDistance > 0 || isRefreshing}
+{#if (pullDistance > 0 || isRefreshing) && !disabled}
   <div
     class="fixed top-0 left-0 right-0 z-[100000] flex justify-center pointer-events-none transition-transform duration-150 ease-out"
     style="transform: translateY(calc(env(safe-area-inset-top, 0px) + {pullDistance - 45}px)); opacity: {Math.min(1, pullDistance / 28)};"

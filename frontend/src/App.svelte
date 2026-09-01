@@ -20,6 +20,7 @@
   import PullToRefresh from './components/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
+  import { sheetState } from './lib/ui.svelte';
   import { executeReveal } from './lib/revealHelper';
 
   function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
@@ -88,19 +89,16 @@
     savePlayerStateToStorage({ queue, qIndex, playMode, curTime, autoSkipTrial, offlineOnly });
   }
 
+  let isAnyOverlayOpen = $derived(showDrawer || showLyric || showPeq || !!revealData || !!sheetState.data);
+
   async function prepareTrackInUI(track: Track, seekTime: number) {
     let url = track.url || (await resolveTrackUrl(track));
     if (url && audioEl) {
       audioEl.src = url;
       if (seekTime > 0) {
-        const onMeta = () => {
-          try { if (audioEl) audioEl.currentTime = seekTime; } catch (e) {}
-          audioEl?.removeEventListener('loadedmetadata', onMeta);
-        };
+        const onMeta = () => { try { if (audioEl) audioEl.currentTime = seekTime; } catch (e) {} audioEl?.removeEventListener('loadedmetadata', onMeta); };
         audioEl.addEventListener('loadedmetadata', onMeta);
-        if (audioEl.duration) {
-          try { audioEl.currentTime = seekTime; } catch (e) {}
-        }
+        if (audioEl.duration) { try { audioEl.currentTime = seekTime; } catch (e) {} }
       }
     }
   }
@@ -393,8 +391,8 @@
   }
 </script>
 
-<!-- 📱 手机端下拉刷新指示器 -->
-<PullToRefresh onRefresh={handleRefresh} />
+<!-- 📱 手机端下拉刷新指示器 (模态框/抽屉打开时自动禁用避免手势冲突) -->
+<PullToRefresh disabled={isAnyOverlayOpen} onRefresh={handleRefresh} />
 
 <!-- 顶栏导航 -->
 <TopBar
