@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { api } from './lib/api';
   import { formatTime, getApiCache, setApiCache } from './lib/utils';
+  import { checkForPwaUpdate } from './lib/pwa';
   import { savePlayerStateToStorage, loadPlayerStateFromStorage } from './lib/playerStorage';
   import { applyTheme, getInitialTheme, switchToLegacy, type ThemeMode } from './lib/theme';
   import { resolveTrackUrl } from './lib/playerHelper';
@@ -372,17 +373,25 @@
         setApiCache('liked_song_ids', j.data);
       }
     }).catch(() => {});
+
+    // 监听 PWA 新版本就绪事件
+    window.addEventListener('wyyyy:pwa-update-available', () => {
+      showToast('🎉 发现新版本！下拉即可更新', 'info', 6000);
+    });
   });
 
   async function handleRefresh() {
-    showToast('正在刷新数据...', 'info', 1200);
+    showToast('正在检查更新与刷新数据...', 'info', 1200);
     try {
+      // 1. 触发 PWA Service Worker 检查更新
+      checkForPwaUpdate().catch(() => {});
+      // 2. 刷新核心数据
       const j = await api.likeList();
       if (j?.code === '000000' && Array.isArray(j.data)) {
         likedSet = new Set(j.data.map((n: any) => Number(n)));
         setApiCache('liked_song_ids', j.data);
       }
-      showToast('刷新完成', 'success', 1500);
+      showToast('已同步最新数据与应用状态', 'success', 1500);
     } catch {
       window.location.reload();
     }

@@ -6,7 +6,6 @@
   }>();
 
   let startY = 0;
-  let currentY = 0;
   let isDragging = $state(false);
   let pullDistance = $state(0);
   let isRefreshing = $state(false);
@@ -32,7 +31,7 @@
     const diff = touchY - startY;
     if (diff > 0) {
       // 阻尼弹性拉动公式
-      pullDistance = Math.min(90, Math.pow(diff, 0.84));
+      pullDistance = Math.min(100, Math.pow(diff, 0.85));
     } else {
       pullDistance = 0;
     }
@@ -59,7 +58,7 @@
       setTimeout(() => {
         isRefreshing = false;
         pullDistance = 0;
-      }, 500);
+      }, 600);
     } else {
       pullDistance = 0;
     }
@@ -79,63 +78,21 @@
 
 {#if pullDistance > 0 || isRefreshing}
   <div
-    class="pull-refresh-container"
-    style="transform: translateY({pullDistance}px); opacity: {Math.min(1, pullDistance / 25)};"
+    class="fixed top-0 left-0 right-0 z-[100000] flex justify-center pointer-events-none transition-transform duration-150 ease-out"
+    style="transform: translateY(calc(env(safe-area-inset-top, 0px) + {pullDistance - 45}px)); opacity: {Math.min(1, pullDistance / 28)};"
   >
-    <div class="pull-refresh-pill" class:triggered={pullDistance >= THRESHOLD || isRefreshing}>
-      <span class="pull-refresh-icon" class:spin={isRefreshing} style="transform: rotate({pullDistance * 4}deg);">
+    <div
+      class="px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 shadow-2xl backdrop-blur-xl transition-all border duration-200 {pullDistance >= THRESHOLD || isRefreshing ? 'bg-purple-600/95 text-white border-purple-400/40 shadow-purple-500/30 scale-105' : 'bg-[var(--card-bg-solid,#0f172a)]/95 text-[var(--text-main)] border-[var(--border-color,rgba(255,255,255,0.15))]'}"
+    >
+      <span
+        class="inline-block text-sm transition-transform duration-75 {isRefreshing ? 'animate-[spin_0.8s_linear_infinite]' : ''}"
+        style={!isRefreshing ? `transform: rotate(${pullDistance * 4.5}deg);` : ''}
+      >
         🔄
       </span>
-      <span class="pull-refresh-text">
-        {isRefreshing ? '正在刷新...' : pullDistance >= THRESHOLD ? '释放立即刷新' : '下拉刷新'}
+      <span>
+        {isRefreshing ? '正在同步应用与数据...' : pullDistance >= THRESHOLD ? '释放立即刷新' : '下拉刷新 PWA'}
       </span>
     </div>
   </div>
 {/if}
-
-<style>
-  .pull-refresh-container {
-    position: fixed;
-    top: -50px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 99999;
-    pointer-events: none;
-    transition: transform 0.15s ease-out, opacity 0.15s ease-out;
-  }
-  .pull-refresh-pill {
-    background: var(--card-bg-solid, rgba(15, 23, 42, 0.9));
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    color: var(--text-main, #ffffff);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  }
-  :global([data-theme="light"]) .pull-refresh-pill {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  }
-  .pull-refresh-icon {
-    display: inline-block;
-    font-size: 13px;
-    transition: transform 0.05s linear;
-  }
-  .pull-refresh-icon.spin {
-    animation: refreshSpin 0.7s linear infinite;
-  }
-  @keyframes refreshSpin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-</style>
