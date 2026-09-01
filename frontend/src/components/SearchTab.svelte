@@ -210,6 +210,18 @@
     try {
       await api.downloadAlbum(String(album.id));
       showToast('已提交整辑下载任务', 'success');
+      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    } catch (e: any) {
+      showToast('下载失败: ' + e, 'error');
+    }
+  }
+
+  // 单曲下载（供模板直接引用，避免内联压行）
+  async function downloadSingleTrack(id: string) {
+    try {
+      await api.downloadSingle(id);
+      showToast('已提交下载', 'success');
+      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
       showToast('下载失败: ' + e, 'error');
     }
@@ -384,7 +396,7 @@
                 📂 定位
               </SlotBtn>
             {:else}
-              <SlotBtn onclick={() => api.downloadSingle(String(s.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>
+              <SlotBtn onclick={() => downloadSingleTrack(String(s.id))}>
                 📥 下载
               </SlotBtn>
             {/if}

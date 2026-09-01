@@ -176,6 +176,25 @@
       showToast('播放歌单失败: ' + (e.message || e), 'error');
     }
   }
+  async function downloadSingleTrack(id: string) {
+    try {
+      await api.downloadSingle(id);
+      showToast('已提交下载', 'success');
+      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    } catch (e: any) {
+      showToast('下载失败: ' + e, 'error');
+    }
+  }
+
+  async function downloadPlaylistById(id: string) {
+    try {
+      await api.downloadPlaylist(id);
+      showToast('已提交下载', 'success');
+      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    } catch (e: any) {
+      showToast('下载失败: ' + e, 'error');
+    }
+  }
 </script>
 
 <!-- Section 1: 我的歌单 -->
@@ -230,7 +249,7 @@
       title={playlist.name}
       subtitle={`${playlist.creator || '未知'} | 共 ${allTracks.length} 首`}
     >
-      <button class="btn-primary" onclick={() => api.downloadPlaylist(String(playlist.id)).then(() => showToast('已提交下载', 'success'))}>🖥️ 下载到电脑</button>
+      <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))}>🖥️ 下载到电脑</button>
       <button class="btn-secondary" onclick={() => onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })))}>▶️ 播放歌单</button>
     </DetailHeaderCard>
     <ul class="data-list scrollable-list">
@@ -255,7 +274,7 @@
             {#if isLocal}
               <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
             {:else}
-              <SlotBtn onclick={() => api.downloadSingle(String(t.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>📥 下载</SlotBtn>
+              <SlotBtn onclick={() => downloadSingleTrack(String(t.id))}>📥 下载</SlotBtn>
             {/if}
             <SlotBtn onclick={() => showToast('缓存功能开发中', 'info')}>📲 缓存</SlotBtn>
             <SlotBtn onclick={() => showToast('添加歌单功能开发中', 'info')}>➕ 歌单</SlotBtn>
@@ -310,7 +329,7 @@
       </button>
       <button
         class="btn-secondary"
-        onclick={() => api.downloadSingle(String(songInfo.id || songId)).then(() => showToast('已提交单曲下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}
+        onclick={() => downloadSingleTrack(String(songInfo.id || songId))}
       >
         📥 下载
       </button>

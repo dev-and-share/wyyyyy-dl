@@ -4,6 +4,7 @@
   import { formatTime, getApiCache, setApiCache } from './lib/utils';
   import { savePlayerStateToStorage, loadPlayerStateFromStorage } from './lib/playerStorage';
   import { applyTheme, getInitialTheme, switchToLegacy, type ThemeMode } from './lib/theme';
+  import { resolveTrackUrl } from './lib/playerHelper';
   import type { Track } from './lib/types';
 
   import TopBar from './components/TopBar.svelte';
@@ -17,6 +18,7 @@
   import PlayerBar from './components/PlayerBar.svelte';
   import PullToRefresh from './components/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
+  import ToastContainer from './components/ToastContainer.svelte';
   import { executeReveal } from './lib/revealHelper';
 
   function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
@@ -81,40 +83,12 @@
 
   let curTrack = $derived(queue[qIndex] || null);
 
-  // ---------- 播放器控制与解析 ----------
-  async function resolveUrl(track: Track): Promise<string> {
-    if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
-      // 异步抓取网易云真实高清封面与歌词
-      api.songV1(String(track.id), 'lossless').then((j: any) => {
-        const song = j?.data;
-        if (song) {
-          const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
-          if (newPic) track.cover = newPic;
-          if (song.lyric && !track.lyric) track.lyric = song.lyric;
-        }
-      }).catch(() => {});
-    }
-    if (track.url && track.url.includes('/stream')) return track.url;
-    try {
-      const j = await api.songV1(String(track.id), 'lossless');
-      const song = j?.data;
-      if (song) {
-        if (song.url) track.url = song.url;
-        const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
-        if (newPic) track.cover = newPic;
-        if (song.lyric && !track.lyric) track.lyric = song.lyric;
-        return song.url || track.url || '';
-      }
-    } catch {}
-    return track.url || '';
-  }
-
   function savePlayerState() {
     savePlayerStateToStorage({ queue, qIndex, playMode, curTime, autoSkipTrial, offlineOnly });
   }
 
   async function prepareTrackInUI(track: Track, seekTime: number) {
-    let url = track.url || (await resolveUrl(track));
+    let url = track.url || (await resolveTrackUrl(track));
     if (url && audioEl) {
       audioEl.src = url;
       if (seekTime > 0) {
@@ -146,7 +120,7 @@
 
   async function ensurePlay() {
     if (!curTrack || !audioEl) return;
-    let url = curTrack.url || (await resolveUrl(curTrack));
+    let url = curTrack.url || (await resolveTrackUrl(curTrack));
     if (url && audioEl.src !== url && !audioEl.src.endsWith(url)) {
       audioEl.src = url;
     }
@@ -223,6 +197,7 @@
     if (targetTrack && !targetTrack.isLocal && targetTrack.id) {
       api.downloadSingle(String(targetTrack.id)).then(() => {
         showToast(`已将《${targetTrack.name || '歌曲'}》加入自动下载任务`, 'info', 2000);
+        window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
       }).catch(() => {});
     }
   }
@@ -246,6 +221,23 @@
     }
   }
 
+  // ---------- 自适应轮询：有活跃任务时 3s，全部完成后自动停止 ----------
+  const ACTIVE_STATUSES = new Set(['WAITING', 'DOWNLOADING', 'PENDING']);
+  let taskTimer: ReturnType<typeof setInterval> | null = null;
+
+  function stopTaskPolling() {
+    if (taskTimer !== null) {
+      clearInterval(taskTimer);
+      taskTimer = null;
+    }
+  }
+
+  function startTaskPolling() {
+    if (taskTimer !== null) return; // 已在运行，不重复启动
+    fetchTasks();
+    taskTimer = setInterval(fetchTasks, 3000);
+  }
+
   async function fetchTasks() {
     try {
       const j = await api.tasks();
@@ -266,6 +258,11 @@
         if (changed) {
           downloadedSet = newSet;
         }
+        // 无活跃任务时自动停止轮询，节省服务器资源
+        const hasActive = tasks.some((t: any) => ACTIVE_STATUSES.has(t.status));
+        if (!hasActive) {
+          stopTaskPolling();
+        }
       }
     } catch {}
   }
@@ -273,6 +270,7 @@
   async function clearTasks() {
     await api.tasksClear();
     tasks = [];
+    stopTaskPolling(); // 清空后立刻停止轮询
     showToast('已清空', 'info');
   }
 
@@ -360,8 +358,10 @@
       if (j?.code === '000000') repeat = j.data === true;
     }).catch(() => {});
 
-    fetchTasks();
-    setInterval(fetchTasks, 3000);
+    // 监听全局下载提交事件，重启轮询（子组件可通过 dispatchEvent 触发）
+    window.addEventListener('wyyyy:download-submitted', () => startTaskPolling());
+
+    startTaskPolling();
     initDownloadedSet();
 
     const c = getApiCache('liked_song_ids');
@@ -483,13 +483,8 @@
   <RevealModal path={revealData.path} msg={revealData.msg} onClose={() => revealData = null} {showToast} />
 {/if}
 
-<div id="globalToastContainer" class="fixed top-[calc(16px+env(safe-area-inset-top,0px))] right-[calc(16px+env(safe-area-inset-right,0px))] z-[100000] flex flex-col items-end gap-2 pointer-events-none max-w-[min(420px,90vw)]">
-  {#each toasts as t (t.id)}
-    <div class="pointer-events-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold text-white shadow-xl backdrop-blur-md max-w-[360px] animate-[toast-fade-in_0.3s_cubic-bezier(0.16,1,0.3,1)] {t.type === 'error' ? 'bg-red-500/95 shadow-red-500/25' : t.type === 'success' ? 'bg-emerald-500/95 shadow-emerald-500/25' : t.type === 'warning' ? 'bg-amber-500/95 shadow-amber-500/25' : 'bg-slate-800/95 shadow-black/30'}">
-      {t.msg}
-    </div>
-  {/each}
-</div>
+<!-- 🔔 全局 Toast 浮动提示容器 -->
+<ToastContainer {toasts} />
 
 <!-- 🌐 Global Bottom Sheet — rendered at root to escape any backdrop-blur containing blocks -->
 <BottomSheet />
