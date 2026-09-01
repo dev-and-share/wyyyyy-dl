@@ -480,9 +480,9 @@
   <RevealModal path={revealData.path} msg={revealData.msg} onClose={() => revealData = null} {showToast} />
 {/if}
 
-<div id="globalToastContainer" class="toast-container" style="position:fixed; top:16px; right:16px; z-index:100000; display:flex; flex-direction:column; gap:8px;">
+<div id="globalToastContainer" class="fixed top-4 right-4 z-[100000] flex flex-col items-end gap-2 pointer-events-none max-w-[min(420px,90vw)]">
   {#each toasts as t (t.id)}
-    <div class="toast-item toast-{t.type}" style="background:{t.type === 'error' ? '#ef4444' : t.type === 'success' ? '#10b981' : t.type === 'warning' ? '#f59e0b' : '#334155'}; color:#fff; padding:10px 14px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.3); font-size:13px; max-width:360px;">
+    <div class="pointer-events-auto inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-[13px] font-medium text-white shadow-lg max-w-[360px] animate-[toast-fade-in_0.3s_cubic-bezier(0.16,1,0.3,1)] {t.type === 'error' ? 'bg-red-500' : t.type === 'success' ? 'bg-emerald-500' : t.type === 'warning' ? 'bg-amber-500' : 'bg-slate-700'}">
       {t.msg}
     </div>
   {/each}

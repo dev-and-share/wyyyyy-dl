@@ -84,8 +84,8 @@
 按组件逐一替换 class 属性，从全局 CSS 类改为 TW 工具类。
 
 ### 4-A 全局布局 & TopBar
-- [ ] `src/App.svelte` — Toast 容器、ActionSheet
-- [ ] `src/components/TopBar.svelte` — 顶栏胶囊、品牌、导航 Tab、主题切换
+- [x] `src/App.svelte` — Toast 容器、ActionSheet（无残留）
+- [x] `src/components/TopBar.svelte` — 顶栏胶囊、品牌、导航 Tab、主题切换（纯 Tailwind 化，清除组件内 <style>）
 
 映射示例：
 ```

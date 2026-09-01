@@ -21,95 +21,46 @@
 </script>
 
 <!-- 顶栏 (TopBar) -->
-<div class="app-top-bar">
+<div class="max-w-[900px] mx-auto mb-3 md:mb-4 px-2 py-1.5 md:px-3 md:py-1.5 bg-[var(--topbar-bg)] backdrop-blur-md rounded-[26px] shadow-md border border-[var(--topbar-border)] flex items-center justify-between gap-1.5 md:gap-2.5 transition-all duration-300">
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="app-brand" onclick={onRefresh} title="点击刷新数据" style="cursor:pointer;">
-    <span class="brand-logo">🎵</span>
-    <span class="brand-title">网易云下载器</span>
-    <span class="brand-badge">Svelte 5</span>
+  <div class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer" onclick={onRefresh} title="点击刷新数据">
+    <span class="text-lg leading-none">🎵</span>
+    <span class="hidden sm:inline font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">网易云下载器</span>
+    <span class="hidden sm:inline-block text-[10px] bg-purple-500 text-white px-1.5 py-0.5 rounded-[10px] ml-0.5 font-semibold leading-tight">Svelte 5</span>
   </div>
-  <div class="app-nav-tabs">
-    <button class="nav-tab-btn" class:active={tab === 'playlist'} onclick={() => onSwitchTab('playlist')}>📁 歌单</button>
-    <button class="nav-tab-btn" class:active={tab === 'search'} onclick={() => onSwitchTab('search')}>🔍 搜索</button>
-    <button class="nav-tab-btn" class:active={tab === 'download-mgr'} onclick={() => onSwitchTab('download-mgr')}>📥 本地</button>
+  <div class="flex bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-full md:max-w-[440px] justify-center">
+    <button
+      class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'playlist' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
+      onclick={() => onSwitchTab('playlist')}>📁 歌单</button>
+    <button
+      class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'search' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
+      onclick={() => onSwitchTab('search')}>🔍 搜索</button>
+    <button
+      class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
+      onclick={() => onSwitchTab('download-mgr')}>📥 本地</button>
   </div>
-  <div class="app-top-actions">
-    <button class="topbar-action-btn" onclick={onToggleTheme} title="切换主题">
+  <div class="shrink-0 flex items-center gap-1 md:gap-1.5 pr-0.5">
+    <button
+      class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+      onclick={onToggleTheme}
+      title="切换主题"
+    >
       {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
     </button>
-    <label class="compact-switch-label" title="允许重复下载">
-      <input type="checkbox" checked={repeat} onchange={onToggleRepeat} />
-      <span class="repeat-label-text">允许重复</span>
+    <label
+      class="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer select-none bg-[var(--nav-tabs-bg)] py-1 px-1.5 sm:px-2.5 rounded-[12px] sm:rounded-[14px] border border-[var(--border-color)] transition-all duration-200"
+      title="允许重复下载"
+    >
+      <input type="checkbox" checked={repeat} onchange={onToggleRepeat} class="m-0 accent-[var(--primary-color)] cursor-pointer" />
+      <span class="hidden sm:inline">允许重复</span>
     </label>
     <button
-      class="topbar-action-btn legacy-btn"
+      class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
       onclick={onSwitchToLegacy}
       title="返回旧版 (localStorage+Cookie)"
     >
-      <span>↩️</span><span class="legacy-btn-text"> 旧版</span>
+      <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
     </button>
   </div>
 </div>
-
-<style>
-  .brand-badge {
-    font-size: 10px;
-    background: #8b5cf6;
-    color: #fff;
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-left: 2px;
-    font-weight: 600;
-  }
-  .topbar-action-btn {
-    background: var(--btn-secondary-bg);
-    border: 1px solid var(--btn-secondary-border);
-    color: var(--btn-secondary-color);
-    padding: 5px 9px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-    transition: all 0.2s ease;
-    user-select: none;
-    flex-shrink: 0;
-  }
-  .topbar-action-btn:hover {
-    background: var(--btn-secondary-hover-bg);
-    color: var(--btn-secondary-hover-color);
-  }
-  .legacy-btn {
-    background: rgba(139, 92, 246, 0.12) !important;
-    border-color: rgba(139, 92, 246, 0.3) !important;
-    color: #a78bfa !important;
-  }
-  .legacy-btn:hover {
-    background: rgba(139, 92, 246, 0.22) !important;
-  }
-
-  /* 📱 移动端小屏极简适配 (< 640px) */
-  @media (max-width: 640px) {
-    .brand-title, .brand-badge {
-      display: none !important;
-    }
-    .repeat-label-text {
-      display: none !important;
-    }
-    .legacy-btn-text {
-      display: none !important;
-    }
-    .topbar-action-btn {
-      padding: 4px 6px;
-      font-size: 11.5px;
-    }
-    :global(.nav-tab-btn) {
-      padding: 5px 8px !important;
-      font-size: 11.5px !important;
-    }
-  }
-</style>
