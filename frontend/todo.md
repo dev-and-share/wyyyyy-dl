@@ -36,9 +36,8 @@
 
 ## 🏗️ 架构 & 代码质量
 
-- [ ] **全站最后一个组件 `<style>` 标签清理：`PlayerBar.svelte`**
-  - 当前状态：全站除 `PlayerBar.svelte`（L138-L252，共 114 行样式，用于最小化浮动黑胶球/进度环）外，其余组件已 100% 纯 Tailwind 化。
-  - 目标：将 `PlayerBar.svelte` 的 114 行 `<style>` 转化为 Tailwind 工具类，实现全站所有 `.svelte` 组件 100% 零 `<style>` 标签！
+- [x] **全站最后一个组件 `<style>` 标签清理：`PlayerBar.svelte`**
+  - 完成：已将 `PlayerBar.svelte` 的 114 行 `<style>` 全部替换为 Tailwind 工具类，实现全站所有 `.svelte` 组件 **100% 纯 Tailwind、零 `<style>` 标签**！
 - [ ] **`SearchTab.svelte` 行数过长风险**
   - 当前约 417 行（接近 500 行限制），建议拆出 `AlbumDetailCard.svelte`（专辑展开视图）
 - [ ] **`DownloadMgrTab.svelte` 存在多个 `<span onclick>` a11y warn**
