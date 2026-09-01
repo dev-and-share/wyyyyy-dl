@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { formatTime, formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import type { Track } from '../lib/types';
+  import PlayerCoverRing from './PlayerCoverRing.svelte';
+  import PlayerProgressBar from './PlayerProgressBar.svelte';
 
   let {
     curTrack,
@@ -43,75 +45,78 @@
   }>();
 
   let showVolPopup = $state(false);
-  const RING_CIRCUMFERENCE = 144.513;
 </script>
 
-<div class="sp-player-card">
+<div class="fixed bottom-[calc(10px+env(safe-area-inset-bottom,0px))] left-2.5 right-2.5 rounded-[20px] bg-[var(--card-bg-solid,#121826)]/95 backdrop-blur-2xl shadow-[0_16px_44px_rgba(0,0,0,0.4),0_4px_16px_rgba(0,0,0,0.2)] border border-[var(--border-color,rgba(255,255,255,0.15))] z-[9998] p-2.5 pb-[calc(10px+env(safe-area-inset-bottom,0px))] flex flex-col gap-2 transition-colors duration-300">
   <!-- 2.1 顶部区域：左侧黑胶封面；右侧上下两行（上行歌名满宽独占，下行歌手与4个按钮并排） -->
-  <div class="sp-top-section">
+  <div class="flex items-center gap-2.5 w-full">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="sp-cover-wrapper" onclick={onLyric} title="点击展开全屏播放器与歌词">
-      <svg class="sp-cover-ring" viewBox="0 0 50 50">
-        <circle class="sp-ring-bg" cx="25" cy="25" r="23" />
-        <circle
-          class="sp-ring-progress"
-          cx="25"
-          cy="25"
-          r="23"
-          stroke="url(#spRingGradBar)"
-          stroke-dasharray="{RING_CIRCUMFERENCE}"
-          stroke-dashoffset="{ringDashOffset}"
-        />
-        <defs>
-          <linearGradient id="spRingGradBar" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ef4444" />
-            <stop offset="100%" stop-color="#f97316" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <img
-        src={curTrack?.cover || DEFAULT_VINYL_COVER}
-        alt="封面"
-        class="sp-cover-img"
-        class:playing={playing}
-        referrerpolicy="no-referrer"
-        onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
+    <div onclick={onLyric} title="点击展开全屏播放器与歌词">
+      <PlayerCoverRing
+        cover={curTrack?.cover || DEFAULT_VINYL_COVER}
+        {playing}
+        {ringDashOffset}
+        size="sm"
       />
     </div>
 
     <!-- 右侧两行信息栏 -->
-    <div class="sp-info-col">
-      <!-- 🌟 上排：歌名完全一整排独占，绝不被按钮挤压 -->
+    <div class="flex flex-col flex-1 min-w-0 justify-center">
+      <!-- 上排：歌名满宽独占 -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="sp-title-fullrow" onclick={onLyric} title="点击展开全屏播放器与歌词">
-        <span class="sp-song-title">{curTrack?.name || '未在播放'}</span>
+      <div class="flex items-center gap-1.5 overflow-hidden cursor-pointer" onclick={onLyric} title="点击展开全屏播放器与歌词">
+        <span class="text-sm font-semibold text-[var(--text-main,#0f172a)] truncate leading-tight">
+          {curTrack?.name || '未在播放'}
+        </span>
         {#if curTrack?.isLocal}
-          <span class="audio-source-badge badge-server" title="🖥️ 本地已下载">🖥️</span>
+          <span class="audio-source-badge icon-only badge-server ml-1" title="🖥️ 本地已下载">🖥️</span>
         {/if}
       </div>
 
-      <!-- 🌟 下排：歌手名 与 4个快捷工具按钮在同一排 -->
-      <div class="sp-artist-tools-row">
+      <!-- 下排：歌手名 与 4个快捷工具按钮在同一排 -->
+      <div class="flex items-center justify-between gap-1.5 mt-0.5">
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="sp-song-artist" onclick={onLyric} title="点击展开全屏播放器与歌词">
+        <div class="text-xs text-[var(--text-secondary,#64748b)] truncate flex-1 min-w-0 cursor-pointer" onclick={onLyric} title="点击展开全屏播放器与歌词">
           {formatArtist(curTrack?.artist) || '未知歌手'}
         </div>
 
-        <!-- 4个快捷按键 (与歌手名同行对齐) -->
-        <div class="sp-tools-group">
-          <button class="sp-touch-btn" onclick={onLyric} title="全屏沉浸歌词">🎤</button>
-          <button class="sp-touch-btn" onclick={onPeq} title="5段参量均衡器 (PEQ)">🎛️</button>
-          <button class="sp-touch-btn sp-playlist-touch-btn" onclick={onQueue} title="当前播放列表">
+        <!-- 4个快捷按键 -->
+        <div class="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+            onclick={onLyric}
+            title="全屏沉浸歌词"
+          >
+            🎤
+          </button>
+          <button
+            type="button"
+            class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+            onclick={onPeq}
+            title="5段参量均衡器 (PEQ)"
+          >
+            🎛️
+          </button>
+          <button
+            type="button"
+            class="relative w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+            onclick={onQueue}
+            title="当前播放列表"
+          >
             📜
-            <span class="badge-count-pill">{queue.length}</span>
+            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold px-1 py-px rounded-full border border-white/60 leading-none">
+              {queue.length}
+            </span>
           </button>
           <!-- 移动端音量竖立弹出滑块 -->
-          <div class="sp-vol-popup-wrap">
+          <div class="relative">
             <button
-              class="sp-touch-btn"
+              type="button"
+              class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
               onclick={() => showVolPopup = !showVolPopup}
               title={vol === 0 ? '静音' : `音量 ${Math.round(vol * 100)}%`}
             >
@@ -120,11 +125,19 @@
             {#if showVolPopup}
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div class="vol-popup-overlay" onclick={() => showVolPopup = false}></div>
-              <div class="vol-popup-panel">
-                <span class="vol-popup-label">{Math.round(vol * 100)}%</span>
-                <input type="range" min="0" max="1" step="0.02" bind:value={vol} class="vol-popup-slider" />
-                <span class="vol-popup-icon">{vol === 0 ? '🔇' : '🔊'}</span>
+              <div class="fixed inset-0 z-[10001]" onclick={() => showVolPopup = false}></div>
+              <div class="absolute bottom-9 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid,#1e293b)] border border-[var(--border-color,rgba(255,255,255,0.15))] rounded-2xl shadow-xl z-[10002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
+                <span class="text-[10px] font-mono text-[var(--text-muted)]">{Math.round(vol * 100)}%</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.02"
+                  bind:value={vol}
+                  class="w-1.5 h-20 accent-red-500 cursor-pointer"
+                  style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
+                />
+                <span class="text-xs">{vol === 0 ? '🔇' : '🔊'}</span>
               </div>
             {/if}
           </div>
@@ -133,143 +146,55 @@
     </div>
   </div>
 
-  <!-- 2.2 第二排：全宽大触控进度条 -->
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="sp-row-progress">
-    <span class="sp-time-stamp">{formatTime(curTime)}</span>
-    <div class="sp-progress-bar-wrapper" onclick={onSeek}>
-      <div class="sp-progress-bar-bg"></div>
-      <div class="sp-progress-bar-fill" style="width: {progressRatio * 100}%;"></div>
-      <div class="sp-progress-handle" style="left: {progressRatio * 100}%;"></div>
-    </div>
-    <span class="sp-time-stamp">{formatTime(duration)}</span>
-  </div>
+  <!-- 2.2 第二排：全宽进度条 -->
+  <PlayerProgressBar
+    {curTime}
+    {duration}
+    {progressRatio}
+    {onSeek}
+  />
 
-  <!-- 2.3 第三排：5个超大触控控制按键 (自适应黑夜/白天主题) -->
-  <div class="sp-row-controls">
-    <button class="sp-ctrl-btn sp-sub-btn" onclick={onToggleMode} title={playMode === 'single' ? '单曲循环' : (playMode === 'shuffle' ? '随机播放' : '列表循环')}>
+  <!-- 2.3 第三排：5个控制按键 -->
+  <div class="flex items-center justify-between w-full px-2">
+    <button
+      type="button"
+      class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
+      onclick={onToggleMode}
+      title={playMode === 'single' ? '单曲循环' : (playMode === 'shuffle' ? '随机播放' : '列表循环')}
+    >
       {playMode === 'single' ? '🔂' : (playMode === 'shuffle' ? '🔀' : '🔁')}
     </button>
-    <button class="sp-ctrl-btn sp-side-btn" onclick={onPrev} title="上一首">⏮</button>
-    <button class="sp-ctrl-btn sp-play-btn" onclick={onTogglePlay} title={playing ? '暂停' : '播放'}>
+    <button
+      type="button"
+      class="w-10 h-10 rounded-full flex items-center justify-center text-base text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
+      onclick={onPrev}
+      title="上一首"
+    >
+      ⏮
+    </button>
+    <button
+      type="button"
+      class="w-12 h-12 rounded-full flex items-center justify-center text-xl bg-gradient-to-br from-red-500 to-orange-500 text-white font-bold shadow-lg shadow-red-500/40 active:scale-95 transition-all"
+      onclick={onTogglePlay}
+      title={playing ? '暂停' : '播放'}
+    >
       {playing ? '⏸' : '▶'}
     </button>
-    <button class="sp-ctrl-btn sp-side-btn" onclick={onNext} title="下一首">⏭</button>
-    <button class="sp-ctrl-btn sp-sub-btn sp-close-btn" onclick={onMinimize} title="收起为黑胶悬浮球">✕</button>
+    <button
+      type="button"
+      class="w-10 h-10 rounded-full flex items-center justify-center text-base text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
+      onclick={onNext}
+      title="下一首"
+    >
+      ⏭
+    </button>
+    <button
+      type="button"
+      class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-sm text-[var(--text-muted)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] hover:text-red-400 active:scale-95 transition-all"
+      onclick={onMinimize}
+      title="收起为黑胶悬浮球"
+    >
+      ✕
+    </button>
   </div>
 </div>
-
-<style>
-  .sp-player-card {
-    position: fixed; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    left: 10px; right: 10px; border-radius: 20px;
-    background: var(--card-bg-solid, #121826); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.15);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15)); z-index: 9998;
-    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)) 8px;
-    display: flex; flex-direction: column; gap: 8px; transition: background 0.3s ease, border-color 0.3s ease;
-  }
-  :global([data-theme="light"]) .sp-player-card {
-    background: rgba(255, 255, 255, 0.96) !important;
-    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
-  }
-
-  /* 顶部两行混合布局 */
-  .sp-top-section {
-    display: flex; align-items: center; gap: 10px; width: 100%;
-  }
-  .sp-cover-wrapper {
-    position: relative; width: 44px; height: 44px; border-radius: 50%;
-    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    margin: 0; padding: 0; cursor: pointer;
-  }
-  .sp-cover-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; border-radius: 50%; }
-  .sp-ring-bg { fill: none; stroke: transparent; stroke-width: 2.5; }
-  .sp-ring-progress { fill: none; stroke-width: 2.5; stroke-linecap: round; transition: stroke-dashoffset 0.2s linear; }
-  .sp-cover-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: block; margin: 0; padding: 0; }
-  .sp-cover-img.playing { animation: spinVinyl 16s linear infinite; }
-  @keyframes spinVinyl { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-  .sp-info-col {
-    display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 3px;
-  }
-  .sp-title-fullrow {
-    display: flex; align-items: center; gap: 6px; width: 100%; overflow: hidden; cursor: pointer;
-  }
-  .sp-song-title {
-    font-size: 14.5px; font-weight: 700; color: var(--text-main, #0f172a);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
-  }
-  .audio-source-badge { padding: 1px 5px; font-size: 10px; border-radius: 4px; flex-shrink: 0; display: inline-flex; align-items: center; }
-  .badge-server { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-
-  .sp-artist-tools-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%;
-  }
-  .sp-song-artist {
-    font-size: 12px; color: var(--text-secondary, #64748b);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    flex: 1; min-width: 0; cursor: pointer;
-  }
-
-  .sp-tools-group {
-    display: flex; align-items: center; gap: 5px; flex-shrink: 0;
-  }
-  .sp-touch-btn {
-    width: 28px; height: 28px; border-radius: 8px; background: var(--btn-slot-bg, rgba(0, 0, 0, 0.05));
-    border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08)); font-size: 13px; display: inline-flex;
-    align-items: center; justify-content: center; color: var(--text-main, #0f172a); cursor: pointer; transition: all 0.15s ease;
-  }
-  .sp-touch-btn:active { transform: scale(0.92); background: var(--btn-hover-bg, rgba(0, 0, 0, 0.12)); }
-  .sp-playlist-touch-btn { position: relative; }
-  .badge-count-pill {
-    position: absolute; top: -3px; right: -3px; background: #ef4444; color: #ffffff;
-    font-size: 8px; font-weight: 700; padding: 0 3px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.6);
-  }
-  .sp-vol-popup-wrap { position: relative; display: inline-flex; }
-  .vol-popup-overlay { position: fixed; inset: 0; z-index: 9999; }
-  .vol-popup-panel {
-    position: absolute; bottom: calc(100% + 10px); right: 50%; transform: translateX(50%);
-    background: var(--card-bg-solid, #ffffff); border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
-    border-radius: 14px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center;
-    gap: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); z-index: 10000; width: 36px;
-  }
-  .vol-popup-label { font-size: 10px; font-weight: 700; color: var(--text-main, #0f172a); }
-  .vol-popup-slider {
-    writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;
-    width: 6px; height: 90px; cursor: pointer; accent-color: #ef4444; margin: 4px 0;
-  }
-  .vol-popup-icon { font-size: 14px; }
-
-  /* 进度条与底栏控制 */
-  .sp-row-progress { display: flex; align-items: center; gap: 8px; width: 100%; }
-  .sp-time-stamp { font-size: 11px; color: var(--text-secondary, #64748b); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-  .sp-progress-bar-wrapper { position: relative; flex: 1; height: 20px; display: flex; align-items: center; cursor: pointer; }
-  .sp-progress-bar-bg { width: 100%; height: 4px; background: var(--border-color, rgba(0, 0, 0, 0.08)); border-radius: 2px; }
-  .sp-progress-bar-fill { position: absolute; left: 0; height: 4px; background: #ef4444; border-radius: 2px; }
-  .sp-progress-handle {
-    position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #ffffff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); transform: translate(-50%, 0);
-  }
-
-  .sp-row-controls { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 6px; }
-  .sp-ctrl-btn {
-    border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: transform 0.15s ease, background 0.15s ease;
-  }
-  .sp-ctrl-btn:active { transform: scale(0.9); }
-  .sp-play-btn {
-    width: 48px; height: 48px; background: linear-gradient(135deg, #ef4444, #dc2626); color: #ffffff;
-    font-size: 20px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
-  }
-  .sp-side-btn {
-    width: 40px; height: 40px; background: var(--btn-slot-bg, rgba(0, 0, 0, 0.05));
-    border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08)); color: var(--text-main, #0f172a); font-size: 16px;
-  }
-  .sp-sub-btn {
-    width: 34px; height: 34px; background: var(--btn-slot-bg, rgba(0, 0, 0, 0.03));
-    border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06)); color: var(--text-secondary, #64748b); font-size: 14px;
-  }
-</style>

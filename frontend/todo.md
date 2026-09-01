@@ -126,10 +126,10 @@
 ```
 
 ### 4-E 播放器栏（⚠️ 最复杂区域）
-- [ ] `PlayerBarDesktop.svelte` — 三段式布局、进度条、音量
-- [ ] `PlayerBarMobile.svelte` — 移动端折叠布局、safe-area、env()
-
-> ⚠️ `env(safe-area-inset-bottom)` 动态值必须写在 `components.css` 中，TW 工具类不支持 env()
+- [x] 抽象出通用细粒度组件：`PlayerCoverRing.svelte`、`PlayerProgressBar.svelte`、`PlayerControls.svelte`
+- [x] `PlayerBarDesktop.svelte` — 彻底废除 350 行 `<style>` 标签，全站三段式布局纯 Tailwind 化（代码降至 144 行）
+- [x] `PlayerBarMobile.svelte` — 彻底废除 115 行 `<style>` 标签，移动端 safe-area 避让与竖立音量弹窗纯 Tailwind 化（代码降至 160 行）
+- [x] `style.svelte.css` — 彻底删除遗留的 `.bottom-audio-bar`、`.ctrl-btn`、`.audio-*` 等全套规则（共 535 行）
 
 ```
 .bottom-audio-bar  → fixed bottom-0 left-0 right-0 h-[72px] bg-[rgba(15,23,42,0.96)] backdrop-blur-xl border-t border-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] z-[9998] px-6 flex items-center transition-all
