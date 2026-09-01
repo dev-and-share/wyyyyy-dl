@@ -2,13 +2,13 @@
   import { api } from '../lib/api';
   import SlotBtn from './SlotBtn.svelte';
   import FolderNode from './FolderNode.svelte';
+  import { openSheet } from '../lib/ui.svelte';
 
   let { item, level = 0, onPlay } = $props<{ item: any; level?: number; onPlay: (path: string, name: string) => void }>();
   let expanded = $state(false);
   let children: any[] = $state([]);
   let loaded = $state(false);
   let loading = $state(false);
-  let showSheet = $state(false);
 
   async function toggle() {
     if (!item.directory) return;
@@ -26,6 +26,33 @@
 
   function handlePlay() {
     onPlay(item.path, item.name);
+  }
+
+  function showOptions() {
+    const actions = [];
+
+    if (item.directory) {
+      if (item.trackCount > 0) {
+        actions.push({ label: `▶ 连播此文件夹 (${item.trackCount}首)`, style: 'primary' as const, onclick: handlePlay });
+        actions.push({ label: '➕ 追加到队列', onclick: handlePlay });
+      }
+      if (item.hostPath) {
+        actions.push({ label: '📂 定位', onclick: () => alert(item.hostPath) });
+      }
+      actions.push({ label: '🔄 刷新', onclick: () => { loaded = false; toggle(); } });
+      actions.push({ label: '🚫 忽略此文件夹 (.musicignore)', style: 'danger' as const, onclick: () => { if (confirm('忽略 ' + item.name + '?')) alert('忽略'); } });
+      actions.push({ label: '🗑️ 彻底删除 (物理删除)', style: 'danger' as const, onclick: () => { if (confirm('彻底删除 ' + item.name + '?')) alert('删除'); } });
+    } else {
+      actions.push({ label: '▶ 播放', style: 'primary' as const, onclick: handlePlay });
+    }
+
+    actions.push({ label: '取消', style: 'cancel' as const, onclick: () => {} });
+
+    openSheet({
+      title: (item.directory ? '📁 ' : '🎵 ') + item.name,
+      subtitle: item.path,
+      actions,
+    });
   }
 </script>
 
@@ -73,12 +100,12 @@
           <SlotBtn onclick={(e) => { e.stopPropagation(); toggle(); }}>🔄</SlotBtn>
         </span>
         <span class="inline-flex md:hidden">
-          <SlotBtn onclick={(e) => { e.stopPropagation(); showSheet = true; }}>···</SlotBtn>
+          <SlotBtn onclick={(e) => { e.stopPropagation(); showOptions(); }}>···</SlotBtn>
         </span>
       {:else}
         <SlotBtn onclick={(e) => { e.stopPropagation(); handlePlay(); }}>▶ 播放</SlotBtn>
         <span class="inline-flex md:hidden">
-          <SlotBtn onclick={(e) => { e.stopPropagation(); showSheet = true; }}>···</SlotBtn>
+          <SlotBtn onclick={(e) => { e.stopPropagation(); showOptions(); }}>···</SlotBtn>
         </span>
       {/if}
     </div>
@@ -98,86 +125,3 @@
     </div>
   {/if}
 </div>
-
-<!-- 移动端操作抽屉 Bottom Sheet -->
-{#if showSheet}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10003] flex items-end justify-center p-0" onclick={() => showSheet = false}>
-    <div
-      class="bg-[var(--card-bg-solid,#0f172a)] rounded-t-2xl w-full max-w-[500px] p-4 max-h-[70vh] overflow-y-auto border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col gap-2 pb-[calc(16px+env(safe-area-inset-bottom,0px))] animate-[scaleUp_0.22s_cubic-bezier(0.16,1,0.3,1)]"
-      onclick={(e) => e.stopPropagation()}
-    >
-      <div class="flex justify-between items-center pb-2 border-b border-[var(--border-subtle)]">
-        <div class="overflow-hidden pr-2">
-          <div class="font-bold text-sm text-[var(--text-main)] truncate">{item.directory ? '📁 ' : '🎵 '}{item.name}</div>
-          <div class="text-[11px] text-[var(--text-muted)] font-mono truncate mt-0.5">{item.path}</div>
-        </div>
-        <button
-          type="button"
-          onclick={() => showSheet = false}
-          class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
-        >
-          ✕
-        </button>
-      </div>
-
-      {#if item.directory}
-        {#if item.trackCount > 0}
-          <button
-            type="button"
-            class="w-full py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs transition-all cursor-pointer text-center"
-            onclick={() => { showSheet = false; handlePlay(); }}
-          >
-            ▶ 连播此文件夹 ({item.trackCount}首)
-          </button>
-        {/if}
-        <button
-          type="button"
-          class="w-full py-2.5 px-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/[0.04] text-left text-xs font-medium text-[var(--text-main)] transition-all cursor-pointer"
-          onclick={() => { showSheet = false; handlePlay(); }}
-        >
-          ➕ 追加到队列
-        </button>
-        {#if item.hostPath}
-          <button
-            type="button"
-            class="w-full py-2.5 px-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/[0.04] text-left text-xs font-medium text-[var(--text-main)] transition-all cursor-pointer"
-            onclick={() => { showSheet = false; alert(item.hostPath); }}
-          >
-            📂 定位
-          </button>
-        {/if}
-        <button
-          type="button"
-          class="w-full py-2.5 px-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/[0.04] text-left text-xs font-medium text-[var(--text-main)] transition-all cursor-pointer"
-          onclick={() => { showSheet = false; toggle(); }}
-        >
-          🔄 刷新
-        </button>
-      {/if}
-
-      <button
-        type="button"
-        class="w-full py-2.5 px-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-left text-xs font-medium transition-all cursor-pointer"
-        onclick={() => { showSheet = false; if (confirm('忽略 ' + item.name + '?')) alert('忽略'); }}
-      >
-        🚫 忽略此文件夹 (.musicignore)
-      </button>
-      <button
-        type="button"
-        class="w-full py-2.5 px-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-left text-xs font-medium transition-all cursor-pointer"
-        onclick={() => { showSheet = false; if (confirm('彻底删除 ' + item.name + '?')) alert('删除'); }}
-      >
-        🗑️ 彻底删除 (物理删除)
-      </button>
-      <button
-        type="button"
-        class="w-full py-2.5 px-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/[0.04] text-center text-xs text-[var(--text-secondary)] mt-1 transition-all cursor-pointer"
-        onclick={() => showSheet = false}
-      >
-        取消
-      </button>
-    </div>
-  </div>
-{/if}

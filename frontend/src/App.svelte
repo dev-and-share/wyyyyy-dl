@@ -16,6 +16,7 @@
   import RevealModal from './components/RevealModal.svelte';
   import PlayerBar from './components/PlayerBar.svelte';
   import PullToRefresh from './components/PullToRefresh.svelte';
+  import BottomSheet from './components/BottomSheet.svelte';
   import { executeReveal } from './lib/revealHelper';
 
   function getInitialTab(): 'playlist' | 'search' | 'download-mgr' {
@@ -487,3 +488,6 @@
     </div>
   {/each}
 </div>
+
+<!-- 🌐 Global Bottom Sheet — rendered at root to escape any backdrop-blur containing blocks -->
+<BottomSheet />

@@ -51,6 +51,10 @@
   }
 
   let pid = $state(playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, ''));
+  // Separate display value for the input — only committed to pid on explicit action
+  let pidInput = $state(playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, ''));
+  // Sentinel: track the last external playlistId prop we acted on, to avoid feedback loops
+  let lastSeenPlaylistId = $state(playlistId || '');
   let accMy = $state(getStored(STORAGE_KEY_ACC_MY, 'true') === 'true');
   let accDetail = $state(getStored(STORAGE_KEY_ACC_DETAIL, 'true') === 'true');
   let accSong = $state(getStored(STORAGE_KEY_ACC_SONG, 'false') === 'true');
@@ -83,24 +87,28 @@
     loadMyPlaylists('created').catch(() => {});
   });
 
-  // 监听外部传入的歌单 ID 变动
+  // 监听外部传入的歌单 ID 变动（只响应真正的外部变化，避免内部 pid 反写 prop 造成死循环）
   $effect(() => {
-    if (playlistId && playlistId !== pid) {
+    if (playlistId && playlistId !== lastSeenPlaylistId) {
+      lastSeenPlaylistId = playlistId;
       pid = playlistId;
+      pidInput = playlistId;
       handleViewPlaylist(playlistId);
     }
   });
 
   // 查看歌单详情交互：瞬间收起卡片1，展开卡片2
   async function handleViewPlaylist(id: string, switchCards = true) {
-    if (!id) {
+    const trimmed = id.trim();
+    if (!trimmed) {
       showToast('请输入歌单 ID', 'warning');
       return;
     }
-    pid = id;
+    pid = trimmed;
+    pidInput = trimmed;  // sync display value too
     try {
-      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, id);
-      history.replaceState(null, '', `#/playlist?id=${id}`);
+      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, trimmed);
+      history.replaceState(null, '', `#/playlist?id=${trimmed}`);
     } catch {}
     if (switchCards) {
       accMy = false;
@@ -213,8 +221,8 @@
 <!-- Section 2: 查看歌单详情 -->
 <AccordionCard title="🎼 2. 查看歌单详情" bind:open={accDetail} onToggle={saveAccState}>
   <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
-    <input type="text" placeholder="输入歌单 ID (如 123456，按回车查看)" class="flex-1 min-w-0" bind:value={pid} oninput={() => { if (pid) { try { localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, pid); } catch {} } }} onkeydown={(e) => e.key === 'Enter' && handleViewPlaylist(pid)} />
-    <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => handleViewPlaylist(pid)}>查看<span class="hidden sm:inline">歌单详情</span></button>
+    <input type="text" placeholder="输入歌单 ID (如 123456，按回车查看)" class="flex-1 min-w-0" bind:value={pidInput} onkeydown={(e) => e.key === 'Enter' && handleViewPlaylist(pidInput)} />
+    <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => handleViewPlaylist(pidInput)}>查看<span class="hidden sm:inline">歌单详情</span></button>
   </div>
   {#if playlist}
     <DetailHeaderCard
