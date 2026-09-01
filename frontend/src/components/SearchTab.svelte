@@ -255,11 +255,13 @@
         {#each sResults as r, idx}
           {#if sType === '1'}
             {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
+            {@const isLocal = (downloadedSet && downloadedSet.has(Number(r.id))) || r.isLocal === true}
             {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
             <li class="track-item-card" class:is-active-playing={isPlayingThis}>
               <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER }]))}>{idx + 1}. {r.name}</strong>
+                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>{idx + 1}. {r.name}</strong>
                 {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
+                {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 本地服务器已下载">🖥️</span>{/if}
                 <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
               </div>
               <div style="display:flex; gap:6px; flex-shrink:0;">
@@ -267,10 +269,13 @@
                   <button
                     class="jump-link-btn"
                     class:is-playing-btn={isPlayingThis}
-                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER }])}
+                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
                   >
-                    {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
+                    {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
                   </button>
+                {/if}
+                {#if isLocal}
+                  <button class="jump-link-btn" onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</button>
                 {/if}
                 {#if onSong}
                   <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
