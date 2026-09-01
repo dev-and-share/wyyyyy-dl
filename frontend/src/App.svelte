@@ -245,11 +245,20 @@
       if (j.code === '000000') {
         tasks = j.data || [];
         if (tasks.length) monVisible = true;
+        let changed = false;
+        const newSet = new Set(downloadedSet);
         tasks.forEach((t: any) => {
-          if (t.status === 'SUCCESS' && (t.songId || t.id)) {
-            downloadedSet.add(Number(t.songId || t.id));
+          if ((t.status === 'SUCCESS' || t.status === 'SKIP') && (t.songId || t.id)) {
+            const sid = Number(t.songId || t.id);
+            if (!newSet.has(sid)) {
+              newSet.add(sid);
+              changed = true;
+            }
           }
         });
+        if (changed) {
+          downloadedSet = newSet;
+        }
       }
     } catch {}
   }
@@ -288,11 +297,22 @@
 
   async function initDownloadedSet() {
     try {
+      const j = await api.historyIds();
+      if (j?.code === '000000' && Array.isArray(j.data)) {
+        downloadedSet = new Set(j.data.map(Number));
+        return;
+      }
+    } catch {}
+
+    // 降级兜底
+    try {
       const j = await api.historyList('', 1);
       const list = j?.data?.list || [];
+      const s = new Set<number>();
       list.forEach((item: any) => {
-        if (item.songId) downloadedSet.add(Number(item.songId));
+        if (item.songId) s.add(Number(item.songId));
       });
+      downloadedSet = s;
     } catch {}
   }
 

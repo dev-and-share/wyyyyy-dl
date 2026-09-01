@@ -1380,4 +1380,22 @@ public class DownloadHistoryDAO {
             }
         }
     }
+
+    public Set<Long> getAllDownloadedSongIds() {
+        Set<Long> ids = new HashSet<>();
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT song_id FROM download_history WHERE (file_exists IS NULL OR file_exists = 1) AND song_id IS NOT NULL AND song_id > 0")) {
+            while (rs.next()) {
+                long sid = rs.getLong("song_id");
+                if (sid > 0) {
+                    ids.add(sid);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取全部已下载歌曲ID失败: {}", e.getMessage());
+        }
+        return ids;
+    }
 }
+

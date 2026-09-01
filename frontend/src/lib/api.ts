@@ -31,6 +31,7 @@ export const api = {
   downloadAlbum: (id:string) => get(`/v2/album?id=${encodeURIComponent(id)}`),
   tasks: () => get('/v2/tasks'),
   tasksClear: () => req('/v2/tasks/clear', {method:'POST'}),
+  historyIds: () => get('/v2/history/ids'),
   historyStats: () => get('/v2/history/stats'),
   historyList: (kw:string, page:number) => get(`/v2/history/list?keyword=${encodeURIComponent(kw)}&page=${page}&pageSize=10`),
   historyScanExternal: () => req('/v2/history/scan_external', {method:'POST'}),

@@ -112,6 +112,14 @@ public class DownloadHistoryController {
     }
 
     /**
+     * 获取当前所有已下载并存在的歌曲 ID 集合
+     */
+    @GetMapping("/history/ids")
+    public RespEntity<java.util.Set<Long>> getAllDownloadedSongIds() {
+        return RespEntity.apply(CommonRespInfo.SUCCESS, downloadHistoryDAO.getAllDownloadedSongIds());
+    }
+
+    /**
      * 根据 historyId 或 songId 获取单条历史记录详情 (用于匹配离线缓存元数据)
      */
     @GetMapping("/history/detail")
