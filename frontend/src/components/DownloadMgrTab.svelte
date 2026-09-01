@@ -226,10 +226,10 @@
         </span>
       {/if}
       <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="btn-primary" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed); padding:6px 10px; font-size:12px;" onclick={scanExternalLibraries}>📁 外部曲库</button>
-        <button class="btn-primary" style="background:linear-gradient(135deg,#06b6d4,#0891b2); padding:6px 10px; font-size:12px;" onclick={scanDiskFiles}>🔍 对齐磁盘</button>
-        <button class="btn-primary" style="background:linear-gradient(135deg,#ef4444,#dc2626); padding:6px 10px; font-size:12px;" onclick={cleanMissingRecords}>🧹 清理失效</button>
-        <button class="btn-primary" style="padding:6px 10px; font-size:12px;" onclick={() => loadHistory(1)}>🔄 刷新</button>
+        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={scanExternalLibraries}>📁 外部曲库</button>
+        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={scanDiskFiles}>🔍 对齐磁盘</button>
+        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={cleanMissingRecords}>🧹 清理失效</button>
+        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={() => loadHistory(1)}>🔄 刷新</button>
       </div>
     </div>
 
@@ -242,26 +242,26 @@
           <div style="color:var(--text-secondary); font-size:13px; text-align:center; padding:10px;">🔄 正在执行扫描，请稍候...</div>
         {:else if scanType === 'external' && externalResult}
           <div style="font-size:13px; line-height:1.7;">
-            <div style="color:#22c55e; font-weight:bold; margin-bottom:6px; font-size:14px;">✅ 多目录外部曲库扫描同步完成！</div>
+            <div style="color:var(--text-main); font-weight:bold; margin-bottom:6px; font-size:14px;">✅ 多目录外部曲库扫描同步完成！</div>
             <div style="color:var(--text-main);">• 配置扫描目录列表: <code style="background:var(--tag-btn-bg); padding:2px 6px; border-radius:4px; border:1px solid var(--border-color); font-size:12px;">{(externalResult.configuredDirs || []).join(' ; ') || '未配置'}</code></div>
             <div style="color:var(--text-main);">• 累计扫描物理音频文件: <strong>{externalResult.scannedFiles || 0}</strong> 首</div>
-            <div style="color:var(--text-main);">• 本次成功新录入索引: <strong style="color:#38bdf8;">{externalResult.addedCount || 0}</strong> 首</div>
+            <div style="color:var(--text-main);">• 本次成功新录入索引: <strong style="color:var(--primary-color);">{externalResult.addedCount || 0}</strong> 首</div>
             <div style="margin-top:6px; font-size:12px; color:var(--text-secondary);">💡 提示：现在在线搜索或播放歌单时，凡在上述目录中的音乐，系统均会自动 0 延迟秒播本地文件！</div>
           </div>
         {:else if scanType === 'disk' && diskResult}
           <div style="font-size:13px; line-height:1.7;">
             <div style="margin-bottom:8px;">
               <strong>数据库记录：</strong>{diskResult.totalRecords || 0} | 
-              <strong>物理文件正常：</strong><span style="color:#22c55e;">{diskResult.validRecordsCount || 0}</span> | 
+              <strong>物理文件正常：</strong><span>{diskResult.validRecordsCount || 0}</span> | 
               <strong>缺失记录：</strong><span style="color:#ef4444; font-weight:600;">{diskResult.missingCount || 0}</span> | 
-              <strong>未录入物理音频：</strong><span style="color:#38bdf8; font-weight:600;">{diskResult.untrackedCount || 0}</span>
+              <strong>未录入物理音频：</strong><span style="color:var(--primary-color); font-weight:600;">{diskResult.untrackedCount || 0}</span>
             </div>
 
             {#if diskResult.untrackedFiles && diskResult.untrackedFiles.length > 0}
-              <div style="margin:10px 0; padding:10px 12px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); border-radius:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+              <div style="margin:10px 0; padding:10px 12px; background:var(--stat-bar-bg); border:1px solid var(--border-color); border-radius:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <span style="color:var(--text-main); font-size:13px;">💡 搜寻到 <strong>{diskResult.untrackedCount}</strong> 首本地已有物理音频未记录在数据库中：</span>
-                <button class="btn-primary" style="background:linear-gradient(135deg,#10b981,#059669); padding:4px 12px; font-size:12px;" onclick={importUntrackedFiles}>
-                  📥 一键导入这 {diskResult.untrackedCount} 首音频至数据库
+                <button class="btn-primary" style="padding:4px 12px; font-size:12px;" onclick={importUntrackedFiles}>
+                  📥 导入至数据库
                 </button>
               </div>
               <ul style="padding-left:18px; margin:6px 0; color:var(--text-secondary); font-size:12px; max-height:140px; overflow-y:auto;">
@@ -273,7 +273,7 @@
                 {/if}
               </ul>
             {:else}
-              <div style="color:#22c55e; font-weight:600;">✅ 所有磁盘物理音频文件均已与数据库完全映射对齐！</div>
+              <div style="color:var(--text-main); font-weight:600;">✅ 所有磁盘物理音频文件均已与数据库完全映射对齐！</div>
             {/if}
           </div>
         {/if}
@@ -306,11 +306,11 @@
               <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: '/favicon.png', url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
                 ▶️ 播放
               </button>
-              <button class="jump-link-btn" style="background:rgba(6,182,212,0.15); color:#22d3ee; border-color:rgba(6,182,212,0.3);" onclick={() => onReveal(h)}>
+              <button class="jump-link-btn" onclick={() => onReveal(h)}>
                 📂 定位
               </button>
             {/if}
-            <button class="jump-link-btn" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);" onclick={() => deleteItem(h.id)} title="从数据库删除此条历史记录">
+            <button class="jump-link-btn" onclick={() => deleteItem(h.id)} title="从数据库删除此条历史记录">
               🗑️ 删除
             </button>
           </div>
@@ -322,9 +322,9 @@
 
     <!-- 分页 -->
     <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-      <button class="btn-primary" disabled={histPage <= 1} onclick={() => loadHistory(histPage - 1)}>上一页</button>
+      <button class="btn-secondary" disabled={histPage <= 1} onclick={() => loadHistory(histPage - 1)}>上一页</button>
       <span style="font-size:12px; color:var(--text-secondary);">第 {histPage} / {histTotalPages} 页 (共 {histTotal} 首)</span>
-      <button class="btn-primary" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>下一页</button>
+      <button class="btn-secondary" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>下一页</button>
     </div>
   </div>
 </div>

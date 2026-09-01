@@ -40,35 +40,35 @@
   <!-- 根选择 -->
   <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
     {#each roots as r}
-      <button class="folder-root-tab" class:active={curRoot?.path===r.path} onclick={()=>selectRoot(r)}
-        style="padding:6px 12px; border-radius:16px; border:1px solid var(--border-color); background:{curRoot?.path===r.path?'#10b981':'var(--tag-btn-bg)'}; color:{curRoot?.path===r.path?'#fff':'var(--text-secondary)'}; font-size:12px; font-weight:600; cursor:pointer;">
+      <button class={curRoot?.path===r.path ? 'btn-primary' : 'btn-secondary'} onclick={()=>selectRoot(r)}
+        style="padding:5px 12px; border-radius:14px; font-size:12px; font-weight:600; cursor:pointer;">
         {r.name.includes('外部')?'📦 '+r.name: '📁 '+r.name}
       </button>
     {/each}
   </div>
 
   <!-- 树形全局控制与搜索 Bar -->
-  <div class="tree-control-bar">
-    <div class="tree-search-wrap">
-      <input type="text" class="tree-filter-input" placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..." bind:value={filterKw} />
+  <div class="tree-control-bar" style="margin-bottom:10px;">
+    <div class="tree-search-wrap" style="margin-bottom:6px;">
+      <input type="text" class="tree-filter-input" style="width:100%; box-sizing:border-box;" placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..." bind:value={filterKw} />
     </div>
-    <div class="tree-global-actions">
-      <button class="tree-tool-btn" onclick={()=>expanded=new Set(tree.filter((t:any)=>t.directory).map((t:any)=>t.path))} title="展开所有子文件夹">📂 全部展开</button>
-      <button class="tree-tool-btn" onclick={()=>expanded.clear()} title="折叠所有子文件夹">📁 全部折叠</button>
-      <button class="tree-tool-btn" onclick={()=> curRoot && loadBrowse(curRoot.path,true)} title="刷新整库">🔄 刷新</button>
+    <div class="tree-global-actions" style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick={()=>expanded=new Set(tree.filter((t:any)=>t.directory).map((t:any)=>t.path))} title="展开所有子文件夹">📂 全部展开</button>
+      <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick={()=>expanded.clear()} title="折叠所有子文件夹">📁 全部折叠</button>
+      <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick={()=> curRoot && loadBrowse(curRoot.path,true)} title="刷新整库">🔄 刷新</button>
     </div>
   </div>
 
   <!-- 根统计 -->
   {#if curRoot}
-    <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:10px; padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+    <div style="background:var(--stat-bar-bg); border:1px solid var(--border-subtle); border-radius:10px; padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
       <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-weight:700;">📁 {curRoot.name}</span>
-        <span style="background:rgba(16,185,129,0.15); padding:2px 8px; border-radius:12px; font-size:11px;">{tree.filter((t:any)=>t.directory).length}目录 · {tree.filter((t:any)=>!t.directory).length}首</span>
+        <span style="font-weight:700; color:var(--text-main);">📁 {curRoot.name}</span>
+        <span style="background:var(--btn-slot-bg); border:1px solid var(--btn-slot-border); padding:2px 8px; border-radius:12px; font-size:11px; color:var(--text-muted);">{tree.filter((t:any)=>t.directory).length}目录 · {tree.filter((t:any)=>!t.directory).length}首</span>
       </div>
       <div style="display:flex; gap:6px;">
-        <button class="tree-btn tree-btn-play" style="background:#10b981; color:#fff; padding:6px 12px; border-radius:8px; border:none; font-size:12px; cursor:pointer;" onclick={()=>playFolder(curRoot.path, curRoot.name)}>▶ 连播整库</button>
-        <button class="tree-btn tree-btn-queue sp-hide" style="background:#8b5cf6; color:#fff; padding:6px 12px; border-radius:8px; border:none; font-size:12px; cursor:pointer;" onclick={()=>playFolder(curRoot.path, curRoot.name)}>➕ 追加</button>
+        <button class="btn-primary" style="padding:5px 12px; font-size:12px;" onclick={()=>playFolder(curRoot.path, curRoot.name)}>▶ 连播整库</button>
+        <button class="btn-secondary sp-hide" style="padding:5px 12px; font-size:12px;" onclick={()=>playFolder(curRoot.path, curRoot.name)}>➕ 追加</button>
       </div>
     </div>
   {/if}

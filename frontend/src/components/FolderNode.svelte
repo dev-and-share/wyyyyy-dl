@@ -19,8 +19,8 @@
   function handlePlay(){ onPlay(item.path, item.name); }
 </script>
 
-<div style="margin-left:{level*14}px; border-left:{level>0?'1px dashed rgba(255,255,255,0.08)':'none'}; padding-left:{level>0?'8px':'0'};">
-  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border-subtle); gap:8px; background:{expanded?'rgba(16,185,129,0.04)':'transparent'};">
+<div style="margin-left:{level*14}px; border-left:{level>0?'1px dashed var(--border-subtle)':'none'}; padding-left:{level>0?'8px':'0'};">
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border-subtle); gap:8px; background:{expanded?'var(--btn-slot-bg)':'transparent'};">
     <div style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden; cursor:{item.directory?'pointer':'default'};" onclick={toggle}>
       {#if item.directory}
         <span style="font-size:10px; width:12px; text-align:center; color:var(--text-muted);">{expanded?'▼':'▶'}</span>
@@ -28,24 +28,22 @@
       {:else}
         <span style="width:12px;"></span><span>🎵</span>
       {/if}
-      <span style="font-weight:{item.directory?600:500}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{item.name}</span>
-      {#if item.directory && item.trackCount}<span style="background:rgba(16,185,129,0.12); padding:1px 6px; border-radius:10px; font-size:11px; color:#4ade80;">{item.trackCount}首</span>{/if}
+      <span style="font-weight:{item.directory?600:500}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main);">{item.name}</span>
+      {#if item.directory && item.trackCount}<span style="background:var(--btn-slot-bg); border:1px solid var(--btn-slot-border); padding:1px 6px; border-radius:10px; font-size:11px; color:var(--text-muted);">{item.trackCount}首</span>{/if}
       {#if !item.directory && item.size}<span style="color:var(--text-muted); font-size:11px;">{item.size}</span>{/if}
     </div>
     <div style="display:flex; gap:5px; flex-shrink:0; flex-wrap:wrap;">
       {#if item.directory}
         {#if item.trackCount>0}
-          <button class="tree-btn" style="background:#10b981; color:#fff; padding:4px 8px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 连播</button>
-          <button class="sp-hide" style="background:#8b5cf6; color:#fff; padding:4px 8px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>➕ 追加</button>
+          <button class="jump-link-btn" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 连播</button>
+          <button class="jump-link-btn sp-hide" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>➕ 追加</button>
         {/if}
-        {#if item.hostPath}<button class="sp-hide" style="background:#0284c7; color:#fff; padding:4px 8px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={(e)=>{e.stopPropagation(); alert(item.hostPath);}}>📂 定位</button>{/if}
-        <button class="sp-hide" style="background:#f59e0b; color:#fff; padding:4px 8px; border-radius:8px; border:none; font-size:11px;" onclick={(e)=>{e.stopPropagation(); toggle();}}>🔄</button>
-        <button class="sp-hide" style="background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.25); padding:4px 6px; border-radius:8px; font-size:11px;" onclick={(e)=>{e.stopPropagation(); alert('忽略 '+item.name);}}>🚫</button>
-        <button class="sp-hide" style="background:#ef4444; color:#fff; padding:4px 6px; border-radius:8px; border:none; font-size:11px;" onclick={(e)=>{e.stopPropagation(); if(confirm('删除 '+item.name+'?')) alert('删除');}}>🗑️</button>
-        <button class="sp-show" style="background:var(--tag-btn-bg); border:1px solid var(--border-color); padding:4px 8px; border-radius:8px; font-size:11px;" onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</button>
+        {#if item.hostPath}<button class="jump-link-btn sp-hide" onclick={(e)=>{e.stopPropagation(); alert(item.hostPath);}}>📂 定位</button>{/if}
+        <button class="jump-link-btn sp-hide" onclick={(e)=>{e.stopPropagation(); toggle();}}>🔄</button>
+        <button class="jump-link-btn sp-show" onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</button>
       {:else}
-        <button style="background:#10b981; color:#fff; padding:4px 8px; border-radius:8px; border:none; font-size:11px; cursor:pointer;" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 播放</button>
-        <button class="sp-show" style="background:var(--tag-btn-bg); border:1px solid var(--border-color); padding:4px 8px; border-radius:8px; font-size:11px;" onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</button>
+        <button class="jump-link-btn" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 播放</button>
+        <button class="jump-link-btn sp-show" onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</button>
       {/if}
     </div>
   </div>
