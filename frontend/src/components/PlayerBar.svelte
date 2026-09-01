@@ -37,92 +37,295 @@
   }>();
 
   let vol = $state(0.8);
+  let minimized = $state(false);
+
+  // 环形进度计算 (半径 r=23, 周长 2*pi*23 ≈ 144.513)
+  const RING_CIRCUMFERENCE = 144.513;
+  let progressRatio = $derived(duration > 0 ? Math.min(1, Math.max(0, curTime / duration)) : 0);
+  let ringDashOffset = $derived(RING_CIRCUMFERENCE * (1 - progressRatio));
 </script>
 
 {#if queue.length > 0 && curTrack}
-<div class="bottom-audio-bar">
-  <div class="audio-bar-inner">
-    <!-- 1. 顶部：歌曲信息与顶部功能键 (SP 端第一排，PC 端左侧) -->
+  {#if minimized}
+    <!-- 💽 最小化：微型黑胶悬浮球 + 环形进度光圈 -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="audio-left-section" onclick={onLyric} title="点击展开全屏播放器与歌词">
-      <div class="vinyl-cover-wrapper">
+    <div class="floating-vinyl-bubble" onclick={() => minimized = false} title="点击展开播放控制栏 (进度 {Math.round(progressRatio * 100)}%)">
+      <!-- 环形动态进度条 SVG -->
+      <svg class="vinyl-progress-ring" viewBox="0 0 54 54">
+        <defs>
+          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ef4444" />
+            <stop offset="100%" stop-color="#f97316" />
+          </linearGradient>
+        </defs>
+        <!-- 轨道底圈 -->
+        <circle class="ring-bg" cx="27" cy="27" r="23" />
+        <!-- 动态高亮进度圈 -->
+        <circle
+          class="ring-progress"
+          cx="27"
+          cy="27"
+          r="23"
+          stroke="url(#ringGrad)"
+          stroke-dasharray="{RING_CIRCUMFERENCE}"
+          stroke-dashoffset="{ringDashOffset}"
+        />
+      </svg>
+
+      <!-- 旋转黑胶封面图片 -->
+      <div class="bubble-vinyl-wrapper">
         <img
           src={curTrack?.cover || '/favicon.png'}
           alt="封面"
-          class="audio-cover"
+          class="bubble-vinyl-cover"
           class:playing={playing}
           referrerpolicy="no-referrer"
           onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = '/favicon.png'; }}
         />
-      </div>
-      <div class="audio-text">
-        <div class="audio-title-row">
-          <span class="audio-title">{curTrack?.name || '未在播放'}</span>
-          {#if curTrack?.isLocal}
-            <span class="audio-source-badge icon-only badge-server pc-only" title="🖥️ 本地已下载">🖥️</span>
-          {/if}
-        </div>
-        <div class="audio-artist">{formatArtist(curTrack?.artist) || '未知歌手'}</div>
-      </div>
-    </div>
-
-    <!-- 2. 中间：进度条与主控键 (SP 端多排大触控，PC 端居中) -->
-    <div class="audio-center-section">
-      <!-- 进度条区 (SP 端满宽第二排) -->
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="audio-progress-container">
-        <span class="time-stamp">{formatTime(curTime)}</span>
-        <div class="progress-bar-wrapper" onclick={onSeek}>
-          <div class="progress-bar-bg"></div>
-          <div class="progress-bar-fill" style="width: {duration ? (curTime / duration * 100) : 0}%;"></div>
-          <div class="progress-bar-handle" style="left: {duration ? (curTime / duration * 100) : 0}%;"></div>
-        </div>
-        <span class="time-stamp">{formatTime(duration)}</span>
+        <div class="bubble-center-dot"></div>
       </div>
 
-      <!-- 核心控制按键 (SP 端超大触控第三排) -->
-      <div class="audio-main-controls">
-        <button
-          class="ctrl-btn sub-btn sp-touch-sub-btn"
-          onclick={onToggleMode}
-          title={playMode === 'single' ? '单曲循环' : (playMode === 'shuffle' ? '随机播放' : '列表循环')}
-        >
-          {playMode === 'single' ? '🔂' : (playMode === 'shuffle' ? '🔀' : '🔁')}
-        </button>
-        <button class="ctrl-btn sub-btn sp-touch-side-btn" onclick={onPrev} title="上一首">⏮</button>
-        <button class="ctrl-btn play-main-btn sp-touch-play-btn" onclick={onTogglePlay} title={playing ? '暂停' : '播放'}>
-          {playing ? '⏸' : '▶'}
-        </button>
-        <button class="ctrl-btn sub-btn sp-touch-side-btn" onclick={onNext} title="下一首">⏭</button>
-        <button class="ctrl-btn sub-btn sp-touch-sub-btn sp-only-flex" onclick={onClearQueue} title="清空/关闭">✕</button>
-      </div>
-    </div>
-
-    <!-- 3. 右侧：功能控制区 (PC 端右侧，SP 端融入右上角) -->
-    <div class="audio-right-section">
-      <button class="ctrl-btn sub-btn sp-touch-top-action" onclick={onLyric} title="全屏沉浸歌词">🎤</button>
-      <button class="ctrl-btn sub-btn sp-touch-top-action" onclick={onPeq} title="5段参量均衡器 (PEQ)">🎛️</button>
-      <button class="ctrl-btn sub-btn playlist-btn-wrap sp-touch-top-action" onclick={onQueue} title="当前播放列表">
-        📜
-        <span class="badge-count-pill">{queue.length}</span>
+      <!-- 右上角微型彻底关闭按钮 -->
+      <button
+        class="bubble-close-btn"
+        onclick={(e) => { e.stopPropagation(); onClearQueue(); }}
+        title="彻底停止播放并清空"
+      >
+        ✕
       </button>
-
-      <!-- PC 端专享：音量滑块与关闭 -->
-      <div class="volume-container pc-only">
-        <span class="vol-icon" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="静音切换">
-          {vol === 0 ? '🔇' : '🔊'}
-        </span>
-        <input type="range" min="0" max="1" step="0.05" bind:value={vol} class="volume-slider" style="width: 70px;" />
-      </div>
-      <button class="ctrl-btn mini-close-btn pc-only" onclick={onClearQueue} title="关闭播放器">✕</button>
     </div>
-  </div>
-</div>
+  {:else}
+    <!-- 🎬 完整展开播放栏 (PC三段式 / SP大触控三排) -->
+    <div class="bottom-audio-bar">
+      <div class="audio-bar-inner">
+        <!-- 1. 左侧：歌曲信息与黑胶封面 -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="audio-left-section" onclick={onLyric} title="点击展开全屏播放器与歌词">
+          <!-- 封面外圈同样支持环形进度圈 -->
+          <div class="vinyl-cover-wrapper">
+            <svg class="inner-cover-ring" viewBox="0 0 50 50">
+              <circle class="inner-ring-bg" cx="25" cy="25" r="23" />
+              <circle
+                class="inner-ring-progress"
+                cx="25"
+                cy="25"
+                r="23"
+                stroke="url(#ringGradBar)"
+                stroke-dasharray="144.513"
+                stroke-dashoffset="{ringDashOffset}"
+              />
+              <defs>
+                <linearGradient id="ringGradBar" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ef4444" />
+                  <stop offset="100%" stop-color="#f97316" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <img
+              src={curTrack?.cover || '/favicon.png'}
+              alt="封面"
+              class="audio-cover"
+              class:playing={playing}
+              referrerpolicy="no-referrer"
+              onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = '/favicon.png'; }}
+            />
+          </div>
+          <div class="audio-text">
+            <div class="audio-title-row">
+              <span class="audio-title">{curTrack?.name || '未在播放'}</span>
+              {#if curTrack?.isLocal}
+                <span class="audio-source-badge icon-only badge-server pc-only" title="🖥️ 本地已下载">🖥️</span>
+              {/if}
+            </div>
+            <div class="audio-artist">{formatArtist(curTrack?.artist) || '未知歌手'}</div>
+          </div>
+        </div>
+
+        <!-- 2. 中间：进度条与主控键 -->
+        <div class="audio-center-section">
+          <!-- 进度条区 -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="audio-progress-container">
+            <span class="time-stamp">{formatTime(curTime)}</span>
+            <div class="progress-bar-wrapper" onclick={onSeek}>
+              <div class="progress-bar-bg"></div>
+              <div class="progress-bar-fill" style="width: {progressRatio * 100}%;"></div>
+              <div class="progress-bar-handle" style="left: {progressRatio * 100}%;"></div>
+            </div>
+            <span class="time-stamp">{formatTime(duration)}</span>
+          </div>
+
+          <!-- 核心控制按键 -->
+          <div class="audio-main-controls">
+            <button
+              class="ctrl-btn sub-btn sp-touch-sub-btn"
+              onclick={onToggleMode}
+              title={playMode === 'single' ? '单曲循环' : (playMode === 'shuffle' ? '随机播放' : '列表循环')}
+            >
+              {playMode === 'single' ? '🔂' : (playMode === 'shuffle' ? '🔀' : '🔁')}
+            </button>
+            <button class="ctrl-btn sub-btn sp-touch-side-btn" onclick={onPrev} title="上一首">⏮</button>
+            <button class="ctrl-btn play-main-btn sp-touch-play-btn" onclick={onTogglePlay} title={playing ? '暂停' : '播放'}>
+              {playing ? '⏸' : '▶'}
+            </button>
+            <button class="ctrl-btn sub-btn sp-touch-side-btn" onclick={onNext} title="下一首">⏭</button>
+            <button class="ctrl-btn sub-btn sp-touch-sub-btn sp-only-flex" onclick={() => minimized = true} title="收起为黑胶悬浮球">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. 右侧：功能控制区 -->
+        <div class="audio-right-section">
+          <button class="ctrl-btn sub-btn sp-touch-top-action" onclick={onLyric} title="全屏沉浸歌词">🎤</button>
+          <button class="ctrl-btn sub-btn sp-touch-top-action" onclick={onPeq} title="5段参量均衡器 (PEQ)">🎛️</button>
+          <button class="ctrl-btn sub-btn playlist-btn-wrap sp-touch-top-action" onclick={onQueue} title="当前播放列表">
+            📜
+            <span class="badge-count-pill">{queue.length}</span>
+          </button>
+
+          <!-- PC 端音量滑块与收起按钮 -->
+          <div class="volume-container pc-only">
+            <span class="vol-icon" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="静音切换">
+              {vol === 0 ? '🔇' : '🔊'}
+            </span>
+            <input type="range" min="0" max="1" step="0.05" bind:value={vol} class="volume-slider" style="width: 70px;" />
+          </div>
+          <button class="ctrl-btn mini-close-btn pc-only" onclick={() => minimized = true} title="收起为黑胶悬浮球">✕</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
+  /* --------------------------------------------------------------------------
+     💽 微型黑胶悬浮球 (Floating Vinyl Bubble) + 动态环形进度条
+     -------------------------------------------------------------------------- */
+  .floating-vinyl-bubble {
+    position: fixed;
+    right: 18px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.15);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+    animation: bubblePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .floating-vinyl-bubble:hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(239, 68, 68, 0.35);
+  }
+
+  .floating-vinyl-bubble:active {
+    transform: scale(0.95);
+  }
+
+  @keyframes bubblePop {
+    from { transform: scale(0.5) translateY(20px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  /* SVG 环形进度圈 */
+  .vinyl-progress-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 56px;
+    height: 56px;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.12);
+    stroke-width: 3.5;
+  }
+
+  .ring-progress {
+    fill: none;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.2s linear;
+    filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.7));
+  }
+
+  /* 悬浮球内部黑胶封面 */
+  .bubble-vinyl-wrapper {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  }
+
+  .bubble-vinyl-cover {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .bubble-vinyl-cover.playing {
+    animation: spin 16s linear infinite;
+  }
+
+  .bubble-center-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #0f172a;
+    border: 2px solid #fff;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+  }
+
+  /* 悬浮球关闭小叉 */
+  .bubble-close-btn {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    font-size: 9px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    opacity: 0.85;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .bubble-close-btn:hover {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+
   /* --------------------------------------------------------------------------
      🎵 现代三段式音频播放器 (PC 极简横排 / SP 移动端大按键三排布局)
      -------------------------------------------------------------------------- */
@@ -154,7 +357,7 @@
     gap: 16px;
   }
 
-  /* 1. 左侧歌曲元信息 */
+  /* 1. 左侧歌曲元信息与带进度环的黑胶封面 */
   .audio-left-section {
     display: flex;
     align-items: center;
@@ -168,19 +371,41 @@
 
   .vinyl-cover-wrapper {
     position: relative;
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .inner-cover-ring {
+    position: absolute;
+    inset: -2px;
+    width: 50px;
+    height: 50px;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+  .inner-ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 2.5;
+  }
+  .inner-ring-progress {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.2s linear;
   }
 
   .audio-cover {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
     background: #1e293b;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    border: 2px solid rgba(255, 255, 255, 0.15);
   }
 
   .audio-cover.playing {
@@ -435,9 +660,13 @@
       gap: 12px !important;
     }
 
-    .vinyl-cover-wrapper, .audio-cover {
-      width: 44px !important;
-      height: 44px !important;
+    .vinyl-cover-wrapper {
+      width: 48px !important;
+      height: 48px !important;
+    }
+    .audio-cover {
+      width: 42px !important;
+      height: 42px !important;
     }
 
     .audio-title {
@@ -575,6 +804,17 @@
   }
 
   /* ☀️ 白底/浅色主题适配 (Light Theme) */
+  :global([data-theme="light"]) .floating-vinyl-bubble {
+    background: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
+  }
+  :global([data-theme="light"]) .ring-bg {
+    stroke: rgba(0, 0, 0, 0.08) !important;
+  }
+  :global([data-theme="light"]) .inner-ring-bg {
+    stroke: rgba(0, 0, 0, 0.06) !important;
+  }
+
   :global([data-theme="light"]) .bottom-audio-bar {
     background: rgba(255, 255, 255, 0.95) !important;
     border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
