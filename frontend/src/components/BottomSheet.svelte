@@ -47,10 +47,17 @@
   function handleTouchEnd() {
     if (!isDragging) return;
     isDragging = false;
-    if (dragOffset > 80) {
-      handleClose();
+    if (dragOffset > 70) {
+      dragOffset = 500;
+      closing = true;
+      setTimeout(() => {
+        closing = false;
+        dragOffset = 0;
+        closeSheet();
+      }, 200);
+    } else {
+      dragOffset = 0;
     }
-    dragOffset = 0;
   }
 
   function handleAction(fn: () => void) {
@@ -69,8 +76,8 @@
     onclick={handleClose}
   >
     <div
-      class="bg-[var(--card-bg-solid,#0f172a)] rounded-t-2xl w-full max-w-[500px] p-4 max-h-[80vh] overflow-y-auto border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col gap-2 pb-[calc(16px+env(safe-area-inset-bottom,0px))] {closing ? 'animate-[actionSheetSlideDown_0.2s_ease-in]' : 'animate-[actionSheetSlideUp_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
-      style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: none;` : ''}
+      class="bg-[var(--card-bg-solid,#0f172a)] rounded-t-2xl w-full max-w-[500px] p-4 max-h-[80vh] overflow-y-auto border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col gap-2 pb-[calc(16px+env(safe-area-inset-bottom,0px))] {closing && dragOffset === 0 ? 'animate-[actionSheetSlideDown_0.2s_ease-in]' : 'animate-[actionSheetSlideUp_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
+      style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: ${isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'};` : ''}
       onclick={(e) => e.stopPropagation()}
     >
       <!-- Drag handle -->
