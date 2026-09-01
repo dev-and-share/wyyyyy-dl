@@ -221,7 +221,7 @@
 
 <!-- Section 1: 本地曲库与文件夹树连播 -->
 <AccordionCard title="📁 1. 本地曲库与文件夹树连播" bind:open={accFolder}>
-  <FolderExplorer />
+  <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
 </AccordionCard>
 
 <!-- Section 2: 本地下载历史与文件管理 -->

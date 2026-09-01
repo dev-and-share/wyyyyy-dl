@@ -342,8 +342,10 @@
         id: t.songId || t.id || `local_${Date.now()}_${idx}`,
         name: t.songName || t.name || '未知',
         artist: t.artist || '未知',
-        cover: '/favicon.png',
-        url: t.relativePath
+        cover: t.cover || '/favicon.png',
+        url: t.url
+          ? t.url
+          : t.relativePath
           ? `/v2/history/stream?path=${encodeURIComponent(t.relativePath)}`
           : t.filePath
           ? `/v2/history/stream?path=${encodeURIComponent(t.filePath)}`

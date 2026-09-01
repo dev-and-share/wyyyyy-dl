@@ -2,6 +2,17 @@
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
   import FolderNode from './FolderNode.svelte';
+  import { DEFAULT_VINYL_COVER } from '../lib/utils';
+
+  let {
+    onPlayQueue,
+    onReveal,
+    showToast
+  } = $props<{
+    onPlayQueue?: (tracks: any[], idx?: number) => void;
+    onReveal?: (item: any) => void;
+    showToast?: (m: string, t?: string) => void;
+  }>();
 
   let roots: any[] = $state([]);
   let curRoot: any = $state(null);
@@ -38,8 +49,57 @@
   function playFolder(path: string, name: string) {
     api.folderTracks(path, true).then((j: any) => {
       const tracks = j?.data || [];
-      window.dispatchEvent(new CustomEvent('svelte:playFolder', { detail: { tracks, name } }));
+      if (!tracks.length) {
+        if (showToast) showToast('该目录无可播文件', 'warning');
+        else window.dispatchEvent(new CustomEvent('svelte:toast', { detail: { msg: '该目录无可播文件', type: 'warning' } }));
+        return;
+      }
+      const formatted = tracks.map((t: any, idx: number) => {
+        const playPath = t.relativePath || t.filePath || t.path;
+        return {
+          id: t.songId && t.songId > 0 ? t.songId : (t.id && t.id > 0 ? t.id : `local_${Date.now()}_${idx}`),
+          name: t.songName || t.name || '未知歌曲',
+          artist: t.artist || '未知歌手',
+          album: t.album || name,
+          cover: DEFAULT_VINYL_COVER,
+          url: `/v2/history/stream?path=${encodeURIComponent(playPath)}`,
+          isLocal: true
+        };
+      });
+      if (onPlayQueue) {
+        onPlayQueue(formatted, 0);
+        showToast?.(`已连播 ${name} 共 ${formatted.length} 首`, 'success');
+      } else {
+        window.dispatchEvent(new CustomEvent('svelte:playFolder', { detail: { tracks, name } }));
+      }
     });
+  }
+
+  function playSingle(item: any) {
+    const playPath = item.relativePath || item.filePath || item.path;
+    const track = {
+      id: item.songId && item.songId > 0 ? item.songId : (item.id || `local_${Date.now()}`),
+      name: item.songName || item.name || '未知歌曲',
+      artist: item.artist || '未知歌手',
+      album: item.album || '本地曲库',
+      cover: DEFAULT_VINYL_COVER,
+      url: item.streamUrl || `/v2/history/stream?path=${encodeURIComponent(playPath)}`,
+      isLocal: true
+    };
+    if (onPlayQueue) {
+      onPlayQueue([track], 0);
+      showToast?.(`正在播放: ${track.name}`, 'info');
+    } else {
+      window.dispatchEvent(new CustomEvent('svelte:playFolder', { detail: { tracks: [track], name: track.name } }));
+    }
+  }
+
+  function revealItem(item: any) {
+    if (onReveal) {
+      onReveal(item);
+    } else if (item.hostPath) {
+      alert(item.hostPath);
+    }
   }
 
   onMount(loadRoots);
@@ -114,21 +174,14 @@
         >
           ▶ 连播整库
         </button>
-        <button
-          type="button"
-          class="btn-secondary hidden md:inline-flex px-3 py-1 text-xs"
-          onclick={() => playFolder(curRoot.path, curRoot.name)}
-        >
-          ➕ 追加
-        </button>
       </div>
     </div>
   {/if}
 
   <!-- 列表：递归子树，支持折叠与 … 抽屉 -->
   <div class="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)]">
-    {#each tree.filter((t: any) => !filterKw || (t.name + t.path).toLowerCase().includes(filterKw.toLowerCase())) as item}
-      <FolderNode {item} level={0} onPlay={playFolder} />
+    {#each tree.filter((t: any) => !filterKw || ((t.songName || t.name || '') + (t.artist || '') + t.path).toLowerCase().includes(filterKw.toLowerCase())) as item}
+      <FolderNode {item} level={0} onPlayFolder={playFolder} onPlaySingle={playSingle} onReveal={revealItem} />
     {:else}
       <div class="py-6 px-4 text-center text-[var(--text-muted)] text-xs">暂无目录 · 试试切换根或刷新</div>
     {/each}
