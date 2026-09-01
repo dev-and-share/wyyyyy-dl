@@ -146,6 +146,16 @@
     }
   }
 
+  async function handleDownloadPlaylist(id: string, name: string) {
+    try {
+      await api.downloadPlaylist(id);
+      showToast(`已提交歌单《${name}》下载任务`, 'success');
+      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    } catch (e: any) {
+      showToast('提交下载失败: ' + (e.message || e), 'error');
+    }
+  }
+
   async function loadAlbum(id?: string) {
     const targetId = id || currentAlbumId;
     if (!targetId) {
@@ -319,6 +329,7 @@
               <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID:{r.id})</span>
             </div>
             <div class="track-action-group">
+              <SlotBtn onclick={() => handleDownloadPlaylist(String(r.id), r.name)} title="立即下载整张歌单全部歌曲">📥 下载整单</SlotBtn>
               <SlotBtn onclick={() => onPlaylist(String(r.id))}>👉 查看详情</SlotBtn>
             </div>
           </li>

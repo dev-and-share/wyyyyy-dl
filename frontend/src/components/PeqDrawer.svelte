@@ -1,10 +1,77 @@
 <script lang="ts">
   import { INITIAL_BANDS, BUILTIN_PRESETS, type Band } from '../lib/peq';
 
+  const PEQ_STORAGE_KEY = 'wyyyy_peq_settings';
+
+  function loadPeqFromStorage(): { enabled: boolean; bands: Band[] } | null {
+    try {
+      const raw = localStorage.getItem(PEQ_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }
+
+  function savePeqToStorage() {
+    try {
+      localStorage.setItem(PEQ_STORAGE_KEY, JSON.stringify({ enabled, bands }));
+    } catch {}
+  }
+
   let { onClose } = $props<{ onClose: () => void }>();
-  let enabled = $state(true);
-  let bands = $state<Band[]>(JSON.parse(JSON.stringify(INITIAL_BANDS)));
+
+  const saved = loadPeqFromStorage();
+  let enabled = $state(saved?.enabled ?? true);
+  let bands = $state<Band[]>(saved?.bands ? JSON.parse(JSON.stringify(saved.bands)) : JSON.parse(JSON.stringify(INITIAL_BANDS)));
   let preset = $state('flat');
+
+  // 退出动画与手势下拉状态
+  let closing = $state(false);
+  let dragOffset = $state(0);
+  let isDragging = $state(false);
+  let startY = 0;
+
+  function handleClose() {
+    if (closing) return;
+    closing = true;
+    setTimeout(() => { closing = false; onClose(); }, 200);
+  }
+
+  function handleTouchStart(e: TouchEvent) {
+    if (e.touches.length === 1) {
+      startY = e.touches[0].clientY;
+      isDragging = true;
+    }
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!isDragging || closing) return;
+    const diff = e.touches[0].clientY - startY;
+    if (diff > 0) {
+      dragOffset = diff;
+    } else {
+      dragOffset = 0;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    if (dragOffset > 90) {
+      handleClose();
+    }
+    dragOffset = 0;
+  }
+
+  // 参数变动时自动持久化
+  $effect(() => {
+    bands.forEach(b => b.gain + b.q); // track reactivity
+    savePeqToStorage();
+  });
+  $effect(() => {
+    const _ = enabled;
+    savePeqToStorage();
+  });
+
 
   function applyPreset(v: string) {
     preset = v;
@@ -66,21 +133,38 @@
   });
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onClose()} />
+<!-- 关闭动画：closing 状态触发 CSS 退出动画后才真正卸载 -->
+<svelte:window onkeydown={(e) => e.key === 'Escape' && handleClose()} />
 
 <!-- 🎛️ 5 段参量均衡器统一抽屉 (支持全套白天/黑夜主题 + 移动端底部滑出 Bottom Sheet) -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002] flex items-end justify-center md:justify-end md:items-end box-border animate-[modalFadeIn_0.2s_ease-out]"
-  onclick={onClose}
+  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002] flex items-end justify-center md:justify-end md:items-end box-border {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
+  onclick={handleClose}
 >
   <div
-    class="w-full max-md:max-w-full max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(16px+env(safe-area-inset-bottom,0px))] max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:w-[680px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl md:animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)] bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl p-5 overflow-y-auto text-[var(--text-main)] box-border"
+    class="w-full max-md:max-w-full max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(16px+env(safe-area-inset-bottom,0px))] md:w-[680px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl p-5 overflow-y-auto text-[var(--text-main)] box-border {closing ? 'max-md:animate-[drawerSlideDownSP_0.2s_ease-in] md:animate-[drawerSlideDownPC_0.2s_ease-in]' : 'max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:animate-[drawerSlideUpPC_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
+    style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: none;` : ''}
     onclick={(e) => e.stopPropagation()}
   >
+    <!-- 移动端手势拖拽指示条 -->
+    <div
+      class="w-full pb-3 -mt-1 flex justify-center md:hidden cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+    >
+      <div class="w-9 h-1 rounded-full bg-white/25"></div>
+    </div>
+
     <!-- 头部栏 -->
-    <div class="flex justify-between items-center mb-3">
+    <div
+      class="flex justify-between items-center mb-3 select-none"
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+    >
       <div class="flex items-center gap-2">
         <span class="text-lg">🎛️</span>
         <h3 class="m-0 text-base font-bold text-[var(--text-main)]">5 段参量均衡器 (PEQ)</h3>
@@ -88,7 +172,7 @@
       <button
         type="button"
         class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={onClose}
+        onclick={handleClose}
         title="关闭均衡器"
       >
         ✕

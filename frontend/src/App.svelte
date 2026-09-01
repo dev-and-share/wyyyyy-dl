@@ -323,10 +323,14 @@
   onMount(() => {
     applyTheme(themeMode);
     restorePlayerState();
-    const h = location.hash.replace('#', '');
+    const match = location.hash.match(/id=([0-9]+)/);
+    if (match?.[1]) playlistId = match[1];
+    const h = location.hash.replace('#', '').split('?')[0];
     if (h === 'playlist' || h === 'search' || h === 'download-mgr') tab = h as any;
     window.addEventListener('hashchange', () => {
-      const hh = location.hash.replace('#', '');
+      const m = location.hash.match(/id=([0-9]+)/);
+      if (m?.[1]) playlistId = m[1];
+      const hh = location.hash.replace('#', '').split('?')[0];
       if (hh === 'playlist' || hh === 'search' || hh === 'download-mgr') tab = hh as any;
     });
     window.addEventListener('beforeunload', savePlayerState);

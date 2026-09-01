@@ -63,30 +63,84 @@
   // 统计数
   let countAll = $derived(queue.length);
   let countServer = $derived(queue.filter((t: Track) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length);
+
+  // 退出动画与手势下拉状态
+  let closing = $state(false);
+  let dragOffset = $state(0);
+  let isDragging = $state(false);
+  let startY = 0;
+
+  function handleClose() {
+    if (closing) return;
+    closing = true;
+    setTimeout(() => { closing = false; onClose(); }, 200);
+  }
+
+  function handleTouchStart(e: TouchEvent) {
+    if (e.touches.length === 1) {
+      startY = e.touches[0].clientY;
+      isDragging = true;
+    }
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!isDragging || closing) return;
+    const diff = e.touches[0].clientY - startY;
+    if (diff > 0) {
+      dragOffset = diff;
+    } else {
+      dragOffset = 0;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    if (dragOffset > 90) {
+      handleClose();
+    }
+    dragOffset = 0;
+  }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onClose()} />
+<svelte:window onkeydown={(e) => e.key === 'Escape' && handleClose()} />
 
 <!-- 📜 播放列表 & 下载任务 Drawer 统一抽屉 (SP 底部滑出 Bottom Sheet / PC 右下弹窗) -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002] flex items-end justify-center md:justify-end md:items-end box-border animate-[modalFadeIn_0.2s_ease-out]"
-  onclick={onClose}
+  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002] flex items-end justify-center md:justify-end md:items-end box-border {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
+  onclick={handleClose}
 >
   <div
-    class="w-full max-md:max-w-full max-md:h-[75vh] max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(12px+env(safe-area-inset-bottom,0px))] max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:w-[420px] md:h-[530px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl md:animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)] bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col overflow-hidden text-[var(--text-main)] box-border"
+    class="w-full max-md:max-w-full max-md:h-[75vh] max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(12px+env(safe-area-inset-bottom,0px))] md:w-[420px] md:h-[530px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col overflow-hidden text-[var(--text-main)] box-border {closing ? 'max-md:animate-[drawerSlideDownSP_0.2s_ease-in] md:animate-[drawerSlideDownPC_0.2s_ease-in]' : 'max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:animate-[drawerSlideUpPC_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
+    style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: none;` : ''}
     onclick={(e) => e.stopPropagation()}
   >
-    <!-- 抽屉头部 -->
-    <div class="px-3.5 py-2.5 bg-black/5 dark:bg-white/[0.03] border-b border-[var(--border-subtle,rgba(255,255,255,0.08))] flex justify-between items-center shrink-0">
+    <!-- 移动端手势拖拽指示条 -->
+    <div
+      class="w-full py-1.5 flex justify-center md:hidden cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+    >
+      <div class="w-9 h-1 rounded-full bg-white/25"></div>
+    </div>
+
+    <!-- 抽屉头部 (支持移动端下拉手势) -->
+    <div
+      class="px-3.5 py-2 bg-black/5 dark:bg-white/[0.03] border-b border-[var(--border-subtle,rgba(255,255,255,0.08))] flex justify-between items-center shrink-0 select-none"
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+    >
       <div class="flex items-center gap-1.5">
         <button
           type="button"
           class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {activeTab === 'queue' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'queue'}
         >
-          📜 播放队列 ({countAll})
+          📜 播放队列 {offlineOnly ? `(${countServer}/${countAll})` : `(${countAll})`}
         </button>
         <button
           type="button"
@@ -116,7 +170,7 @@
         <button
           type="button"
           class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-          onclick={onClose}
+          onclick={handleClose}
           title="关闭抽屉"
         >
           ✕

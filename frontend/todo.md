@@ -6,31 +6,27 @@
 
 ## 🐛 Bug & 体验问题
 
-- [ ] **PlaylistTab：歌单搜索 input 未随路由切换清空**
-  - 复现：点击歌单 A 加载详情 → 点击歌单 B → input 依然保留 A 的 id，几秒后轮询回退
-  - 根因：`searchInput` 状态未与路由/歌单 id 绑定重置
-- [ ] **PlaylistDrawer / PeqDrawer 关闭时无退出动画**
-  - 当前：打开有 `drawerSlideUpSP` 入场动画，关闭是瞬间消失（`{#if}` 直接卸载）
-  - 方案：用 Svelte 5 `transition:` 指令 或 `onDestroy` + CSS `animating` class 做退出过渡
-- [ ] **均衡器（PEQ）参数修改后刷新页面恢复默认**
-  - 当前：PEQ 参数仅存 AudioContext 内存，无持久化
-  - 方案：`localStorage` 序列化 `bands[]`，onMount 恢复
+- [x] **PlaylistTab：歌单搜索 input 未随路由切换清空**
+  - 完成：`hashchange` 监听解析 `id=...` 路由参数并与 `pid`/`pidInput` 双向绑定同步。
+- [x] **PlaylistDrawer / PeqDrawer 关闭时无退出动画**
+  - 完成：在移动端与桌面端分别接入 `drawerSlideDownSP` / `drawerSlideDownPC` 逆向退出平滑过渡。
+- [x] **均衡器（PEQ）参数修改后刷新页面恢复默认**
+  - 完成：使用 `localStorage` 自动序列化 `bands[]` 和启用状态，onMount 自动恢复。
 
 ---
 
 ## ✨ 功能增强
 
-- [ ] **手势支持：Bottom Sheet 可上划关闭**
-  - PlaylistDrawer / PeqDrawer / BottomSheet 添加 `touchstart/touchmove/touchend` 手势拖拽关闭
-  - 阈值：下划超过 120px 触发关闭动画 + 卸载
-- [ ] **搜索结果支持歌单批量下载**
-  - 搜索歌单列表行添加"📥 下载整单"按钮，调用 `api.downloadPlaylist`
-- [ ] **离线模式增强：显示可播放曲目数量**
-  - `offlineOnly` 开启时，播放队列角标显示 `本地 N 首 / 全部 M 首`
-- [ ] **播放进度条 PC 端 hover 缩略图预览**
-  - hover 进度条时，气泡内显示当前时间（已有基础，可优化为带时间戳的 tooltip）
-- [ ] **歌词滚动优化**
-  - 手动点击歌词跳转后，停止自动滚动 3s（防止立刻被自动滚回去盖掉用户意图）
+- [x] **手势支持：Bottom Sheet 可下滑关闭**
+  - 完成：`PlaylistDrawer`、`PeqDrawer`、`BottomSheet` 均已接入顶部手势指示条与 `touch` 拖拽下拉交互，释放超过阈值平滑关闭。
+- [x] **搜索结果支持歌单批量下载**
+  - 完成：在搜索歌单列表行添加 `📥 下载整单` 操作按钮，调用 `api.downloadPlaylist` 并自动触发任务轮询。
+- [x] **离线模式增强：显示可播放曲目数量**
+  - 完成：`offlineOnly` 开启时，播放队列标签显示 `(本地 N 首 / 全部 M 首)`。
+- [x] **播放进度条 PC 端 hover 时间预览**
+  - 完成：鼠标 hover 进度条时在上方精确显示对应位置的时间戳气泡。
+- [x] **歌词滚动优化**
+  - 完成：手动点击歌词跳转时暂停自动居中滚动 3 秒，防止抢夺用户视觉焦点。
 
 ---
 

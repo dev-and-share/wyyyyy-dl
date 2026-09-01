@@ -47,6 +47,9 @@
   let fetchedLyric = $state('');
   let showVolPopup = $state(false);
   let rawLyricText = $derived(track?.lyric || fetchedLyric || '');
+  // 用户手动点击歌词跳转后，暂停自动滚动 3s
+  let userSeekedAt = $state(0);
+  const AUTO_SCROLL_PAUSE_MS = 3000;
 
   // 歌词解析
   function parseLrc(t: string): Lrc[] {
@@ -80,9 +83,11 @@
     return idx;
   });
 
-  // 歌词自动居中平滑滚动
+  // 歌词自动居中平滑滚动（用户点击跳转后暂停 3s）
   $effect(() => {
     if (activeIdx >= 0) {
+      const now = Date.now();
+      if (now - userSeekedAt < AUTO_SCROLL_PAUSE_MS) return;
       const el = document.getElementById(`sv-lrc-${activeIdx}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -176,7 +181,7 @@
             <div
               id="sv-lrc-{i}"
               class="cursor-pointer transition-all duration-300 {i === activeIdx ? 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]' : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
-              onclick={() => onSeekTime(l.time)}
+              onclick={() => { userSeekedAt = Date.now(); onSeekTime(l.time); }}
             >
               {l.text}
             </div>

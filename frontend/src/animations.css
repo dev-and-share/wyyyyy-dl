@@ -22,9 +22,19 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes drawerSlideDownPC {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(16px) scale(0.98); }
+}
+
 @keyframes drawerSlideUpSP {
     from { transform: translateY(100%); opacity: 0.5; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes drawerSlideDownSP {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
 }
 
 @keyframes drawerBadgePulse {
