@@ -79,6 +79,17 @@
 
   // ---------- 播放器控制与解析 ----------
   async function resolveUrl(track: Track): Promise<string> {
+    if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
+      // 异步抓取网易云真实高清封面与歌词
+      api.songV1(String(track.id), 'lossless').then((j: any) => {
+        const song = j?.data;
+        if (song) {
+          const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
+          if (newPic) track.cover = newPic;
+          if (song.lyric && !track.lyric) track.lyric = song.lyric;
+        }
+      }).catch(() => {});
+    }
     if (track.url && track.url.includes('/stream')) return track.url;
     try {
       const j = await api.songV1(String(track.id), 'lossless');
@@ -86,12 +97,8 @@
       if (song) {
         if (song.url) track.url = song.url;
         const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
-        if (newPic && (!track.cover || track.cover === '/favicon.png')) {
-          track.cover = newPic;
-        }
-        if (song.lyric && !track.lyric) {
-          track.lyric = song.lyric;
-        }
+        if (newPic) track.cover = newPic;
+        if (song.lyric && !track.lyric) track.lyric = song.lyric;
         return song.url || track.url || '';
       }
     } catch {}
@@ -441,11 +448,13 @@
   onSwitchToLegacy={switchToLegacy}
 />
 
-<!-- 内容区 -->
+<!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
 <div class="accordion-wrapper">
-  {#if tab === 'playlist'}
+  <div style="display: {tab === 'playlist' ? 'contents' : 'none'};">
     <PlaylistTab
       playlistId={playlistId}
+      curTrack={curTrack}
+      playing={playing}
       likedSet={likedSet}
       downloadedSet={downloadedSet}
       onToggleLike={toggleLike}
@@ -454,9 +463,12 @@
       onReveal={handleReveal}
       showToast={showToast}
     />
-  {:else if tab === 'search'}
+  </div>
+  <div style="display: {tab === 'search' ? 'contents' : 'none'};">
     <SearchTab
       albumId={albumId}
+      curTrack={curTrack}
+      playing={playing}
       downloadedSet={downloadedSet}
       onAlbum={jumpToAlbum}
       onPlaylist={jumpToPlaylist}
@@ -465,13 +477,16 @@
       onReveal={handleReveal}
       showToast={showToast}
     />
-  {:else}
+  </div>
+  <div style="display: {tab === 'download-mgr' ? 'contents' : 'none'};">
     <DownloadMgrTab
+      curTrack={curTrack}
+      playing={playing}
       onPlayQueue={setQueue}
       onReveal={handleReveal}
       showToast={showToast}
     />
-  {/if}
+  </div>
 </div>
 
 <!-- 全局原生 Audio 引擎 (静默挂载) -->

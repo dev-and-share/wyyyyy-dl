@@ -143,6 +143,36 @@
     --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
+/* 🎵 正在播放曲目浅绿高亮系统 (Playing Track Light Green Highlight) */
+.track-item-card.is-active-playing {
+    background: rgba(16, 185, 129, 0.08) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.track-item-card.is-active-playing .clickable-track-title {
+    color: #059669 !important;
+    font-weight: 700 !important;
+}
+[data-theme="dark"] .track-item-card.is-active-playing {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+}
+[data-theme="dark"] .track-item-card.is-active-playing .clickable-track-title {
+    color: #34d399 !important;
+}
+.track-btn-slot.is-playing-btn,
+.jump-link-btn.is-playing-btn {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+    color: #059669 !important;
+    font-weight: 600 !important;
+}
+[data-theme="dark"] .track-btn-slot.is-playing-btn,
+[data-theme="dark"] .jump-link-btn.is-playing-btn {
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: rgba(16, 185, 129, 0.45) !important;
+    color: #34d399 !important;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     -webkit-font-smoothing: antialiasing;

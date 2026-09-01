@@ -1,9 +1,12 @@
 <script lang="ts">
   import { api } from '../lib/api';
-  import { formatArtist } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
+  import type { Track } from '../lib/types';
 
   let {
     albumId = '',
+    curTrack = null,
+    playing = false,
     downloadedSet = new Set<number>(),
     onAlbum,
     onPlaylist,
@@ -13,6 +16,8 @@
     showToast
   } = $props<{
     albumId?: string;
+    curTrack?: Track | null;
+    playing?: boolean;
     downloadedSet?: Set<number>;
     onAlbum?: (id: string) => void;
     onPlaylist: (id: string) => void;
@@ -70,9 +75,17 @@
 
   onMount(() => {
     if (kw.trim()) {
+      const cached = getApiCache('search_' + sType + '_' + kw.trim());
+      if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
+        sResults = cached.data;
+      }
       doSearch(false);
     }
     if (currentAlbumId && accAlbum) {
+      const cachedAlbum = getApiCache('album_' + currentAlbumId);
+      if (cachedAlbum?.data) {
+        album = cachedAlbum.data;
+      }
       loadAlbum(currentAlbumId);
     }
   });
@@ -98,7 +111,13 @@
       localStorage.setItem(STORAGE_KEY_SEARCH_KW, kw);
       localStorage.setItem(STORAGE_KEY_SEARCH_TYPE, sType);
     } catch {}
-    searchLoading = true;
+    const cacheKey = 'search_' + sType + '_' + kw.trim();
+    const cached = getApiCache(cacheKey);
+    if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
+      sResults = cached.data;
+    } else {
+      searchLoading = true;
+    }
     try {
       const j = await api.search(kw, sType, sLimit);
       searchLoading = false;
@@ -107,9 +126,12 @@
         return;
       }
       const d = j?.data;
-      if (Array.isArray(d)) sResults = d;
-      else sResults = (d as any)?.songs || (d as any)?.albums || (d as any)?.playlists || (d as any)?.artists || (d as any)?.result || [];
-      if (!sResults.length && showEmptyToast) showToast('无结果', 'info');
+      let res: any[] = [];
+      if (Array.isArray(d)) res = d;
+      else res = (d as any)?.songs || (d as any)?.albums || (d as any)?.playlists || (d as any)?.artists || (d as any)?.result || [];
+      sResults = res;
+      setApiCache(cacheKey, res);
+      if (!res.length && showEmptyToast) showToast('无结果', 'info');
     } catch (e: any) {
       searchLoading = false;
       if (showEmptyToast) showToast('搜索失败: ' + e.message, 'error');
@@ -125,8 +147,13 @@
     currentAlbumId = targetId;
     accSearch = false;
     accAlbum = true;
-    album = null;
-    albumLoading = true;
+    const cachedAlbum = getApiCache('album_' + targetId);
+    if (cachedAlbum?.data) {
+      album = cachedAlbum.data;
+    } else {
+      album = null;
+      albumLoading = true;
+    }
     try {
       const j = await api.album(targetId);
       albumLoading = false;
@@ -134,8 +161,10 @@
         showToast(j.msg || '获取专辑失败', 'warning');
         return;
       }
-      album = j?.data?.album || j?.data || null;
-      if (!album) showToast('未找到对应专辑数据', 'warning');
+      const alb = j?.data?.album || j?.data || null;
+      album = alb;
+      if (alb) setApiCache('album_' + targetId, alb);
+      else showToast('未找到对应专辑数据', 'warning');
     } catch (e: any) {
       albumLoading = false;
       showToast('获取专辑失败: ' + (e.message || e), 'error');
@@ -226,15 +255,22 @@
         {#each sResults as r, idx}
           {#if sType === '1'}
             {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
-            <li class="track-item-card">
+            {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
+            <li class="track-item-card" class:is-active-playing={isPlayingThis}>
               <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }]))}>{idx + 1}. {r.name}</strong>
+                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER }]))}>{idx + 1}. {r.name}</strong>
                 {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
                 <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
               </div>
               <div style="display:flex; gap:6px; flex-shrink:0;">
                 {#if onPlayQueue}
-                  <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }])}>▶️ 播放</button>
+                  <button
+                    class="jump-link-btn"
+                    class:is-playing-btn={isPlayingThis}
+                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER }])}
+                  >
+                    {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
+                  </button>
                 {/if}
                 {#if onSong}
                   <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
@@ -294,11 +330,11 @@
       {@const headerArtist = formatArtist(album.artist || album.artists) || '未知歌手'}
       <div class="detail-header-card" style="margin-bottom:15px;">
         <img
-          src={album.coverImgUrl || album.picUrl || '/favicon.png'}
+          src={album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER}
           alt="封面"
           class="detail-cover-img"
           referrerpolicy="no-referrer"
-          onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = '/favicon.png'; }}
+          onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
         />
         <div class="detail-header-info">
           <h4 class="detail-header-title">{album.name || '未知专辑'}</h4>
@@ -316,9 +352,10 @@
         {#each (album.songs || []) as s, i}
           {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
           {@const isLocal = (downloadedSet && downloadedSet.has(Number(s.id))) || s.isLocal === true}
-          <li class="track-item-card" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
+          {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
+          <li class="track-item-card" class:is-active-playing={isPlayingThis} style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
             <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || '/favicon.png', isLocal }]))}>
+              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>
                 {i + 1}. {s.name}
               </strong>
               {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
@@ -326,8 +363,12 @@
             </div>
             <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0;">
               {#if onPlayQueue}
-                <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || '/favicon.png', isLocal }])}>
-                  {isLocal ? '▶️ 播放' : '▶️ 试听'}
+                <button
+                  class="jump-link-btn"
+                  class:is-playing-btn={isPlayingThis}
+                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                >
+                  {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
                 </button>
               {/if}
               {#if isLocal}

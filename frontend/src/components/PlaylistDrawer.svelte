@@ -44,7 +44,7 @@
 
   // 计算过滤后的队列
   let filteredQueueWithIndex = $derived.by(() => {
-    return queue.map((t, realIdx) => ({ t, realIdx })).filter(({ t }) => {
+    return queue.map((t: Track, realIdx: number) => ({ t, realIdx })).filter(({ t }: { t: Track }) => {
       const isServer = (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true;
       if (filterType === 'server' && !isServer) return false;
       if (filterType === 'ready' && !isServer) return false;
@@ -60,8 +60,8 @@
 
   // 统计数
   let countAll = $derived(queue.length);
-  let countServer = $derived(queue.filter(t => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length);
-  let activeTasksCount = $derived(tasks.filter(t => t.status !== 'SUCCESS' && t.status !== 'FAILED').length);
+  let countServer = $derived(queue.filter((t: Track) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length);
+  let activeTasksCount = $derived(tasks.filter((t: any) => t.status !== 'SUCCESS' && t.status !== 'FAILED').length);
 </script>
 
 <!-- 📜 播放列表 & 下载任务 Drawer 统一抽屉 (对齐旧版) -->
@@ -174,11 +174,12 @@
             {@const isServer = (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true}
             <li
               class="track-item-card"
-              style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; cursor:pointer; background:{realIdx === qIndex ? 'rgba(56,189,248,0.1)' : 'transparent'};"
+              class:is-active-playing={realIdx === qIndex}
+              style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; cursor:pointer;"
               onclick={() => onPlayIndex(realIdx)}
             >
               <div style="flex:1; overflow:hidden; display:flex; align-items:center; gap:6px;">
-                <span style="font-weight:{realIdx === qIndex ? 700 : 500}; color:{realIdx === qIndex ? '#38bdf8' : 'inherit'}; font-size:13px;">
+                <span class="clickable-track-title" style="font-size:13px;">
                   {realIdx + 1}. {t.name}
                 </span>
                 {#if formatArtist(t.artist)}
@@ -190,7 +191,7 @@
                   <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地已下载">🖥️</span>
                 {/if}
                 {#if realIdx === qIndex}
-                  <span style="color:#38bdf8; font-size:11px; margin-left:4px;">▶ 播放中</span>
+                  <span style="color:var(--playing-color, #059669); font-size:11px; font-weight:600; margin-left:4px;">▶ 播放中</span>
                 {/if}
               </div>
               <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">

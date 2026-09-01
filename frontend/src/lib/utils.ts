@@ -38,3 +38,16 @@ export function formatArtist(trackOrArtist: any): string {
   }
   return '';
 }
+
+export const DEFAULT_VINYL_COVER = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="48" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#27272a" stroke-width="0.8" stroke-dasharray="4 2"/>
+  <circle cx="50" cy="50" r="36" fill="none" stroke="#27272a" stroke-width="0.8"/>
+  <circle cx="50" cy="50" r="30" fill="none" stroke="#27272a" stroke-width="0.8" stroke-dasharray="3 1.5"/>
+  <circle cx="50" cy="50" r="24" fill="none" stroke="#27272a" stroke-width="0.8"/>
+  <circle cx="50" cy="50" r="18" fill="#ef4444"/>
+  <circle cx="50" cy="50" r="6" fill="#18181b"/>
+  <circle cx="50" cy="50" r="2.5" fill="#ffffff"/>
+</svg>
+`)}`;

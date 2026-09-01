@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatTime, formatArtist } from '../lib/utils';
+  import { formatTime, formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import type { Track } from '../lib/types';
 
   let {
@@ -76,12 +76,12 @@
       <!-- 旋转黑胶封面图片 -->
       <div class="bubble-vinyl-wrapper">
         <img
-          src={curTrack?.cover || '/favicon.png'}
+          src={curTrack?.cover || DEFAULT_VINYL_COVER}
           alt="封面"
           class="bubble-vinyl-cover"
           class:playing={playing}
           referrerpolicy="no-referrer"
-          onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = '/favicon.png'; }}
+          onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
         />
         <div class="bubble-center-dot"></div>
       </div>
@@ -115,12 +115,12 @@
               </defs>
             </svg>
             <img
-              src={curTrack?.cover || '/favicon.png'}
+              src={curTrack?.cover || DEFAULT_VINYL_COVER}
               alt="封面"
               class="audio-cover"
               class:playing={playing}
               referrerpolicy="no-referrer"
-              onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = '/favicon.png'; }}
+              onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
             />
           </div>
           <div class="audio-text">
@@ -369,8 +369,8 @@
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    background: #1e293b;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    background: transparent;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   }
 
   .audio-cover.playing {
@@ -395,6 +395,8 @@
     align-items: center;
     gap: 6px;
     overflow: hidden;
+    width: 100%;
+    min-width: 0;
   }
 
   .audio-title {
@@ -405,6 +407,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.3;
+    display: block;
+    max-width: 100%;
   }
 
   .audio-artist {
@@ -414,6 +418,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     margin-top: 2px;
+    display: block;
+    max-width: 100%;
   }
 
   /* 2. 中间 PC 控制器与进度条 */
@@ -421,9 +427,80 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    flex: 1.6;
-    max-width: 560px;
+    gap: 8px;
+    flex: 2;
+    max-width: 580px;
+  }
+
+  .audio-progress-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .time-stamp {
+    font-size: 11px;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+    font-family: Consolas, monospace;
+    min-width: 36px;
+    text-align: center;
+    user-select: none;
+  }
+
+  .progress-bar-wrapper {
+    position: relative;
+    flex: 1;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .progress-bar-bg {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    transition: height 0.15s ease;
+  }
+
+  .progress-bar-wrapper:hover .progress-bar-bg {
+    height: 6px;
+  }
+
+  .progress-bar-fill {
+    position: absolute;
+    left: 0;
+    height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ef4444, #f97316);
+    pointer-events: none;
+    transition: height 0.15s ease;
+  }
+
+  .progress-bar-wrapper:hover .progress-bar-fill {
+    height: 6px;
+  }
+
+  .progress-bar-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .progress-bar-wrapper:hover .progress-bar-handle {
+    transform: translate(-50%, -50%) scale(1);
   }
 
   .audio-main-controls {
@@ -433,99 +510,43 @@
   }
 
   .ctrl-btn {
-    background: transparent;
+    background: none;
     border: none;
     cursor: pointer;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
-    color: #f8fafc;
     transition: all 0.2s ease;
     user-select: none;
   }
 
   .ctrl-btn.sub-btn {
-    font-size: 16px;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
     color: #cbd5e1;
+    font-size: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
   }
   .ctrl-btn.sub-btn:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .ctrl-btn.play-main-btn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: linear-gradient(135deg, #ef4444, #dc2626);
     color: #ffffff;
-    font-size: 17px;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    font-size: 18px;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
   }
   .ctrl-btn.play-main-btn:hover {
     transform: scale(1.06);
-    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.6);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
   }
   .ctrl-btn.play-main-btn:active {
-    transform: scale(0.94);
-  }
-
-  .audio-progress-container {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .time-stamp {
-    font-size: 11px;
-    color: #64748b;
-    font-variant-numeric: tabular-nums;
-    min-width: 32px;
-  }
-
-  .progress-bar-wrapper {
-    flex: 1;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    position: relative;
-    cursor: pointer;
-  }
-  .progress-bar-bg {
-    width: 100%;
-    height: 5px;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 3px;
-  }
-  .progress-bar-fill {
-    height: 5px;
-    background: linear-gradient(90deg, #ef4444, #f97316);
-    border-radius: 3px;
-    position: absolute;
-    left: 0;
-    top: 6.5px;
-    pointer-events: none;
-  }
-  .progress-bar-handle {
-    width: 12px;
-    height: 12px;
-    background: #ffffff;
-    border-radius: 50%;
-    position: absolute;
-    top: 3px;
-    margin-left: -6px;
-    box-shadow: 0 0 6px rgba(0,0,0,0.6);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.2s;
-  }
-  .progress-bar-wrapper:hover .progress-bar-handle {
-    opacity: 1;
-    transform: scale(1.2);
+    transform: scale(0.96);
   }
 
   /* 3. 右侧功能区 */
@@ -616,13 +637,15 @@
       position: relative !important;
     }
 
-    /* 1. 第一排：左侧大封面+歌名，右上角 🎤 🎛️ 📜 大按钮 */
+    /* 1. 第一排：左侧大封面+歌名 (严格限制宽度避让右侧按钮，彻底杜绝重叠覆盖) */
     .audio-left-section {
       display: flex !important;
       align-items: center !important;
-      max-width: calc(100% - 135px) !important;
-      width: 100% !important;
-      gap: 12px !important;
+      max-width: calc(100% - 150px) !important;
+      width: calc(100% - 150px) !important;
+      gap: 10px !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
     }
 
     .vinyl-cover-wrapper {

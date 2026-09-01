@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { myPlaylists, allTracks, pageSize, getPaged, getTotalPages, getPlaylist, getPlaylistFilter, getCurPage, loadMyPlaylists, loadPlaylistDetail, incPage } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
-  import { formatArtist } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -12,6 +12,8 @@
 
   let {
     playlistId,
+    curTrack = null,
+    playing = false,
     likedSet,
     downloadedSet = new Set<number>(),
     onToggleLike,
@@ -21,6 +23,8 @@
     showToast
   } = $props<{
     playlistId: string,
+    curTrack?: any,
+    playing?: boolean,
     likedSet: Set<number>,
     downloadedSet?: Set<number>,
     onToggleLike: (id: number, name: string) => void,
@@ -203,14 +207,21 @@
           {@const idx = (curPage - 1) * pageSize + i + 1}
           {@const isLocal = (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true}
           {@const artist = formatArtist(t)}
-          <li>
+          {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
+          <li class="track-item-card" class:is-active-playing={isPlayingThis}>
             <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
               <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleViewSong(String(t.id))}>{idx}. {t.name}{artist ? ' - ' + artist : ''}</strong>
               {#if isLocal}<span class="audio-source-badge icon-only badge-server" style="margin-left:6px;" title="🖥️ 已存在服务器磁盘">🖥️</span>{/if}
               <button class="track-like-btn" class:active={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)}>{likedSet.has(Number(t.id)) ? '❤️' : '🤍'}</button>
             </div>
             <div class="track-action-group">
-              <button class="track-btn-slot" onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || '/favicon.png', isLocal }])}>{isLocal ? '▶️ 播放' : '▶️ 试听'}</button>
+              <button
+                class="track-btn-slot"
+                class:is-playing-btn={isPlayingThis}
+                onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+              >
+                {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+              </button>
               {#if isLocal}
                 <button class="track-btn-slot" onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</button>
               {:else}

@@ -2,13 +2,18 @@
   import { onMount } from 'svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import { api } from '../lib/api';
-  import { formatBytes, formatArtist } from '../lib/utils';
+  import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
+  import type { Track } from '../lib/types';
 
   let {
+    curTrack = null,
+    playing = false,
     onPlayQueue,
     onReveal,
     showToast
   } = $props<{
+    curTrack?: Track | null;
+    playing?: boolean;
     onPlayQueue: (tracks: any[], idx?: number) => void;
     onReveal: (item: any) => void;
     showToast: (m: string, t?: string) => void;
@@ -37,12 +42,30 @@
 
   async function loadHistory(p = 1) {
     histPage = p;
+    if (p === 1 && !histKw.trim()) {
+      const cachedList = getApiCache('history_list_1');
+      if (cachedList?.data && Array.isArray(cachedList.data)) {
+        histList = cachedList.data;
+        histTotal = cachedList.total || cachedList.data.length;
+      }
+      const cachedStats = getApiCache('history_stats');
+      if (cachedStats?.data) {
+        histStats = cachedStats.data;
+      }
+    }
     try {
       const j = await api.historyList(histKw, p);
-      histList = j?.data?.list || [];
-      histTotal = j?.data?.total || 0;
+      const list = j?.data?.list || [];
+      const total = j?.data?.total || 0;
+      histList = list;
+      histTotal = total;
+      if (p === 1 && !histKw.trim()) {
+        setApiCache('history_list_1', list);
+      }
       const s = await api.historyStats();
-      histStats = s?.data || null;
+      const stats = s?.data || null;
+      histStats = stats;
+      if (stats) setApiCache('history_stats', stats);
     } catch (e: any) {
       showToast('加载历史失败: ' + (e.message || e), 'error');
     }
@@ -290,9 +313,10 @@
     <ul class="data-list scrollable-list">
       {#each histList as h, idx}
         {@const artistName = formatArtist(h.artist)}
-        <li class="track-item-card" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
+        {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(h.songId || h.id) || (curTrack.name && (curTrack.name === h.songName || curTrack.name === h.name))))}
+        <li class="track-item-card" class:is-active-playing={isPlayingThis} style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
           <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: '/favicon.png', url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
+            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
               {(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || '未知歌曲'}
             </strong>
             {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
@@ -303,8 +327,12 @@
           </div>
           <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0;">
             {#if h.fileExists !== false}
-              <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: '/favicon.png', url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
-                ▶️ 播放
+              <button
+                class="jump-link-btn"
+                class:is-playing-btn={isPlayingThis}
+                onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+              >
+                {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
               </button>
               <button class="jump-link-btn" onclick={() => onReveal(h)}>
                 📂 定位
