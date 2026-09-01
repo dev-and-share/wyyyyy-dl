@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '../lib/api';
+  import SlotBtn from './SlotBtn.svelte';
   let { item, level=0, onPlay } = $props<{item:any, level?:number, onPlay:(path:string,name:string)=>void}>();
   let expanded=$state(false);
   let children:any[] = $state([]);
@@ -32,18 +33,30 @@
       {#if item.directory && item.trackCount}<span style="background:var(--btn-slot-bg); border:1px solid var(--btn-slot-border); padding:1px 6px; border-radius:10px; font-size:11px; color:var(--text-muted);">{item.trackCount}首</span>{/if}
       {#if !item.directory && item.size}<span style="color:var(--text-muted); font-size:11px;">{item.size}</span>{/if}
     </div>
-    <div style="display:flex; gap:5px; flex-shrink:0; flex-wrap:wrap;">
+    <div style="display:flex; gap:5px; flex-shrink:0;">
       {#if item.directory}
         {#if item.trackCount>0}
-          <button class="jump-link-btn" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 连播</button>
-          <button class="jump-link-btn sp-hide" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>➕ 追加</button>
+          <SlotBtn onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 连播</SlotBtn>
+          <span class="hidden md:inline-flex">
+            <SlotBtn onclick={(e)=>{e.stopPropagation(); handlePlay();}}>➕ 追加</SlotBtn>
+          </span>
         {/if}
-        {#if item.hostPath}<button class="jump-link-btn sp-hide" onclick={(e)=>{e.stopPropagation(); alert(item.hostPath);}}>📂 定位</button>{/if}
-        <button class="jump-link-btn sp-hide" onclick={(e)=>{e.stopPropagation(); toggle();}}>🔄</button>
-        <button class="jump-link-btn sp-show" onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</button>
+        {#if item.hostPath}
+          <span class="hidden md:inline-flex">
+            <SlotBtn onclick={(e)=>{e.stopPropagation(); alert(item.hostPath);}}>📂 定位</SlotBtn>
+          </span>
+        {/if}
+        <span class="hidden md:inline-flex">
+          <SlotBtn onclick={(e)=>{e.stopPropagation(); toggle();}}>🔄</SlotBtn>
+        </span>
+        <span class="inline-flex md:hidden">
+          <SlotBtn onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</SlotBtn>
+        </span>
       {:else}
-        <button class="jump-link-btn" onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 播放</button>
-        <button class="jump-link-btn sp-show" onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</button>
+        <SlotBtn onclick={(e)=>{e.stopPropagation(); handlePlay();}}>▶ 播放</SlotBtn>
+        <span class="inline-flex md:hidden">
+          <SlotBtn onclick={(e)=>{e.stopPropagation(); showSheet=true;}}>···</SlotBtn>
+        </span>
       {/if}
     </div>
   </div>
@@ -65,7 +78,7 @@
     <div style="background:var(--card-bg-solid); border-radius:16px 16px 0 0; width:100%; max-width:500px; padding:16px; max-height:70vh; overflow:auto;" onclick={(e)=>e.stopPropagation()}>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div><div style="font-weight:700;">{item.directory?'📁 ':'🎵 '}{item.name}</div><div style="font-size:11px; color:var(--text-muted);">{item.path}</div></div>
-        <button onclick={()=>showSheet=false} style="background:none; border:none; font-size:18px; cursor:pointer;">✕</button>
+        <button onclick={()=>showSheet=false} style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer;">✕</button>
       </div>
       {#if item.directory}
         {#if item.trackCount>0}<button style="width:100%; padding:10px; margin-bottom:8px; border-radius:8px; border:none; background:#10b981; color:#fff; font-weight:600;" onclick={()=>{showSheet=false; handlePlay();}}>▶ 连播此文件夹 ({item.trackCount}首)</button>{/if}
@@ -79,8 +92,3 @@
     </div>
   </div>
 {/if}
-
-<style>
-  @media (max-width:768px){ .sp-hide{ display:none !important; } }
-  @media (min-width:769px){ .sp-show{ display:none !important; } }
-</style>

@@ -4,6 +4,8 @@
   import type { Track } from '../lib/types';
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
+  import SlotBtn from './SlotBtn.svelte';
+  import TrackLikeBtn from './TrackLikeBtn.svelte';
 
   let {
     albumId = '',
@@ -259,64 +261,64 @@
           {@const isLocal = (downloadedSet && downloadedSet.has(Number(r.id))) || r.isLocal === true}
           {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
           <li class="track-item-card" class:is-active-playing={isPlayingThis}>
-            <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>{idx + 1}. {r.name}</strong>
-              {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
-              {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 本地服务器已下载">🖥️</span>{/if}
-              <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
+            <div class="track-title-row">
+              <strong class="clickable-track-title cursor-pointer truncate" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>{idx + 1}. {r.name}</strong>
+              {#if artistName}<span class="text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
+              {#if isLocal}<span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 本地服务器已下载">🖥️</span>{/if}
+              <span class="text-[11px] text-[var(--text-muted)] shrink-0">(ID:{r.id})</span>
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+            <div class="track-action-group">
               {#if onToggleLike}
-                <button
-                  class="track-like-btn"
-                  class:active={likedSet.has(Number(r.id))}
-                  onclick={() => onToggleLike(Number(r.id), r.name, artistName)}
-                  title={likedSet.has(Number(r.id)) ? '取消红心' : '添加红心收藏'}
-                >
-                  {likedSet.has(Number(r.id)) ? '❤️' : '🤍'}
-                </button>
+                <TrackLikeBtn liked={likedSet.has(Number(r.id))} onclick={() => onToggleLike(Number(r.id), r.name, artistName)} />
               {/if}
               {#if onPlayQueue}
-                <button
-                  class="jump-link-btn"
-                  class:is-playing-btn={isPlayingThis}
+                <SlotBtn
+                  playing={isPlayingThis && playing}
                   onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
                 >
                   {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
-                </button>
+                </SlotBtn>
               {/if}
               {#if isLocal}
-                <button class="jump-link-btn" onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</button>
+                <SlotBtn onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</SlotBtn>
               {/if}
               {#if onSong}
-                <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
+                <SlotBtn onclick={() => onSong(String(r.id))}>👉 详情</SlotBtn>
               {/if}
             </div>
           </li>
         {:else if sType === '10'}
           {@const albumArtist = formatArtist(r.artist || r.artists)}
-          <li>
-            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleAlbum(String(r.id))}>{idx + 1}. {r.name}</strong>
-              {#if albumArtist}<span style="color:var(--text-secondary);"> - {albumArtist}</span>{/if}
-              {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
-              <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
+          <li class="track-item-card">
+            <div class="track-title-row">
+              <strong class="clickable-track-title cursor-pointer truncate" onclick={() => handleAlbum(String(r.id))}>{idx + 1}. {r.name}</strong>
+              {#if albumArtist}<span class="text-[var(--text-secondary)] truncate"> - {albumArtist}</span>{/if}
+              {#if r.size}<span class="text-xs text-[var(--text-muted)] shrink-0"> ({r.size} 首歌)</span>{/if}
+              <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID: {r.id})</span>
             </div>
-            <button class="jump-link-btn" onclick={() => handleAlbum(String(r.id))}>👉 查看专辑详情</button>
+            <div class="track-action-group">
+              <SlotBtn onclick={() => handleAlbum(String(r.id))}>👉 查看专辑详情</SlotBtn>
+            </div>
           </li>
         {:else if sType === '1000'}
-          <li>
-            <div style="flex:1; overflow:hidden; white-space:nowrap;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlaylist(String(r.id))}>{idx + 1}. {r.name}</strong>
-              <span style="color:var(--text-muted);"> (ID:{r.id})</span>
+          <li class="track-item-card">
+            <div class="track-title-row">
+              <strong class="clickable-track-title cursor-pointer truncate" onclick={() => onPlaylist(String(r.id))}>{idx + 1}. {r.name}</strong>
+              <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID:{r.id})</span>
             </div>
-            <button class="jump-link-btn" onclick={() => onPlaylist(String(r.id))}>👉 查看详情</button>
+            <div class="track-action-group">
+              <SlotBtn onclick={() => onPlaylist(String(r.id))}>👉 查看详情</SlotBtn>
+            </div>
           </li>
         {:else}
-          <li>
-            <strong>{idx + 1}. {r.name}</strong>
-            <span style="color:var(--text-muted);"> (ID:{r.id})</span>
-            <button class="jump-link-btn" onclick={() => showToast('歌手功能开发中', 'info')}>查看</button>
+          <li class="track-item-card">
+            <div class="track-title-row">
+              <strong class="truncate">{idx + 1}. {r.name}</strong>
+              <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID:{r.id})</span>
+            </div>
+            <div class="track-action-group">
+              <SlotBtn onclick={() => showToast('歌手功能开发中', 'info')}>查看</SlotBtn>
+            </div>
           </li>
         {/if}
       {:else}
@@ -354,49 +356,40 @@
         {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
         {@const isLocal = (downloadedSet && downloadedSet.has(Number(s.id))) || s.isLocal === true}
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
-        <li class="track-item-card" class:is-active-playing={isPlayingThis} style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
-          <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>
+        <li class="track-item-card" class:is-active-playing={isPlayingThis}>
+          <div class="track-title-row">
+            <strong class="clickable-track-title cursor-pointer truncate" onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}>
               {i + 1}. {s.name}
             </strong>
-            {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
-            {#if isLocal}<span class="audio-source-badge icon-only badge-server" title="🖥️ 已下载到本地">🖥️</span>{/if}
+            {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
+            {#if isLocal}<span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已下载到本地">🖥️</span>{/if}
           </div>
-          <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+          <div class="track-action-group">
             {#if onToggleLike}
-              <button
-                class="track-like-btn"
-                class:active={likedSet.has(Number(s.id))}
-                onclick={() => onToggleLike(Number(s.id), s.name, artistName)}
-                title={likedSet.has(Number(s.id)) ? '取消红心' : '添加红心收藏'}
-              >
-                {likedSet.has(Number(s.id)) ? '❤️' : '🤍'}
-              </button>
+              <TrackLikeBtn liked={likedSet.has(Number(s.id))} onclick={() => onToggleLike(Number(s.id), s.name, artistName)} />
             {/if}
             {#if onPlayQueue}
-              <button
-                class="jump-link-btn"
-                class:is-playing-btn={isPlayingThis}
+              <SlotBtn
+                playing={isPlayingThis && playing}
                 onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
               >
                 {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
-              </button>
+              </SlotBtn>
             {/if}
             {#if isLocal}
-              <button
-                class="jump-link-btn"
+              <SlotBtn
                 onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
                 title="在文件管理器中定位"
               >
                 📂 定位
-              </button>
+              </SlotBtn>
             {:else}
-              <button class="jump-link-btn" onclick={() => api.downloadSingle(String(s.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>
+              <SlotBtn onclick={() => api.downloadSingle(String(s.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>
                 📥 下载
-              </button>
+              </SlotBtn>
             {/if}
             {#if onSong}
-              <button class="jump-link-btn" onclick={() => onSong(String(s.id))}>🎧 详情</button>
+              <SlotBtn onclick={() => onSong(String(s.id))}>🎧 详情</SlotBtn>
             {/if}
           </div>
         </li>

@@ -5,6 +5,8 @@
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
+  import SlotBtn from './SlotBtn.svelte';
+  import TrackLikeBtn from './TrackLikeBtn.svelte';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -181,26 +183,25 @@
   </div>
   <ul class="data-list scrollable-list">
     {#each myPlaylists.filter(p => playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed)) as pl, idx}
-      <li>
-        <div style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-          <span class="status-badge">{pl.subscribed ? '收藏' : '创建'}</span>
-          <strong class="clickable-track-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" onclick={() => handleViewPlaylist(String(pl.id))}>{pl.name}</strong>
-          <span style="color:var(--text-muted); font-size:11px;">({pl.trackCount || 0}首)</span>
+      <li class="track-item-card">
+        <div class="track-title-row">
+          <span class="status-badge shrink-0">{pl.subscribed ? '收藏' : '创建'}</span>
+          <strong class="clickable-track-title truncate cursor-pointer" onclick={() => handleViewPlaylist(String(pl.id))}>{pl.name}</strong>
+          <span class="text-xs text-[var(--text-muted)] shrink-0">({pl.trackCount || 0}首)</span>
         </div>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <button
-            class="jump-link-btn"
+        <div class="track-action-group">
+          <SlotBtn
             onclick={() => playPlaylistDirect(String(pl.id), pl.name)}
             title="立即播放整张歌单"
           >
             ▶️ 播放
-          </button>
+          </SlotBtn>
           {#if pl.subscribed}
-            <button class="jump-link-btn" onclick={() => api.playlistSubscribe(String(pl.id), false).then(j => j.code === '000000' ? showToast('已取消', 'success') : showToast(j.msg, 'warning'))}>💔 取消</button>
+            <SlotBtn onclick={() => api.playlistSubscribe(String(pl.id), false).then(j => j.code === '000000' ? showToast('已取消', 'success') : showToast(j.msg, 'warning'))}>💔 取消</SlotBtn>
           {:else if idx > 0}
-            <button class="jump-link-btn" onclick={() => api.playlistDelete(String(pl.id)).then(j => j.code === '000000' ? showToast('已删除', 'success') : showToast(j.msg, 'warning'))}>🗑️ 删除</button>
+            <SlotBtn onclick={() => api.playlistDelete(String(pl.id)).then(j => j.code === '000000' ? showToast('已删除', 'success') : showToast(j.msg, 'warning'))}>🗑️ 删除</SlotBtn>
           {/if}
-          <button class="jump-link-btn" onclick={() => handleViewPlaylist(String(pl.id))}>👉 详情</button>
+          <SlotBtn onclick={() => handleViewPlaylist(String(pl.id))}>👉 详情</SlotBtn>
         </div>
       </li>
     {:else}
@@ -231,26 +232,25 @@
         {@const artist = formatArtist(t)}
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
-          <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleViewSong(String(t.id))}>{idx}. {t.name}{artist ? ' - ' + artist : ''}</strong>
-            {#if isLocal}<span class="audio-source-badge icon-only badge-server" style="margin-left:6px;" title="🖥️ 已存在服务器磁盘">🖥️</span>{/if}
-            <button class="track-like-btn" class:active={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)}>{likedSet.has(Number(t.id)) ? '❤️' : '🤍'}</button>
+          <div class="track-title-row">
+            <strong class="clickable-track-title cursor-pointer truncate" onclick={() => handleViewSong(String(t.id))}>{idx}. {t.name}{artist ? ' - ' + artist : ''}</strong>
+            {#if isLocal}<span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已存在服务器磁盘">🖥️</span>{/if}
+            <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
           </div>
           <div class="track-action-group">
-            <button
-              class="track-btn-slot"
-              class:is-playing-btn={isPlayingThis}
+            <SlotBtn
+              playing={isPlayingThis && playing}
               onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
             >
               {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
-            </button>
+            </SlotBtn>
             {#if isLocal}
-              <button class="track-btn-slot" onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</button>
+              <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
             {:else}
-              <button class="track-btn-slot" onclick={() => api.downloadSingle(String(t.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>📥 下载</button>
+              <SlotBtn onclick={() => api.downloadSingle(String(t.id)).then(() => showToast('已提交下载', 'success')).catch((e) => showToast('下载失败: ' + e, 'error'))}>📥 下载</SlotBtn>
             {/if}
-            <button class="track-btn-slot" onclick={() => showToast('缓存功能开发中', 'info')}>📲 缓存</button>
-            <button class="track-btn-slot" onclick={() => showToast('添加歌单功能开发中', 'info')}>➕ 歌单</button>
+            <SlotBtn onclick={() => showToast('缓存功能开发中', 'info')}>📲 缓存</SlotBtn>
+            <SlotBtn onclick={() => showToast('添加歌单功能开发中', 'info')}>➕ 歌单</SlotBtn>
           </div>
         </li>
       {/each}
@@ -335,32 +335,3 @@
     <div class="empty-placeholder-card"><div class="empty-icon">🎧</div><div class="empty-title">在歌单中点击歌曲或输入歌曲 ID 查看</div></div>
   {/if}
 </AccordionCard>
-
-<style>
-  .jump-link-btn {
-    background: var(--btn-slot-bg);
-    border: 1px solid var(--btn-slot-border);
-    color: var(--btn-slot-color);
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-    user-select: none;
-  }
-  .jump-link-btn:hover {
-    background: var(--btn-slot-hover-bg);
-    border-color: var(--border-color);
-    color: var(--btn-slot-hover-color);
-    transform: translateY(-1px);
-  }
-  .jump-link-btn:active {
-    background: var(--btn-slot-active-bg);
-    transform: translateY(0);
-  }
-</style>

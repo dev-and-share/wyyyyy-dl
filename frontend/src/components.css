@@ -33,6 +33,62 @@
         color: #34d399 !important;
     }
 
+    /* 🎵 轨道列表项卡片与响应式两段式排版 */
+    .track-item-card {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-subtle);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s ease;
+        color: var(--text-main);
+    }
+    .track-item-card:hover {
+        background: var(--list-hover-bg);
+    }
+    .track-item-card:last-child {
+        border-bottom: none;
+    }
+
+    .track-title-row {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        min-width: 0;
+    }
+
+    .track-action-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+        .track-item-card {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            padding: 9px 12px !important;
+            gap: 6px !important;
+        }
+        .track-title-row {
+            width: 100% !important;
+            max-width: 100% !important;
+            white-space: normal !important;
+            word-break: break-all !important;
+            flex-wrap: wrap !important;
+        }
+        .track-action-group {
+            width: 100% !important;
+            justify-content: flex-end !important;
+            margin-top: 2px !important;
+        }
+    }
+
     /* 📁 本地文件夹树动态计算缩进 (Dynamic CSS Variable --tree-level) */
     .tree-node-row {
         padding-left: calc(12px + var(--tree-level, 0) * 18px) !important;

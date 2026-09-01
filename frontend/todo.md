@@ -104,9 +104,11 @@
 ```
 
 ### 4-C 轨道列表行（统一 Slot 按钮系统）
-- [ ] `PlaylistTab.svelte` — 轨道行（桌面 + 移动端布局）
-- [ ] `SearchTab.svelte` — 轨道行、专辑/歌手结果行
-- [ ] `DownloadMgrTab.svelte` — 轨道行、下载列表
+- [x] `PlaylistTab.svelte` — 轨道行（抽象出 SlotBtn + TrackLikeBtn，彻底删除组件 `<style>`）
+- [x] `SearchTab.svelte` — 轨道行、专辑/歌手/歌单结果行（统一 SlotBtn + TrackLikeBtn）
+- [x] `DownloadMgrTab.svelte` & `FolderNode.svelte` — 轨道行、下载列表与文件夹树按钮（接入 SlotBtn）
+- [x] `components.css` — 封装 `.track-item-card`、`.track-title-row`、`.track-action-group` 响应式两段布局
+- [x] `style.svelte.css` — 彻底废除并删除 `.track-btn-slot`、`.jump-link-btn`、`.track-like-btn` 及其桌面/移动端全部规则
 
 ```
 .track-btn-slot    → min-w-[64px] h-7 px-2.5 rounded-[14px] text-xs font-medium inline-flex items-center justify-center whitespace-nowrap bg-[var(--btn-slot-bg)] border border-[var(--btn-slot-border)] text-[var(--btn-slot-color)] transition-all hover:bg-[var(--btn-slot-hover-bg)] hover:-translate-y-px

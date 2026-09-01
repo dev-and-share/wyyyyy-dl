@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import AccordionCard from './AccordionCard.svelte';
+  import SlotBtn from './SlotBtn.svelte';
   import { api } from '../lib/api';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
   import type { Track } from '../lib/types';
@@ -304,33 +305,32 @@
       {#each histList as h, idx}
         {@const artistName = formatArtist(h.artist)}
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(h.songId || h.id) || (curTrack.name && (curTrack.name === h.songName || curTrack.name === h.name))))}
-        <li class="track-item-card" class:is-active-playing={isPlayingThis} style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; gap:8px;">
-          <div class="track-title-row" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-            <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
+        <li class="track-item-card" class:is-active-playing={isPlayingThis}>
+          <div class="track-title-row">
+            <strong class="clickable-track-title cursor-pointer truncate" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
               {(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || '未知歌曲'}
             </strong>
-            {#if artistName}<span style="color:var(--text-secondary); font-size:12px;"> - {artistName}</span>{/if}
-            <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地已下载">🖥️</span>
+            {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
+            <span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 本地已下载">🖥️</span>
             {#if h.fileExists === false}
-              <span style="font-size:10px; background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); padding:1px 4px; border-radius:4px;">⚠️ 失效</span>
+              <span class="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1 py-0.5 rounded">⚠️ 失效</span>
             {/if}
           </div>
-          <div class="track-action-group" style="display:flex; gap:6px; flex-shrink:0;">
+          <div class="track-action-group">
             {#if h.fileExists !== false}
-              <button
-                class="jump-link-btn"
-                class:is-playing-btn={isPlayingThis}
+              <SlotBtn
+                playing={isPlayingThis && playing}
                 onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
               >
                 {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
-              </button>
-              <button class="jump-link-btn" onclick={() => onReveal(h)}>
+              </SlotBtn>
+              <SlotBtn onclick={() => onReveal(h)}>
                 📂 定位
-              </button>
+              </SlotBtn>
             {/if}
-            <button class="jump-link-btn" onclick={() => deleteItem(h.id)} title="从数据库删除此条历史记录">
+            <SlotBtn onclick={() => deleteItem(h.id)} title="从数据库删除此条历史记录">
               🗑️ 删除
-            </button>
+            </SlotBtn>
           </div>
         </li>
       {:else}
