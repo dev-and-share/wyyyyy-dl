@@ -50,11 +50,15 @@
     return v !== null ? v : def;
   }
 
-  let pid = $state(playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, ''));
+  function initPlaylistId() {
+    return playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
+  }
+
+  let pid = $state(initPlaylistId());
   // Separate display value for the input — only committed to pid on explicit action
-  let pidInput = $state(playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, ''));
+  let pidInput = $state(initPlaylistId());
   // Sentinel: track the last external playlistId prop we acted on, to avoid feedback loops
-  let lastSeenPlaylistId = $state(playlistId || '');
+  let lastSeenPlaylistId = $state('');
   let accMy = $state(getStored(STORAGE_KEY_ACC_MY, 'true') === 'true');
   let accDetail = $state(getStored(STORAGE_KEY_ACC_DETAIL, 'true') === 'true');
   let accSong = $state(getStored(STORAGE_KEY_ACC_SONG, 'false') === 'true');
@@ -213,7 +217,13 @@
       <li class="track-item-card">
         <div class="track-title-row">
           <span class="status-badge shrink-0">{pl.subscribed ? '收藏' : '创建'}</span>
-          <strong class="clickable-track-title truncate cursor-pointer" onclick={() => handleViewPlaylist(String(pl.id))}>{pl.name}</strong>
+          <button
+            type="button"
+            class="clickable-track-title truncate cursor-pointer font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
+            onclick={() => handleViewPlaylist(String(pl.id))}
+          >
+            {pl.name}
+          </button>
           <span class="text-xs text-[var(--text-muted)] shrink-0">({pl.trackCount || 0}首)</span>
         </div>
         <div class="track-action-group">
@@ -260,7 +270,13 @@
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
-            <strong class="clickable-track-title cursor-pointer truncate" onclick={() => handleViewSong(String(t.id))}>{idx}. {t.name}{artist ? ' - ' + artist : ''}</strong>
+            <button
+              type="button"
+              class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
+              onclick={() => handleViewSong(String(t.id))}
+            >
+              {idx}. {t.name}{artist ? ' - ' + artist : ''}
+            </button>
             {#if isLocal}<span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已存在服务器磁盘">🖥️</span>{/if}
             <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
           </div>

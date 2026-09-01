@@ -34,18 +34,16 @@
 
 - [x] **全站最后一个组件 `<style>` 标签清理：`PlayerBar.svelte`**
   - 完成：已将 `PlayerBar.svelte` 的 114 行 `<style>` 全部替换为 Tailwind 工具类，实现全站所有 `.svelte` 组件 **100% 纯 Tailwind、零 `<style>` 标签**！
-- [ ] **`SearchTab.svelte` 行数过长风险**
-  - 当前约 417 行（接近 500 行限制），建议拆出 `AlbumDetailCard.svelte`（专辑展开视图）
-- [ ] **`DownloadMgrTab.svelte` 存在多个 `<span onclick>` a11y warn**
-  - 22 条 svelte-check warning 中有 9 条来自此文件的 `<span>/<strong>` onclick
-  - 方案：统一替换为 `<button type="button" class="...">`
-- [ ] **`playerHelper.ts` 重复调用 `api.songV1`**
-  - `resolveTrackUrl` 内部有两次 `api.songV1` 调用（一次 side-effect 火后即忘，一次 await）
-  - 优化为单次请求，先 await 拿结果再统一处理封面/歌词/url
-- [ ] **`BottomSheet.svelte` 缺少退出动画**
-  - FolderNode 的操作菜单关闭是瞬间消失，与 PlaylistDrawer 的体验不一致
-- [ ] **全站 `a11y_no_noninteractive_element_interactions` warnings 修复**
-  - 当前 svelte-check 22 条 warnings（均为 a11y）需逐步清理
+- [x] **`SearchTab.svelte` 行数过长拆分**
+  - 完成：拆出独立组件 `AlbumDetailCard.svelte`（专辑展开解析与曲目列表视图），`SearchTab.svelte` 行数从 428 行大幅降至 349 行。
+- [x] **`DownloadMgrTab.svelte` 与全站 a11y 警告修复**
+  - 完成：将全站所有带有点击事件的 `<strong>`、`<span>` 等非交互标签统一规范替换为 `<button type="button">` 语义化标签。
+- [x] **`playerHelper.ts` 重复调用 `api.songV1` 优化**
+  - 完成：合并在线歌曲播放 URL、高清封面与歌词请求为单次 await 请求，消除无意义的冗余并发调用。
+- [x] **`BottomSheet.svelte` 退出动画与手势下拉关闭**
+  - 完成：补齐 `actionSheetSlideDown` 逆向退出动画与手势下拉位移阻尼交互。
+- [x] **全站 `svelte-check` 警告清零**
+  - 完成：修复全部 22 条 a11y 警告与 Svelte 5 Runes 状态引用警告，达到 **0 errors, 0 warnings** 纯净状态。
 
 ---
 

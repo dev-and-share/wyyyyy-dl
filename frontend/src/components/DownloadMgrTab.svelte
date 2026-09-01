@@ -231,14 +231,14 @@
       <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
       <span>占用空间：<strong>{histStats?.totalSize ? formatBytes(histStats.totalSize) : '-'}</strong></span>
       {#if (histStats?.missingCount ?? 0) > 0}
-        <span style="color:#ef4444; cursor:pointer;" onclick={openMissingModal} title="点击查看所有缺失文件清单">
+        <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-red-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openMissingModal} title="点击查看所有缺失文件清单">
           ⚠️ 文件缺失：{histStats.missingCount} 首 <span style="font-size:10px; border:1px solid rgba(239,68,68,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
-        </span>
+        </button>
       {/if}
       {#if (histStats?.nonMp3Count ?? 0) > 0}
-        <span style="color:#f59e0b; cursor:pointer;" onclick={openNonMp3Modal} title="点击查看所有非 MP3 音频清单">
+        <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-amber-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openNonMp3Modal} title="点击查看所有非 MP3 音频清单">
           📁 非 MP3 格式：{histStats.nonMp3Count} 首 <span style="font-size:10px; border:1px solid rgba(245,158,11,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
-        </span>
+        </button>
       {/if}
       <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={scanExternalLibraries}>📁 外部曲库</button>
@@ -308,9 +308,13 @@
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(h.songId || h.id) || (curTrack.name && (curTrack.name === h.songName || curTrack.name === h.name))))}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
-            <strong class="clickable-track-title cursor-pointer truncate" onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}>
+            <button
+              type="button"
+              class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
+              onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+            >
               {(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || '未知歌曲'}
-            </strong>
+            </button>
             {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
             <span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 本地已下载">🖥️</span>
             {#if h.fileExists === false}
