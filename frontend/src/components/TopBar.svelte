@@ -27,7 +27,6 @@
   <div class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer" onclick={onRefresh} title="点击刷新数据">
     <span class="text-lg leading-none">🎵</span>
     <span class="hidden sm:inline font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">网易云下载器</span>
-    <span class="hidden sm:inline-block text-[10px] bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded-[10px] ml-0.5 font-semibold leading-tight font-mono">v{__APP_VERSION__}</span>
   </div>
   <div class="flex bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-full md:max-w-[440px] justify-center">
     <button

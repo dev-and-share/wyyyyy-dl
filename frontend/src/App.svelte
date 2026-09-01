@@ -333,22 +333,13 @@
 
     window.addEventListener('svelte:playFolder', ((e: CustomEvent) => {
       const { tracks, name } = (e as CustomEvent).detail;
-      if (!tracks?.length) {
-        showToast('该目录无可播文件', 'warning');
-        return;
-      }
+      if (!tracks?.length) return showToast('该目录无可播文件', 'warning');
       const q = tracks.map((t: any, idx: number) => ({
         id: t.songId || t.id || `local_${Date.now()}_${idx}`,
         name: t.songName || t.name || '未知',
         artist: t.artist || '未知',
         cover: t.cover || '/favicon.png',
-        url: t.url
-          ? t.url
-          : t.relativePath
-          ? `/v2/history/stream?path=${encodeURIComponent(t.relativePath)}`
-          : t.filePath
-          ? `/v2/history/stream?path=${encodeURIComponent(t.filePath)}`
-          : t.streamUrl || '',
+        url: t.url || (t.relativePath ? `/v2/history/stream?path=${encodeURIComponent(t.relativePath)}` : t.filePath ? `/v2/history/stream?path=${encodeURIComponent(t.filePath)}` : t.streamUrl || ''),
         isLocal: true
       }));
       setQueue(q, 0);
@@ -429,6 +420,11 @@
   <div style="display: {tab === 'download-mgr' ? 'contents' : 'none'};">
     <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
   </div>
+
+  <!-- 底部低调版本号 -->
+  <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity">
+    网易云音乐下载器 · PWA v{__APP_VERSION__}
+  </footer>
 </div>
 
 <!-- 全局原生 Audio 引擎 (静默挂载) -->
