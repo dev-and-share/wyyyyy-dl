@@ -33,9 +33,14 @@
       ▼
     </span>
   </div>
-  <div class="transition-all duration-300 ease-in-out {open ? 'max-h-[8000px] p-3 md:p-5 pt-2.5 md:pt-3.5' : 'max-h-0 overflow-hidden px-3 md:px-5'}">
-    {#if children}
-      {@render children()}
-    {/if}
+  <!-- 采用现代 CSS Grid 0fr ➔ 1fr 动画，消除 max-height 估算带来的折叠延迟与抽搐卡顿 -->
+  <div class="grid transition-[grid-template-rows,opacity] duration-250 ease-out {open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}">
+    <div class="overflow-hidden">
+      <div class="p-3 md:p-5 pt-2.5 md:pt-3.5">
+        {#if children}
+          {@render children()}
+        {/if}
+      </div>
+    </div>
   </div>
 </div>
