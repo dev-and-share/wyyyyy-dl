@@ -2530,6 +2530,52 @@ ul.data-list li:last-child {
     }
 }
 
+/* ☀️ 全屏黑胶歌词播放器白底/浅色主题支持 (Light Theme) */
+[data-theme="light"] .lyric-modal-overlay {
+    background: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%) !important;
+}
+[data-theme="light"] .lyric-modal-header {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="light"] .lyric-modal-title {
+    color: #0f172a !important;
+}
+[data-theme="light"] .lyric-close-btn {
+    background: rgba(0, 0, 0, 0.06) !important;
+    color: #475569 !important;
+}
+[data-theme="light"] .lyric-close-btn:hover {
+    background: rgba(0, 0, 0, 0.12) !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .fullscreen-title {
+    color: #0f172a !important;
+}
+[data-theme="light"] .fullscreen-artist {
+    color: #64748b !important;
+}
+[data-theme="light"] .lrc-line {
+    color: #94a3b8 !important;
+}
+[data-theme="light"] .lrc-line.active {
+    color: #2563eb !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 16px rgba(37, 99, 235, 0.25) !important;
+}
+[data-theme="light"] .fullscreen-controls-bar {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="light"] .fullscreen-main-controls .ctrl-btn.sub-btn {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #1e293b !important;
+}
+[data-theme="light"] .fullscreen-main-controls .ctrl-btn.sub-btn:hover {
+    background: rgba(0, 0, 0, 0.1) !important;
+}
+
 /* 📋 历史记录卡片：高特异性覆盖，彻底绝杀 ul.data-list li 的水平 display: flex 冲突 */
 ul.data-list li.history-item-card {
     display: flex !important;

@@ -132,11 +132,11 @@
     left: 0;
     right: 0;
     height: 74px;
-    background: rgba(15, 23, 42, 0.96);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+    background: rgba(15, 23, 42, 0.97);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.65), 0 -2px 12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
     z-index: 9998;
     padding: 0 24px;
     display: flex;
@@ -413,7 +413,7 @@
       padding: 12px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px !important;
       border-radius: 20px !important;
       background: rgba(18, 24, 38, 0.98) !important;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65) !important;
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.75), 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
       border: 1px solid rgba(255, 255, 255, 0.15) !important;
       display: block !important;
     }
@@ -571,6 +571,75 @@
     .sp-touch-play-btn:active {
       transform: scale(0.9) !important;
       box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
+    }
+  }
+
+  /* ☀️ 白底/浅色主题适配 (Light Theme) */
+  :global([data-theme="light"]) .bottom-audio-bar {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08) !important;
+  }
+  :global([data-theme="light"]) .audio-title {
+    color: #0f172a !important;
+  }
+  :global([data-theme="light"]) .audio-artist {
+    color: #64748b !important;
+  }
+  :global([data-theme="light"]) .time-stamp {
+    color: #64748b !important;
+  }
+  :global([data-theme="light"]) .ctrl-btn.sub-btn {
+    color: #334155 !important;
+  }
+  :global([data-theme="light"]) .ctrl-btn.sub-btn:hover {
+    color: #0f172a !important;
+    background: rgba(0, 0, 0, 0.06) !important;
+  }
+  :global([data-theme="light"]) .progress-bar-bg {
+    background: rgba(0, 0, 0, 0.08) !important;
+  }
+  :global([data-theme="light"]) .vol-icon {
+    color: #64748b !important;
+  }
+  :global([data-theme="light"]) .ctrl-btn.mini-close-btn {
+    color: #94a3b8 !important;
+  }
+  :global([data-theme="light"]) .ctrl-btn.mini-close-btn:hover {
+    color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+  }
+
+  /* 📱 移动端 (SP) 浅色/白底模式专属适配 */
+  @media (max-width: 768px) {
+    :global([data-theme="light"]) .bottom-audio-bar {
+      background: rgba(255, 255, 255, 0.98) !important;
+      border: 1px solid rgba(0, 0, 0, 0.1) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+    }
+    :global([data-theme="light"]) .sp-touch-top-action {
+      background: rgba(0, 0, 0, 0.05) !important;
+      border: 1px solid rgba(0, 0, 0, 0.08) !important;
+      color: #1e293b !important;
+    }
+    :global([data-theme="light"]) .sp-touch-top-action:active {
+      background: rgba(0, 0, 0, 0.1) !important;
+    }
+    :global([data-theme="light"]) .sp-touch-sub-btn {
+      background: rgba(0, 0, 0, 0.05) !important;
+      border: 1px solid rgba(0, 0, 0, 0.08) !important;
+      color: #1e293b !important;
+    }
+    :global([data-theme="light"]) .sp-touch-sub-btn:active {
+      background: rgba(0, 0, 0, 0.1) !important;
+    }
+    :global([data-theme="light"]) .sp-touch-side-btn {
+      background: rgba(0, 0, 0, 0.06) !important;
+      border: 1px solid rgba(0, 0, 0, 0.1) !important;
+      color: #0f172a !important;
+    }
+    :global([data-theme="light"]) .sp-touch-side-btn:active {
+      background: rgba(0, 0, 0, 0.12) !important;
     }
   }
 </style>
