@@ -44,6 +44,7 @@
   let sType = $state(getStored(STORAGE_KEY_SEARCH_TYPE, '1'));
   let sLimit = $state('10');
   let sResults: any[] = $state([]);
+  let searchLoading = $state(false);
 
   // 专辑相关状态
   let currentAlbumId = $state(albumId || getStored(STORAGE_KEY_ALBUM_ID, ''));
@@ -55,6 +56,16 @@
       localStorage.setItem(STORAGE_KEY_ACC_SEARCH, String(accSearch));
       localStorage.setItem(STORAGE_KEY_ACC_ALBUM, String(accAlbum));
     } catch {}
+  }
+
+  function handleTypeChange(val: string) {
+    sType = val;
+    try {
+      localStorage.setItem(STORAGE_KEY_SEARCH_TYPE, val);
+    } catch {}
+    if (kw.trim()) {
+      doSearch(false);
+    }
   }
 
   onMount(() => {
@@ -87,8 +98,10 @@
       localStorage.setItem(STORAGE_KEY_SEARCH_KW, kw);
       localStorage.setItem(STORAGE_KEY_SEARCH_TYPE, sType);
     } catch {}
+    searchLoading = true;
     try {
       const j = await api.search(kw, sType, sLimit);
+      searchLoading = false;
       if (j?.code && j.code !== '000000') {
         if (showEmptyToast) showToast(j.msg || '搜索失败', 'warning');
         return;
@@ -98,6 +111,7 @@
       else sResults = (d as any)?.songs || (d as any)?.albums || (d as any)?.playlists || (d as any)?.artists || (d as any)?.result || [];
       if (!sResults.length && showEmptyToast) showToast('无结果', 'info');
     } catch (e: any) {
+      searchLoading = false;
       if (showEmptyToast) showToast('搜索失败: ' + e.message, 'error');
     }
   }
@@ -177,23 +191,23 @@
       <span class="search-type-label pc-only-text">搜索类型：</span>
       <div class="search-radio-group">
         <label class="search-radio-item" class:active={sType==='1'}>
-          <input type="radio" name="searchType" value="1" bind:group={sType} />
+          <input type="radio" name="searchType" value="1" checked={sType==='1'} onchange={()=>handleTypeChange('1')} />
           <span>🎵 单曲</span>
         </label>
         <label class="search-radio-item" class:active={sType==='10'}>
-          <input type="radio" name="searchType" value="10" bind:group={sType} />
+          <input type="radio" name="searchType" value="10" checked={sType==='10'} onchange={()=>handleTypeChange('10')} />
           <span>💽 专辑</span>
         </label>
         <label class="search-radio-item" class:active={sType==='1000'}>
-          <input type="radio" name="searchType" value="1000" bind:group={sType} />
+          <input type="radio" name="searchType" value="1000" checked={sType==='1000'} onchange={()=>handleTypeChange('1000')} />
           <span>📁 歌单</span>
         </label>
         <label class="search-radio-item" class:active={sType==='100'}>
-          <input type="radio" name="searchType" value="100" bind:group={sType} />
+          <input type="radio" name="searchType" value="100" checked={sType==='100'} onchange={()=>handleTypeChange('100')} />
           <span>🎤 歌手</span>
         </label>
       </div>
-      <select bind:value={sType} style="display:none;" aria-label="搜索类型">
+      <select bind:value={sType} onchange={(e)=>handleTypeChange((e.target as HTMLSelectElement).value)} style="display:none;" aria-label="搜索类型">
         <option value="1">单曲</option>
         <option value="10">专辑</option>
         <option value="1000">歌单</option>
@@ -206,53 +220,57 @@
       <button class="btn-primary sp-hide-btn" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
     </div>
     <ul class="data-list scrollable-list">
-      {#each sResults as r, idx}
-        {#if sType === '1'}
-          {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
-          <li class="track-item-card">
-            <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }]))}>{idx + 1}. {r.name}</strong>
-              {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
-              <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
-            </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              {#if onPlayQueue}
-                <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }])}>▶️ 播放</button>
-              {/if}
-              {#if onSong}
-                <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
-              {/if}
-            </div>
-          </li>
-        {:else if sType === '10'}
-          {@const albumArtist = formatArtist(r.artist || r.artists)}
-          <li>
-            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleAlbum(String(r.id))}>{idx + 1}. {r.name}</strong>
-              {#if albumArtist}<span style="color:var(--text-secondary);"> - {albumArtist}</span>{/if}
-              {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
-              <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
-            </div>
-            <button class="jump-link-btn" onclick={() => handleAlbum(String(r.id))}>👉 查看专辑详情</button>
-          </li>
-        {:else if sType === '1000'}
-          <li>
-            <div style="flex:1; overflow:hidden; white-space:nowrap;">
-              <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlaylist(String(r.id))}>{idx + 1}. {r.name}</strong>
-              <span style="color:var(--text-muted);"> (ID:{r.id})</span>
-            </div>
-            <button class="jump-link-btn" onclick={() => onPlaylist(String(r.id))}>👉 查看详情</button>
-          </li>
-        {:else}
-          <li>
-            <strong>{idx + 1}. {r.name}</strong>
-            <span style="color:var(--text-muted);"> (ID:{r.id})</span>
-            <button class="jump-link-btn" onclick={() => showToast('歌手功能开发中', 'info')}>查看</button>
-          </li>
-        {/if}
+      {#if searchLoading}
+        <li style="justify-content:center; color:var(--text-secondary); padding:20px 0; font-size:13px;">🔄 正在检索，请稍候...</li>
       {:else}
-        <li style="justify-content:center; color:var(--text-muted);">输入关键词搜索</li>
-      {/each}
+        {#each sResults as r, idx}
+          {#if sType === '1'}
+            {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
+            <li class="track-item-card">
+              <div class="track-title-row" style="flex:1; display:flex; align-items:center; gap:6px; overflow:hidden;">
+                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }]))}>{idx + 1}. {r.name}</strong>
+                {#if artistName}<span style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> - {artistName}</span>{/if}
+                <span style="color:var(--text-muted); font-size:11px; flex-shrink:0;">(ID:{r.id})</span>
+              </div>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                {#if onPlayQueue}
+                  <button class="jump-link-btn" onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: '/favicon.png' }])}>▶️ 播放</button>
+                {/if}
+                {#if onSong}
+                  <button class="jump-link-btn" onclick={() => onSong(String(r.id))}>👉 详情</button>
+                {/if}
+              </div>
+            </li>
+          {:else if sType === '10'}
+            {@const albumArtist = formatArtist(r.artist || r.artists)}
+            <li>
+              <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => handleAlbum(String(r.id))}>{idx + 1}. {r.name}</strong>
+                {#if albumArtist}<span style="color:var(--text-secondary);"> - {albumArtist}</span>{/if}
+                {#if r.size}<span style="color:var(--text-muted); font-size:12px;"> ({r.size} 首歌)</span>{/if}
+                <span style="color:var(--text-muted); font-size:12px;"> (ID: {r.id})</span>
+              </div>
+              <button class="jump-link-btn" onclick={() => handleAlbum(String(r.id))}>👉 查看专辑详情</button>
+            </li>
+          {:else if sType === '1000'}
+            <li>
+              <div style="flex:1; overflow:hidden; white-space:nowrap;">
+                <strong class="clickable-track-title" style="cursor:pointer;" onclick={() => onPlaylist(String(r.id))}>{idx + 1}. {r.name}</strong>
+                <span style="color:var(--text-muted);"> (ID:{r.id})</span>
+              </div>
+              <button class="jump-link-btn" onclick={() => onPlaylist(String(r.id))}>👉 查看详情</button>
+            </li>
+          {:else}
+            <li>
+              <strong>{idx + 1}. {r.name}</strong>
+              <span style="color:var(--text-muted);"> (ID:{r.id})</span>
+              <button class="jump-link-btn" onclick={() => showToast('歌手功能开发中', 'info')}>查看</button>
+            </li>
+          {/if}
+        {:else}
+          <li style="justify-content:center; color:var(--text-muted);">输入关键词搜索</li>
+        {/each}
+      {/if}
     </ul>
     <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
   </div>
