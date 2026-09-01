@@ -116,15 +116,15 @@
 </script>
 
 <div
-  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col transition-colors duration-300 select-none bg-[radial-gradient(circle_at_center,#1e293b_0%,#0f172a_70%,#090d16_100%)] dark:bg-[radial-gradient(circle_at_center,#1e293b_0%,#0f172a_70%,#090d16_100%)] [data-theme=light]:bg-[radial-gradient(circle_at_center,#ffffff_0%,#f1f5f9_60%,#e2e8f0_100%)]"
+  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col transition-colors duration-300 select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)]"
 >
   <!-- 顶部标题栏 -->
-  <div class="min-h-[calc(54px+env(safe-area-inset-top,0px))] pt-[max(10px,env(safe-area-inset-top,0px))] pb-2.5 px-4 border-b border-[var(--border-subtle,rgba(255,255,255,0.08))] flex justify-between items-center bg-[var(--card-bg-solid,rgba(15,23,42,0.4))] w-full shrink-0">
+  <div class="min-h-[calc(54px+env(safe-area-inset-top,0px))] pt-[max(10px,env(safe-area-inset-top,0px))] pb-2.5 px-4 border-b border-[var(--border-subtle)] flex justify-between items-center bg-[var(--immersive-header-bg)] backdrop-blur-md w-full shrink-0">
     <div class="w-9.5 h-9.5 shrink-0 pointer-events-none" aria-hidden="true"></div>
-    <h3 class="text-base font-bold text-[var(--text-main,#f8fafc)] flex-1 text-center truncate px-2">🎵 全屏沉浸播放</h3>
+    <h3 class="text-base font-bold text-[var(--text-main)] flex-1 text-center truncate px-2">🎵 全屏沉浸播放</h3>
     <button
       type="button"
-      class="w-9.5 h-9.5 rounded-full flex items-center justify-center text-base bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] active:scale-92 transition-all cursor-pointer"
+      class="w-9.5 h-9.5 rounded-full flex items-center justify-center text-base bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] active:scale-92 transition-all cursor-pointer"
       onclick={onClose}
       title="关闭全屏"
     >
@@ -137,7 +137,7 @@
     <!-- 左侧：大黑胶唱片与歌曲元信息 -->
     <div class="flex flex-col items-center justify-center gap-3 md:gap-4 max-w-[440px] w-full md:w-auto shrink-0">
       <div class="w-[140px] h-[140px] md:w-[220px] md:h-[220px] flex items-center justify-center">
-        <div class="w-full h-full rounded-full bg-[#0f172a] shadow-[0_12px_36px_rgba(0,0,0,0.5),0_0_0_8px_rgba(255,255,255,0.05)] p-1.5 flex items-center justify-center">
+        <div class="w-full h-full rounded-full bg-[var(--immersive-ring-bg)] shadow-[var(--immersive-ring-shadow)] p-1.5 flex items-center justify-center transition-all duration-300">
           <img
             src={track?.cover || DEFAULT_VINYL_COVER}
             class="w-full h-full rounded-full object-cover shadow-inner {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
@@ -159,7 +159,7 @@
             </svg>
           </button>
         </div>
-        <div class="text-xs text-[var(--text-secondary,#94a3b8)] truncate mt-0.5">{formatArtist(track?.artist) || '未知歌手'}</div>
+        <div class="text-xs text-[var(--text-secondary)] truncate mt-0.5">{formatArtist(track?.artist) || '未知歌手'}</div>
       </div>
     </div>
 
@@ -175,7 +175,7 @@
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               id="sv-lrc-{i}"
-              class="cursor-pointer transition-all duration-300 {i === activeIdx ? 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]' : 'text-sm md:text-base text-[var(--text-muted,#94a3b8)] hover:text-[var(--text-main)]'}"
+              class="cursor-pointer transition-all duration-300 {i === activeIdx ? 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]' : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
               onclick={() => onSeekTime(l.time)}
             >
               {l.text}
@@ -195,7 +195,7 @@
   </div>
 
   <!-- 底部：全屏沉浸播放控制条 -->
-  <div class="w-full px-4 md:px-12 py-3 border-t border-[var(--border-subtle,rgba(255,255,255,0.08))] bg-black/15 dark:bg-black/30 backdrop-blur-xl flex flex-col items-center gap-2.5 shrink-0">
+  <div class="w-full px-4 md:px-12 py-3 border-t border-[var(--border-subtle)] bg-[var(--immersive-footer-bg)] backdrop-blur-xl flex flex-col items-center gap-2.5 shrink-0">
     <div class="w-full max-w-[680px]">
       <PlayerProgressBar
         curTime={currentTime}
@@ -209,7 +209,7 @@
     <div class="flex items-center justify-center gap-4 md:gap-6">
       <button
         type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onToggleMode}
         title="切换播放模式"
       >
@@ -217,7 +217,7 @@
       </button>
       <button
         type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onPrev}
         title="上一首"
       >
@@ -233,7 +233,7 @@
       </button>
       <button
         type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onNext}
         title="下一首"
       >
@@ -241,7 +241,7 @@
       </button>
       <button
         type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onTogglePeq}
         title="打开均衡器"
       >
@@ -249,7 +249,7 @@
       </button>
       <button
         type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onToggleDrawer}
         title="播放列表"
       >
@@ -260,7 +260,7 @@
       <div class="relative">
         <button
           type="button"
-          class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
           onclick={() => showVolPopup = !showVolPopup}
           title="调节音量"
         >
@@ -270,7 +270,7 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div class="fixed inset-0 z-[100001]" onclick={() => showVolPopup = false}></div>
-          <div class="absolute bottom-11 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid,#1e293b)] border border-[var(--border-color,rgba(255,255,255,0.15))] rounded-2xl shadow-xl z-[100002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
+          <div class="absolute bottom-11 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid)] border border-[var(--border-color)] rounded-2xl shadow-xl z-[100002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
             <span class="text-[10px] font-mono text-[var(--text-muted)]">{Math.round(vol * 100)}%</span>
             <input
               type="range"
