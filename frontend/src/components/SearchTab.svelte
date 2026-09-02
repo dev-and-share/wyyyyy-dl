@@ -208,7 +208,7 @@
       cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER,
       isLocal: (downloadedSet && downloadedSet.has(Number(s.id))) || s.isLocal === true
     }));
-    onPlayQueue(q, 0);
+    onPlayQueue(q);
   }
 
   async function downloadSingleTrack(id: string) {

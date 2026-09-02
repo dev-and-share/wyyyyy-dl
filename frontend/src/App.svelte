@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from './lib/api';
-  import { formatTime, getApiCache, setApiCache } from './lib/utils';
+  import { formatTime, getApiCache, setApiCache, isIOS } from './lib/utils';
   import { checkForPwaUpdate } from './lib/pwa';
   import { savePlayerStateToStorage, loadPlayerStateFromStorage } from './lib/playerStorage';
   import { applyTheme, getInitialTheme, switchToLegacy, type ThemeMode } from './lib/theme';
@@ -117,21 +117,41 @@
     }
   }
 
-  async function ensurePlay() {
+  async function ensurePlay(resetTime = false) {
     if (!curTrack || !audioEl) return;
-    let url = curTrack.url || (await resolveTrackUrl(curTrack));
-    if (url && audioEl.src !== url && !audioEl.src.endsWith(url)) {
-      audioEl.src = url;
+    if (resetTime) {
+      curTime = 0;
+      try { audioEl.currentTime = 0; } catch {}
     }
-    audioEl.play().catch(() => {
-      playing = false;
-    });
+    let url = curTrack.url || (await resolveTrackUrl(curTrack));
+    if (url && audioEl) {
+      if (audioEl.src !== url && !audioEl.src.endsWith(url)) {
+        audioEl.src = url;
+      }
+      if (resetTime) {
+        try { audioEl.currentTime = 0; } catch {}
+        const onMeta = () => {
+          try { if (audioEl) audioEl.currentTime = 0; } catch {}
+          audioEl?.removeEventListener('loadedmetadata', onMeta);
+        };
+        audioEl.addEventListener('loadedmetadata', onMeta);
+      }
+      const p = audioEl.play();
+      if (p !== undefined) {
+        p.then(() => {
+          if (resetTime && audioEl) {
+            try { audioEl.currentTime = 0; } catch {}
+            curTime = 0;
+          }
+        }).catch(() => { playing = false; });
+      }
+    }
   }
 
   function togglePlay() {
     if (!audioEl) return;
     if (audioEl.paused) {
-      if (!audioEl.src || audioEl.src === window.location.href) ensurePlay();
+      if (!audioEl.src || audioEl.src === window.location.href) ensurePlay(false);
       else audioEl.play().catch(() => {});
     } else {
       audioEl.pause();
@@ -141,7 +161,9 @@
   async function next() {
     if (queue.length === 0) return;
     if (playMode === 'shuffle') {
-      qIndex = Math.floor(Math.random() * queue.length);
+      let nextIdx = Math.floor(Math.random() * queue.length);
+      if (queue.length > 1 && nextIdx === qIndex) nextIdx = (qIndex + 1) % queue.length;
+      qIndex = nextIdx;
     } else {
       let attempts = 0;
       do {
@@ -155,24 +177,30 @@
       }
     }
     curTime = 0;
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     savePlayerState();
-    await ensurePlay();
-    setTimeout(() => audioEl?.play().catch(() => {}), 10);
+    await ensurePlay(true);
   }
 
   async function prev() {
     if (queue.length === 0) return;
-    let attempts = 0;
-    do {
-      qIndex = (qIndex - 1 + queue.length) % queue.length;
-      attempts++;
-      if (!offlineOnly) break;
-      if (queue[qIndex]?.isLocal) break;
-    } while (attempts < queue.length);
+    if (playMode === 'shuffle') {
+      let prevIdx = Math.floor(Math.random() * queue.length);
+      if (queue.length > 1 && prevIdx === qIndex) prevIdx = (qIndex - 1 + queue.length) % queue.length;
+      qIndex = prevIdx;
+    } else {
+      let attempts = 0;
+      do {
+        qIndex = (qIndex - 1 + queue.length) % queue.length;
+        attempts++;
+        if (!offlineOnly) break;
+        if (queue[qIndex]?.isLocal) break;
+      } while (attempts < queue.length);
+    }
     curTime = 0;
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     savePlayerState();
-    await ensurePlay();
-    setTimeout(() => audioEl?.play().catch(() => {}), 10);
+    await ensurePlay(true);
   }
 
   function seek(e: MouseEvent) {
@@ -184,15 +212,22 @@
     savePlayerState();
   }
 
-  function setQueue(tracks: Track[], idx = 0) {
+  function setQueue(tracks: Track[], idx?: number) {
+    if (!tracks || !tracks.length) return;
     queue = tracks;
-    qIndex = idx;
+    if (typeof idx === 'number' && idx >= 0 && idx < tracks.length) {
+      qIndex = idx;
+    } else {
+      // 随机播放模式下，整单播放随机选取起播歌曲；列表模式则从第 0 首开始
+      qIndex = playMode === 'shuffle' ? Math.floor(Math.random() * tracks.length) : 0;
+    }
     curTime = 0;
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     savePlayerState();
-    setTimeout(() => ensurePlay(), 50);
+    setTimeout(() => ensurePlay(true), 50);
 
     // 🌟 共通逻辑提取：当点播/试听非本地服务器曲目时，自动提交后台下载任务
-    const targetTrack = tracks[idx];
+    const targetTrack = tracks[qIndex];
     if (targetTrack && !targetTrack.isLocal && targetTrack.id) {
       api.downloadSingle(String(targetTrack.id)).then(() => {
         showToast(`已将《${targetTrack.name || '歌曲'}》加入自动下载任务`, 'info', 2000);
@@ -224,18 +259,8 @@
   const ACTIVE_STATUSES = new Set(['WAITING', 'DOWNLOADING', 'PENDING']);
   let taskTimer: ReturnType<typeof setInterval> | null = null;
 
-  function stopTaskPolling() {
-    if (taskTimer !== null) {
-      clearInterval(taskTimer);
-      taskTimer = null;
-    }
-  }
-
-  function startTaskPolling() {
-    if (taskTimer !== null) return; // 已在运行，不重复启动
-    fetchTasks();
-    taskTimer = setInterval(fetchTasks, 3000);
-  }
+  function stopTaskPolling() { if (taskTimer !== null) { clearInterval(taskTimer); taskTimer = null; } }
+  function startTaskPolling() { if (taskTimer !== null) return; fetchTasks(); taskTimer = setInterval(fetchTasks, 3000); }
 
   async function fetchTasks() {
     try {
@@ -248,20 +273,11 @@
         tasks.forEach((t: any) => {
           if ((t.status === 'SUCCESS' || t.status === 'SKIP') && (t.songId || t.id)) {
             const sid = Number(t.songId || t.id);
-            if (!newSet.has(sid)) {
-              newSet.add(sid);
-              changed = true;
-            }
+            if (!newSet.has(sid)) { newSet.add(sid); changed = true; }
           }
         });
-        if (changed) {
-          downloadedSet = newSet;
-        }
-        // 无活跃任务时自动停止轮询，节省服务器资源
-        const hasActive = tasks.some((t: any) => ACTIVE_STATUSES.has(t.status));
-        if (!hasActive) {
-          stopTaskPolling();
-        }
+        if (changed) downloadedSet = newSet;
+        if (!tasks.some((t: any) => ACTIVE_STATUSES.has(t.status))) stopTaskPolling();
       }
     } catch {}
   }
@@ -269,50 +285,30 @@
   async function clearTasks() {
     await api.tasksClear();
     tasks = [];
-    stopTaskPolling(); // 清空后立刻停止轮询
+    stopTaskPolling();
     showToast('已清空', 'info');
   }
 
-  // ---------- 定位处理 (触发 RevealModal 弹窗) ----------
   async function handleReveal(item: any) {
-    try {
-      revealData = await executeReveal(item);
-    } catch (e: any) {
-      showToast('定位失败: ' + (e.message || e), 'error');
-    }
+    try { revealData = await executeReveal(item); } catch (e: any) { showToast('定位失败: ' + (e.message || e), 'error'); }
   }
 
   async function initDownloadedSet() {
     try {
       const j = await api.historyIds();
-      if (j?.code === '000000' && Array.isArray(j.data)) {
-        downloadedSet = new Set(j.data.map(Number));
-        return;
-      }
+      if (j?.code === '000000' && Array.isArray(j.data)) { downloadedSet = new Set(j.data.map(Number)); return; }
       const h = await api.historyList('', 1);
       downloadedSet = new Set((h?.data?.list || []).map((x: any) => Number(x.songId)).filter(Boolean));
     } catch {}
   }
 
-  // ---------- 路由与主题切换 ----------
   function switchTab(n: 'playlist' | 'search' | 'download-mgr') {
     tab = n;
     history.pushState(null, '', '#' + n);
-    try {
-      localStorage.setItem('wyyyy_active_tab', n);
-    } catch {}
+    try { localStorage.setItem('wyyyy_active_tab', n); } catch {}
   }
-
-  function jumpToAlbum(id: string) {
-    albumId = id;
-    switchTab('search');
-  }
-
-  function jumpToPlaylist(id: string) {
-    playlistId = id;
-    switchTab('playlist');
-  }
-
+  function jumpToAlbum(id: string) { albumId = id; switchTab('search'); }
+  function jumpToPlaylist(id: string) { playlistId = id; switchTab('playlist'); }
   function toggleTheme() {
     themeMode = themeMode === 'dark' ? 'light' : themeMode === 'light' ? 'auto' : 'dark';
     applyTheme(themeMode);
@@ -321,16 +317,14 @@
   onMount(() => {
     applyTheme(themeMode);
     restorePlayerState();
-    const match = location.hash.match(/id=([0-9]+)/);
-    if (match?.[1]) playlistId = match[1];
-    const h = location.hash.replace('#', '').split('?')[0];
-    if (h === 'playlist' || h === 'search' || h === 'download-mgr') tab = h as any;
-    window.addEventListener('hashchange', () => {
+    const syncRoute = () => {
       const m = location.hash.match(/id=([0-9]+)/);
       if (m?.[1]) playlistId = m[1];
-      const hh = location.hash.replace('#', '').split('?')[0];
-      if (hh === 'playlist' || hh === 'search' || hh === 'download-mgr') tab = hh as any;
-    });
+      const h = location.hash.replace('#', '').split('?')[0];
+      if (h === 'playlist' || h === 'search' || h === 'download-mgr') tab = h as any;
+    };
+    syncRoute();
+    window.addEventListener('hashchange', syncRoute);
     window.addEventListener('beforeunload', savePlayerState);
 
     window.addEventListener('svelte:playFolder', ((e: CustomEvent) => {
@@ -441,7 +435,14 @@
     if (curTime > 0) { try { localStorage.setItem('wyyyy_player_time', String(curTime)); } catch {} }
   }}
   onloadedmetadata={(e) => { duration = (e.currentTarget as HTMLAudioElement).duration || 0; }}
-  onended={() => { if (playMode === 'single') { if (audioEl) audioEl.currentTime = 0; audioEl?.play(); } else next(); }}
+  onended={() => {
+    if (playMode === 'single') {
+      curTime = 0;
+      if (audioEl) { try { audioEl.currentTime = 0; } catch {} audioEl.play().catch(() => {}); }
+    } else {
+      next();
+    }
+  }}
 ></audio>
 
 <!-- 🎬 现代专业音频播放控制栏 (SP 大触控 / PC 优雅三段式) -->
@@ -458,7 +459,7 @@
 {#if showDrawer}
   <PlaylistDrawer
     {queue} {qIndex} {tasks} {likedSet} {autoSkipTrial} {offlineOnly} {downloadedSet}
-    onPlayIndex={(idx) => { qIndex = idx; curTime = 0; ensurePlay(); }}
+    onPlayIndex={(idx) => { qIndex = idx; curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
     onClearQueue={() => { queue = []; qIndex = 0; savePlayerState(); showToast('播放队列已清空', 'info'); }}
     onRemoveItem={(realIdx) => { queue = queue.filter((_, idx) => idx !== realIdx); if (qIndex >= queue.length) qIndex = Math.max(0, queue.length - 1); savePlayerState(); }}
     onToggleLike={toggleLike}
@@ -482,7 +483,8 @@
   />
 {/if}
 
-{#if showPeq}
+<!-- iOS Web Audio API 熄屏会导致挂起中断音频，故在 iOS 设备上彻底不加载 PEQ -->
+{#if !isIOS() && showPeq}
   <PeqDrawer onClose={() => showPeq = false} />
 {/if}
 
