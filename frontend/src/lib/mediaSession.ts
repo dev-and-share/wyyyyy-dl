@@ -82,10 +82,15 @@ export function updateMediaSessionPlaybackState(playing: boolean) {
 
 /**
  * 实时同步当前音频进度与总时长至系统锁屏进度条
+ * iOS 注意：setPositionState 会触发 iOS 锁屏显示 ±10s 跳秒按钮，
+ * 与 seekbackward/seekforward=null 的设置冲突，导致无法显示上一首/下一首。
+ * 因此 iOS 上跳过此调用，牺牲锁屏进度条，换取正确的曲目导航按钮。
  */
 export function updateMediaSessionPosition(audioEl: HTMLAudioElement | null) {
   if (typeof window === 'undefined' || !('mediaSession' in navigator) || !audioEl) return;
   if (!('setPositionState' in navigator.mediaSession)) return;
+  // iOS: 调用 setPositionState 会让系统误判为"可快进内容"，锁屏改显 ±10s 跳秒键
+  if (/iP(hone|ad|od)/i.test(navigator.userAgent)) return;
   try {
     const duration = audioEl.duration;
     if (duration && !isNaN(duration) && duration > 0) {

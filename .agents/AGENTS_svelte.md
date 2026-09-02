@@ -60,3 +60,36 @@ templates/home.html:46  🧪 试用新版  ↔  App.svelte:222 ↩️ 旧版
 - **后续**：按 `P1 歌单/搜索 → P2 播放/黑胶/PEQ → P3 队列/下载 → P4 文件/历史` 逐模块 `组件化 + 组件测试` 收口，`App.svelte` 终缩至 `<TopBar><Router><Player>` 壳。
 
 > `docker compose up -d --build` 后 `http://localhost:8080/?v=svelte` 即新版，`?v=legacy` 秒回旧版，`/svelte/index.html` 直达。
+
+---
+
+## 7. 部署规范（固化）
+
+**绝对禁止**直接 `docker compose up -d --build`。**必须**用项目根目录的 `deploy.sh`，它会同步：
+1. bump `frontend/package.json` patch 版本号
+2. 更新 `src/main/resources/static/sw.js` 的 `CACHE_NAME`（触发 PWA Service Worker 更新，否则 iOS/Android 下拉刷新永远取不到新版）
+3. `git commit + tag + push`
+4. `docker compose up -d --build`
+
+```bash
+# 根目录执行（默认 patch）
+./deploy.sh
+
+# 或指定幅度
+./deploy.sh minor   # x.Y.0
+./deploy.sh major   # X.0.0
+```
+
+> **核心原因**：`sw.js` 是 Spring Boot 静态文件，浏览器靠逐字节对比判断 SW 是否需要更新。`CACHE_NAME` 不变 → SW 不更新 → iOS 客户端永远跑旧版 JS。
+
+---
+
+## 8. iOS 专项坑（MediaSession / Audio）
+
+| 坑 | 根因 | 解 |
+|---|---|---|
+| 锁屏显示 ±10s 而非 ⏮⏭ | `setPositionState(duration)` 让 iOS 认为内容"可快进" | iOS 上跳过 `setPositionState` 调用（`mediaSession.ts`）|
+| `seekbackward/seekforward` 默认出现 | iOS 锁屏默认布局 | 显式 `setActionHandler('seekbackward', null)` |
+| AirPods 双击/锁屏切歌无声 | `ensurePlay()` 含 `await resolveTrackUrl()` → iOS 手势上下文断链 → `play()` 被拒 | 预加载 URL（`preloadNextTrack`）；有 URL 时同步切换，无 URL 时异步但接受 iOS 首次失败 |
+| `$derived activeTrack` 滞后 | Svelte 5 `$derived` 在同帧内懒重算 | `ensurePlay` 直接读 `queue[qIndex]` 而非 `activeTrack` |
+| 均衡器（PEQ）导致熄屏播放中断 | `AudioContext` 在 iOS 熄屏时 `suspend` | `isIOS()` 隐藏 PEQ 入口 |
