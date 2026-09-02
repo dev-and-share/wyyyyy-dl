@@ -21,6 +21,13 @@ export function setupMediaSession(handlers: MediaSessionHandlers) {
     navigator.mediaSession.setActionHandler('pause', () => handlers.onPause());
     navigator.mediaSession.setActionHandler('previoustrack', () => handlers.onPrev());
     navigator.mediaSession.setActionHandler('nexttrack', () => handlers.onNext());
+
+    // iOS 锁屏默认显示 ±10s 快进/快退按钮（seekbackward/seekforward）。
+    // 显式设置为 null 可告知系统"本播放器使用曲目导航而非时间跳转"，
+    // 从而强制 iOS 锁屏与控制中心显示「上一首/下一首」而非「前进后退10秒」。
+    try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
+    try { navigator.mediaSession.setActionHandler('seekforward', null); } catch {}
+
     if (handlers.onSeekTo) {
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (typeof details.seekTime === 'number') {
