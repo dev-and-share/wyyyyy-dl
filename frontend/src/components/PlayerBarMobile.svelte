@@ -105,6 +105,7 @@
             </button>
           {/if}
           <button
+            data-testid="btn-toggle-drawer"
             type="button"
             class="relative w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
             onclick={onQueue}
@@ -163,6 +164,7 @@
   <!-- 2.3 第三排：5个控制按键 -->
   <div class="flex items-center justify-between w-full px-2">
     <button
+      data-testid="btn-toggle-mode"
       type="button"
       class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
       onclick={onToggleMode}
@@ -171,6 +173,7 @@
       {playMode === 'single' ? '🔂' : (playMode === 'shuffle' ? '🔀' : '🔁')}
     </button>
     <button
+      data-testid="btn-prev-track"
       type="button"
       class="w-10 h-10 rounded-full flex items-center justify-center text-base text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
       onclick={onPrev}
@@ -179,6 +182,7 @@
       ⏮
     </button>
     <button
+      data-testid="btn-play-pause"
       type="button"
       class="w-12 h-12 rounded-full flex items-center justify-center text-xl bg-gradient-to-br from-red-500 to-orange-500 text-white font-bold shadow-lg shadow-red-500/40 active:scale-95 transition-all"
       onclick={onTogglePlay}
@@ -187,6 +191,7 @@
       {playing ? '⏸' : '▶'}
     </button>
     <button
+      data-testid="btn-next-track"
       type="button"
       class="w-10 h-10 rounded-full flex items-center justify-center text-base text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
       onclick={onNext}

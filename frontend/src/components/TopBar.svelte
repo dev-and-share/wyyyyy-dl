@@ -30,17 +30,21 @@
   </div>
   <div class="flex bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-full md:max-w-[440px] justify-center">
     <button
+      data-testid="tab-playlist"
       class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'playlist' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
       onclick={() => onSwitchTab('playlist')}>📁 歌单</button>
     <button
+      data-testid="tab-search"
       class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'search' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
       onclick={() => onSwitchTab('search')}>🔍 搜索</button>
     <button
+      data-testid="tab-download-mgr"
       class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
       onclick={() => onSwitchTab('download-mgr')}>📥 本地</button>
   </div>
   <div class="shrink-0 flex items-center gap-1 md:gap-1.5 pr-0.5">
     <button
+      data-testid="btn-toggle-theme"
       class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
       onclick={onToggleTheme}
       title="切换主题"
@@ -55,6 +59,7 @@
       <span class="hidden sm:inline">允许重复</span>
     </label>
     <button
+      data-testid="btn-switch-legacy"
       class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
       onclick={onSwitchToLegacy}
       title="返回旧版 (localStorage+Cookie)"

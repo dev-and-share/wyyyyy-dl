@@ -23,6 +23,7 @@
 
 <div class="flex items-center justify-center {size === 'lg' ? 'gap-3 w-full justify-between' : 'gap-4'}">
   <button
+    data-testid="btn-toggle-mode"
     type="button"
     class="rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all {size === 'lg' ? 'w-9 h-9 text-base bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]' : 'w-8 h-8 text-sm'}"
     onclick={onToggleMode}
@@ -31,6 +32,7 @@
     {modeIcon}
   </button>
   <button
+    data-testid="btn-prev-track"
     type="button"
     class="rounded-full flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all {size === 'lg' ? 'w-10 h-10 text-lg bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]' : 'w-8 h-8 text-sm'}"
     onclick={onPrev}
@@ -39,6 +41,7 @@
     ⏮
   </button>
   <button
+    data-testid="btn-play-pause"
     type="button"
     class="rounded-full flex items-center justify-center bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 active:scale-95 transition-all font-bold {size === 'lg' ? 'w-12 h-12 text-xl' : 'w-9.5 h-9.5 text-base'}"
     onclick={onTogglePlay}
@@ -47,6 +50,7 @@
     {playing ? '⏸' : '▶'}
   </button>
   <button
+    data-testid="btn-next-track"
     type="button"
     class="rounded-full flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all {size === 'lg' ? 'w-10 h-10 text-lg bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]' : 'w-8 h-8 text-sm'}"
     onclick={onNext}

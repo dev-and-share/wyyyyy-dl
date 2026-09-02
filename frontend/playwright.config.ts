@@ -2,6 +2,6 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
   timeout: 15000,
-  use: { baseURL: process.env.BASE_URL || 'http://localhost:8081', trace: 'on-first-retry' },
+  use: { baseURL: process.env.BASE_URL || 'http://localhost:8080', trace: 'on-first-retry' },
   webServer: undefined,
 });

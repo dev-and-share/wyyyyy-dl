@@ -114,6 +114,7 @@
         </button>
       {/if}
       <button
+        data-testid="btn-toggle-drawer"
         type="button"
         class="relative w-8.5 h-8.5 rounded-lg flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
         onclick={onQueue}
