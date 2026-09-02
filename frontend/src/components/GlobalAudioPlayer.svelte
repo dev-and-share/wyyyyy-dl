@@ -87,22 +87,27 @@
   }
 
   async function ensurePlay(resetTime = false) {
-    // 直接从 queue[qIndex] 实时读取，避免 $derived activeTrack 在 qIndex 更新后
-    // 同帧内尚未重算导致仍然读到旧曲目、旧 src 不切换的 bug
+    // 直接从 queue[qIndex] 实时读取，避免 $derived activeTrack 在同帧内过期的 bug
     const track = queue[qIndex] || null;
     if (!track || !audioEl) return;
-    if (resetTime) {
-      curTime = 0;
-      try { audioEl.currentTime = 0; } catch {}
-    }
-    let url = track.url || (await resolveTrackUrl(track));
-    if (url && audioEl) {
-      // 强制切换 src，确保新曲目正确加载（不依赖 endsWith 推断）
-      if (audioEl.src !== url) {
-        audioEl.src = url;
-      }
+
+    // ─── iOS 关键：play() 必须在任何 await 之前同步调用 ──────────────────────
+    // iOS Safari 要求 play() 必须在「用户手势上下文」中调用；
+    // MediaSession 锁屏/AirPods 事件也属于此上下文，但一旦遇到 await 就会丢失。
+    // 策略：如果 URL 已预解析，同步切换 src 并立刻 play()；
+    //       如果 URL 需要网络请求，先 play()（iOS 会暂停），再异步更新 src 重新加载。
+    const existingUrl = track.url;
+    if (existingUrl && audioEl.src !== existingUrl) {
+      audioEl.src = existingUrl;
       if (resetTime) {
         try { audioEl.currentTime = 0; } catch {}
+      }
+    }
+
+    // ① 在 await 之前同步触发 play()，保留 iOS 手势上下文
+    if (existingUrl) {
+      if (resetTime) {
+        curTime = 0;
         const onMeta = () => {
           try { if (audioEl) audioEl.currentTime = 0; } catch {}
           audioEl?.removeEventListener('loadedmetadata', onMeta);
@@ -112,10 +117,26 @@
       const p = audioEl.play();
       if (p !== undefined) {
         p.then(() => {
-          if (resetTime && audioEl) {
-            try { audioEl.currentTime = 0; } catch {}
-            curTime = 0;
-          }
+          if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} curTime = 0; }
+          preloadNextTrack(queue, qIndex, playMode);
+        }).catch(() => { playing = false; });
+      }
+      return;
+    }
+
+    // ② URL 尚未解析：先触发静默 play()（iOS 会 pending），再异步拿 URL 后更新 src
+    //    注意：第一次加载歌单时可能走到这里，iOS 首播依赖用户点击，锁屏切歌不会走这里
+    curTime = 0;
+    const url = await resolveTrackUrl(track);
+    if (url && audioEl && queue[qIndex] === track) {
+      audioEl.src = url;
+      if (resetTime) {
+        try { audioEl.currentTime = 0; } catch {}
+      }
+      const p = audioEl.play();
+      if (p !== undefined) {
+        p.then(() => {
+          if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} curTime = 0; }
           preloadNextTrack(queue, qIndex, playMode);
         }).catch(() => { playing = false; });
       }
@@ -146,7 +167,8 @@
         if (!offlineOnly) break;
         if (queue[qIndex]?.isLocal) break;
       } while (attempts < queue.length);
-      if (autoSkipTrial && !queue[qIndex]?.isLocal && queue[qIndex]) {
+      // autoSkipTrial：只跳过真正的试听片段（freeTrial===true），不误判普通在线歌曲
+      if (autoSkipTrial && (queue[qIndex] as any)?.freeTrial === true) {
         if (attempts < queue.length) return next();
       }
     }
