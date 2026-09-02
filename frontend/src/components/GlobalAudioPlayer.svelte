@@ -87,14 +87,18 @@
   }
 
   async function ensurePlay(resetTime = false) {
-    if (!activeTrack || !audioEl) return;
+    // 直接从 queue[qIndex] 实时读取，避免 $derived activeTrack 在 qIndex 更新后
+    // 同帧内尚未重算导致仍然读到旧曲目、旧 src 不切换的 bug
+    const track = queue[qIndex] || null;
+    if (!track || !audioEl) return;
     if (resetTime) {
       curTime = 0;
       try { audioEl.currentTime = 0; } catch {}
     }
-    let url = activeTrack.url || (await resolveTrackUrl(activeTrack));
+    let url = track.url || (await resolveTrackUrl(track));
     if (url && audioEl) {
-      if (audioEl.src !== url && !audioEl.src.endsWith(url)) {
+      // 强制切换 src，确保新曲目正确加载（不依赖 endsWith 推断）
+      if (audioEl.src !== url) {
         audioEl.src = url;
       }
       if (resetTime) {
