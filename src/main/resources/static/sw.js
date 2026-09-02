@@ -32,6 +32,13 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// 3. 监听客户端指令（用于发现新版本时立即接管并跳过等待）
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // 3. Fetch 请求拦截策略
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);

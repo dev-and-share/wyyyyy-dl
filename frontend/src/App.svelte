@@ -76,9 +76,13 @@
   async function handleRefresh() {
     showToast('正在检查更新与刷新数据...', 'info', 1200);
     try {
-      checkForPwaUpdate().catch(() => {});
+      const hasUpdate = await checkForPwaUpdate();
       await initLikeList();
-      showToast('已同步最新数据与应用状态', 'success', 1500);
+      if (hasUpdate) {
+        showToast('检测到新版本，正在应用更新...', 'success', 1200);
+      } else {
+        showToast('已同步最新数据与应用状态', 'success', 1500);
+      }
     } catch {
       window.location.reload();
     }
