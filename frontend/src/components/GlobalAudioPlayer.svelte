@@ -38,6 +38,7 @@
   let playMode: 'list' | 'single' | 'shuffle' = $state('list');
   let curTime = $state(0);
   let duration = $state(0);
+  let pendingSeekTime = $state<number | null>(null);
   let vol = $state(typeof localStorage !== 'undefined' ? (Number(localStorage.getItem('wyyyy_player_vol')) || 0.8) : 0.8);
   let autoSkipTrial = $state(true);
   let offlineOnly = $state(false);
@@ -62,15 +63,10 @@
     savePlayerStateToStorage({ queue, qIndex, playMode, curTime, autoSkipTrial, offlineOnly });
   }
 
-  async function prepareTrackInUI(track: Track, seekTime: number) {
+  async function prepareTrackInUI(track: Track) {
     let url = track.url || (await resolveTrackUrl(track));
-    if (url && audioEl) {
+    if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href)) {
       audioEl.src = url;
-      if (seekTime > 0) {
-        const onMeta = () => { try { if (audioEl) audioEl.currentTime = seekTime; } catch {} audioEl?.removeEventListener('loadedmetadata', onMeta); };
-        audioEl.addEventListener('loadedmetadata', onMeta);
-        if (audioEl.duration) { try { audioEl.currentTime = seekTime; } catch {} }
-      }
     }
   }
 
@@ -81,21 +77,56 @@
     if (s.playMode) playMode = s.playMode;
     if (s.autoSkipTrial !== undefined) autoSkipTrial = s.autoSkipTrial;
     if (s.offlineOnly !== undefined) offlineOnly = s.offlineOnly;
-    if (s.curTime) curTime = s.curTime;
+    if (s.curTime && s.curTime > 0) {
+      curTime = s.curTime;
+      pendingSeekTime = s.curTime;
+    }
     const t = queue[qIndex];
-    if (t) prepareTrackInUI(t, s.curTime || 0);
+    if (t) prepareTrackInUI(t);
+  }
+
+  /**
+   * 🛡️ 在播放流建立后安全跳转至断点进度（避免 WebKit 未缓冲前设置 currentTime 导致死锁卡死）
+   */
+  function applyPendingSeek() {
+    if (!pendingSeekTime || pendingSeekTime <= 0 || !audioEl) return;
+    const target = pendingSeekTime;
+    pendingSeekTime = null;
+
+    const doSeek = () => {
+      if (!audioEl) return;
+      try {
+        if (audioEl.duration && !isNaN(audioEl.duration) && isFinite(audioEl.duration)) {
+          if (target < audioEl.duration) {
+            audioEl.currentTime = target;
+          }
+        } else {
+          const onMeta = () => {
+            try {
+              if (audioEl && audioEl.duration && target < audioEl.duration) {
+                audioEl.currentTime = target;
+              }
+            } catch {}
+            audioEl?.removeEventListener('loadedmetadata', onMeta);
+          };
+          audioEl.addEventListener('loadedmetadata', onMeta);
+        }
+      } catch (e) {
+        console.warn('[Player] 恢复断点进度失败:', e);
+      }
+    };
+
+    setTimeout(doSeek, 60);
   }
 
   async function ensurePlay(resetTime = false) {
-    // 直接从 queue[qIndex] 实时读取，避免 $derived activeTrack 在同帧内过期的 bug
     const track = queue[qIndex] || null;
     if (!track || !audioEl) return;
 
-    // ─── iOS 关键：play() 必须在任何 await 之前同步调用 ──────────────────────
-    // iOS Safari 要求 play() 必须在「用户手势上下文」中调用；
-    // MediaSession 锁屏/AirPods 事件也属于此上下文，但一旦遇到 await 就会丢失。
-    // 策略：如果 URL 已预解析，同步切换 src 并立刻 play()；
-    //       如果 URL 需要网络请求，先 play()（iOS 会暂停），再异步更新 src 重新加载。
+    if (resetTime) {
+      pendingSeekTime = null;
+    }
+
     const existingUrl = track.url;
     if (existingUrl && audioEl.src !== existingUrl) {
       audioEl.src = existingUrl;
@@ -117,16 +148,20 @@
       const p = audioEl.play();
       if (p !== undefined) {
         p.then(() => {
-          if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} curTime = 0; }
+          if (resetTime && audioEl) {
+            try { audioEl.currentTime = 0; } catch {}
+            curTime = 0;
+          } else {
+            applyPendingSeek();
+          }
           preloadNextTrack(queue, qIndex, playMode);
         }).catch(() => { playing = false; });
       }
       return;
     }
 
-    // ② URL 尚未解析：先触发静默 play()（iOS 会 pending），再异步拿 URL 后更新 src
-    //    注意：第一次加载歌单时可能走到这里，iOS 首播依赖用户点击，锁屏切歌不会走这里
-    curTime = 0;
+    // ② URL 尚未解析：先触发静默 play()，再异步拿 URL 后更新 src
+    if (resetTime) curTime = 0;
     const url = await resolveTrackUrl(track);
     if (url && audioEl && queue[qIndex] === track) {
       audioEl.src = url;
@@ -136,7 +171,12 @@
       const p = audioEl.play();
       if (p !== undefined) {
         p.then(() => {
-          if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} curTime = 0; }
+          if (resetTime && audioEl) {
+            try { audioEl.currentTime = 0; } catch {}
+            curTime = 0;
+          } else {
+            applyPendingSeek();
+          }
           preloadNextTrack(queue, qIndex, playMode);
         }).catch(() => { playing = false; });
       }
@@ -146,8 +186,17 @@
   function togglePlay() {
     if (!audioEl) return;
     if (audioEl.paused) {
-      if (!audioEl.src || audioEl.src === window.location.href) ensurePlay(false);
-      else audioEl.play().catch(() => {});
+      if (!audioEl.src || audioEl.src === window.location.href) {
+        ensurePlay(false);
+      } else {
+        const p = audioEl.play();
+        if (p !== undefined) {
+          p.then(() => {
+            applyPendingSeek();
+            preloadNextTrack(queue, qIndex, playMode);
+          }).catch(() => { playing = false; });
+        }
+      }
     } else {
       audioEl.pause();
     }
@@ -273,13 +322,17 @@
   ontimeupdate={(e) => {
     const a = e.currentTarget;
     curTime = a.currentTime;
-    duration = a.duration || 0;
+    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
+      duration = a.duration;
+    }
     if (curTime > 0) { try { localStorage.setItem('wyyyy_player_time', String(curTime)); } catch {} }
     updateMediaSessionPosition(a);
   }}
   onloadedmetadata={(e) => {
     const a = e.currentTarget as HTMLAudioElement;
-    duration = a.duration || 0;
+    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
+      duration = a.duration;
+    }
     updateMediaSessionPosition(a);
   }}
   onended={() => {

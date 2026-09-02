@@ -93,3 +93,4 @@ templates/home.html:46  🧪 试用新版  ↔  App.svelte:222 ↩️ 旧版
 | AirPods 双击/锁屏切歌无声 | `ensurePlay()` 含 `await resolveTrackUrl()` → iOS 手势上下文断链 → `play()` 被拒 | 预加载 URL（`preloadNextTrack`）；有 URL 时同步切换，无 URL 时异步但接受 iOS 首次失败 |
 | `$derived activeTrack` 滞后 | Svelte 5 `$derived` 在同帧内懒重算 | `ensurePlay` 直接读 `queue[qIndex]` 而非 `activeTrack` |
 | 均衡器（PEQ）导致熄屏播放中断 | `AudioContext` 在 iOS 熄屏时 `suspend` | `isIOS()` 隐藏 PEQ 入口 |
+| 冷启动恢复断点卡死（从头播/时间不动） | 未开始播放前在 `loadedmetadata` 强设 `currentTime` 触发 WebKit seeking 死锁，阻止 `timeupdate` | 冷启动不预设 `currentTime`，改存 `pendingSeekTime`，在用户触发 `play().then()` 管道流动后再安全跳转 |
