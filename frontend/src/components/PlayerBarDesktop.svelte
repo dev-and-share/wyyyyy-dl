@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
   import type { Track } from '../lib/types';
   import PlayerCoverRing from './PlayerCoverRing.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
@@ -121,25 +121,28 @@
           {queue.length}
         </span>
       </button>
-      <div class="flex items-center gap-1.5">
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <span
-          class="text-sm cursor-pointer select-none text-[var(--text-main)]"
-          onclick={() => { vol = vol > 0 ? 0 : 0.8; }}
-          title="静音切换"
-        >
-          {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
-        </span>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.02"
-          bind:value={vol}
-          class="w-20 h-1 accent-red-500 cursor-pointer bg-black/10 dark:bg-white/15 rounded-lg"
-        />
-      </div>
+      <!-- iOS (Safari/PWA) HTML5 audio volume 为系统级只读，隐藏滑块避免误解 -->
+      {#if !isIOS()}
+        <div class="flex items-center gap-1.5">
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span
+            class="text-sm cursor-pointer select-none text-[var(--text-main)]"
+            onclick={() => { vol = vol > 0 ? 0 : 0.8; }}
+            title="静音切换"
+          >
+            {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.02"
+            bind:value={vol}
+            class="w-20 h-1 accent-red-500 cursor-pointer bg-black/10 dark:bg-white/15 rounded-lg"
+          />
+        </div>
+      {/if}
       <button
         type="button"
         class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 active:scale-95 transition-all"

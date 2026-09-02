@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
   import type { Track } from '../lib/types';
   import PlayerCoverRing from './PlayerCoverRing.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
@@ -112,35 +112,38 @@
               {queue.length}
             </span>
           </button>
-          <!-- 移动端音量竖立弹出滑块 -->
-          <div class="relative">
-            <button
-              type="button"
-              class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
-              onclick={() => showVolPopup = !showVolPopup}
-              title={vol === 0 ? '静音' : `音量 ${Math.round(vol * 100)}%`}
-            >
-              {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
-            </button>
-            {#if showVolPopup}
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div class="fixed inset-0 z-[10001]" onclick={() => showVolPopup = false}></div>
-              <div class="absolute bottom-9 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid,#1e293b)] border border-[var(--border-color,rgba(255,255,255,0.15))] rounded-2xl shadow-xl z-[10002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
-                <span class="text-[10px] font-mono text-[var(--text-muted)]">{Math.round(vol * 100)}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.02"
-                  bind:value={vol}
-                  class="w-1.5 h-20 accent-red-500 cursor-pointer"
-                  style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
-                />
-                <span class="text-xs">{vol === 0 ? '🔇' : '🔊'}</span>
-              </div>
-            {/if}
-          </div>
+          <!-- iOS (Safari/PWA) HTML5 audio volume 为系统级只读，隐藏滑块避免误解 -->
+          {#if !isIOS()}
+            <!-- 移动端音量竖立弹出滑块 -->
+            <div class="relative">
+              <button
+                type="button"
+                class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+                onclick={() => showVolPopup = !showVolPopup}
+                title={vol === 0 ? '静音' : `音量 ${Math.round(vol * 100)}%`}
+              >
+                {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
+              </button>
+              {#if showVolPopup}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div class="fixed inset-0 z-[10001]" onclick={() => showVolPopup = false}></div>
+                <div class="absolute bottom-9 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid,#1e293b)] border border-[var(--border-color,rgba(255,255,255,0.15))] rounded-2xl shadow-xl z-[10002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
+                  <span class="text-[10px] font-mono text-[var(--text-muted)]">{Math.round(vol * 100)}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.02"
+                    bind:value={vol}
+                    class="w-1.5 h-20 accent-red-500 cursor-pointer"
+                    style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
+                  />
+                  <span class="text-xs">{vol === 0 ? '🔇' : '🔊'}</span>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
     </div>

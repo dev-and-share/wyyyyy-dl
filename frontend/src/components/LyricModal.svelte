@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
   import { api } from '../lib/api';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
 
@@ -261,39 +261,42 @@
         📜
       </button>
 
-      <!-- 音量竖立弹出滑块 -->
-      <div class="relative">
-        <button
-          type="button"
-          class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-          onclick={() => showVolPopup = !showVolPopup}
-          title="调节音量"
-        >
-          {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
-        </button>
-        {#if showVolPopup}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div class="fixed inset-0 z-[100001]" onclick={() => showVolPopup = false}></div>
-          <div class="absolute bottom-11 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid)] border border-[var(--border-color)] rounded-2xl shadow-xl z-[100002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
-            <span class="text-[10px] font-mono text-[var(--text-muted)]">{Math.round(vol * 100)}%</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.02"
-              bind:value={vol}
-              class="w-1.5 h-20 accent-red-500 cursor-pointer"
-              style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
-            />
+      <!-- iOS (Safari/PWA) HTML5 audio volume 属性为只读，系统强制由实体键控制，隐藏滑块避免误解 -->
+      {#if !isIOS()}
+        <!-- 音量竖立弹出滑块 -->
+        <div class="relative">
+          <button
+            type="button"
+            class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+            onclick={() => showVolPopup = !showVolPopup}
+            title="调节音量"
+          >
+            {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
+          </button>
+          {#if showVolPopup}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <span class="text-xs cursor-pointer select-none" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="点击切换静音">
-              {vol === 0 ? '🔇' : '🔊'}
-            </span>
-          </div>
-        {/if}
-      </div>
+            <div class="fixed inset-0 z-[100001]" onclick={() => showVolPopup = false}></div>
+            <div class="absolute bottom-11 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid)] border border-[var(--border-color)] rounded-2xl shadow-xl z-[100002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
+              <span class="text-[10px] font-mono text-[var(--text-muted)]">{Math.round(vol * 100)}%</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.02"
+                bind:value={vol}
+                class="w-1.5 h-20 accent-red-500 cursor-pointer"
+                style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
+              />
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span class="text-xs cursor-pointer select-none" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="点击切换静音">
+                {vol === 0 ? '🔇' : '🔊'}
+              </span>
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
   </div>
 </div>

@@ -5,6 +5,15 @@ export function getApiCache(key:string){ try{ const r=localStorage.getItem('pwa_
 export function setApiCache(key:string, data:any){ try{ localStorage.setItem('pwa_api_cache_'+key, JSON.stringify({data, timestamp:Date.now()}))}catch{}}
 export function deleteApiCache(key:string){ try{ localStorage.removeItem('pwa_api_cache_'+key)}catch{}}
 
+/**
+ * 检测是否为 iOS / iPadOS 设备环境
+ * 注意：iOS Safari/Webview 对 HTML5 <audio> 的 volume 属性强制只读，无法通过 JS 调节，需由物理硬件按键控制。
+ */
+export function isIOS(): boolean {
+  if (typeof window === 'undefined' || !window.navigator) return false;
+  return /iPad|iPhone|iPod/.test(window.navigator.userAgent) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+}
+
 export function formatArtist(trackOrArtist: any): string {
   if (!trackOrArtist) return '';
   if (typeof trackOrArtist === 'string') {
