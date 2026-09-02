@@ -35,3 +35,21 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   } catch {}
   return track.url || '';
 }
+
+/**
+ * 🚀 静默预解析下一首曲目的播放 URL（保障 iOS 后台与 AirPods 切歌零延迟）
+ */
+export function preloadNextTrack(queue: Track[], curIndex: number, playMode: string) {
+  if (!queue || queue.length <= 1) return;
+  let nextIdx: number;
+  if (playMode === 'shuffle') {
+    nextIdx = (curIndex + 1) % queue.length;
+  } else {
+    nextIdx = (curIndex + 1) % queue.length;
+  }
+  const nextTrack = queue[nextIdx];
+  if (nextTrack && !nextTrack.url) {
+    resolveTrackUrl(nextTrack).catch(() => {});
+  }
+}
+
