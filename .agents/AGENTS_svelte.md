@@ -84,13 +84,15 @@ templates/home.html:46  🧪 试用新版  ↔  App.svelte:222 ↩️ 旧版
 
 ---
 
-## 8. iOS 专项坑（MediaSession / Audio）
+## 8. iOS / macOS 专项坑（MediaSession / Audio）
 
 | 坑 | 根因 | 解 |
 |---|---|---|
-| 锁屏显示 ±10s 而非 ⏮⏭ | `setPositionState(duration)` 让 iOS 认为内容"可快进" | iOS 上跳过 `setPositionState` 调用（`mediaSession.ts`）|
-| `seekbackward/seekforward` 默认出现 | iOS 锁屏默认布局 | 显式 `setActionHandler('seekbackward', null)` |
-| AirPods 双击/锁屏切歌无声 | `ensurePlay()` 含 `await resolveTrackUrl()` → iOS 手势上下文断链 → `play()` 被拒 | 预加载 URL（`preloadNextTrack`）；有 URL 时同步切换，无 URL 时异步但接受 iOS 首次失败 |
-| `$derived activeTrack` 滞后 | Svelte 5 `$derived` 在同帧内懒重算 | `ensurePlay` 直接读 `queue[qIndex]` 而非 `activeTrack` |
-| 均衡器（PEQ）导致熄屏播放中断 | `AudioContext` 在 iOS 熄屏时 `suspend` | `isIOS()` 隐藏 PEQ 入口 |
+| 锁屏/控制中心显示 ±15s 而非 ⏮⏭ | 1. 注册了 `seekto` 会触发系统判定为可跳转媒体；<br>2. `setPositionState(duration)` 让系统认为内容"可快进"；<br>3. 误以为只有 `isIOS()` 受影响（Mac Safari 底层逻辑完全相同） | 1. 显式将 `seekbackward`、`seekforward`、`seekto` 设为 `null`；<br>2. 全局永久停用 `setPositionState`，彻底杜绝跳秒模式。 |
+| 熄屏瞬间控制按钮变灰或卡片消失 | `<audio>` 触发 `onwaiting/onstalled` 时把 `playing` 设为 `false`，向系统报告 `paused` | 彻底移除 `onwaiting` / `onstalled` 的状态修改；仅在真正的 `onpause` 报告暂停。 |
+| AirPods 切歌/锁屏切歌无声停播 | 1. `ensurePlay()` 含 `await resolveTrackUrl()` → iOS 手势上下文断链 → `play()` 被拒；<br>2. 仅单向预加载下一首，点击上一首必死 | 采用 `preloadSurroundingTracks` 双向并发预解析（下一首 + 上一首）；有 URL 时同步切曲并 `play()`，无 URL 时先同步静默 `play()` 占住手势。 |
+| 熄屏后台播放数秒后静音中断 | iOS 熄屏使用 HTTP Range 206 分片拉取，SW 拦截导致后台 fetch 挂起 | `sw.js` 对带 Range 头的音频请求直接 return 放行，交由系统原生网络栈直连。 |
+| `$derived activeTrack` 滞后 | Svelte 5 `$derived` 在同帧内懒重算 | `ensurePlay` 直接读 `queue[qIndex]` 而非 `activeTrack`。 |
+| 均衡器（PEQ）导致熄屏播放中断 | `AudioContext` 在 iOS 熄屏时 `suspend` | `isIOS()` 隐藏 PEQ 入口。 |
+
 | 冷启动恢复断点卡死（从头播/时间不动） | 未开始播放前在 `loadedmetadata` 强设 `currentTime` 触发 WebKit seeking 死锁，阻止 `timeupdate` | 冷启动不预设 `currentTime`，改存 `pendingSeekTime`，在用户触发 `play().then()` 管道流动后再安全跳转 |
