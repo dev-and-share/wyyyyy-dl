@@ -242,6 +242,11 @@ function preloadNextSongAfter(index) {
     if (!globalPlaylistQueue || globalPlaylistQueue.length === 0) return;
     let nextIdx = (index + 1) % globalPlaylistQueue.length;
     preloadTrackStreamUrl(nextIdx);
+    // 🚀 双向预热：同步静默预载上一首（保障锁屏点击「上一首」零延迟、手势不断链）
+    let prevIdx = (index - 1 + globalPlaylistQueue.length) % globalPlaylistQueue.length;
+    if (prevIdx !== nextIdx) {
+        preloadTrackStreamUrl(prevIdx);
+    }
 }
 
 function playTrackInQueue(index) {
@@ -696,12 +701,12 @@ function updateMediaSessionMetadata(name, artist, cover, album) {
         });
         navigator.mediaSession.setActionHandler('previoustrack', () => playPrevTrack());
         navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
-        navigator.mediaSession.setActionHandler('seekto', (details) => {
-            const player = document.getElementById("globalAudioPlayer");
-            if (player && details.seekTime !== undefined) {
-                player.currentTime = details.seekTime;
-            }
-        });
+
+        // 彻底清除并禁用所有时间快进/快退/时间跳转动作，
+        // 强制锁定系统控制中心与锁屏为【曲目导航（⏮ ⏯ ⏭）】而非【跳秒快进（↺15 ↻15）】
+        try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch (e) {}
+        try { navigator.mediaSession.setActionHandler('seekforward', null); } catch (e) {}
+        try { navigator.mediaSession.setActionHandler('seekto', null); } catch (e) {}
     } catch (e) {
         console.warn("[MediaSession] 注册锁屏元数据失败:", e);
     }

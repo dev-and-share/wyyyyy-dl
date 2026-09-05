@@ -1,4 +1,4 @@
-const CACHE_NAME = 'netease-dl-v4.6.17';
+const CACHE_NAME = 'netease-dl-v4.6.18';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const PRECACHE_URLS = [
   '/',
@@ -48,8 +48,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 区分音视频流 API 请求 (/v2/stream, /v2/history/stream)
-  const isAudioStream = requestUrl.pathname.includes('/v2/stream') || requestUrl.pathname.includes('/v2/history/stream');
+  // 区分音视频流 API 请求 (/v2/stream, /v2/history/stream, /v2/online/stream)
+  const isAudioStream = requestUrl.pathname.includes('/v2/stream') || 
+                        requestUrl.pathname.includes('/v2/history/stream') ||
+                        requestUrl.pathname.includes('/v2/online/stream');
 
   // 🛡️ iOS 熄屏/后台会发出 Range 分片续传请求，SW 拦截会导致 fetch 在后台被挂起、音频流断裂。
   // 带 Range 头的请求直接放行，交给浏览器原生网络栈直连，保障后台续传。

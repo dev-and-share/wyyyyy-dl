@@ -37,11 +37,9 @@ public class QrLoginController {
     public String all(Model model,
                       @RequestParam(value = "v", required = false) String v,
                       @org.springframework.web.bind.annotation.CookieValue(value = "ui_version", required = false) String ver) {
-        // 双版并存：?v 优先于 Cookie，?v=legacy 强制回旧版
-        if ("svelte".equals(v)) return "forward:/svelte/index.html";
-        if ("legacy".equals(v)) return generateQr(model);
-        if ("svelte".equals(ver)) return "forward:/svelte/index.html";
-        return generateQr(model); 
+        // 双版并存：?v 优先于 Cookie，默认进入 Svelte 5，?v=legacy 或 Cookie ui_version=legacy 强制回旧版
+        if ("legacy".equals(v) || "legacy".equals(ver)) return generateQr(model);
+        return "forward:/svelte/index.html"; 
     }
 	
 	@GetMapping("/favicon.ico")
@@ -53,18 +51,11 @@ public class QrLoginController {
     public String home(Model model,
                        @RequestParam(value = "v", required = false) String v,
                        @org.springframework.web.bind.annotation.CookieValue(value = "ui_version", required = false) String ver) {
-        if ("svelte".equals(v)) return "forward:/svelte/index.html";
-        if ("legacy".equals(v)) {
+        if ("legacy".equals(v) || "legacy".equals(ver)) {
             if(neteaseAPIService.checkReady()) return "home";
             return generateQr(model);
         }
-        if ("svelte".equals(ver)) return "forward:/svelte/index.html";
-		if(neteaseAPIService.checkReady()) {
-     		log.info("已登录,跳转到功能页面");
-     		return "home";
-     	} else {
-     		return generateQr(model);
-     	}
+        return "forward:/svelte/index.html";
     }
 	
 
