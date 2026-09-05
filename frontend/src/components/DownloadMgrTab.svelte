@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import AccordionCard from './AccordionCard.svelte';
+  import BrowserCacheSection from './BrowserCacheSection.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import Modal from './Modal.svelte';
   import { api } from '../lib/api';
@@ -350,6 +351,9 @@
       <button class="btn-secondary" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>下一页</button>
     </div>
 </AccordionCard>
+
+<!-- Section 3: 手机/浏览器离线缓存管理 -->
+<BrowserCacheSection {onPlayQueue} {showToast} />
 
 <!-- 📋 缺失文件 / 非MP3 格式 清单弹窗 -->
 {#if modalType}

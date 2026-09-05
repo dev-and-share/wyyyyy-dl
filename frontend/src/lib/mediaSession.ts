@@ -1,5 +1,5 @@
 import type { Track } from './types';
-import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
+import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from './utils';
 
 export interface MediaSessionHandlers {
   onPlay: () => void;
@@ -22,19 +22,11 @@ export function setupMediaSession(handlers: MediaSessionHandlers) {
     navigator.mediaSession.setActionHandler('previoustrack', () => handlers.onPrev());
     navigator.mediaSession.setActionHandler('nexttrack', () => handlers.onNext());
 
-    // iOS 锁屏默认显示 ±10s 快进/快退按钮（seekbackward/seekforward）。
-    // 显式设置为 null 可告知系统"本播放器使用曲目导航而非时间跳转"，
-    // 从而强制 iOS 锁屏与控制中心显示「上一首/下一首」而非「前进后退10秒」。
+    // 彻底清除并禁用所有时间快进/快退/时间跳转动作，
+    // 强制锁定系统控制中心与锁屏为【曲目导航（⏮ ⏯ ⏭）】而非【跳秒快进（↺15 ↻15）】
     try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
     try { navigator.mediaSession.setActionHandler('seekforward', null); } catch {}
-
-    if (handlers.onSeekTo) {
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (typeof details.seekTime === 'number') {
-          handlers.onSeekTo!(details.seekTime);
-        }
-      });
-    }
+    try { navigator.mediaSession.setActionHandler('seekto', null); } catch {}
   } catch (e) {
     console.warn('[MediaSession] 注册动作监听失败:', e);
   }
@@ -81,24 +73,12 @@ export function updateMediaSessionPlaybackState(playing: boolean) {
 }
 
 /**
- * 实时同步当前音频进度与总时长至系统锁屏进度条
- * iOS 注意：setPositionState 会触发 iOS 锁屏显示 ±10s 跳秒按钮，
- * 与 seekbackward/seekforward=null 的设置冲突，导致无法显示上一首/下一首。
- * 因此 iOS 上跳过此调用，牺牲锁屏进度条，换取正确的曲目导航按钮。
+ * 锁屏/控制中心进度同步
+ * 注意：在 WebKit / Apple 生态（iOS / iPadOS / macOS）中，调用 setPositionState 会触发系统判定为"可快进长音频"，
+ * 从而强行将左右按钮替换为 ↺15 和 ↻15 跳秒键。
+ * 彻底跳过此调用，以换取系统控制中心与锁屏常驻纯正的【上一首 / 播放-暂停 / 下一首】音乐播放器布局。
  */
-export function updateMediaSessionPosition(audioEl: HTMLAudioElement | null) {
-  if (typeof window === 'undefined' || !('mediaSession' in navigator) || !audioEl) return;
-  if (!('setPositionState' in navigator.mediaSession)) return;
-  // iOS: 调用 setPositionState 会让系统误判为"可快进内容"，锁屏改显 ±10s 跳秒键
-  if (/iP(hone|ad|od)/i.test(navigator.userAgent)) return;
-  try {
-    const duration = audioEl.duration;
-    if (duration && !isNaN(duration) && duration > 0) {
-      navigator.mediaSession.setPositionState({
-        duration,
-        playbackRate: audioEl.playbackRate || 1.0,
-        position: Math.min(Math.max(0, audioEl.currentTime), duration)
-      });
-    }
-  } catch {}
+export function updateMediaSessionPosition(_audioEl: HTMLAudioElement | null) {
+  // 保持空实现，确保系统无论何时都不会将播控小组件判定为快进快退
+  return;
 }

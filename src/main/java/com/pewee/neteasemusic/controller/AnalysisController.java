@@ -201,13 +201,9 @@ public class AnalysisController {
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response) {
 
-        // 注入标准 CORS 响应头，确保 Web Audio 均衡器不受沙箱静音拦截
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-        response.setHeader("Access-Control-Allow-Headers", "Range, Accept, Origin, Content-Type");
-        response.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
-
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+        // 统一 CORS 响应头 + OPTIONS 预检（DRY：复用 AudioStreamUtil）
+        com.pewee.neteasemusic.utils.AudioStreamUtil.applyCorsHeaders(response);
+        if (com.pewee.neteasemusic.utils.AudioStreamUtil.isPreflight(request)) {
             response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
             return;
         }
@@ -239,55 +235,8 @@ public class AnalysisController {
             musicDownloadService.asyncDownloadOnPlay(id, playlistName, albumName, name);
         }
 
-        org.apache.http.client.methods.HttpGet httpGet = new org.apache.http.client.methods.HttpGet(url);
-        String rangeHeader = request.getHeader("Range");
-        if (org.apache.commons.lang3.StringUtils.isNotBlank(rangeHeader)) {
-            httpGet.setHeader("Range", rangeHeader);
-        }
-        httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
-        httpGet.setHeader("Referer", "https://music.163.com/");
-
-        org.apache.http.client.config.RequestConfig requestConfig = org.apache.http.client.config.RequestConfig.custom()
-                .setConnectTimeout(15000)
-                .setSocketTimeout(30000)
-                .build();
-        httpGet.setConfig(requestConfig);
-
-        try (org.apache.http.client.methods.CloseableHttpResponse clientResp = com.pewee.neteasemusic.utils.HttpClientUtil.getInstance().execute(httpGet)) {
-            int statusCode = clientResp.getStatusLine().getStatusCode();
-            response.setStatus(statusCode);
-
-            org.apache.http.HttpEntity entity = clientResp.getEntity();
-            if (entity != null) {
-                if (entity.getContentType() != null) {
-                    response.setContentType(entity.getContentType().getValue());
-                } else {
-                    response.setContentType("audio/mpeg");
-                }
-                if (entity.getContentLength() >= 0) {
-                    response.setContentLengthLong(entity.getContentLength());
-                }
-                org.apache.http.Header contentRange = clientResp.getFirstHeader("Content-Range");
-                if (contentRange != null) {
-                    response.setHeader("Content-Range", contentRange.getValue());
-                }
-                response.setHeader("Accept-Ranges", "bytes");
-
-                if (!"HEAD".equalsIgnoreCase(request.getMethod())) {
-                    try (java.io.InputStream in = entity.getContent();
-                         java.io.OutputStream out = response.getOutputStream()) {
-                        byte[] buffer = new byte[16384];
-                        int bytesRead;
-                        while ((bytesRead = in.read(buffer)) != -1) {
-                            out.write(buffer, 0, bytesRead);
-                        }
-                        out.flush();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("透传在线音频流异常: url={}, id={}, error={}", url, id, e.getMessage());
-        }
+        // 统一在线代理流（DRY：复用 AudioStreamUtil）
+        com.pewee.neteasemusic.utils.AudioStreamUtil.streamOnlineUrl(url, request, response);
     }
 
     @RequestMapping(value = "/v2/stream", method = {RequestMethod.GET})
@@ -313,79 +262,8 @@ public class AnalysisController {
             return;
         }
 
-        try {
-            response.setHeader("Access-Control-Allow-Origin", "*");
-            response.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-            response.setHeader("Access-Control-Allow-Headers", "Range, Accept, Origin, Content-Type");
-            response.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
-            response.setHeader("Accept-Ranges", "bytes");
-
-            String fileName = file.getName().toLowerCase();
-            String contentType = "audio/mpeg";
-            if (fileName.endsWith(".flac")) contentType = "audio/flac";
-            else if (fileName.endsWith(".wav")) contentType = "audio/wav";
-            else if (fileName.endsWith(".m4a") || fileName.endsWith(".aac")) contentType = "audio/mp4";
-            else if (fileName.endsWith(".ogg")) contentType = "audio/ogg";
-
-            response.setContentType(contentType);
-
-            long fileLength = file.length();
-            String rangeHeader = request.getHeader("Range");
-
-            long start = 0;
-            long end = fileLength - 1;
-
-            if (org.apache.commons.lang3.StringUtils.isNotBlank(rangeHeader) && rangeHeader.startsWith("bytes=")) {
-                String rangeValue = rangeHeader.substring(6).trim();
-                String[] parts = rangeValue.split("-");
-                try {
-                    if (parts.length > 0 && !parts[0].isEmpty()) {
-                        start = Long.parseLong(parts[0]);
-                    }
-                    if (parts.length > 1 && !parts[1].isEmpty()) {
-                        end = Long.parseLong(parts[1]);
-                    }
-                } catch (NumberFormatException ignored) {}
-
-                if (start > end || start >= fileLength) {
-                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE);
-                    response.setHeader("Content-Range", "bytes */" + fileLength);
-                    return;
-                }
-                if (end >= fileLength) {
-                    end = fileLength - 1;
-                }
-
-                long contentLength = end - start + 1;
-                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_PARTIAL_CONTENT);
-                response.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + fileLength);
-                response.setContentLengthLong(contentLength);
-            } else {
-                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
-                response.setContentLengthLong(fileLength);
-            }
-
-            if ("HEAD".equalsIgnoreCase(request.getMethod())) {
-                return;
-            }
-
-            try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(file, "r");
-                 java.io.OutputStream out = response.getOutputStream()) {
-                raf.seek(start);
-                byte[] buffer = new byte[16384];
-                long bytesToRead = end - start + 1;
-                while (bytesToRead > 0) {
-                    int len = (int) Math.min(buffer.length, bytesToRead);
-                    int read = raf.read(buffer, 0, len);
-                    if (read == -1) break;
-                    out.write(buffer, 0, read);
-                    bytesToRead -= read;
-                }
-                out.flush();
-            }
-        } catch (Exception e) {
-            log.warn("播放本地音频流异常或客户端中断: songId={}, historyId={}, msg={}", id, historyId, e.getMessage());
-        }
+        // 统一本地文件流（DRY：复用 AudioStreamUtil，支持 Range/206 分片）
+        com.pewee.neteasemusic.utils.AudioStreamUtil.streamLocalFile(file, request, response);
     }
     
     

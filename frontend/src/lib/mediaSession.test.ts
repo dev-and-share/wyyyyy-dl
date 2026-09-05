@@ -56,6 +56,25 @@ describe('mediaSession iOS contracts', () => {
     // 关键契约：必须显式设为 null，否则 iOS 会退回到 ±10s 跳秒按键
     expect(actionHandlers['seekbackward']).toBeNull();
     expect(actionHandlers['seekforward']).toBeNull();
+    expect(actionHandlers['seekto']).toBeNull();
+  });
+
+  it('setupMediaSession disables seekto on iOS so the lock screen keeps prev/next controls', () => {
+    const originalUA = navigator.userAgent;
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15',
+      configurable: true
+    });
+
+    setupMediaSession({
+      onPlay: vi.fn(), onPause: vi.fn(), onPrev: vi.fn(), onNext: vi.fn(), onSeekTo: vi.fn()
+    });
+
+    expect(actionHandlers['previoustrack']).toBeTypeOf('function');
+    expect(actionHandlers['nexttrack']).toBeTypeOf('function');
+    expect(actionHandlers['seekto']).toBeNull();
+
+    Object.defineProperty(navigator, 'userAgent', { value: originalUA, configurable: true });
   });
 
   it('updateMediaSessionPosition must skip setPositionState on iOS devices to prevent lock screen switching to skip buttons', () => {
@@ -84,14 +103,28 @@ describe('mediaSession iOS contracts', () => {
     });
   });
 
-  it('updateMediaSessionPosition should invoke setPositionState on non-iOS devices', () => {
-    // 模拟 Desktop / Chrome UA
-    const originalUA = navigator.userAgent;
-    Object.defineProperty(navigator, 'userAgent', {
-      value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-      configurable: true
-    });
+  it('updateMediaSessionPosition must also skip setPositionState on iPadOS touch devices', () => {
+    const originalPlatform = navigator.platform;
+    const originalMaxTouchPoints = navigator.maxTouchPoints;
 
+    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: 5, configurable: true });
+
+    const mockAudio = {
+      duration: 180,
+      currentTime: 30,
+      playbackRate: 1
+    } as unknown as HTMLAudioElement;
+
+    updateMediaSessionPosition(mockAudio);
+
+    expect(mockSetPositionState).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'platform', { value: originalPlatform, configurable: true });
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: originalMaxTouchPoints, configurable: true });
+  });
+
+  it('updateMediaSessionPosition must never invoke setPositionState to guarantee track navigation controls', () => {
     const mockAudio = {
       duration: 200,
       currentTime: 45,
@@ -100,16 +133,8 @@ describe('mediaSession iOS contracts', () => {
 
     updateMediaSessionPosition(mockAudio);
 
-    expect(mockSetPositionState).toHaveBeenCalledWith({
-      duration: 200,
-      position: 45,
-      playbackRate: 1
-    });
-
-    Object.defineProperty(navigator, 'userAgent', {
-      value: originalUA,
-      configurable: true
-    });
+    // 关键契约：无论任何平台，绝对禁止调用 setPositionState，彻底杜绝系统显示跳秒按键
+    expect(mockSetPositionState).not.toHaveBeenCalled();
   });
 
   it('updateMediaSessionMetadata formats artist and sets fallback artwork safely', () => {

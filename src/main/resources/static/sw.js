@@ -1,4 +1,4 @@
-const CACHE_NAME = 'netease-dl-v4.6.15';
+const CACHE_NAME = 'netease-dl-v4.6.16';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const PRECACHE_URLS = [
   '/',
@@ -50,6 +50,12 @@ self.addEventListener('fetch', (event) => {
 
   // 区分音视频流 API 请求 (/v2/stream, /v2/history/stream)
   const isAudioStream = requestUrl.pathname.includes('/v2/stream') || requestUrl.pathname.includes('/v2/history/stream');
+
+  // 🛡️ iOS 熄屏/后台会发出 Range 分片续传请求，SW 拦截会导致 fetch 在后台被挂起、音频流断裂。
+  // 带 Range 头的请求直接放行，交给浏览器原生网络栈直连，保障后台续传。
+  if (isAudioStream && event.request.headers.has('Range')) {
+    return;
+  }
 
   if (isAudioStream) {
     // 音频流：网络优先，网络异常/断网时尝试使用 Cache API 兜底

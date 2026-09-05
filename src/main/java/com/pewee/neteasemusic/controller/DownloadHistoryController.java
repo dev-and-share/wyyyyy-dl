@@ -228,33 +228,22 @@ public class DownloadHistoryController {
      * 本地已下载音频播放/流传输接口
      */
     @GetMapping("/history/stream")
-    public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> streamLocalAudio(
-            @RequestParam(value = "path", required = false) String path) {
+    public void streamLocalAudio(
+            @RequestParam(value = "path", required = false) String path,
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
         if (StringUtils.isBlank(path)) {
-            return org.springframework.http.ResponseEntity.notFound().build();
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+            return;
         }
         File file = downloadHistoryDAO.resolveFile(path);
         if (!file.exists() || !file.isFile()) {
-            return org.springframework.http.ResponseEntity.notFound().build();
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+            return;
         }
 
-        String mimeType = "audio/mpeg";
-        String lowerName = file.getName().toLowerCase();
-        if (lowerName.endsWith(".flac")) mimeType = "audio/flac";
-        else if (lowerName.endsWith(".m4a")) mimeType = "audio/mp4";
-        else if (lowerName.endsWith(".ogg")) mimeType = "audio/ogg";
-        else if (lowerName.endsWith(".wav")) mimeType = "audio/wav";
-
-        org.springframework.core.io.FileSystemResource resource = new org.springframework.core.io.FileSystemResource(file);
-        return org.springframework.http.ResponseEntity.ok()
-                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, HEAD, OPTIONS")
-                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "Range, Accept, Origin, Content-Type")
-                .header(org.springframework.http.HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Range, Content-Length, Accept-Ranges")
-                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, mimeType)
-                .header(org.springframework.http.HttpHeaders.CONTENT_LENGTH, String.valueOf(file.length()))
-                .header(org.springframework.http.HttpHeaders.ACCEPT_RANGES, "bytes")
-                .body(resource);
+        // 统一本地文件流（DRY：复用 AudioStreamUtil，支持 Range/206 分片）
+        com.pewee.neteasemusic.utils.AudioStreamUtil.streamLocalFile(file, request, response);
     }
 
     /**

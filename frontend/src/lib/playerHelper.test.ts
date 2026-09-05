@@ -58,15 +58,17 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(onlineTrack.lyric).toBe('[00:00.00]塞纳河畔');
   });
 
-  it('preloadNextTrack triggers pre-resolution for the next track in queue', () => {
+  it('preloadSurroundingTracks triggers pre-resolution for both next and previous tracks in queue', () => {
     const queue: Track[] = [
-      { id: 1, name: '曲目1', artist: '歌手1', url: 'http://test/1.mp3' },
-      { id: 2, name: '曲目2', artist: '歌手2' } // 无 url，需静默预加载
+      { id: 1, name: '曲目1', artist: '歌手1' }, // prev of index 1
+      { id: 2, name: '曲目2', artist: '歌手2', url: 'http://test/2.mp3' }, // current
+      { id: 3, name: '曲目3', artist: '歌手3' }  // next of index 1
     ];
 
-    preloadNextTrack(queue, 0, 'list');
+    preloadNextTrack(queue, 1, 'list');
 
-    // 下一首（index=1）应该立即被触发静默解析
-    expect(api.songV1).toHaveBeenCalledWith('2', 'lossless');
+    // 下一首（id: 3）与上一首（id: 1）均应被静默预热
+    expect(api.songV1).toHaveBeenCalledWith('3', 'lossless');
+    expect(api.songV1).toHaveBeenCalledWith('1', 'lossless');
   });
 });

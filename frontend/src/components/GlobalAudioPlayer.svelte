@@ -5,7 +5,7 @@
   import { showToast } from '../lib/toast.svelte';
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
   import { savePlayerStateToStorage, loadPlayerStateFromStorage } from '../lib/playerStorage';
-  import { resolveTrackUrl, preloadNextTrack } from '../lib/playerHelper';
+  import { resolveTrackUrl, preloadSurroundingTracks } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
   import type { Track } from '../lib/types';
 
@@ -154,14 +154,15 @@
           } else {
             applyPendingSeek();
           }
-          preloadNextTrack(queue, qIndex, playMode);
+          preloadSurroundingTracks(queue, qIndex, playMode);
         }).catch(() => { playing = false; });
       }
       return;
     }
 
-    // ② URL 尚未解析：先触发静默 play()，再异步拿 URL 后更新 src
+    // ② URL 尚未解析：先触发静默 play() 占位保住 iOS 手势上下文，再异步拿 URL 更新 src
     if (resetTime) curTime = 0;
+    try { audioEl.play().catch(() => {}); } catch {}
     const url = await resolveTrackUrl(track);
     if (url && audioEl && queue[qIndex] === track) {
       audioEl.src = url;
@@ -177,7 +178,7 @@
           } else {
             applyPendingSeek();
           }
-          preloadNextTrack(queue, qIndex, playMode);
+          preloadSurroundingTracks(queue, qIndex, playMode);
         }).catch(() => { playing = false; });
       }
     }
@@ -193,7 +194,7 @@
         if (p !== undefined) {
           p.then(() => {
             applyPendingSeek();
-            preloadNextTrack(queue, qIndex, playMode);
+            preloadSurroundingTracks(queue, qIndex, playMode);
           }).catch(() => { playing = false; });
         }
       }
@@ -268,6 +269,7 @@
     curTime = 0;
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     savePlayerState();
+    preloadSurroundingTracks(tracks, qIndex, playMode);
     setTimeout(() => ensurePlay(true), 50);
 
     const targetTrack = tracks[qIndex];
@@ -293,6 +295,22 @@
     });
     window.addEventListener('beforeunload', savePlayerState);
 
+    // 📱 iOS 熄屏返回前台：若音频流已在后台断裂（readyState 不足），原地续播，避免"需重开 PWA"
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !audioEl) return;
+      if (!audioEl.paused && audioEl.readyState < 3) {
+        const t = audioEl.currentTime || 0;
+        const onMeta = () => {
+          try { if (audioEl && audioEl.duration && t < audioEl.duration) audioEl.currentTime = t; } catch {}
+          audioEl?.removeEventListener('loadedmetadata', onMeta);
+          audioEl?.play().catch(() => {});
+        };
+        audioEl.addEventListener('loadedmetadata', onMeta);
+        try { audioEl.load(); } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const onPlayFolder = (e: CustomEvent) => {
       const { tracks, name } = e.detail;
       if (!tracks?.length) return showToast('该目录无可播文件', 'warning');
@@ -310,6 +328,7 @@
     return () => {
       window.removeEventListener('beforeunload', savePlayerState);
       window.removeEventListener('svelte:playFolder', onPlayFolder as EventListener);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   });
 </script>
@@ -317,8 +336,18 @@
 <!-- 全局原生 Audio 引擎 (静默挂载) -->
 <audio
   bind:this={audioEl}
-  onplay={() => playing = true}
-  onpause={() => playing = false}
+  playsinline
+  preload="auto"
+  onplay={() => {
+    playing = true;
+    updateMediaSessionPlaybackState(true);
+    if (activeTrack) updateMediaSessionMetadata(activeTrack);
+    preloadSurroundingTracks(queue, qIndex, playMode);
+  }}
+  onpause={() => {
+    playing = false;
+    updateMediaSessionPlaybackState(false);
+  }}
   ontimeupdate={(e) => {
     const a = e.currentTarget;
     curTime = a.currentTime;
