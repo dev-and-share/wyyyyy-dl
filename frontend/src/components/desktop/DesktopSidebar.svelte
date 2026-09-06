@@ -51,7 +51,7 @@
 <!-- 🖥️ PC 桌面级左侧常驻/折叠边栏 (仅在 >= 1024px 显示) -->
 <aside
   data-testid="desktop-sidebar"
-  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width] duration-200 ease-in-out {collapsed ? 'w-[58px]' : 'w-[220px]'}"
+  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width] duration-200 ease-in-out self-start sticky top-0 h-[calc(100vh-74px)] max-h-[calc(100vh-74px)] overflow-hidden {collapsed ? 'w-[58px]' : 'w-[220px]'}"
 >
   <!-- 1. 顶栏：Logo 与折叠切换按钮 -->
   <div class="h-14 flex items-center px-3 border-b border-[var(--border-color)] justify-between gap-1 overflow-hidden shrink-0">
@@ -133,7 +133,7 @@
   </nav>
 
   <!-- 3. 歌单快速导航列表：搜索框 + 各占 50% 的两个独立滚动区 -->
-  <div class="flex-1 flex flex-col min-h-0 px-2 py-2 gap-0">
+  <div class="flex-1 min-h-0 flex flex-col px-2 py-2 gap-0 overflow-hidden">
     {#if !collapsed}
       <!-- 搜索过滤框（固定高度，不滚动）-->
       <div class="relative mb-1.5 shrink-0">
@@ -156,7 +156,7 @@
       <!-- 我的歌单：占 50% 高度，独立滚动 -->
       <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar border-b border-[var(--border-subtle)] pb-1 mb-1">
         {#if filteredCreated.length > 0}
-          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg)] z-10">
+          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
             <span>我的歌单</span>
             <span class="text-[10px] opacity-70">{filteredCreated.length}</span>
           </div>
@@ -194,9 +194,9 @@
       </div>
 
       <!-- 收藏歌单：占 50% 高度，独立滚动 -->
-      <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar">
+      <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar pt-0.5">
         {#if filteredSubscribed.length > 0}
-          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg)] z-10">
+          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
             <span>收藏歌单</span>
             <span class="text-[10px] opacity-70">{filteredSubscribed.length}</span>
           </div>
@@ -264,14 +264,22 @@
 
 <style>
   /* 优雅边栏微滚动条 */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color, rgba(255, 255, 255, 0.15)) transparent;
+    overscroll-behavior: contain;
+  }
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
   }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--border-color, rgba(255, 255, 255, 0.1));
+    background: var(--border-color, rgba(255, 255, 255, 0.15));
     border-radius: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted, rgba(255, 255, 255, 0.25));
+    background: var(--text-muted, rgba(255, 255, 255, 0.35));
   }
 </style>
