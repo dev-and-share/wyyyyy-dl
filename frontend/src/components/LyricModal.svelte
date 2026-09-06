@@ -170,7 +170,7 @@
     <!-- 右侧：滚动歌词展示面板 -->
     <div class="flex-1 w-full h-full min-h-0 overflow-hidden flex flex-col justify-center">
       <div
-        class="w-full h-full max-h-[420px] overflow-y-auto px-4 py-8 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_15%,black_85%,transparent_100%)]"
+        class="w-full h-full max-h-[540px] overflow-y-auto px-4 py-8 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_93%,transparent_100%)]"
         id="lyricModalContent"
       >
         {#if lrcs.length > 0}

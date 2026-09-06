@@ -104,26 +104,27 @@
 </script>
 
 <div style="margin-left: {level * 14}px; border-left: {level > 0 ? '1px dashed var(--border-subtle)' : 'none'}; padding-left: {level > 0 ? '8px' : '0'};">
-  <div class="flex justify-between items-center py-2 px-2.5 border-b border-[var(--border-subtle)] gap-2 group {expanded ? 'bg-black/5 dark:bg-white/[0.04]' : ''}">
+  <div class="flex justify-between items-center py-2 px-2.5 border-b border-[var(--border-subtle)] gap-2 group {expanded ? 'bg-black/5 dark:bg-white/[0.04]' : ''} min-w-0">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
-      class="flex-1 flex items-center gap-1.5 overflow-hidden cursor-pointer select-none"
+      class="flex-1 flex items-center gap-1.5 min-w-0 cursor-pointer select-none overflow-hidden"
       onclick={handleRowClick}
     >
       {#if item.directory}
-        <span class="text-[10px] w-3 text-center text-[var(--text-muted)]">{expanded ? '▼' : '▶'}</span>
-        <span class="text-sm">{expanded ? '📂' : '📁'}</span>
+        <span class="text-[10px] w-3 text-center text-[var(--text-muted)] shrink-0">{expanded ? '▼' : '▶'}</span>
+        <span class="text-sm shrink-0">{expanded ? '📂' : '📁'}</span>
       {:else}
-        <span class="w-3"></span>
-        <span class="text-xs">🎵</span>
+        <span class="w-3 shrink-0"></span>
+        <span class="text-xs shrink-0">🎵</span>
       {/if}
-      <span class="truncate text-xs {item.directory ? 'font-semibold text-[var(--text-main)]' : 'font-normal text-[var(--text-main)]'}">
+      <!-- 文件夹/歌曲名：flex-1 + min-w-0 保证能填满剩余空间，truncate 防止撑破布局 -->
+      <span class="flex-1 min-w-0 text-xs truncate {item.directory ? 'font-semibold text-[var(--text-main)]' : 'font-normal text-[var(--text-main)]'}">
         {item.songName || item.name}
       </span>
       {#if !item.directory && item.artist}
-        <span class="text-[11px] text-[var(--text-secondary)] truncate shrink-0 max-w-[150px]">
-          - {item.artist}
+        <span class="text-[11px] text-[var(--text-secondary)] truncate shrink-0 max-w-[120px]">
+          {item.artist}
         </span>
       {/if}
       {#if item.directory && item.trackCount}

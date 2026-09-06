@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { api } from '../lib/api';
-  import { formatBytes } from '../lib/utils';
-  import AccordionCard from './AccordionCard.svelte';
-  import SlotBtn from './SlotBtn.svelte';
+  import { api } from '../../lib/api';
+  import { formatBytes } from '../../lib/utils';
+  import AccordionCard from '../AccordionCard.svelte';
+  import SlotBtn from '../SlotBtn.svelte';
 
   let histKw = $state('');
   let histPage = $state(1);
