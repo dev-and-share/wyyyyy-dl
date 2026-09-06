@@ -7,6 +7,7 @@
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
+  import DesktopArtistDetail from './DesktopArtistDetail.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus } from '../../lib/trackStatus.svelte';
 
@@ -49,6 +50,7 @@
   let cachingTrackId = $state<number | null>(null);
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
   let searchHistory = $state<string[]>([]);
+  let activeArtistId = $state('');
 
   onMount(() => {
     if (typeof localStorage !== 'undefined') {
@@ -194,42 +196,30 @@
 
 <!-- 🖥️ PC 桌面端：搜索中心全宽直铺 (去手风琴化) -->
 <div class="flex flex-col gap-4 select-none animate-fade-in" data-testid="desktop-search-view">
-  <!-- 1. 顶部控制栏：搜索类型胶囊 + 大搜索框 + 单页条数 -->
-  <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
+  {#if activeArtistId}
+    <DesktopArtistDetail
+      artistId={activeArtistId}
+      {curTrack}
+      {playing}
+      {likedSet}
+      {downloadedSet}
+      onBackToSearch={() => activeArtistId = ''}
+      {onToggleLike}
+      {onPlayQueue}
+      {onAlbum}
+      {onSong}
+      {onReveal}
+      {showToast}
+    />
+  {:else}
+    <!-- 1. 顶部控制栏：搜索类型胶囊 + 大搜索框 + 单页条数 -->
+    <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
     <!-- 类型切换 -->
     <div class="flex items-center gap-1.5 flex-wrap">
-      <button
-        type="button"
-        data-testid="search-type-1"
-        class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => handleTypeChange('1')}
-      >
-        🎵 单曲
-      </button>
-      <button
-        type="button"
-        data-testid="search-type-10"
-        class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '10' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => handleTypeChange('10')}
-      >
-        💽 专辑
-      </button>
-      <button
-        type="button"
-        data-testid="search-type-1000"
-        class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1000' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => handleTypeChange('1000')}
-      >
-        📋 歌单
-      </button>
-      <button
-        type="button"
-        data-testid="search-type-100"
-        class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '100' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => handleTypeChange('100')}
-      >
-        🎤 歌手
-      </button>
+      <button type="button" data-testid="search-type-1" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1')}>🎵 单曲</button>
+      <button type="button" data-testid="search-type-10" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '10' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('10')}>💽 专辑</button>
+      <button type="button" data-testid="search-type-1000" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1000' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1000')}>📋 歌单</button>
+      <button type="button" data-testid="search-type-100" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '100' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('100')}>🎤 歌手</button>
     </div>
 
     <!-- 搜索输入框与条数 -->
@@ -255,23 +245,14 @@
         {/if}
       </div>
 
-      <select
-        bind:value={sLimit}
-        class="w-auto px-2.5 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] shrink-0 cursor-pointer"
-        title="返回数量"
-      >
+      <select bind:value={sLimit} class="w-auto px-2.5 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] shrink-0 cursor-pointer" title="返回数量">
         <option value={20}>20 条</option>
         <option value={30}>30 条</option>
         <option value={50}>50 条</option>
         <option value={100}>100 条</option>
       </select>
 
-      <button
-        type="button"
-        data-testid="desktop-search-btn"
-        class="btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-md shrink-0"
-        onclick={() => executeSearch()}
-      >
+      <button type="button" data-testid="desktop-search-btn" class="btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-md shrink-0" onclick={() => executeSearch()}>
         搜索
       </button>
     </div>
@@ -281,21 +262,9 @@
       <div class="flex items-center gap-1.5 flex-wrap pt-1 text-[11px] text-[var(--text-muted)]">
         <span>最近搜索:</span>
         {#each searchHistory as term}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded-md bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer border-none transition-colors"
-            onclick={() => executeSearch(term)}
-          >
-            {term}
-          </button>
+          <button type="button" class="px-2 py-0.5 rounded-md bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer border-none transition-colors" onclick={() => executeSearch(term)}>{term}</button>
         {/each}
-        <button
-          type="button"
-          class="text-[10px] text-[var(--text-muted)] hover:text-red-400 cursor-pointer border-none bg-transparent ml-1"
-          onclick={clearHistory}
-        >
-          清空
-        </button>
+        <button type="button" class="text-[10px] text-[var(--text-muted)] hover:text-red-400 cursor-pointer border-none bg-transparent ml-1" onclick={clearHistory}>清空</button>
       </div>
     {/if}
   </div>
@@ -434,22 +403,47 @@
         {/each}
       </div>
     {:else if sType === '100'}
-      <!-- 歌手圆形头像网格直铺 -->
+      <!-- 歌手圆形头像网格直铺 (显示 ID 并支持一键查看热门 50 首) -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
         {#each sResults as ar (ar.id)}
           <div class="group flex flex-col items-center gap-2 p-4 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1 text-center">
-            <div class="w-20 h-20 rounded-full overflow-hidden bg-black/20 shadow-md">
-              <img src={ar.picUrl || ar.img1v1Url || DEFAULT_VINYL_COVER} alt={ar.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-            </div>
-            <span class="font-bold text-xs text-[var(--text-main)] truncate max-w-full group-hover:text-red-400 transition-colors">{ar.name}</span>
-            <span class="text-[11px] text-[var(--text-muted)]">专辑 {ar.albumSize || 0} · 单曲 {ar.musicSize || 0}</span>
             <button
               type="button"
-              class="btn-secondary w-full py-1 rounded-lg text-[11px] font-semibold cursor-pointer mt-1"
-              onclick={() => { sType = '1'; executeSearch(ar.name); }}
+              class="w-20 h-20 rounded-full overflow-hidden bg-black/20 shadow-md border-none p-0 cursor-pointer group-hover:ring-2 ring-red-500/50 transition-all"
+              onclick={() => activeArtistId = String(ar.id)}
+              title="点击查看 {ar.name} 热门 50 首"
             >
-              🎤 搜单曲
+              <img src={ar.picUrl || ar.img1v1Url || DEFAULT_VINYL_COVER} alt={ar.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </button>
+            <button
+              type="button"
+              class="font-bold text-xs text-[var(--text-main)] truncate max-w-full group-hover:text-red-400 transition-colors bg-transparent border-none p-0 cursor-pointer flex items-center gap-1"
+              onclick={() => activeArtistId = String(ar.id)}
+              title="点击查看热门 50 首"
+            >
+              <span>{ar.name}</span>
+              <span class="text-[11px] text-[var(--text-muted)] font-normal font-mono">(ID: {ar.id})</span>
+            </button>
+            <span class="text-[11px] text-[var(--text-muted)]">专辑 {ar.albumSize || 0} · 单曲 {ar.musicSize || 0}</span>
+            <div class="flex items-center gap-1.5 w-full pt-1">
+              <button
+                type="button"
+                data-testid="btn-artist-view-top50"
+                class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer"
+                onclick={() => activeArtistId = String(ar.id)}
+                title="查看该歌手热门 50 首曲目"
+              >
+                🔥 热门 50 首
+              </button>
+              <button
+                type="button"
+                class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer shrink-0"
+                onclick={() => { sType = '1'; executeSearch(ar.name); }}
+                title="搜索该歌手的全部单曲"
+              >
+                🎤 搜单曲
+              </button>
+            </div>
           </div>
         {/each}
       </div>
@@ -470,6 +464,7 @@
 
   {#if addToPlaylistSong}
     <AddToPlaylistModal song={addToPlaylistSong} onClose={() => addToPlaylistSong = null} {showToast} />
+  {/if}
   {/if}
 </div>
 
