@@ -322,6 +322,11 @@
                   <span class="truncate block text-xs text-[var(--text-main)] font-medium">
                     {t.name || t.id}
                   </span>
+                  {#if t.errorMsg}
+                    <span class="text-[10px] text-amber-500/90 dark:text-amber-400/90 block truncate mt-0.5" title={t.errorMsg}>
+                      {t.errorMsg}
+                    </span>
+                  {/if}
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
                   {#if t.status === 'SUCCESS'}

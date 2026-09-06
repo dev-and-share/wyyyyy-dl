@@ -36,7 +36,7 @@ export async function fetchTasks(): Promise<void> {
       let changed = false;
       const newSet = new Set(taskState.downloadedSet);
       taskState.tasks.forEach((t: any) => {
-        if ((t.status === 'SUCCESS' || t.status === 'SKIP') && (t.songId || t.id)) {
+        if (t.status === 'SUCCESS' && (t.songId || t.id)) {
           const sid = Number(t.songId || t.id);
           if (!newSet.has(sid)) {
             newSet.add(sid);
