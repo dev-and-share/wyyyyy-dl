@@ -11,7 +11,7 @@
 <!-- 📱 移动端固定底栏 Tab Bar (原生 iOS 风格，紧贴屏幕物理底边并自适应安全区) -->
 <nav
   data-testid="mobile-bottom-nav"
-  class="mobile-bottom-tab-bar md:hidden fixed bottom-0 left-0 right-0 z-[9990] bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[0_-4px_24px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 pt-1 h-[calc(44px+max(6px,calc(env(safe-area-inset-bottom,0px)-12px)))] pb-[max(6px,calc(env(safe-area-inset-bottom,0px)-12px))] box-border transition-colors duration-300"
+  class="mobile-bottom-tab-bar md:hidden fixed bottom-0 left-0 right-0 z-[9990] bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[0_-4px_24px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 pt-1 box-border transition-colors duration-300"
 >
   <button
     type="button"

@@ -421,15 +421,25 @@
         background: rgba(125, 125, 125, 0.22);
     }
 
-    /* 📱 移动端固定迷你播放器 (位于底部 Tab 栏上方，通栏满宽) */
+    /* 📱 移动端底栏与吸顶播放器无缝吸附系统 (消除悬空黑缝与底部过大留白) */
+    :root {
+        --mobile-nav-height: calc(44px + max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)));
+    }
+
+    .mobile-bottom-tab-bar {
+        height: var(--mobile-nav-height) !important;
+        padding-bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)) !important;
+    }
+
+    /* 📱 移动端固定迷你播放器 (零缝隙紧密吸附在底部 Tab 栏正上方) */
     .mobile-player-docked-bar {
-        bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
+        bottom: var(--mobile-nav-height) !important;
         left: 0 !important;
         right: 0 !important;
     }
 
     .player-minimized-bubble {
-        bottom: calc(56px + max(6px, calc(env(safe-area-inset-bottom, 0px) - 12px))) !important;
+        bottom: calc(var(--mobile-nav-height) + 12px) !important;
     }
 
     @media (min-width: 769px) {
