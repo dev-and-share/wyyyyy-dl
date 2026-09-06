@@ -75,13 +75,19 @@ export function getPlaylistPlayCount(playlistId: string | number): number {
   return playlistPlayCounts[String(playlistId)] || 0;
 }
 
-export function isFavoritePlaylist(pl: any, originalIndex?: number): boolean {
+// 唯一不可删除的系统级“我喜欢的音乐”歌单 ID
+export function getSystemFavoritePlaylistId(): string | null {
+  const bySpecial = myPlaylists.find(p => p && p.specialType === 5 && !p.subscribed);
+  if (bySpecial) return String(bySpecial.id);
+  const firstCreated = myPlaylists.find(p => p && !p.subscribed);
+  return firstCreated ? String(firstCreated.id) : null;
+}
+
+export function isFavoritePlaylist(pl: any): boolean {
   if (!pl) return false;
-  if (pl.specialType === 5) return true;
-  const name = typeof pl.name === 'string' ? pl.name : '';
-  if (name.includes('喜欢的音乐') || name.includes('我喜欢的') || name === '我喜欢') return true;
-  if (!pl.subscribed && originalIndex === 0) return true;
-  return false;
+  const sysId = getSystemFavoritePlaylistId();
+  if (sysId && String(pl.id) === sysId) return true;
+  return Boolean(pl.specialType === 5 && !pl.subscribed);
 }
 
 export function sortPlaylistsByPlayCount(list: any[]): any[] {
@@ -89,8 +95,8 @@ export function sortPlaylistsByPlayCount(list: any[]): any[] {
   return list
     .map((item, originalIndex) => ({ item, originalIndex }))
     .sort((a, b) => {
-      const isFavA = isFavoritePlaylist(a.item, a.originalIndex);
-      const isFavB = isFavoritePlaylist(b.item, b.originalIndex);
+      const isFavA = isFavoritePlaylist(a.item);
+      const isFavB = isFavoritePlaylist(b.item);
       // 喜欢的歌单永远置顶最前 (喜欢的除外)
       if (isFavA && !isFavB) return -1;
       if (!isFavA && isFavB) return 1;
