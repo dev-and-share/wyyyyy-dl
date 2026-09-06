@@ -17,13 +17,14 @@ body {
     text-rendering: optimizeLegibility;
     background-color: var(--bg-color);
     background-image: var(--bg-gradient);
-    background-attachment: fixed;
     color: var(--text-main);
     margin: 0;
-    padding: 16px 16px 95px 16px;
+    padding: 0;
     line-height: 1.6;
     width: 100%;
     max-width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     box-sizing: border-box;
     transition: background-color 0.3s ease, color 0.3s ease;
@@ -32,6 +33,6 @@ body {
 /* PWA Standalone Mode & iOS Status Bar Safe Area */
 @media all and (display-mode: standalone) {
     body {
-        padding-top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+        padding: 0 !important;
     }
 }

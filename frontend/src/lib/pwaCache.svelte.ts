@@ -4,9 +4,62 @@ export const PWA_CACHE_NAME = 'netease-music-audio-v1';
 export const PWA_TRACK_META_KEY = 'pwa_cached_tracks_meta_v1';
 
 /**
+ * 从本地存储加载所有已缓存歌曲的 ID 集合
+ */
+export function loadCachedSongIds(): Set<number> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
+    const set = new Set<number>();
+    for (const key of Object.keys(metaMap)) {
+      const item = metaMap[key];
+      if (item?.id) {
+        set.add(Number(item.id));
+      }
+      const match = key.match(/[?&]id=(\d+)/);
+      if (match && match[1]) {
+        set.add(Number(match[1]));
+      }
+    }
+    return set;
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * 全局响应式状态：手机本地/浏览器离线已缓存的歌曲 ID 集合
+ */
+export const cachedSongIdSet = $state<Set<number>>(loadCachedSongIds());
+
+/**
+ * 刷新全局缓存集合
+ */
+export function refreshCachedSongIds() {
+  const latest = loadCachedSongIds();
+  cachedSongIdSet.clear();
+  for (const id of latest) {
+    cachedSongIdSet.add(id);
+  }
+}
+
+// 自动响应离线缓存更新/删除事件
+if (typeof window !== 'undefined') {
+  window.addEventListener('wyyyy:browser-cache-updated', ((e: CustomEvent) => {
+    const id = e?.detail?.id;
+    if (id) {
+      cachedSongIdSet.add(Number(id));
+    } else {
+      refreshCachedSongIds();
+    }
+  }) as EventListener);
+}
+
+/**
  * 检查指定歌曲 ID 是否已在浏览器离线 Cache 中
  */
 export async function isSongCached(id: string | number): Promise<boolean> {
+  if (cachedSongIdSet.has(Number(id))) return true;
   if (typeof window === 'undefined' || !('caches' in window)) return false;
   try {
     const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
@@ -65,10 +118,12 @@ export async function cacheTrackToBrowser(track: {
       headers: streamResp.headers
     });
 
-    // 缓存原始 URL 与播放器统一路由别名 (/v2/stream?id=...)
-    await cache.put(audioUrl, validResponse.clone());
-    const aliasUrl = `/v2/stream?id=${id}`;
-    await cache.put(aliasUrl, validResponse);
+    // 🎯 规范化唯一缓存键：统一只存储一份标准 URL (/v2/stream?id=...)，彻底消除重复 Blob 存储
+    const canonicalUrl = `/v2/stream?id=${id}`;
+    await cache.put(canonicalUrl, validResponse);
+    if (audioUrl && audioUrl !== canonicalUrl) {
+      await cache.delete(audioUrl).catch(() => {});
+    }
 
     // 写入本地离线曲库元数据供断网渲染与播放器读取
     const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
@@ -86,8 +141,10 @@ export async function cacheTrackToBrowser(track: {
       fileSize: blob.size,
       time: Date.now()
     };
-    metaMap[audioUrl] = meta;
-    metaMap[aliasUrl] = meta;
+    metaMap[canonicalUrl] = meta;
+    if (audioUrl && audioUrl !== canonicalUrl) {
+      delete metaMap[audioUrl];
+    }
     localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
 
     // 派发全局缓存变更事件，通知离线曲库列表实时刷新

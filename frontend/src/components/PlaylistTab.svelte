@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { myPlaylists, allTracks, pageSize, getPaged, getTotalPages, getPlaylist, getPlaylistFilter, getCurPage, loadMyPlaylists, loadPlaylistDetail, incPage } from '../lib/playlist.svelte';
+  import { myPlaylists, allTracks, pageSize, getPaged, getTotalPages, getPlaylist, getPlaylistFilter, getCurPage, loadMyPlaylists, loadPlaylistDetail, incPage, recordPlaylistPlay } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import AccordionCard from './AccordionCard.svelte';
@@ -9,7 +9,8 @@
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import MyPlaylistsSection from './MyPlaylistsSection.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
-  import { cacheTrackToBrowser } from '../lib/pwaCache';
+  import { cacheTrackToBrowser, cachedSongIdSet } from '../lib/pwaCache.svelte';
+  import { openSheet } from '../lib/ui.svelte';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -174,9 +175,10 @@
           name: t.name,
           artist: formatArtist(t.artists || t.ar || t.artist),
           cover: t.picUrl || t.al?.picUrl || DEFAULT_VINYL_COVER,
-          isLocal: (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true
+          isLocal: (downloadedSet && downloadedSet.has(Number(t.id))) || cachedSongIdSet.has(Number(t.id)) || t.isLocal === true
         }));
         if (onPlayQueue) {
+          recordPlaylistPlay(id);
           onPlayQueue(queueTracks, 0);
           showToast(`已开始播放歌单《${name}》(${queueTracks.length} 首)`, 'success', 2000);
         }
@@ -242,6 +244,55 @@
       showToast('下载失败: ' + e, 'error');
     }
   }
+
+  function openTrackSheet(t: any, isLocal: boolean, isPhone: boolean, isServer: boolean, artist: string, isPlayingThis: boolean) {
+    openSheet({
+      title: t.name,
+      subtitle: artist || '未知歌手',
+      actions: [
+        {
+          label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
+          style: 'primary',
+          onclick: () => {
+            onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }]);
+          }
+        },
+        isServer
+          ? {
+              label: '📂 在服务器磁盘中定位',
+              style: 'default',
+              onclick: () => onReveal && onReveal({ id: t.id, name: t.name, artist })
+            }
+          : {
+              label: '📥 下载到电脑服务器',
+              style: 'default',
+              onclick: () => downloadSingleTrack(String(t.id), t.name)
+            },
+        {
+          label: cachingTrackId === t.id ? '⏳ 正在离线缓存...' : (isPhone ? '📲 重新离线缓存 (手机已存)' : '📲 离线缓存到本手机 (PWA)'),
+          style: 'default',
+          onclick: () => handleCacheTrack(t)
+        },
+        {
+          label: '➕ 添加到歌单',
+          style: 'default',
+          onclick: () => {
+            addToPlaylistSong = { id: t.id, name: t.name, artist };
+          }
+        },
+        {
+          label: '🎧 查看歌曲详情 / 音质',
+          style: 'default',
+          onclick: () => handleViewSong(String(t.id))
+        },
+        {
+          label: likedSet.has(Number(t.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
+          style: 'default',
+          onclick: () => onToggleLike(Number(t.id), t.name)
+        }
+      ]
+    });
+  }
 </script>
 
 <!-- Section 1: 我的歌单 -->
@@ -266,12 +317,17 @@
       subtitle={`${playlist.creator || '未知'} | 共 ${allTracks.length} 首`}
     >
       <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))}>🖥️ 下载到电脑</button>
-      <button class="btn-secondary" onclick={() => onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })))}>▶️ 播放歌单</button>
+      <button class="btn-secondary" onclick={() => {
+        if (playlist?.id) recordPlaylistPlay(playlist.id);
+        onPlayQueue && onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })));
+      }}>▶️ 播放歌单</button>
     </DetailHeaderCard>
     <ul class="data-list scrollable-list">
       {#each paged as t, i}
         {@const idx = (curPage - 1) * pageSize + i + 1}
-        {@const isLocal = (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true}
+        {@const isServer = (downloadedSet && downloadedSet.has(Number(t.id)))}
+        {@const isPhone = cachedSongIdSet.has(Number(t.id))}
+        {@const isLocal = isServer || isPhone || t.isLocal === true}
         {@const artist = formatArtist(t)}
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
@@ -283,23 +339,51 @@
             >
               {idx}. {t.name}{artist ? ' - ' + artist : ''}
             </button>
-            {#if isLocal}<span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已存在服务器磁盘">🖥️</span>{/if}
+            {#if isServer && isPhone}
+              <span class="audio-source-badge icon-only badge-both ml-1.5" title="✨ 服务器与本机手机均已下载/缓存">✨</span>
+            {:else if isServer}
+              <span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已存在服务器磁盘">🖥️</span>
+            {:else if isPhone}
+              <span class="audio-source-badge icon-only badge-browser ml-1.5" title="📲 已缓存到手机本地，断网可离线秒播">📲</span>
+            {/if}
             <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
           </div>
           <div class="track-action-group">
-            <SlotBtn
-              playing={isPlayingThis && playing}
-              onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
-            >
-              {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
-            </SlotBtn>
-            {#if isLocal}
-              <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
-            {:else}
-              <SlotBtn onclick={() => downloadSingleTrack(String(t.id), t.name)}>📥 下载</SlotBtn>
-            {/if}
-            <SlotBtn onclick={() => handleCacheTrack(t)}>{cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
-            <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
+            <!-- 💻 PC 桌面端：宽屏时显示完整快捷按钮组 -->
+            <div class="hidden md:inline-flex items-center gap-1.5">
+              <SlotBtn
+                playing={isPlayingThis && playing}
+                onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+              >
+                {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+              </SlotBtn>
+              {#if isServer}
+                <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
+              {:else}
+                <SlotBtn onclick={() => downloadSingleTrack(String(t.id), t.name)}>📥 下载</SlotBtn>
+              {/if}
+              <SlotBtn onclick={() => handleCacheTrack(t)}>{isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
+              <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
+            </div>
+
+            <!-- 📱 SP 移动端：外面仅保留核心常用功能 (▶️播放) + (··· 更多选项抽屉) -->
+            <div class="inline-flex md:hidden items-center gap-1.5">
+              <SlotBtn
+                playing={isPlayingThis && playing}
+                onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+              >
+                {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+              </SlotBtn>
+              <button
+                type="button"
+                class="btn-more-actions"
+                onclick={() => openTrackSheet(t, isLocal, isPhone, isServer, artist, isPlayingThis)}
+                title="更多操作"
+                aria-label="更多操作"
+              >
+                ···
+              </button>
+            </div>
           </div>
         </li>
       {/each}

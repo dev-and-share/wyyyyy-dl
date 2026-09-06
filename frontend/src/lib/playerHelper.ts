@@ -1,5 +1,6 @@
 import { api } from './api';
 import type { Track } from './types';
+import { cachedSongIdSet } from './pwaCache.svelte';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -17,6 +18,13 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
         }
       }).catch(() => {});
     }
+    return track.url;
+  }
+
+  // 2. 如果已在手机浏览器离线缓存中，直接使用标准离线流地址秒播 (无需联网)
+  if (track.id && cachedSongIdSet.has(Number(track.id))) {
+    track.url = `/v2/stream?id=${track.id}`;
+    track.isLocal = true;
     return track.url;
   }
 

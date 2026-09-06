@@ -45,3 +45,65 @@ export async function loadPlaylistDetail(playlistId:string){
   if(!pl?.tracks?.length) throw new Error('未找到歌单或为空');
   setApiCache(key, j.data); renderPlaylist(pl); return pl;
 }
+
+const STORAGE_KEY_PLAYLIST_PLAY_COUNTS = 'wyyyy_playlist_play_counts';
+
+function loadPlayCounts(): Record<string, number> {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PLAYLIST_PLAY_COUNTS);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export const playlistPlayCounts = $state<Record<string, number>>(loadPlayCounts());
+
+export function recordPlaylistPlay(playlistId: string | number) {
+  if (!playlistId) return;
+  const idStr = String(playlistId);
+  const current = playlistPlayCounts[idStr] || 0;
+  const next = current + 1;
+  playlistPlayCounts[idStr] = next;
+  try {
+    localStorage.setItem(STORAGE_KEY_PLAYLIST_PLAY_COUNTS, JSON.stringify($state.snapshot(playlistPlayCounts)));
+  } catch {}
+}
+
+export function getPlaylistPlayCount(playlistId: string | number): number {
+  return playlistPlayCounts[String(playlistId)] || 0;
+}
+
+export function isFavoritePlaylist(pl: any, originalIndex?: number): boolean {
+  if (!pl) return false;
+  if (pl.specialType === 5) return true;
+  const name = typeof pl.name === 'string' ? pl.name : '';
+  if (name.includes('喜欢的音乐') || name.includes('我喜欢的') || name === '我喜欢') return true;
+  if (!pl.subscribed && originalIndex === 0) return true;
+  return false;
+}
+
+export function sortPlaylistsByPlayCount(list: any[]): any[] {
+  if (!Array.isArray(list) || list.length <= 1) return list;
+  return list
+    .map((item, originalIndex) => ({ item, originalIndex }))
+    .sort((a, b) => {
+      const isFavA = isFavoritePlaylist(a.item, a.originalIndex);
+      const isFavB = isFavoritePlaylist(b.item, b.originalIndex);
+      // 喜欢的歌单永远置顶最前 (喜欢的除外)
+      if (isFavA && !isFavB) return -1;
+      if (!isFavA && isFavB) return 1;
+      if (isFavA && isFavB) return a.originalIndex - b.originalIndex;
+
+      // 其余歌单按播放次数降序排序：播放越多越靠前
+      const countA = getPlaylistPlayCount(a.item.id);
+      const countB = getPlaylistPlayCount(b.item.id);
+
+      if (countB !== countA) {
+        return countB - countA;
+      }
+      return a.originalIndex - b.originalIndex;
+    })
+    .map(wrapper => wrapper.item);
+}

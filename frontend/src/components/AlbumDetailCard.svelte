@@ -4,6 +4,8 @@
   import DetailHeaderCard from './DetailHeaderCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
+  import { openSheet } from '../lib/ui.svelte';
+import { cachedSongIdSet } from '../lib/pwaCache.svelte';
 
   let {
     album,
@@ -40,6 +42,66 @@
     onReveal?: (item: any) => void;
     onSong?: (id: string) => void;
   }>();
+
+  function openTrackSheet(s: any, isLocal: boolean, artistName: string, isPlayingThis: boolean) {
+    openSheet({
+      title: s.name,
+      subtitle: artistName || '未知歌手',
+      actions: [
+        ...(onPlayQueue
+          ? [
+              {
+                label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
+                style: 'primary' as const,
+                onclick: () =>
+                  onPlayQueue([
+                    {
+                      id: s.id,
+                      name: s.name,
+                      artist: artistName,
+                      cover: album?.coverImgUrl || album?.picUrl || DEFAULT_VINYL_COVER,
+                      isLocal
+                    }
+                  ])
+              }
+            ]
+          : []),
+        ...(isLocal && onReveal
+          ? [
+              {
+                label: '📂 在服务器磁盘中定位',
+                style: 'default' as const,
+                onclick: () => onReveal({ id: s.id, name: s.name, artist: artistName })
+              }
+            ]
+          : [
+              {
+                label: '📥 下载到电脑服务器',
+                style: 'default' as const,
+                onclick: () => onDownloadSingleTrack(String(s.id))
+              }
+            ]),
+        ...(onSong
+          ? [
+              {
+                label: '🎧 查看单曲详情',
+                style: 'default' as const,
+                onclick: () => onSong(String(s.id))
+              }
+            ]
+          : []),
+        ...(onToggleLike
+          ? [
+              {
+                label: likedSet.has(Number(s.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
+                style: 'default' as const,
+                onclick: () => onToggleLike(Number(s.id), s.name, artistName)
+              }
+            ]
+          : [])
+      ]
+    });
+  }
 </script>
 
 <AccordionCard title="💽 2. 专辑解析与整辑下载" bind:open>
@@ -78,7 +140,9 @@
     <ul class="data-list scrollable-list">
       {#each (album.songs || []) as s, i}
         {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
-        {@const isLocal = (downloadedSet && downloadedSet.has(Number(s.id))) || s.isLocal === true}
+        {@const isServer = (downloadedSet && downloadedSet.has(Number(s.id)))}
+        {@const isPhone = cachedSongIdSet.has(Number(s.id))}
+        {@const isLocal = isServer || isPhone || s.isLocal === true}
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
@@ -90,35 +154,65 @@
               {i + 1}. {s.name}
             </button>
             {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
-            {#if isLocal}<span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已下载到本地">🖥️</span>{/if}
+            {#if isServer && isPhone}
+              <span class="audio-source-badge icon-only badge-both ml-1.5" title="✨ 服务器与本机手机均已下载/缓存">✨</span>
+            {:else if isServer}
+              <span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已下载到本地">🖥️</span>
+            {:else if isPhone}
+              <span class="audio-source-badge icon-only badge-browser ml-1.5" title="📲 已缓存到手机本地，断网可离线秒播">📲</span>
+            {/if}
           </div>
           <div class="track-action-group">
-            {#if onToggleLike}
-              <TrackLikeBtn liked={likedSet.has(Number(s.id))} onclick={() => onToggleLike(Number(s.id), s.name, artistName)} />
-            {/if}
-            {#if onPlayQueue}
-              <SlotBtn
-                playing={isPlayingThis && playing}
-                onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+            <!-- 💻 PC 桌面端快捷操作 -->
+            <div class="hidden md:inline-flex items-center gap-1.5">
+              {#if onToggleLike}
+                <TrackLikeBtn liked={likedSet.has(Number(s.id))} onclick={() => onToggleLike(Number(s.id), s.name, artistName)} />
+              {/if}
+              {#if onPlayQueue}
+                <SlotBtn
+                  playing={isPlayingThis && playing}
+                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                >
+                  {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+                </SlotBtn>
+              {/if}
+              {#if isLocal}
+                <SlotBtn
+                  onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
+                  title="在文件管理器中定位"
+                >
+                  📂 定位
+                </SlotBtn>
+              {:else}
+                <SlotBtn onclick={() => onDownloadSingleTrack(String(s.id))}>
+                  📥 下载
+                </SlotBtn>
+              {/if}
+              {#if onSong}
+                <SlotBtn onclick={() => onSong(String(s.id))}>🎧 详情</SlotBtn>
+              {/if}
+            </div>
+
+            <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
+            <div class="inline-flex md:hidden items-center gap-1.5">
+              {#if onPlayQueue}
+                <SlotBtn
+                  playing={isPlayingThis && playing}
+                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                >
+                  {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+                </SlotBtn>
+              {/if}
+              <button
+                type="button"
+                class="btn-more-actions"
+                onclick={() => openTrackSheet(s, isLocal, artistName, isPlayingThis)}
+                title="更多操作"
+                aria-label="更多操作"
               >
-                {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
-              </SlotBtn>
-            {/if}
-            {#if isLocal}
-              <SlotBtn
-                onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
-                title="在文件管理器中定位"
-              >
-                📂 定位
-              </SlotBtn>
-            {:else}
-              <SlotBtn onclick={() => onDownloadSingleTrack(String(s.id))}>
-                📥 下载
-              </SlotBtn>
-            {/if}
-            {#if onSong}
-              <SlotBtn onclick={() => onSong(String(s.id))}>🎧 详情</SlotBtn>
-            {/if}
+                ···
+              </button>
+            </div>
           </div>
         </li>
       {/each}

@@ -3,6 +3,7 @@
   import type { Track } from '../lib/types';
   import PlayerCoverRing from './PlayerCoverRing.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
+  import { cachedSongIdSet } from '../lib/pwaCache.svelte';
 
   let {
     curTrack,
@@ -47,7 +48,7 @@
   let showVolPopup = $state(false);
 </script>
 
-<div class="mobile-player-docked-bar fixed left-0 right-0 bottom-0 rounded-t-[20px] rounded-b-none bg-[var(--card-bg-solid,#121826)]/95 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.45)] border-t border-x-0 border-b-0 border-[var(--border-color,rgba(255,255,255,0.15))] z-[9998] px-3.5 pt-2.5 pb-[calc(8px+env(safe-area-inset-bottom,0px))] flex flex-col gap-2 transition-colors duration-300">
+<div class="mobile-player-docked-bar fixed bottom-[calc(48px+env(safe-area-inset-bottom,0px))] left-0 right-0 bg-[var(--card-bg-solid,#121826)]/95 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.4)] border-t border-x-0 border-b border-[var(--border-color,rgba(255,255,255,0.15))] z-[9995] px-3 pt-2 pb-2 flex flex-col gap-1.5 transition-colors duration-300">
   <!-- 2.1 顶部区域：左侧黑胶封面；右侧上下两行（上行歌名满宽独占，下行歌手与4个按钮并排） -->
   <div class="flex items-center gap-2.5 w-full">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -70,8 +71,16 @@
         <span class="text-sm font-semibold text-[var(--text-main,#0f172a)] truncate leading-tight">
           {curTrack?.name || '未在播放'}
         </span>
-        {#if curTrack?.isLocal}
-          <span class="audio-source-badge icon-only badge-server ml-1" title="🖥️ 本地已下载">🖥️</span>
+        {#if curTrack}
+          {@const isServer = curTrack.isLocal}
+          {@const isPhone = cachedSongIdSet.has(Number(curTrack.id))}
+          {#if isServer && isPhone}
+            <span class="audio-source-badge icon-only badge-both ml-1" title="✨ 本机手机与服务器均有">✨</span>
+          {:else if isServer}
+            <span class="audio-source-badge icon-only badge-server ml-1" title="🖥️ 本地已下载">🖥️</span>
+          {:else if isPhone}
+            <span class="audio-source-badge icon-only badge-browser ml-1" title="📲 手机已离线缓存">📲</span>
+          {/if}
         {/if}
       </div>
 

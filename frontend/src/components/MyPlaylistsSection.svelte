@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { myPlaylists, getPlaylistFilter, loadMyPlaylists } from '../lib/playlist.svelte';
+  import { myPlaylists, getPlaylistFilter, loadMyPlaylists, sortPlaylistsByPlayCount, isFavoritePlaylist, getPlaylistPlayCount } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import CreatePlaylistModal from './CreatePlaylistModal.svelte';
   import Modal from './Modal.svelte';
+  import { openSheet } from '../lib/ui.svelte';
 
   let {
     open = $bindable(true),
@@ -76,15 +77,17 @@
   }
 
   let filteredPlaylists = $derived(
-    myPlaylists.filter((p: any) => {
-      const matchType = playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed);
-      if (!matchType) return false;
-      const kw = playlistSearchKw.trim().toLowerCase();
-      if (!kw) return true;
-      const nameMatch = (p.name || '').toLowerCase().includes(kw);
-      const idMatch = String(p.id || '').includes(kw);
-      return nameMatch || idMatch;
-    })
+    sortPlaylistsByPlayCount(
+      myPlaylists.filter((p: any) => {
+        const matchType = playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed);
+        if (!matchType) return false;
+        const kw = playlistSearchKw.trim().toLowerCase();
+        if (!kw) return true;
+        const nameMatch = (p.name || '').toLowerCase().includes(kw);
+        const idMatch = String(p.id || '').includes(kw);
+        return nameMatch || idMatch;
+      })
+    )
   );
 
   async function executeConfirmAction() {
@@ -117,6 +120,42 @@
   onMount(() => {
     loadSearchHistory();
   });
+
+  function openPlaylistSheet(pl: any, idx: number) {
+    openSheet({
+      title: pl.name,
+      subtitle: `${pl.subscribed ? '收藏歌单' : '我创建的歌单'} · 共 ${pl.trackCount || 0} 首`,
+      actions: [
+        {
+          label: '▶️ 立即播放整张歌单',
+          style: 'primary',
+          onclick: () => onPlayPlaylist(String(pl.id), pl.name)
+        },
+        {
+          label: '👉 查看歌单详情与歌曲列表',
+          style: 'default',
+          onclick: () => onViewPlaylist(String(pl.id))
+        },
+        ...(pl.subscribed
+          ? [
+              {
+                label: '💔 取消收藏该歌单',
+                style: 'danger' as const,
+                onclick: () => (confirmAction = { type: 'unsubscribe', playlistId: String(pl.id), playlistName: pl.name })
+              }
+            ]
+          : !isFavoritePlaylist(pl)
+          ? [
+              {
+                label: '🗑️ 删除该歌单',
+                style: 'danger' as const,
+                onclick: () => (confirmAction = { type: 'delete', playlistId: String(pl.id), playlistName: pl.name })
+              }
+            ]
+          : [])
+      ]
+    });
+  }
 </script>
 
 <!-- Section 1: 我的歌单 -->
@@ -231,9 +270,15 @@
     {#each filteredPlaylists as pl, idx}
       <li class="track-item-card">
         <div class="track-title-row">
-          <span class="status-badge shrink-0" class:badge-subscribed={pl.subscribed} class:badge-created={!pl.subscribed}>
-            {pl.subscribed ? '收藏' : '创建'}
-          </span>
+          {#if isFavoritePlaylist(pl)}
+            <span class="status-badge shrink-0 !bg-red-500/15 !text-red-500 font-bold" title="我喜欢的音乐（常驻置顶）">
+              ❤️ 置顶
+            </span>
+          {:else}
+            <span class="status-badge shrink-0" class:badge-subscribed={pl.subscribed} class:badge-created={!pl.subscribed}>
+              {pl.subscribed ? '收藏' : '创建'}
+            </span>
+          {/if}
           <button
             type="button"
             class="clickable-track-title truncate cursor-pointer font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
@@ -242,20 +287,47 @@
             {pl.name}
           </button>
           <span class="text-xs text-[var(--text-muted)] shrink-0">({pl.trackCount || 0}首)</span>
+          {#if getPlaylistPlayCount(pl.id) > 0}
+            <span class="text-[11px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-500 font-medium shrink-0" title="历史播放过 {getPlaylistPlayCount(pl.id)} 次">
+              🔥 {getPlaylistPlayCount(pl.id)}次
+            </span>
+          {/if}
         </div>
         <div class="track-action-group">
-          <SlotBtn
-            onclick={() => onPlayPlaylist(String(pl.id), pl.name)}
-            title="立即播放整张歌单"
-          >
-            ▶️ 播放
-          </SlotBtn>
-          {#if pl.subscribed}
-            <SlotBtn onclick={() => confirmAction = { type: 'unsubscribe', playlistId: String(pl.id), playlistName: pl.name }}>💔 取消</SlotBtn>
-          {:else if idx > 0}
-            <SlotBtn onclick={() => confirmAction = { type: 'delete', playlistId: String(pl.id), playlistName: pl.name }}>🗑️ 删除</SlotBtn>
-          {/if}
-          <SlotBtn onclick={() => onViewPlaylist(String(pl.id))}>👉 详情</SlotBtn>
+          <!-- 💻 PC 桌面端快捷操作 -->
+          <div class="hidden md:inline-flex items-center gap-1.5">
+            <SlotBtn
+              onclick={() => onPlayPlaylist(String(pl.id), pl.name)}
+              title="立即播放整张歌单"
+            >
+              ▶️ 播放
+            </SlotBtn>
+            {#if pl.subscribed}
+              <SlotBtn onclick={() => confirmAction = { type: 'unsubscribe', playlistId: String(pl.id), playlistName: pl.name }}>💔 取消</SlotBtn>
+            {:else if !isFavoritePlaylist(pl)}
+              <SlotBtn onclick={() => confirmAction = { type: 'delete', playlistId: String(pl.id), playlistName: pl.name }}>🗑️ 删除</SlotBtn>
+            {/if}
+            <SlotBtn onclick={() => onViewPlaylist(String(pl.id))}>👉 详情</SlotBtn>
+          </div>
+
+          <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
+          <div class="inline-flex md:hidden items-center gap-1.5">
+            <SlotBtn
+              onclick={() => onPlayPlaylist(String(pl.id), pl.name)}
+              title="立即播放整张歌单"
+            >
+              ▶️ 播放
+            </SlotBtn>
+            <button
+              type="button"
+              class="btn-more-actions"
+              onclick={() => openPlaylistSheet(pl, idx)}
+              title="更多歌单操作"
+              aria-label="更多歌单操作"
+            >
+              ···
+            </button>
+          </div>
         </div>
       </li>
     {:else}

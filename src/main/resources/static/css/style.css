@@ -244,12 +244,42 @@ body {
     accent-color: var(--primary-color);
 }
 
-/* 📱 移动端/SP 设备自适应 */
+/* 📱 移动端/SP 设备自适应 (满宽贴边，消除边距与浪费空间) */
 @media (max-width: 768px) {
+    body {
+        padding: 0 0 calc(95px + env(safe-area-inset-bottom, 0px)) 0 !important;
+    }
+
     .app-top-bar {
-        padding: 5px 8px;
-        margin-bottom: 12px;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-top: none !important;
+        margin: 0 0 4px 0 !important;
+        padding: 6px 10px !important;
         gap: 6px;
+    }
+
+    .accordion-wrapper {
+        gap: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .accordion-card {
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        box-shadow: none !important;
+    }
+
+    .accordion-header {
+        padding: 11px 12px !important;
+    }
+
+    .accordion-body {
+        padding: 10px 10px !important;
     }
 
     .brand-title {

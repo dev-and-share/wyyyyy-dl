@@ -5,6 +5,7 @@
   import BrowserCacheSection from './BrowserCacheSection.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import Modal from './Modal.svelte';
+  import { openSheet } from '../lib/ui.svelte';
   import { api } from '../lib/api';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
   import type { Track } from '../lib/types';
@@ -218,6 +219,44 @@
   onMount(() => {
     loadHistory(1);
   });
+
+  function openHistTrackSheet(h: any, artistName: string, isPlayingThis: boolean) {
+    openSheet({
+      title: h.songName || h.name || '未知歌曲',
+      subtitle: artistName || '本地音频',
+      actions: [
+        ...(h.fileExists !== false
+          ? [
+              {
+                label: isPlayingThis && playing ? '⏸ 暂停当前播放' : '▶️ 播放本地音频',
+                style: 'primary' as const,
+                onclick: () =>
+                  onPlayQueue([
+                    {
+                      id: h.songId || h.id,
+                      name: h.songName || h.name,
+                      artist: artistName,
+                      cover: DEFAULT_VINYL_COVER,
+                      url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`,
+                      isLocal: true
+                    }
+                  ])
+              },
+              {
+                label: '📂 在服务器磁盘中定位',
+                style: 'default' as const,
+                onclick: () => onReveal(h)
+              }
+            ]
+          : []),
+        {
+          label: '🗑️ 从历史记录中删除',
+          style: 'danger' as const,
+          onclick: () => deleteItem(h.id)
+        }
+      ]
+    });
+  }
 </script>
 
 <!-- Section 1: 本地曲库与文件夹树连播 -->
@@ -296,10 +335,34 @@
       </div>
     {/if}
 
-    <!-- 搜索筛选行 -->
-    <div class="form-row flex-input-row" style="display:flex; gap:6px; margin-bottom:10px;">
-      <input type="text" placeholder="🔍 检索本地已下载歌曲名 / 歌手 / 物理文件名" style="flex:1;" bind:value={histKw} onkeydown={(e) => e.key === 'Enter' && loadHistory(1)} />
-      <button class="btn-primary" onclick={() => loadHistory(1)}>检索</button>
+    <!-- 搜索筛选行 (移动端单行内嵌搜索 + 软键盘 Search 触发，桌面端保留检索按钮) -->
+    <div class="flex items-center gap-2 mb-2.5 w-full">
+      <div class="relative flex-1 min-w-0">
+        <input
+          type="search"
+          enterkeyhint="search"
+          placeholder="🔍 检索本地歌曲名 / 歌手 / 物理文件名 (按回车搜索)"
+          class="w-full text-xs md:text-sm py-2 px-3 pr-8 rounded-lg bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] focus:outline-none focus:border-red-500 transition-all"
+          bind:value={histKw}
+          onkeydown={(e) => {
+            if (e.key === 'Enter') {
+              (e.currentTarget as HTMLInputElement).blur();
+              loadHistory(1);
+            }
+          }}
+        />
+        {#if histKw}
+          <button
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-red-400 cursor-pointer p-1 bg-transparent border-none"
+            onclick={() => { histKw = ''; loadHistory(1); }}
+            title="清空"
+          >
+            ✕
+          </button>
+        {/if}
+      </div>
+      <button class="btn-primary shrink-0 whitespace-nowrap hidden md:inline-flex" onclick={() => loadHistory(1)}>检索</button>
     </div>
 
     <!-- 历史曲目列表 -->
@@ -323,20 +386,44 @@
             {/if}
           </div>
           <div class="track-action-group">
-            {#if h.fileExists !== false}
-              <SlotBtn
-                playing={isPlayingThis && playing}
-                onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+            <!-- 💻 PC 桌面端快捷操作 -->
+            <div class="hidden md:inline-flex items-center gap-1.5">
+              {#if h.fileExists !== false}
+                <SlotBtn
+                  playing={isPlayingThis && playing}
+                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+                >
+                  {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
+                </SlotBtn>
+                <SlotBtn onclick={() => onReveal(h)}>
+                  📂 定位
+                </SlotBtn>
+              {/if}
+              <SlotBtn onclick={() => deleteItem(h.id)} title="从数据库删除此条历史记录">
+                🗑️ 删除
+              </SlotBtn>
+            </div>
+
+            <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
+            <div class="inline-flex md:hidden items-center gap-1.5">
+              {#if h.fileExists !== false}
+                <SlotBtn
+                  playing={isPlayingThis && playing}
+                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+                >
+                  {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
+                </SlotBtn>
+              {/if}
+              <button
+                type="button"
+                class="btn-more-actions"
+                onclick={() => openHistTrackSheet(h, artistName, isPlayingThis)}
+                title="更多操作"
+                aria-label="更多操作"
               >
-                {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
-              </SlotBtn>
-              <SlotBtn onclick={() => onReveal(h)}>
-                📂 定位
-              </SlotBtn>
-            {/if}
-            <SlotBtn onclick={() => deleteItem(h.id)} title="从数据库删除此条历史记录">
-              🗑️ 删除
-            </SlotBtn>
+                ···
+              </button>
+            </div>
           </div>
         </li>
       {:else}

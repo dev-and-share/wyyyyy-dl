@@ -7,6 +7,8 @@
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import AlbumDetailCard from './AlbumDetailCard.svelte';
+  import { openSheet } from '../lib/ui.svelte';
+import { cachedSongIdSet } from '../lib/pwaCache.svelte';
 
   let {
     albumId = '',
@@ -53,6 +55,7 @@
   let sLimit = $state(20);
   let sResults: any[] = $state([]);
   let searchLoading = $state(false);
+  let hasSearched = $state(false);
 
   // 展开状态持久化
   let accSearch = $state(getStored(STORAGE_KEY_ACC_SEARCH, 'true') === 'true');
@@ -95,6 +98,7 @@
       const cached = getApiCache(cacheKey);
       if (cached?.data && Array.isArray(cached.data)) {
         sResults = cached.data;
+        if (sResults.length > 0) hasSearched = true;
       }
     }
   });
@@ -109,6 +113,7 @@
       showToast('请输入搜索关键词', 'warning');
       return;
     }
+    hasSearched = true;
     try {
       localStorage.setItem(STORAGE_KEY_SEARCH_KW, kw);
       localStorage.setItem(STORAGE_KEY_SEARCH_TYPE, sType);
@@ -233,6 +238,52 @@
       showToast('提交单曲下载失败: ' + (e.message || e), 'error');
     }
   }
+
+  function openSearchTrackSheet(r: any, isLocal: boolean, artistName: string, isPlayingThis: boolean) {
+    openSheet({
+      title: r.name,
+      subtitle: artistName || '未知歌手',
+      actions: [
+        ...(onPlayQueue
+          ? [
+              {
+                label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
+                style: 'primary' as const,
+                onclick: () =>
+                  onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])
+              }
+            ]
+          : []),
+        ...(isLocal && onReveal
+          ? [
+              {
+                label: '📂 在服务器磁盘中定位',
+                style: 'default' as const,
+                onclick: () => onReveal({ id: r.id, name: r.name, artist: artistName })
+              }
+            ]
+          : []),
+        ...(onSong
+          ? [
+              {
+                label: '🎧 查看单曲详情 / 下载',
+                style: 'default' as const,
+                onclick: () => onSong(String(r.id))
+              }
+            ]
+          : []),
+        ...(onToggleLike
+          ? [
+              {
+                label: likedSet.has(Number(r.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
+                style: 'default' as const,
+                onclick: () => onToggleLike(Number(r.id), r.name, artistName)
+              }
+            ]
+          : [])
+      ]
+    });
+  }
 </script>
 
 <!-- Section 1: 在线搜索 -->
@@ -244,9 +295,21 @@
     <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '100' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('100')}>🎤 歌手</button>
   </div>
   <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
-    <input type="text" placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)" class="flex-1 min-w-0" bind:value={kw} onkeydown={(e) => e.key === 'Enter' && doSearch().catch((e:any) => showToast(e.message, 'warning'))} />
-    <input type="number" bind:value={sLimit} min="1" max="100" class="w-[60px] text-center shrink-0" title="单页条数" />
-    <button type="button" class="btn-primary shrink-0 whitespace-nowrap" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
+    <input
+      type="search"
+      enterkeyhint="search"
+      placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)"
+      class="flex-1 min-w-0"
+      bind:value={kw}
+      onkeydown={(e) => {
+        if (e.key === 'Enter') {
+          (e.currentTarget as HTMLInputElement).blur();
+          doSearch().catch((err: any) => showToast(err.message, 'warning'));
+        }
+      }}
+    />
+    <input type="number" bind:value={sLimit} min="1" max="100" class="w-[50px] md:w-[60px] text-center shrink-0" title="单页条数" />
+    <button type="button" class="btn-primary shrink-0 whitespace-nowrap hidden sm:inline-flex" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
   </div>
   <ul class="data-list scrollable-list">
     {#if searchLoading}
@@ -255,7 +318,9 @@
       {#each sResults as r, idx}
         {#if sType === '1'}
           {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
-          {@const isLocal = (downloadedSet && downloadedSet.has(Number(r.id))) || r.isLocal === true}
+          {@const isServer = (downloadedSet && downloadedSet.has(Number(r.id)))}
+          {@const isPhone = cachedSongIdSet.has(Number(r.id))}
+          {@const isLocal = isServer || isPhone || r.isLocal === true}
           {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
           <li class="track-item-card" class:is-active-playing={isPlayingThis}>
             <div class="track-title-row">
@@ -267,27 +332,57 @@
                 {idx + 1}. {r.name}
               </button>
               {#if artistName}<span class="text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
-              {#if isLocal}<span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 本地服务器已下载">🖥️</span>{/if}
+              {#if isServer && isPhone}
+                <span class="audio-source-badge icon-only badge-both ml-1.5" title="✨ 服务器与本机手机均已下载/缓存">✨</span>
+              {:else if isServer}
+                <span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 本地服务器已下载">🖥️</span>
+              {:else if isPhone}
+                <span class="audio-source-badge icon-only badge-browser ml-1.5" title="📲 已缓存到手机本地，断网可离线秒播">📲</span>
+              {/if}
               <span class="text-[11px] text-[var(--text-muted)] shrink-0">(ID:{r.id})</span>
             </div>
             <div class="track-action-group">
-              {#if onToggleLike}
-                <TrackLikeBtn liked={likedSet.has(Number(r.id))} onclick={() => onToggleLike(Number(r.id), r.name, artistName)} />
-              {/if}
-              {#if onPlayQueue}
-                <SlotBtn
-                  playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+              <!-- 💻 PC 桌面端快捷操作 -->
+              <div class="hidden md:inline-flex items-center gap-1.5">
+                {#if onToggleLike}
+                  <TrackLikeBtn liked={likedSet.has(Number(r.id))} onclick={() => onToggleLike(Number(r.id), r.name, artistName)} />
+                {/if}
+                {#if onPlayQueue}
+                  <SlotBtn
+                    playing={isPlayingThis && playing}
+                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                  >
+                    {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  </SlotBtn>
+                {/if}
+                {#if isLocal}
+                  <SlotBtn onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</SlotBtn>
+                {/if}
+                {#if onSong}
+                  <SlotBtn onclick={() => onSong(String(r.id))}>👉 详情</SlotBtn>
+                {/if}
+              </div>
+
+              <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
+              <div class="inline-flex md:hidden items-center gap-1.5">
+                {#if onPlayQueue}
+                  <SlotBtn
+                    playing={isPlayingThis && playing}
+                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                  >
+                    {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  </SlotBtn>
+                {/if}
+                <button
+                  type="button"
+                  class="btn-more-actions"
+                  onclick={() => openSearchTrackSheet(r, isLocal, artistName, isPlayingThis)}
+                  title="更多操作"
+                  aria-label="更多操作"
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
-                </SlotBtn>
-              {/if}
-              {#if isLocal}
-                <SlotBtn onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</SlotBtn>
-              {/if}
-              {#if onSong}
-                <SlotBtn onclick={() => onSong(String(r.id))}>👉 详情</SlotBtn>
-              {/if}
+                  ···
+                </button>
+              </div>
             </div>
           </li>
         {:else if sType === '10'}
@@ -338,11 +433,17 @@
           </li>
         {/if}
       {:else}
-        <li style="justify-content:center; color:var(--text-muted);">输入关键词搜索</li>
+        {#if hasSearched}
+          <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">未搜索到相关结果</li>
+        {:else}
+          <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">输入关键词后按回车搜索</li>
+        {/if}
       {/each}
     {/if}
   </ul>
-  <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
+  {#if hasSearched && sResults.length > 0}
+    <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
+  {/if}
 </AccordionCard>
 
 <!-- Section 2: 专辑解析与整辑下载 (已拆分组件) -->

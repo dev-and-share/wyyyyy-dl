@@ -20,6 +20,7 @@
   import PullToRefresh from './components/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
+  import BottomTabBar from './components/BottomTabBar.svelte';
 
   // ---------- 全局状态 ----------
   let repeat = $state(false);
@@ -92,42 +93,45 @@
 <!-- 📱 手机端下拉刷新指示器 (模态框/抽屉打开时自动禁用避免手势冲突) -->
 <PullToRefresh disabled={isAnyOverlayOpen} onRefresh={handleRefresh} />
 
-<!-- 顶栏导航 -->
-<TopBar
-  tab={routerState.tab} {themeMode} {repeat}
-  onSwitchTab={switchTab}
-  onToggleTheme={toggleTheme}
-  onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
-  onSwitchToLegacy={switchToLegacy}
-/>
+<!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 优雅居中与边距) -->
+<div class="app-main-container max-w-[900px] mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8">
+  <!-- 顶栏导航 -->
+  <TopBar
+    tab={routerState.tab} {themeMode} {repeat}
+    onSwitchTab={switchTab}
+    onToggleTheme={toggleTheme}
+    onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
+    onSwitchToLegacy={switchToLegacy}
+  />
 
-<!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
-<div class="max-w-[900px] mx-auto flex flex-col gap-3 pb-[120px]">
-  <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
-    <PlaylistTab
-      playlistId={routerState.playlistId} {curTrack} {playing}
-      likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
-      onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
-      {showToast}
-    />
-  </div>
-  <div style="display: {routerState.tab === 'search' ? 'contents' : 'none'};">
-    <SearchTab
-      albumId={routerState.albumId} {curTrack} {playing}
-      downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
-      onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
-      onSong={(sid) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
-      {showToast}
-    />
-  </div>
-  <div style="display: {routerState.tab === 'download-mgr' ? 'contents' : 'none'};">
-    <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
-  </div>
+  <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
+  <div class="flex flex-col gap-2 md:gap-3 pb-[140px] md:pb-[80px]">
+    <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
+      <PlaylistTab
+        playlistId={routerState.playlistId} {curTrack} {playing}
+        likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
+        onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
+        {showToast}
+      />
+    </div>
+    <div style="display: {routerState.tab === 'search' ? 'contents' : 'none'};">
+      <SearchTab
+        albumId={routerState.albumId} {curTrack} {playing}
+        downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
+        onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
+        onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
+        {showToast}
+      />
+    </div>
+    <div style="display: {routerState.tab === 'download-mgr' ? 'contents' : 'none'};">
+      <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
+    </div>
 
-  <!-- 底部低调版本号 -->
-  <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity">
-    网易云音乐下载器 · PWA v{__APP_VERSION__}
-  </footer>
+    <!-- 底部低调版本号 -->
+    <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity">
+      网易云音乐下载器 · PWA v{__APP_VERSION__}
+    </footer>
+  </div>
 </div>
 
 <!-- 🎬 全局原生音频核心与控制层 (SP 大触控 / PC 优雅三段式 / 歌词 / PEQ) -->
@@ -151,3 +155,6 @@
 
 <!-- 🌐 Global Bottom Sheet -->
 <BottomSheet />
+
+<!-- 📱 移动端固定底栏 Tab Bar -->
+<BottomTabBar tab={routerState.tab} onSwitchTab={switchTab} />

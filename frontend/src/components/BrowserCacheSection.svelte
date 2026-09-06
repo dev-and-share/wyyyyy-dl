@@ -15,7 +15,9 @@
   let accBrowserCache = $state(true);
 
   type BrowserCacheItem = {
-    fullUrl: string;
+    key: string;
+    urls: string[];
+    relUrls: string[];
     relUrl: string;
     name: string;
     artist: string;
@@ -45,7 +47,7 @@
     browserCacheLoading = true;
     try {
       const metaMap = readCachedTrackMeta();
-      const byUrl = new Map<string, BrowserCacheItem>();
+      const byKey = new Map<string, BrowserCacheItem>();
       for (const cacheName of await caches.keys()) {
         const cache = await caches.open(cacheName);
         for (const request of await cache.keys()) {
@@ -54,17 +56,57 @@
           const meta = metaMap[relUrl] || metaMap[request.url] || {};
           const response = await cache.match(request);
           const size = Number(response?.headers.get('content-length') || meta.fileSize || 0);
-          const id = relUrl.match(/[?&](?:id|historyId)=(\d+)/)?.[1];
-          byUrl.set(relUrl, {
-            fullUrl: request.url,
-            relUrl,
-            name: meta.songName || (id ? `离线音轨 #${id}` : '本地缓存音频'),
-            artist: formatArtist(meta.artist) || '浏览器已离线',
-            size
-          });
+
+          // 提取真实歌曲 ID 与历史记录 ID
+          const urlIdMatch = relUrl.match(/[?&]id=([1-9]\d*)/);
+          const urlHistMatch = relUrl.match(/[?&]historyId=(\d+)/);
+          const songId = meta.id && String(meta.id) !== '0' ? String(meta.id) : (urlIdMatch ? urlIdMatch[1] : null);
+
+          const songName = (meta.songName || '').trim();
+          const songArtist = formatArtist(meta.artist) || '';
+
+          // 🎵 逻辑唯一键：优先真实歌曲 ID (song_xxx)，其次标准化歌名+歌手 (meta_name_artist)，兜底 relUrl
+          const uniqueKey = songId
+            ? `song_${songId}`
+            : (songName ? `meta_${songName}_${songArtist}` : relUrl);
+
+          if (byKey.has(uniqueKey)) {
+            const existing = byKey.get(uniqueKey)!;
+            // 🛡️ 检测底层物理 Cache 是否存了非标准冗余 Key：
+            // 如果已存在或当前是标准规范 Key (/v2/stream?id=xxx)，则物理删除非标准冗余项，释放磁盘！
+            const isCurrentCanonical = urlIdMatch && !relUrl.includes('historyId=');
+            const isExistingCanonical = existing.relUrl.match(/[?&]id=([1-9]\d*)/) && !existing.relUrl.includes('historyId=');
+
+            if (isCurrentCanonical && !isExistingCanonical) {
+              // 当前是标准 Key，物理清除之前的非标准冗余条目
+              for (const oldUrl of existing.urls) {
+                await cache.delete(oldUrl).catch(() => {});
+              }
+              existing.urls = [request.url];
+              existing.relUrls = [relUrl];
+              existing.relUrl = relUrl;
+            } else if (isExistingCanonical && !isCurrentCanonical) {
+              // 之前已是标准 Key，物理清除当前非标准冗余条目
+              await cache.delete(request).catch(() => {});
+            } else {
+              if (!existing.urls.includes(request.url)) existing.urls.push(request.url);
+              if (!existing.relUrls.includes(relUrl)) existing.relUrls.push(relUrl);
+            }
+            existing.size = Math.max(existing.size, size);
+          } else {
+            byKey.set(uniqueKey, {
+              key: uniqueKey,
+              urls: [request.url],
+              relUrls: [relUrl],
+              relUrl,
+              name: songName || (songId ? `离线音轨 #${songId}` : (urlHistMatch ? `本地音轨 #${urlHistMatch[1]}` : '本地缓存音频')),
+              artist: songArtist || '浏览器已离线',
+              size
+            });
+          }
         }
       }
-      browserCacheList = [...byUrl.values()];
+      browserCacheList = [...byKey.values()];
       browserCacheBytes = browserCacheList.reduce((total, item) => total + item.size, 0);
     } catch (e: any) {
       showToast('扫描浏览器缓存失败: ' + (e.message || e), 'error');
@@ -76,14 +118,21 @@
   async function deleteBrowserCacheItem(item: BrowserCacheItem) {
     if (!confirm(`删除“${item.name}”的手机离线缓存？删除后断网将无法播放。`)) return;
     try {
+      const metaMap = readCachedTrackMeta();
       for (const cacheName of await caches.keys()) {
         const cache = await caches.open(cacheName);
-        await cache.delete(item.fullUrl);
+        for (const url of item.urls) {
+          await cache.delete(url);
+        }
       }
-      const metaMap = readCachedTrackMeta();
-      delete metaMap[item.relUrl];
-      delete metaMap[item.fullUrl];
+      for (const rUrl of item.relUrls) {
+        delete metaMap[rUrl];
+      }
+      for (const fUrl of item.urls) {
+        delete metaMap[fUrl];
+      }
       localStorage.setItem('pwa_cached_tracks_meta_v1', JSON.stringify(metaMap));
+      window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
       await loadBrowserCacheList();
       showToast('已删除该首离线缓存', 'success');
     } catch (e: any) {
@@ -101,6 +150,7 @@
         }
       }
       localStorage.removeItem('pwa_cached_tracks_meta_v1');
+      window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
       await loadBrowserCacheList();
       showToast('已清空当前设备的离线音乐缓存', 'success');
     } catch (e: any) {
@@ -108,8 +158,31 @@
     }
   }
 
+  let wasOpen = false;
+  $effect(() => {
+    if (accBrowserCache && !wasOpen) {
+      loadBrowserCacheList();
+    }
+    wasOpen = accBrowserCache;
+  });
+
   onMount(() => {
     loadBrowserCacheList();
+    const onCacheUpdate = () => {
+      loadBrowserCacheList();
+    };
+    window.addEventListener('wyyyy:browser-cache-updated', onCacheUpdate);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && accBrowserCache) {
+        loadBrowserCacheList();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('wyyyy:browser-cache-updated', onCacheUpdate);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   });
 </script>
 
