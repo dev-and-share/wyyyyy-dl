@@ -126,17 +126,17 @@
 <!-- 🖥️ PC 桌面端：本地管理双栏工作台 (去手风琴化) -->
 <div class="flex flex-col lg:flex-row gap-5 items-start w-full select-none animate-fade-in" data-testid="desktop-download-mgr-view">
   <!-- 左栏：本地曲库文件夹树 (约 38% 宽度) -->
-  <div class="w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col gap-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] p-4 shadow-sm">
+  <div class="w-full lg:w-[400px] xl:w-[460px] 2xl:w-[500px] shrink-0 flex flex-col gap-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] p-4 shadow-sm">
     <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
       <div class="flex items-center gap-2">
         <span class="text-base">📁</span>
         <h2 class="font-bold text-sm text-[var(--text-main)]">本地曲库与目录树</h2>
       </div>
-      <span class="text-[10px] text-[var(--text-muted)]">点击连播/定位</span>
+      <span class="text-[10px] text-[var(--text-muted)]">点击展开/单曲连播</span>
     </div>
 
     <!-- 目录树组件直铺容器 -->
-    <div class="max-h-[calc(100vh-250px)] overflow-y-auto custom-scroll pr-1">
+    <div class="max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-auto custom-scroll pr-1">
       <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
     </div>
   </div>

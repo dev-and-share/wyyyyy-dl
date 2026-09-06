@@ -18,7 +18,7 @@
   let curRoot: any = $state(null);
   let tree: any[] = $state([]);
   let filterKw = $state('');
-  let expanded = new Set<string>();
+  let expandSignal = $state(0);
 
   async function loadRoots() {
     try {
@@ -34,7 +34,7 @@
   async function selectRoot(r: any) {
     curRoot = r;
     tree = [];
-    expanded.clear();
+    expandSignal = 0;
     await loadBrowse(r.path, true);
   }
 
@@ -132,23 +132,23 @@
     <div class="flex gap-1.5 flex-wrap">
       <button
         type="button"
-        class="btn-secondary px-2.5 py-1 text-xs"
-        onclick={() => expanded = new Set(tree.filter((t: any) => t.directory).map((t: any) => t.path))}
+        class="btn-secondary px-2.5 py-1 text-xs cursor-pointer active:scale-95 transition-all"
+        onclick={() => expandSignal = Date.now()}
         title="展开所有子文件夹"
       >
         📂 全部展开
       </button>
       <button
         type="button"
-        class="btn-secondary px-2.5 py-1 text-xs"
-        onclick={() => expanded.clear()}
+        class="btn-secondary px-2.5 py-1 text-xs cursor-pointer active:scale-95 transition-all"
+        onclick={() => expandSignal = -Date.now()}
         title="折叠所有子文件夹"
       >
         📁 全部折叠
       </button>
       <button
         type="button"
-        class="btn-secondary px-2.5 py-1 text-xs"
+        class="btn-secondary px-2.5 py-1 text-xs cursor-pointer active:scale-95 transition-all"
         onclick={() => curRoot && loadBrowse(curRoot.path, true)}
         title="刷新整库"
       >
@@ -169,7 +169,7 @@
       <div class="flex gap-1.5">
         <button
           type="button"
-          class="btn-primary px-3 py-1 text-xs"
+          class="btn-primary px-3 py-1 text-xs cursor-pointer active:scale-95 transition-all"
           onclick={() => playFolder(curRoot.path, curRoot.name)}
         >
           ▶ 连播整库
@@ -179,9 +179,9 @@
   {/if}
 
   <!-- 列表：递归子树，支持折叠与 … 抽屉 -->
-  <div class="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)]">
+  <div class="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)] min-w-0">
     {#each tree.filter((t: any) => !filterKw || ((t.songName || t.name || '') + (t.artist || '') + t.path).toLowerCase().includes(filterKw.toLowerCase())) as item}
-      <FolderNode {item} level={0} onPlayFolder={playFolder} onPlaySingle={playSingle} onReveal={revealItem} />
+      <FolderNode {item} level={0} {expandSignal} onPlayFolder={playFolder} onPlaySingle={playSingle} onReveal={revealItem} />
     {:else}
       <div class="py-6 px-4 text-center text-[var(--text-muted)] text-xs">暂无目录 · 试试切换根或刷新</div>
     {/each}
