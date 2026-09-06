@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
+  import { playPlaylistTracks } from '../lib/playerHelper';
   import type { Track } from '../lib/types';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
@@ -173,6 +174,11 @@
     } catch (e: any) {
       showToast('提交下载失败: ' + (e.message || e), 'error');
     }
+  }
+
+  async function handlePlayPlaylist(id: string, name: string) {
+    if (!onPlayQueue) return;
+    await playPlaylistTracks(id, name, onPlayQueue, showToast);
   }
 
   async function loadAlbum(id?: string) {
@@ -430,6 +436,9 @@
             </div>
             <div class="track-action-group">
               <SlotBtn onclick={() => handleDownloadPlaylist(String(r.id), r.name)} title="立即下载整张歌单全部歌曲">📥 下载整单</SlotBtn>
+              {#if onPlayQueue}
+                <SlotBtn onclick={() => handlePlayPlaylist(String(r.id), r.name)}>▶ 播放</SlotBtn>
+              {/if}
               <SlotBtn onclick={() => onPlaylist(String(r.id))}>👉 查看详情</SlotBtn>
             </div>
           </li>

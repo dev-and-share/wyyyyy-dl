@@ -2,6 +2,7 @@ import { api } from './api';
 import type { Track } from './types';
 import { cachedSongIdSet } from './pwaCache.svelte';
 import { markSongDownloaded } from './trackStatus.svelte';
+import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -82,4 +83,35 @@ export function preloadSurroundingTracks(queue: Track[], curIndex: number, playM
 export function preloadNextTrack(queue: Track[], curIndex: number, playMode: string) {
   preloadSurroundingTracks(queue, curIndex, playMode);
 }
+
+/**
+ * 🎵 解析歌单曲目并加入播放队列立即起播
+ */
+export async function playPlaylistTracks(
+  playlistId: string,
+  playlistName: string,
+  onPlayQueue: (tracks: Track[], idx?: number) => void,
+  showToast: (m: string, t?: string, d?: number) => void
+) {
+  try {
+    showToast(`正在载入《${playlistName}》...`, 'info', 1500);
+    const res = await api.playlist(playlistId);
+    const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
+    if (tracks && tracks.length > 0) {
+      onPlayQueue(tracks.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        artist: formatArtist(t.artists || t.ar || t.artist),
+        cover: t.picUrl || t.al?.picUrl || DEFAULT_VINYL_COVER,
+        isLocal: false
+      })), 0);
+      showToast(`已开始播放《${playlistName}》(${tracks.length} 首)`, 'success', 2000);
+    } else {
+      showToast('歌单内暂无曲目', 'warning');
+    }
+  } catch (e: any) {
+    showToast('播放失败: ' + (e?.message || e), 'error');
+  }
+}
+
 

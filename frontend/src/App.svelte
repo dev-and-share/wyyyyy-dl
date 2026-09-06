@@ -10,6 +10,7 @@
   import { taskState, startTaskPolling, initDownloadedSet, getActiveDownloadingCount } from './lib/taskStore.svelte';
   import { sheetState } from './lib/ui.svelte';
   import { executeReveal } from './lib/revealHelper';
+  import { playPlaylistTracks } from './lib/playerHelper';
   import type { Track } from './lib/types';
 
   import TopBar from './components/TopBar.svelte';
@@ -109,6 +110,7 @@
       downloadingCount={getActiveDownloadingCount()}
       onSwitchTab={switchTab}
       onViewPlaylist={jumpToPlaylist}
+      onPlayPlaylist={(id: string, name: string) => playPlaylistTracks(id, name, setQueue, showToast)}
       onToggleCollapse={toggleSidebarCollapse}
       onSwitchToLegacyTabs={switchToLegacyTabs}
       {showToast}

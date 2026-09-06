@@ -7,6 +7,7 @@
     downloadingCount = 0,
     onSwitchTab,
     onViewPlaylist,
+    onPlayPlaylist,
     onToggleCollapse,
     onSwitchToLegacyTabs,
     showToast
@@ -16,6 +17,7 @@
     downloadingCount?: number;
     onSwitchTab: (tab: 'playlist' | 'search' | 'download-mgr') => void;
     onViewPlaylist?: (id: string) => void;
+    onPlayPlaylist?: (id: string, name: string) => void;
     onToggleCollapse: () => void;
     onSwitchToLegacyTabs: () => void;
     showToast?: (m: string, t?: string) => void;
@@ -24,6 +26,19 @@
   // 歌单分类：创建 vs 收藏
   const createdPlaylists = $derived(myPlaylists.filter(p => !p.subscribed));
   const subscribedPlaylists = $derived(myPlaylists.filter(p => p.subscribed));
+
+  // 侧栏歌单搜索过滤
+  let sidebarSearchKw = $state('');
+  const filteredCreated = $derived(
+    sidebarSearchKw.trim()
+      ? createdPlaylists.filter(p => p.name?.toLowerCase().includes(sidebarSearchKw.trim().toLowerCase()))
+      : createdPlaylists
+  );
+  const filteredSubscribed = $derived(
+    sidebarSearchKw.trim()
+      ? subscribedPlaylists.filter(p => p.name?.toLowerCase().includes(sidebarSearchKw.trim().toLowerCase()))
+      : subscribedPlaylists
+  );
 
   function handlePlaylistClick(plId: string | number) {
     if (onViewPlaylist) {
@@ -117,66 +132,104 @@
     </button>
   </nav>
 
-  <!-- 3. 歌单快速导航列表 (展开时展示完整列表，折叠时图标居中模式) -->
-  <div class="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-3 min-h-0 custom-scrollbar">
+  <!-- 3. 歌单快速导航列表：搜索框 + 各占 50% 的两个独立滚动区 -->
+  <div class="flex-1 flex flex-col min-h-0 px-2 py-2 gap-0">
     {#if !collapsed}
-      <!-- 创建的歌单 -->
-      {#if createdPlaylists.length > 0}
-        <div class="flex flex-col gap-0.5">
-          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between">
+      <!-- 搜索过滤框（固定高度，不滚动）-->
+      <div class="relative mb-1.5 shrink-0">
+        <input
+          type="text"
+          placeholder="搜索歌单..."
+          class="w-full pl-6 pr-2 py-1 rounded-lg text-[11px] bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-400/60 transition-colors"
+          bind:value={sidebarSearchKw}
+        />
+        <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none">🔍</span>
+        {#if sidebarSearchKw}
+          <button
+            type="button"
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer p-0 bg-transparent border-none leading-none"
+            onclick={() => sidebarSearchKw = ''}
+          >✕</button>
+        {/if}
+      </div>
+
+      <!-- 我的歌单：占 50% 高度，独立滚动 -->
+      <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar border-b border-[var(--border-subtle)] pb-1 mb-1">
+        {#if filteredCreated.length > 0}
+          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg)] z-10">
             <span>我的歌单</span>
-            <span class="text-[10px] opacity-70">{createdPlaylists.length}</span>
+            <span class="text-[10px] opacity-70">{filteredCreated.length}</span>
           </div>
-          {#each createdPlaylists as pl (pl.id)}
-            <button
-              type="button"
-              class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-left text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] cursor-pointer border-none bg-transparent transition-colors group"
-              onclick={() => handlePlaylistClick(pl.id)}
-              title={pl.name}
-            >
-              <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-red-400">
-                {isFavoritePlaylist(pl) ? '❤️' : '📂'}
-              </span>
-              <span class="truncate flex-1">{pl.name}</span>
-              {#if typeof pl.trackCount === 'number'}
-                <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
+          {#each filteredCreated as pl (pl.id)}
+            <div class="group relative flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
+              <button
+                type="button"
+                class="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                onclick={() => handlePlaylistClick(pl.id)}
+                title={pl.name}
+              >
+                <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-red-400">
+                  {isFavoritePlaylist(pl) ? '❤️' : '📂'}
+                </span>
+                <span class="truncate flex-1">{pl.name}</span>
+                {#if typeof pl.trackCount === 'number'}
+                  <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
+                {/if}
+              </button>
+              {#if onPlayPlaylist}
+                <button
+                  type="button"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
+                  onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
+                  title="立即播放此歌单"
+                >▶</button>
               {/if}
-            </button>
+            </div>
           {/each}
-        </div>
-      {/if}
+        {:else}
+          <div class="px-2 py-3 text-center text-xs text-[var(--text-muted)]">
+            {sidebarSearchKw ? '无匹配' : '暂无歌单'}
+          </div>
+        {/if}
+      </div>
 
-      <!-- 收藏的歌单 -->
-      {#if subscribedPlaylists.length > 0}
-        <div class="flex flex-col gap-0.5">
-          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between">
+      <!-- 收藏歌单：占 50% 高度，独立滚动 -->
+      <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar">
+        {#if filteredSubscribed.length > 0}
+          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg)] z-10">
             <span>收藏歌单</span>
-            <span class="text-[10px] opacity-70">{subscribedPlaylists.length}</span>
+            <span class="text-[10px] opacity-70">{filteredSubscribed.length}</span>
           </div>
-          {#each subscribedPlaylists as pl (pl.id)}
-            <button
-              type="button"
-              class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-left text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] cursor-pointer border-none bg-transparent transition-colors group"
-              onclick={() => handlePlaylistClick(pl.id)}
-              title={pl.name}
-            >
-              <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-amber-400">
-                ⭐
-              </span>
-              <span class="truncate flex-1">{pl.name}</span>
-              {#if typeof pl.trackCount === 'number'}
-                <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
+          {#each filteredSubscribed as pl (pl.id)}
+            <div class="group relative flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
+              <button
+                type="button"
+                class="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                onclick={() => handlePlaylistClick(pl.id)}
+                title={pl.name}
+              >
+                <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-amber-400">⭐</span>
+                <span class="truncate flex-1">{pl.name}</span>
+                {#if typeof pl.trackCount === 'number'}
+                  <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
+                {/if}
+              </button>
+              {#if onPlayPlaylist}
+                <button
+                  type="button"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
+                  onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
+                  title="立即播放此歌单"
+                >▶</button>
               {/if}
-            </button>
+            </div>
           {/each}
-        </div>
-      {/if}
-
-      {#if createdPlaylists.length === 0 && subscribedPlaylists.length === 0}
-        <div class="px-2 py-4 text-center text-xs text-[var(--text-muted)]">
-          暂无本地歌单缓存
-        </div>
-      {/if}
+        {:else}
+          <div class="px-2 py-3 text-center text-xs text-[var(--text-muted)]">
+            {sidebarSearchKw ? '无匹配' : '暂无收藏歌单'}
+          </div>
+        {/if}
+      </div>
     {:else}
       <!-- 折叠态下的紧凑快捷方式 -->
       <div class="flex flex-col items-center gap-2 pt-2">
