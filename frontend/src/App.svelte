@@ -105,7 +105,7 @@
   />
 
   <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
-  <div class="flex flex-col gap-2 md:gap-3 pb-[140px] md:pb-[80px]">
+  <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px]">
     <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
       <PlaylistTab
         playlistId={routerState.playlistId} {curTrack} {playing}
