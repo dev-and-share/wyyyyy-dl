@@ -8,7 +8,7 @@ export interface PeqPreset {
 
 export const INITIAL_BANDS: Band[] = [
   { freq: 60, gain: 0, q: 1.4, label: '低频下潜', desc: '60Hz' },
-  { freq: 230, gain: 0, q: 1.4, label: '去箱声/闷', desc: '230Hz' },
+  { freq: 230, gain: 0, q: 1.4, label: '去箱声闷', desc: '230Hz' },
   { freq: 910, gain: 0, q: 2.0, label: '人声主体', desc: '910Hz' },
   { freq: 3600, gain: 0, q: 2.5, label: '细节提亮', desc: '3.6kHz' },
   { freq: 14000, gain: 0, q: 0.7, label: '空气感', desc: '14kHz' },
