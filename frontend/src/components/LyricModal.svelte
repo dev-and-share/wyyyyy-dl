@@ -3,6 +3,7 @@
   import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
   import { api } from '../lib/api';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
+  import PlayerIcon from './PlayerIcon.svelte';
 
   type Lrc = { time: number; text: string };
 
@@ -133,7 +134,7 @@
       onclick={onClose}
       title="关闭全屏"
     >
-      ✕
+      <PlayerIcon name="close" size={16} />
     </button>
   </div>
 
@@ -158,10 +159,8 @@
           {#if track?.isLocal}
             <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地磁盘">🖥️</span>
           {/if}
-          <button type="button" class="p-1 text-red-500 hover:scale-110 active:scale-90 transition-transform cursor-pointer" onclick={onToggleLike} title="喜欢">
-            <svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill={isLiked ? '#ef4444' : 'none'} stroke={isLiked ? '#ef4444' : 'currentColor'} stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
+          <button type="button" class="p-1 hover:scale-110 active:scale-90 transition-transform cursor-pointer" onclick={onToggleLike} title="喜欢">
+            <PlayerIcon name="heart" liked={isLiked} size={18} />
           </button>
         </div>
         <div class="text-xs text-[var(--text-secondary)] truncate mt-0.5">{formatArtist(track?.artist) || '未知歌手'}</div>
@@ -218,7 +217,7 @@
         onclick={onToggleMode}
         title="切换播放模式"
       >
-        {playMode === 'single' ? '🔂' : playMode === 'shuffle' ? '🔀' : '🔁'}
+        <PlayerIcon name={playMode === 'single' ? 'repeat-1' : playMode === 'shuffle' ? 'shuffle' : 'repeat'} size={19} />
       </button>
       <button
         type="button"
@@ -226,15 +225,15 @@
         onclick={onPrev}
         title="上一首"
       >
-        ⏮
+        <PlayerIcon name="prev" size={20} />
       </button>
       <button
         type="button"
-        class="w-11 h-11 rounded-full flex items-center justify-center text-lg bg-gradient-to-br from-red-500 to-orange-500 text-white font-bold shadow-lg shadow-red-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        class="w-11 h-11 rounded-full flex items-center justify-center text-lg bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
         onclick={onTogglePlay}
         title="播放 / 暂停"
       >
-        {playing ? '⏸' : '▶'}
+        <PlayerIcon name={playing ? 'pause' : 'play'} size={22} />
       </button>
       <button
         type="button"
@@ -242,26 +241,26 @@
         onclick={onNext}
         title="下一首"
       >
-        ⏭
+        <PlayerIcon name="next" size={20} />
       </button>
       <!-- iOS Web Audio API 会导致熄屏后台播放中断，故在 iOS 设备上隐藏 PEQ 均衡器 -->
       {#if !isIOS()}
         <button
           type="button"
-          class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
           onclick={onTogglePeq}
           title="打开均衡器"
         >
-          🎛️
+          <PlayerIcon name="equalizer" size={19} />
         </button>
       {/if}
       <button
         type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onToggleDrawer}
         title="播放列表"
       >
-        📜
+        <PlayerIcon name="list" size={19} />
       </button>
 
       <!-- iOS (Safari/PWA) HTML5 audio volume 属性为只读，系统强制由实体键控制，隐藏滑块避免误解 -->
@@ -270,11 +269,11 @@
         <div class="relative">
           <button
             type="button"
-            class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+            class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
             onclick={() => showVolPopup = !showVolPopup}
             title="调节音量"
           >
-            {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
+            <PlayerIcon name={vol === 0 ? 'volume-mute' : vol < 0.4 ? 'volume-low' : 'volume'} size={19} />
           </button>
           {#if showVolPopup}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -293,8 +292,8 @@
               />
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <span class="text-xs cursor-pointer select-none" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="点击切换静音">
-                {vol === 0 ? '🔇' : '🔊'}
+              <span class="cursor-pointer select-none flex items-center justify-center text-[var(--text-secondary)]" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="点击切换静音">
+                <PlayerIcon name={vol === 0 ? 'volume-mute' : 'volume'} size={15} />
               </span>
             </div>
           {/if}

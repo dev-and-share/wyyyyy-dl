@@ -4,6 +4,7 @@
   import PlayerCoverRing from './PlayerCoverRing.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerControls from './PlayerControls.svelte';
+  import PlayerIcon from './PlayerIcon.svelte';
   import { cachedSongIdSet } from '../lib/pwaCache.svelte';
 
   let {
@@ -105,31 +106,31 @@
     <div class="flex items-center justify-end gap-3 flex-1 min-w-[220px] max-w-[320px]">
       <button
         type="button"
-        class="w-8.5 h-8.5 rounded-lg flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+        class="w-8.5 h-8.5 rounded-lg flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onLyric}
         title="全屏沉浸歌词"
       >
-        🎤
+        <PlayerIcon name="mic" size={17} />
       </button>
       <!-- iOS Web Audio API 会导致熄屏后台播放中断，故在 iOS 设备上隐藏 PEQ 均衡器 -->
       {#if !isIOS()}
         <button
           type="button"
-          class="w-8.5 h-8.5 rounded-lg flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+          class="w-8.5 h-8.5 rounded-lg flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
           onclick={onPeq}
           title="5段参量均衡器 (PEQ)"
         >
-          🎛️
+          <PlayerIcon name="equalizer" size={17} />
         </button>
       {/if}
       <button
         data-testid="btn-toggle-drawer"
         type="button"
-        class="relative w-8.5 h-8.5 rounded-lg flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+        class="relative w-8.5 h-8.5 rounded-lg flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onQueue}
         title="当前播放列表"
       >
-        📜
+        <PlayerIcon name="list" size={17} />
         <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold px-1 py-px rounded-full border border-white/60 leading-none">
           {queue.length}
         </span>
@@ -140,11 +141,11 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span
-            class="text-sm cursor-pointer select-none text-[var(--text-main)]"
+            class="cursor-pointer select-none text-[var(--text-main)] flex items-center"
             onclick={() => { vol = vol > 0 ? 0 : 0.8; }}
             title="静音切换"
           >
-            {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
+            <PlayerIcon name={vol === 0 ? 'volume-mute' : vol < 0.4 ? 'volume-low' : 'volume'} size={18} />
           </span>
           <input
             type="range"
@@ -158,11 +159,11 @@
       {/if}
       <button
         type="button"
-        class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 active:scale-95 transition-all"
+        class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 active:scale-95 transition-all cursor-pointer"
         onclick={onMinimize}
         title="收起为黑胶悬浮球"
       >
-        ✕
+        <PlayerIcon name="close" size={13} />
       </button>
     </div>
   </div>

@@ -3,6 +3,7 @@
   import type { Track } from '../lib/types';
   import PlayerCoverRing from './PlayerCoverRing.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
+  import PlayerIcon from './PlayerIcon.svelte';
   import { cachedSongIdSet } from '../lib/pwaCache.svelte';
 
   let {
@@ -96,31 +97,31 @@
         <div class="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+            class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
             onclick={onLyric}
             title="全屏沉浸歌词"
           >
-            🎤
+            <PlayerIcon name="mic" size={15} />
           </button>
           <!-- iOS Web Audio API 会导致熄屏后台播放中断，故在 iOS 设备上隐藏 PEQ 均衡器 -->
           {#if !isIOS()}
             <button
               type="button"
-              class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+              class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
               onclick={onPeq}
               title="5段参量均衡器 (PEQ)"
             >
-              🎛️
+              <PlayerIcon name="equalizer" size={15} />
             </button>
           {/if}
           <button
             data-testid="btn-toggle-drawer"
             type="button"
-            class="relative w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+            class="relative w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
             onclick={onQueue}
             title="当前播放列表"
           >
-            📜
+            <PlayerIcon name="list" size={15} />
             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold px-1 py-px rounded-full border border-white/60 leading-none">
               {queue.length}
             </span>
@@ -131,11 +132,11 @@
             <div class="relative">
               <button
                 type="button"
-                class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+                class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
                 onclick={() => showVolPopup = !showVolPopup}
                 title={vol === 0 ? '静音' : `音量 ${Math.round(vol * 100)}%`}
               >
-                {vol === 0 ? '🔇' : vol < 0.4 ? '🔉' : '🔊'}
+                <PlayerIcon name={vol === 0 ? 'volume-mute' : vol < 0.4 ? 'volume-low' : 'volume'} size={15} />
               </button>
               {#if showVolPopup}
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -152,7 +153,7 @@
                     class="w-1.5 h-20 accent-red-500 cursor-pointer"
                     style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
                   />
-                  <span class="text-xs">{vol === 0 ? '🔇' : '🔊'}</span>
+                  <PlayerIcon name={vol === 0 ? 'volume-mute' : 'volume'} size={13} class="text-[var(--text-secondary)]" />
                 </div>
               {/if}
             </div>
@@ -175,46 +176,46 @@
     <button
       data-testid="btn-toggle-mode"
       type="button"
-      class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
+      class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-[var(--text-secondary)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all cursor-pointer"
       onclick={onToggleMode}
       title={playMode === 'single' ? '单曲循环' : (playMode === 'shuffle' ? '随机播放' : '列表循环')}
     >
-      {playMode === 'single' ? '🔂' : (playMode === 'shuffle' ? '🔀' : '🔁')}
+      <PlayerIcon name={playMode === 'single' ? 'repeat-1' : (playMode === 'shuffle' ? 'shuffle' : 'repeat')} size={18} />
     </button>
     <button
       data-testid="btn-prev-track"
       type="button"
-      class="w-10 h-10 rounded-full flex items-center justify-center text-base text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
+      class="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all cursor-pointer"
       onclick={onPrev}
       title="上一首"
     >
-      ⏮
+      <PlayerIcon name="prev" size={20} />
     </button>
     <button
       data-testid="btn-play-pause"
       type="button"
-      class="w-12 h-12 rounded-full flex items-center justify-center text-xl bg-gradient-to-br from-red-500 to-orange-500 text-white font-bold shadow-lg shadow-red-500/40 active:scale-95 transition-all"
+      class="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 active:scale-95 transition-all cursor-pointer"
       onclick={onTogglePlay}
       title={playing ? '暂停' : '播放'}
     >
-      {playing ? '⏸' : '▶'}
+      <PlayerIcon name={playing ? 'pause' : 'play'} size={24} />
     </button>
     <button
       data-testid="btn-next-track"
       type="button"
-      class="w-10 h-10 rounded-full flex items-center justify-center text-base text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all"
+      class="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] active:scale-95 transition-all cursor-pointer"
       onclick={onNext}
       title="下一首"
     >
-      ⏭
+      <PlayerIcon name="next" size={20} />
     </button>
     <button
       type="button"
-      class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-sm text-[var(--text-muted)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] hover:text-red-400 active:scale-95 transition-all"
+      class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-sm text-[var(--text-muted)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] hover:text-red-400 active:scale-95 transition-all cursor-pointer"
       onclick={onMinimize}
       title="收起为黑胶悬浮球"
     >
-      ✕
+      <PlayerIcon name="close" size={14} />
     </button>
   </div>
 </div>
