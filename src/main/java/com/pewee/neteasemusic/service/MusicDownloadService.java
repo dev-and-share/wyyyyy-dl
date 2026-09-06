@@ -178,6 +178,7 @@ public class MusicDownloadService implements InitializingBean {
 		if (!repeat && hs.contains(id)) {
 			log.info("歌曲id: {} 已存在,跳过!", id);
 			taskStatus.setStatus("SKIP");
+			taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
 			if ("未知歌曲".equals(taskStatus.getName()) || taskStatus.getName() == null) {
 				try {
 					SingleMusicAnalysisRespDTO analysis = analysisService.analyzeSingleSong(id, "standard");
@@ -199,7 +200,11 @@ public class MusicDownloadService implements InitializingBean {
 			// 🛑 核心防污染拦截：如果标记为试听，直接拒绝落盘
 			if (Boolean.TRUE.equals(analysisSingleMusic.getFreeTrial())) {
 				log.info("歌曲 id: {} 为 VIP 试听片段，已阻止落盘入库", id);
+				if (analysisSingleMusic.getName() != null) {
+					taskStatus.setName(analysisSingleMusic.getName());
+				}
 				taskStatus.setStatus("SKIP");
+				taskStatus.setErrorMsg("此曲为 VIP 试听片段(无法获取完整版音频)，已自动阻止落盘入库");
 				return;
 			}
 
@@ -338,6 +343,10 @@ public class MusicDownloadService implements InitializingBean {
 
 	public Collection<DownloadTaskStatus> getDownloadTasks() {
 		return downloadTasks.values();
+	}
+
+	public DownloadTaskStatus getDownloadTask(Long id) {
+		return id != null ? downloadTasks.get(id) : null;
 	}
 
 	public void clearDownloadTasks() {

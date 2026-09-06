@@ -42,9 +42,10 @@ public class MusicDownloadControllerV2 {
 	}
 	
 	@GetMapping("/single")
-	public RespEntity<String> downloadSingle(@RequestParam(value = "id") Long id) {
+	public RespEntity<DownloadTaskStatus> downloadSingle(@RequestParam(value = "id") Long id) {
 		musicService.downloadSingleSongV2(id);
-		return RespEntity.apply(CommonRespInfo.SUCCESS,"OK");
+		DownloadTaskStatus task = musicService.getDownloadTask(id);
+		return RespEntity.apply(CommonRespInfo.SUCCESS, task);
 	}
 	
 	@GetMapping("/playlist")
