@@ -4,8 +4,9 @@
   import DetailHeaderCard from './DetailHeaderCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
+  import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { openSheet } from '../lib/ui.svelte';
-import { cachedSongIdSet } from '../lib/pwaCache.svelte';
+  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
 
   let {
     album,
@@ -140,27 +141,19 @@ import { cachedSongIdSet } from '../lib/pwaCache.svelte';
     <ul class="data-list scrollable-list">
       {#each (album.songs || []) as s, i}
         {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
-        {@const isServer = (downloadedSet && downloadedSet.has(Number(s.id)))}
-        {@const isPhone = cachedSongIdSet.has(Number(s.id))}
-        {@const isLocal = isServer || isPhone || s.isLocal === true}
+        {@const status = getTrackSourceStatus(s.id, s.isLocal, curTrack)}
         {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
             <button
               type="button"
               class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-              onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }]))}
+              onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }]))}
             >
               {i + 1}. {s.name}
             </button>
             {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
-            {#if isServer && isPhone}
-              <span class="audio-source-badge icon-only badge-both ml-1.5" title="✨ 服务器与本机手机均已下载/缓存">✨</span>
-            {:else if isServer}
-              <span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 已下载到本地">🖥️</span>
-            {:else if isPhone}
-              <span class="audio-source-badge icon-only badge-browser ml-1.5" title="📲 已缓存到手机本地，断网可离线秒播">📲</span>
-            {/if}
+            <TrackSourceBadge id={s.id} isLocal={s.isLocal} {curTrack} class="ml-1.5" />
           </div>
           <div class="track-action-group">
             <!-- 💻 PC 桌面端快捷操作 -->
@@ -171,12 +164,12 @@ import { cachedSongIdSet } from '../lib/pwaCache.svelte';
               {#if onPlayQueue}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
                 </SlotBtn>
               {/if}
-              {#if isLocal}
+              {#if status.isServer}
                 <SlotBtn
                   onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
                   title="在文件管理器中定位"
@@ -198,15 +191,15 @@ import { cachedSongIdSet } from '../lib/pwaCache.svelte';
               {#if onPlayQueue}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal }])}
+                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
                 </SlotBtn>
               {/if}
               <button
                 type="button"
                 class="btn-more-actions"
-                onclick={() => openTrackSheet(s, isLocal, artistName, isPlayingThis)}
+                onclick={() => openTrackSheet(s, status.isLocal, artistName, isPlayingThis)}
                 title="更多操作"
                 aria-label="更多操作"
               >

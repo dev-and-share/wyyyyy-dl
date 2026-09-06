@@ -3,6 +3,8 @@
   import { formatArtist } from '../lib/utils';
   import TaskStatusBadge from './TaskStatusBadge.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
+  import TrackSourceBadge from './TrackSourceBadge.svelte';
+  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
 
   let {
     queue = [],
@@ -47,9 +49,9 @@
   // 计算过滤后的队列
   let filteredQueueWithIndex = $derived.by(() => {
     return queue.map((t: Track, realIdx: number) => ({ t, realIdx })).filter(({ t }: { t: Track }) => {
-      const isServer = (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true;
-      if (filterType === 'server' && !isServer) return false;
-      if (filterType === 'ready' && !isServer) return false;
+      const status = getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]);
+      if (filterType === 'server' && !status.isServer) return false;
+      if (filterType === 'ready' && !status.isLocal) return false;
       if (filterText.trim()) {
         const kw = filterText.toLowerCase();
         const nameMatch = (t.name || '').toLowerCase().includes(kw);
@@ -62,7 +64,7 @@
 
   // 统计数
   let countAll = $derived(queue.length);
-  let countServer = $derived(queue.filter((t: Track) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length);
+  let countServer = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer).length);
 
   // 退出动画与手势下拉状态
   let closing = $state(false);
@@ -281,9 +283,7 @@
                       - {formatArtist(t.artist)}
                     </span>
                   {/if}
-                  {#if isServer}
-                    <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地已下载">🖥️</span>
-                  {/if}
+                  <TrackSourceBadge id={t.id} isLocal={t.isLocal} curTrack={queue[qIndex]} />
                   {#if realIdx === qIndex}
                     <span class="text-[11px] font-semibold text-emerald-500 shrink-0 ml-1">▶ 播放中</span>
                   {/if}

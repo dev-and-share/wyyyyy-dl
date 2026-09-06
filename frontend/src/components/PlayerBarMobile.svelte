@@ -4,7 +4,7 @@
   import PlayerCoverRing from './PlayerCoverRing.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
-  import { cachedSongIdSet } from '../lib/pwaCache.svelte';
+  import TrackSourceBadge from './TrackSourceBadge.svelte';
 
   let {
     curTrack,
@@ -73,15 +73,7 @@
           {curTrack?.name || '未在播放'}
         </span>
         {#if curTrack}
-          {@const isServer = curTrack.isLocal}
-          {@const isPhone = cachedSongIdSet.has(Number(curTrack.id))}
-          {#if isServer && isPhone}
-            <span class="audio-source-badge icon-only badge-both ml-1" title="✨ 本机手机与服务器均有">✨</span>
-          {:else if isServer}
-            <span class="audio-source-badge icon-only badge-server ml-1" title="🖥️ 本地已下载">🖥️</span>
-          {:else if isPhone}
-            <span class="audio-source-badge icon-only badge-browser ml-1" title="📲 手机已离线缓存">📲</span>
-          {/if}
+          <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
         {/if}
       </div>
 

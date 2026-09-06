@@ -28,6 +28,7 @@ export default defineConfig({
       '/login': 'http://localhost:8080',
       '/qr': 'http://localhost:8080',
       '/sw.js': 'http://localhost:8080',
+      '/manifest.json': 'http://localhost:8080',
       '/favicon.png': 'http://localhost:8080',
       '/favicon.ico': 'http://localhost:8080'
     }

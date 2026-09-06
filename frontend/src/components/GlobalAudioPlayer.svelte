@@ -4,6 +4,7 @@
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
+  import { markSongDownloaded } from '../lib/trackStatus.svelte';
   import { savePlayerStateToStorage, loadPlayerStateFromStorage } from '../lib/playerStorage';
   import { resolveTrackUrl, preloadSurroundingTracks } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
@@ -64,7 +65,9 @@
   }
 
   async function prepareTrackInUI(track: Track) {
+    if (track.isLocal && track.id) markSongDownloaded(track.id);
     let url = track.url || (await resolveTrackUrl(track));
+    if (track.isLocal && track.id) markSongDownloaded(track.id);
     if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href)) {
       audioEl.src = url;
     }
@@ -273,11 +276,15 @@
     setTimeout(() => ensurePlay(true), 50);
 
     const targetTrack = tracks[qIndex];
-    if (targetTrack && !targetTrack.isLocal && targetTrack.id) {
-      api.downloadSingle(String(targetTrack.id)).then(() => {
-        showToast(`已将《${targetTrack.name || '歌曲'}》加入自动下载任务`, 'info', 2000);
-        window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
-      }).catch(() => {});
+    if (targetTrack && targetTrack.id) {
+      if (targetTrack.isLocal) {
+        markSongDownloaded(targetTrack.id);
+      } else {
+        api.downloadSingle(String(targetTrack.id)).then(() => {
+          showToast(`已将《${targetTrack.name || '歌曲'}》加入自动下载任务`, 'info', 2000);
+          window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+        }).catch(() => {});
+      }
     }
   }
 

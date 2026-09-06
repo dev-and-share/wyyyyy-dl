@@ -6,11 +6,22 @@ const PRECACHE_URLS = [
   '/favicon.png'
 ];
 
-// 1. 安装 Service Worker 并预缓存基础 App Shell
+// 1. 安装 Service Worker 并预缓存基础 App Shell (弹性容错机制)
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await Promise.allSettled(
+        PRECACHE_URLS.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: 'no-cache' });
+            if (res.ok) {
+              await cache.put(url, res);
+            }
+          } catch (e) {
+            console.warn('[SW] 预缓存资源跳过:', url, e);
+          }
+        })
+      );
     }).then(() => self.skipWaiting())
   );
 });

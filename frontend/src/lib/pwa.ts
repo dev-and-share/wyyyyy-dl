@@ -17,6 +17,17 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 export function registerServiceWorker(onUpdateFound?: () => void) {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
+  // 开发调试模式下 (端口 5173) 注销旧 Worker 并跳过注册，避免开发态 Vite 模块被 SW 拦截混淆
+  if (window.location?.port === '5173') {
+    if (navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) reg.unregister();
+      }).catch(() => {});
+    }
+    console.log('[PWA] 本地开发环境 (port 5173) 跳过 Service Worker 注册以保护 HMR 热更新');
+    return;
+  }
+
   // 生产环境或同域下注册根目录 sw.js，设置 updateViaCache: 'none' 确保穿透 HTTP 缓存
   window.addEventListener('load', () => {
     navigator.serviceWorker

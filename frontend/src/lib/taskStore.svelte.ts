@@ -45,9 +45,10 @@ export async function fetchTasks(): Promise<void> {
         }
       });
       if (changed) taskState.downloadedSet = newSet;
-      // 全部任务完成后自动停止轮询
+      // 全部任务完成后自动停止轮询并刷新一次历史落盘集合
       if (!taskState.tasks.some((t: any) => ACTIVE_STATUSES.has(t.status))) {
         stopTaskPolling();
+        initDownloadedSet();
       }
     }
   } catch {}
