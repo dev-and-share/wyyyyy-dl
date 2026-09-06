@@ -251,9 +251,14 @@ SP 下保持原有单列上下堆叠，`DownloadMgrTab` 内部逻辑完全不动
 ## 开发顺序（逐阶段可独立验证）
 
 ```
+目录迁移（阶段 0 之前，独立 commit）：
+        git mv 5 个组件到 desktop/ / sp/ 子目录
+        同步修改 PlayerBar.svelte 和 App.svelte 的 import 路径
+        -> npm run check + npm run test 全绿后 commit
+
 阶段 0：新建 layout.svelte.ts，router 微增字段
         -> npm run check 确认 0 错误
-阶段 1：新建 DesktopSidebar.svelte（先静态结构）
+阶段 1：新建 desktop/DesktopSidebar.svelte（先静态结构）
         -> 1440px 下验证边栏出现，375px 下验证完全隐藏
 阶段 2：TopBar 内增 lg: PC 分支
         -> 验证 PC 顶部新布局，SP 顶部丝毫不变
@@ -269,34 +274,81 @@ SP 下保持原有单列上下堆叠，`DownloadMgrTab` 内部逻辑完全不动
 
 ---
 
+## 组件目录结构重组
+
+### 最终目录结构
+
+```
+src/components/
+  ├── desktop/                         # PC 专用组件（>= 1024px 才渲染）
+  │   ├── DesktopSidebar.svelte        # [新建] 左侧导航边栏（核心新增）
+  │   └── PlayerBarDesktop.svelte      # [迁移] 原 components/ 根目录移入
+  │
+  ├── sp/                              # SP 专用组件（< 1024px 或移动端专属）
+  │   ├── BottomTabBar.svelte          # [迁移] 原 components/ 根目录移入
+  │   ├── PlayerBarMobile.svelte       # [迁移] 原 components/ 根目录移入
+  │   └── PullToRefresh.svelte         # [迁移] 原 components/ 根目录移入
+  │
+  └── (其余 32 个共用组件，原地不动)    # PlaylistTab / SearchTab / Modal 等
+```
+
+### 迁移影响范围（仅 2 个文件需改 import 路径）
+
+| 被迁移组件 | 原 import 位置 | 路径修改 |
+|---|---|---|
+| `PlayerBarDesktop.svelte` | `PlayerBar.svelte` 第 3 行 | `'./PlayerBarDesktop'` → `'./desktop/PlayerBarDesktop'` |
+| `PlayerBarMobile.svelte` | `PlayerBar.svelte` 第 4 行 | `'./PlayerBarMobile'` → `'./sp/PlayerBarMobile'` |
+| `BottomTabBar.svelte` | `App.svelte` | `'./components/BottomTabBar'` → `'./components/sp/BottomTabBar'` |
+| `PullToRefresh.svelte` | `App.svelte` | `'./components/PullToRefresh'` → `'./components/sp/PullToRefresh'` |
+
+> 迁移操作必须用 `git mv`（保留 git 历史），不得手动 copy-delete。
+> 迁移后立即 `npm run check && npm run test` 验绿，独立 commit，与功能开发隔离。
+
+### 命名约定（后续新增组件时遵守）
+
+- 新增 PC 专用组件 → 放入 `components/desktop/`，无需额外前缀
+- 新增 SP 专用组件 → 放入 `components/sp/`，无需额外前缀
+- 双端共用组件 → 继续放 `components/` 根目录
+
+---
+
 ## 受影响文件速查
 
-### 新建（不影响现有）
+### 新建
 
-- `src/components/DesktopSidebar.svelte`
-- `src/lib/layout.svelte.ts`
+- `src/components/desktop/DesktopSidebar.svelte`（PC 核心新组件）
+- `src/lib/layout.svelte.ts`（PC 布局模式状态管理）
+
+### 迁移（git mv，内部逻辑零改动）
+
+- `components/PlayerBarDesktop.svelte` → `components/desktop/PlayerBarDesktop.svelte`
+- `components/PlayerBarMobile.svelte` → `components/sp/PlayerBarMobile.svelte`
+- `components/BottomTabBar.svelte` → `components/sp/BottomTabBar.svelte`
+- `components/PullToRefresh.svelte` → `components/sp/PullToRefresh.svelte`
 
 ### 修改（最小改动，精准手术）
 
-- `src/App.svelte`：增加 PC 外壳骨架 + `pcLayoutMode` 判断（现有代码块原封不动）
-- `src/components/TopBar.svelte`：内部增 `lg:` PC 分支（SP 分支 `lg:hidden` 保留不改）
-- `src/lib/router.svelte.ts`：仅新增 `sidebarCollapsed` 字段，不改现有逻辑
+- `src/components/PlayerBar.svelte`：同步 `desktop/` `sp/` import 路径（2 行）
+- `src/App.svelte`：同步 `sp/` import 路径（2 行）+ 增 PC 外壳骨架
+- `src/components/TopBar.svelte`：内部增 `lg:` PC 分支（SP 分支保留不改）
+- `src/lib/router.svelte.ts`：仅新增 `sidebarCollapsed` 字段
 
-### 绝对不改（SP 保护区）
+### 绝对不改（SP 保护区，内容不动）
 
-- `src/components/BottomTabBar.svelte`
-- `src/components/PlayerBarMobile.svelte`
-- `src/components/PullToRefresh.svelte`
-- `src/components/PlaylistTab.svelte`（内部逻辑不动，仅父容器移除 900px 限制）
-- `src/components/SearchTab.svelte`（同上）
-- `src/components/DownloadMgrTab.svelte`（同上）
-- `src/components/GlobalAudioPlayer.svelte`
-- `src/lib/theme.ts`（`switchToLegacy` 保留，仅在 `layout.svelte.ts` 新增 `switchToLegacyTabs`）
+- `components/sp/BottomTabBar.svelte`（路径变但内容不动）
+- `components/sp/PlayerBarMobile.svelte`（同上）
+- `components/sp/PullToRefresh.svelte`（同上）
+- `components/PlaylistTab.svelte`（内部逻辑不动，父容器移除 900px 限制）
+- `components/SearchTab.svelte`（同上）
+- `components/DownloadMgrTab.svelte`（同上）
+- `components/GlobalAudioPlayer.svelte`
+- `src/lib/theme.ts`
 
 ---
 
 ## 验收标准
 
+- [ ] `git mv` 迁移后 `npm run check && npm run test` 全绿（迁移 commit 独立）
 - [ ] 1440px 宽屏下，左侧边栏可见，右侧主区域撑满，无大片死白
 - [ ] 边栏展开/折叠过渡流畅（250ms），折叠后图标 + tooltip 可识别
 - [ ] 左侧点击歌单 -> 右侧 Gallery/Detail 正确切换，面包屑返回正常
