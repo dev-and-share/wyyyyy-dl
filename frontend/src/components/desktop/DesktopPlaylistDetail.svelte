@@ -143,19 +143,19 @@
 </script>
 
 <!-- 🖥️ PC 桌面端：歌单详情宽屏大表 (Detail View) -->
-<div class="flex flex-col gap-4 select-none animate-fade-in" data-testid="desktop-playlist-detail">
-  <!-- 1. 顶部面包屑导航 -->
-  <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+<div class="flex flex-col gap-2.5 select-none animate-fade-in" data-testid="desktop-playlist-detail">
+  <!-- 1. 顶部面包屑导航 (与右上角控制胶囊平齐在同一行) -->
+  <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)] min-h-[34px] pr-[215px]">
     <button
       type="button"
       data-testid="btn-back-gallery"
-      class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-main)] border border-[var(--btn-secondary-border)] cursor-pointer transition-colors font-medium"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-main)] border border-[var(--btn-secondary-border)] cursor-pointer transition-colors font-medium shrink-0"
       onclick={onBackToGallery}
     >
       <span>←</span>
       <span>返回歌单画廊</span>
     </button>
-    <span class="opacity-40">/</span>
+    <span class="opacity-40 shrink-0">/</span>
     <span class="truncate font-semibold text-[var(--text-main)]">{playlist?.name || '歌单详情'}</span>
   </div>
 
@@ -165,21 +165,21 @@
       <span>正在加载歌单内容...</span>
     </div>
   {:else if playlist}
-    <!-- 2. Hero 横幅区 -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
+    <!-- 2. 精致紧凑 Hero 横幅区 -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
       <img
         src={playlist.coverImgUrl || DEFAULT_VINYL_COVER}
         alt={playlist.name}
-        class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover shadow-lg shrink-0 border border-[var(--border-subtle)]"
+        class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shadow-md shrink-0 border border-[var(--border-subtle)]"
       />
-      <div class="flex-1 min-w-0 flex flex-col gap-2">
+      <div class="flex-1 min-w-0 flex flex-col gap-1.5">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
             歌单
           </span>
           <span class="text-xs text-[var(--text-muted)]">ID: {playlist.id}</span>
         </div>
-        <h1 class="text-xl sm:text-2xl font-bold text-[var(--text-main)] truncate tracking-tight">
+        <h1 class="text-lg sm:text-xl font-bold text-[var(--text-main)] truncate tracking-tight">
           {playlist.name}
         </h1>
         <p class="text-xs text-[var(--text-secondary)] flex items-center gap-3">
@@ -188,11 +188,11 @@
         </p>
 
         <!-- 快捷操作按钮组 -->
-        <div class="flex items-center gap-2.5 pt-1 flex-wrap">
+        <div class="flex items-center gap-2 pt-0.5 flex-wrap">
           <button
             type="button"
             data-testid="btn-detail-play-all"
-            class="btn-primary flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer shadow-md"
+            class="btn-primary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
             onclick={handlePlayAll}
           >
             <span>▶️</span>
@@ -201,7 +201,7 @@
           <button
             type="button"
             data-testid="btn-detail-download-all"
-            class="btn-secondary flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+            class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
             onclick={handleDownloadAll}
           >
             <span>🖥️</span>
@@ -211,9 +211,9 @@
       </div>
     </div>
 
-    <!-- 3. 宽屏歌曲大表格 (表头 Sticky 吸顶) -->
-    <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm">
-      <div class="overflow-x-auto max-h-[600px] overflow-y-auto custom-table-scroll">
+    <!-- 3. 宽屏歌曲大表格 (高度自适应视口，表头 Sticky 吸顶，无外层滚动) -->
+    <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
+      <div class="overflow-x-auto max-h-[calc(100vh-325px)] min-h-[240px] overflow-y-auto custom-table-scroll">
         <table class="w-full text-left border-collapse text-xs">
           <!-- 吸顶表头 -->
           <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">

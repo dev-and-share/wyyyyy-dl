@@ -32,8 +32,8 @@
 
 <!-- 顶栏 (TopBar) -->
 {#if isDesktopLayout}
-  <!-- 💻 PC 桌面侧边栏模式：右上角极简控制胶囊 (释放顶部大横幅空间) -->
-  <header class="w-full flex items-center justify-end mb-2.5 px-1 select-none" data-testid="desktop-top-bar">
+  <!-- 💻 PC 桌面侧边栏模式：右上角极简控制胶囊 (与主区首行平齐并排，不占垂直高度) -->
+  <header class="hidden lg:flex absolute right-4 top-4 z-20 items-center justify-end select-none pointer-events-auto" data-testid="desktop-top-bar">
     <div class="flex items-center gap-1.5 p-1 bg-[var(--topbar-bg)] backdrop-blur-md rounded-2xl border border-[var(--topbar-border)] shadow-sm">
       <button
         data-testid="btn-toggle-theme"

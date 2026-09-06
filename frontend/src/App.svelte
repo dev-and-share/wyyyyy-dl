@@ -118,7 +118,7 @@
   {/if}
 
   <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 模式根据桌面分栏自适应扩展至 1400px) -->
-  <div class="flex-1 flex flex-col min-w-0 app-main-container {layoutState.mode === 'desktop-sidebar' ? 'max-w-[1400px]' : 'max-w-[900px]'} w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8">
+  <div class="flex-1 flex flex-col min-w-0 app-main-container {layoutState.mode === 'desktop-sidebar' ? 'max-w-[1400px] relative' : 'max-w-[900px]'} w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0">
     <!-- 顶栏导航 -->
     <TopBar
       tab={routerState.tab} {themeMode} {repeat}
@@ -134,7 +134,7 @@
     />
 
   <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
-  <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px]">
+  <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px] lg:pb-[78px]">
     <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
       {#if layoutState.mode === 'desktop-sidebar'}
         <!-- 💻 PC 桌面端专属：去手风琴画廊与宽屏大表格 (>= 1024px) -->
