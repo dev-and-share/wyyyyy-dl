@@ -16,11 +16,16 @@ public class UiVersionController {
     @ResponseBody
     @GetMapping("/api/ui-version")
     public RespEntity<String> switchVersion(@RequestParam("v") String v, HttpServletResponse response) {
-        String ver = "legacy".equals(v) ? "legacy" : "svelte";
-        Cookie c = new Cookie("ui_version", ver);
+        // 统一 Cookie：ui_mode = legacy | tabs | desktop
+        String mode;
+        if ("legacy".equals(v)) mode = "legacy";
+        else if ("tabs".equals(v)) mode = "tabs";
+        else mode = "desktop";
+
+        Cookie c = new Cookie("ui_mode", mode);
         c.setPath("/");
         c.setMaxAge(31536000);
         response.addCookie(c);
-        return RespEntity.apply(CommonRespInfo.SUCCESS, ver);
+        return RespEntity.apply(CommonRespInfo.SUCCESS, mode);
     }
 }

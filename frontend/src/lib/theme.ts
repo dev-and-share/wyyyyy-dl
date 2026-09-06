@@ -23,7 +23,13 @@ export function getInitialTheme(): ThemeMode {
 }
 
 export function switchToLegacy() {
-  document.cookie = 'ui_version=legacy; path=/; max-age=31536000';
-  localStorage.setItem('wyyyy_ui_version', 'legacy');
-  window.location.href = '/?v=legacy';
+  // 统一 Cookie：ui_mode=legacy，后端读此值决定路由
+  document.cookie = 'ui_mode=legacy; path=/; max-age=31536000; SameSite=Lax';
+  // Dev 环境 Vite 跑在 5173，后端在 8080，需要明确跳到后端地址
+  const port = window.location.port;
+  const isDev = port === '5173' || port === '5174';
+  const backendOrigin = isDev
+    ? `${window.location.protocol}//${window.location.hostname}:8080`
+    : window.location.origin;
+  window.location.href = `${backendOrigin}/`;
 }

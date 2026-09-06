@@ -69,6 +69,7 @@
       <span class="hidden sm:inline">允许重复</span>
     </label>
     {#if layoutMode === 'legacy-tabs'}
+      <!-- 精简版：承上（桌面版）启下（旧版）-->
       <button
         type="button"
         data-testid="btn-switch-desktop"
@@ -78,15 +79,24 @@
       >
         <span>🖥️</span><span class="hidden sm:inline"> 桌面版</span>
       </button>
+      <button
+        type="button"
+        data-testid="btn-switch-js-legacy"
+        class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+        onclick={onSwitchToLegacy}
+        title="返回纯 JS 旧版 (Cookie 切换)"
+      >
+        <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
+      </button>
     {:else}
       <button
         type="button"
         data-testid="btn-switch-legacy"
         class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-        onclick={onSwitchToLegacy}
-        title="返回纯 JS 旧版 (Cookie 切换)"
+        onclick={isDesktopLayout ? onSwitchToLegacyTabs : onSwitchToLegacy}
+        title={isDesktopLayout ? "切换为精简 Tab 折叠模式（Svelte 版）" : "返回纯 JS 旧版 (Cookie 切换)"}
       >
-        <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
+        <span>↩️</span><span class="hidden sm:inline"> {isDesktopLayout ? '精简版' : '旧版'}</span>
       </button>
     {/if}
   </div>

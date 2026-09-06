@@ -1,17 +1,28 @@
 export type PcLayoutMode = 'desktop-sidebar' | 'legacy-tabs';
 
-const STORAGE_KEY_PC_LAYOUT = 'wyyyy_pc_layout';
+/** 统一 Cookie 变量：ui_mode = desktop | tabs | legacy */
+const COOKIE_NAME = 'ui_mode';
 
-export function getInitialPcLayout(): PcLayoutMode {
-  if (typeof localStorage === 'undefined') return 'desktop-sidebar';
-  const v = localStorage.getItem(STORAGE_KEY_PC_LAYOUT);
-  if (v === 'legacy-tabs') return 'legacy-tabs';
-  return 'desktop-sidebar';
+function getCookieValue(): string | null {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match(/(?:^|;\s*)ui_mode=([^;]+)/);
+  return m?.[1] ?? null;
+}
+
+function setCookie(value: string) {
+  document.cookie = `${COOKIE_NAME}=${value}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
 function checkIsDesktop(): boolean {
   if (typeof window === 'undefined') return false;
   return window.innerWidth >= 1024;
+}
+
+export function getInitialPcLayout(): PcLayoutMode {
+  const v = getCookieValue();
+  // 'tabs' → 精简版；其余（'desktop' / 未设置）→ 桌面版
+  if (v === 'tabs') return 'legacy-tabs';
+  return 'desktop-sidebar';
 }
 
 export const layoutState = $state<{
@@ -23,9 +34,7 @@ export const layoutState = $state<{
 });
 
 export function switchToLegacyTabs(): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_PC_LAYOUT, 'legacy-tabs');
-  } catch {}
+  setCookie('tabs');
   layoutState.mode = 'legacy-tabs';
   if (typeof window !== 'undefined') {
     window.location.reload();
@@ -33,9 +42,7 @@ export function switchToLegacyTabs(): void {
 }
 
 export function switchToDesktopSidebar(): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_PC_LAYOUT, 'desktop-sidebar');
-  } catch {}
+  setCookie('desktop');
   layoutState.mode = 'desktop-sidebar';
   if (typeof window !== 'undefined') {
     window.location.reload();
