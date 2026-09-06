@@ -211,13 +211,26 @@
     onPlayQueue(q);
   }
 
-  async function downloadSingleTrack(id: string) {
+  async function downloadSingleTrack(id: string, name?: string) {
     try {
-      await api.downloadSingle(id);
-      showToast('已提交单曲下载任务', 'success');
+      const res = await api.downloadSingle(id);
+      const task = res?.data;
+      if (task && typeof task === 'object') {
+        if (task.status === 'SKIP') {
+          showToast(`已跳过《${task.name || name || '歌曲'}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 4000);
+        } else if (task.status === 'FAILED') {
+          showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
+        } else if (task.status === 'SUCCESS') {
+          showToast(`下载成功: 《${task.name || name || '歌曲'}》`, 'success', 2500);
+        } else {
+          showToast(`已提交下载: 《${task.name || name || '歌曲'}》`, 'info', 2000);
+        }
+      } else {
+        showToast('已提交单曲下载任务', 'info', 1500);
+      }
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
-      showToast('提交单曲下载失败: ' + e.message, 'error');
+      showToast('提交单曲下载失败: ' + (e.message || e), 'error');
     }
   }
 </script>

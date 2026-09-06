@@ -104,7 +104,7 @@
 </script>
 
 <div style="margin-left: {level * 14}px; border-left: {level > 0 ? '1px dashed var(--border-subtle)' : 'none'}; padding-left: {level > 0 ? '8px' : '0'};">
-  <div class="flex justify-between items-center py-2 px-2.5 border-b border-[var(--border-subtle)] gap-2 {expanded ? 'bg-black/5 dark:bg-white/[0.04]' : ''}">
+  <div class="flex justify-between items-center py-2 px-2.5 border-b border-[var(--border-subtle)] gap-2 group {expanded ? 'bg-black/5 dark:bg-white/[0.04]' : ''}">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
@@ -137,7 +137,7 @@
         </span>
       {/if}
     </div>
-    <div class="flex gap-1.5 shrink-0">
+    <div class="flex gap-1.5 shrink-0 transition-all duration-150 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
       {#if item.directory}
         {#if item.trackCount > 0}
           <SlotBtn onclick={(e) => handlePlay(e)}>▶ 连播</SlotBtn>

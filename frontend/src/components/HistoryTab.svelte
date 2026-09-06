@@ -87,7 +87,7 @@
   <div class="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)]">
     <ul class="divide-y divide-black/5 dark:divide-white/5 m-0 p-0 list-none">
       {#each histList as h}
-        <li class="flex justify-between items-center py-2 px-3 hover:bg-black/5 dark:hover:bg-white/5 transition-all">
+        <li class="flex justify-between items-center py-2 px-3 hover:bg-black/5 dark:hover:bg-white/5 transition-all group">
           <div class="flex-1 overflow-hidden min-w-0 pr-2">
             <div class="font-bold text-xs text-[var(--text-main)] truncate">{h.songName || h.title}</div>
             <div class="text-[11px] text-[var(--text-secondary)] truncate mt-0.5 flex items-center gap-1.5">
@@ -98,7 +98,7 @@
               </span>
             </div>
           </div>
-          <div class="flex gap-1.5 shrink-0">
+          <div class="flex gap-1.5 shrink-0 transition-all duration-150 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
             <SlotBtn onclick={() => copy(h.hostFilePath || h.filePath)}>📂 定位</SlotBtn>
             <SlotBtn onclick={() => { if (confirm('确认删除此记录?')) alert('删除操作已触发'); }}>🗑️ 删除</SlotBtn>
           </div>
