@@ -15,6 +15,7 @@
   import TopBar from './components/TopBar.svelte';
   import DesktopSidebar from './components/desktop/DesktopSidebar.svelte';
   import DesktopPlaylistView from './components/desktop/DesktopPlaylistView.svelte';
+  import DesktopSearchView from './components/desktop/DesktopSearchView.svelte';
   import PlaylistTab from './components/PlaylistTab.svelte';
   import SearchTab from './components/SearchTab.svelte';
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
@@ -168,13 +169,37 @@
       {/if}
     </div>
     <div style="display: {routerState.tab === 'search' ? 'contents' : 'none'};">
-      <SearchTab
-        albumId={routerState.albumId} {curTrack} {playing}
-        downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
-        onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
-        onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
-        {showToast}
-      />
+      {#if layoutState.mode === 'desktop-sidebar'}
+        <!-- 💻 PC 桌面端专属：去手风琴全宽搜索中心 (>= 1024px) -->
+        <div class="hidden lg:block w-full">
+          <DesktopSearchView
+            {curTrack} {playing}
+            downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
+            onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
+            onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
+            {showToast}
+          />
+        </div>
+        <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
+        <div class="block lg:hidden w-full">
+          <SearchTab
+            albumId={routerState.albumId} {curTrack} {playing}
+            downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
+            onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
+            onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
+            {showToast}
+          />
+        </div>
+      {:else}
+        <!-- 📱 精简模式 (纯折叠手风琴卡片) -->
+        <SearchTab
+          albumId={routerState.albumId} {curTrack} {playing}
+          downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
+          onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
+          onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
+          {showToast}
+        />
+      {/if}
     </div>
     <div style="display: {routerState.tab === 'download-mgr' ? 'contents' : 'none'};">
       <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
