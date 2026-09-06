@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
-  import type { Track } from '../lib/types';
-  import PlayerCoverRing from './PlayerCoverRing.svelte';
-  import PlayerProgressBar from './PlayerProgressBar.svelte';
-  import PlayerIcon from './PlayerIcon.svelte';
-  import TrackSourceBadge from './TrackSourceBadge.svelte';
+  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../../lib/utils';
+  import type { Track } from '../../lib/types';
+  import PlayerCoverRing from '../PlayerCoverRing.svelte';
+  import PlayerProgressBar from '../PlayerProgressBar.svelte';
+  import PlayerIcon from '../PlayerIcon.svelte';
+  import TrackSourceBadge from '../TrackSourceBadge.svelte';
 
   let {
     curTrack,

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Track } from '../lib/types';
-  import PlayerBarDesktop from './PlayerBarDesktop.svelte';
-  import PlayerBarMobile from './PlayerBarMobile.svelte';
+  import PlayerBarDesktop from './desktop/PlayerBarDesktop.svelte';
+  import PlayerBarMobile from './sp/PlayerBarMobile.svelte';
   import { DEFAULT_VINYL_COVER } from '../lib/utils';
 
   let {

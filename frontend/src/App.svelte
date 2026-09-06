@@ -17,10 +17,10 @@
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
   import GlobalAudioPlayer from './components/GlobalAudioPlayer.svelte';
   import RevealModal from './components/RevealModal.svelte';
-  import PullToRefresh from './components/PullToRefresh.svelte';
+  import PullToRefresh from './components/sp/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
-  import BottomTabBar from './components/BottomTabBar.svelte';
+  import BottomTabBar from './components/sp/BottomTabBar.svelte';
 
   // ---------- 全局状态 ----------
   let repeat = $state(false);
