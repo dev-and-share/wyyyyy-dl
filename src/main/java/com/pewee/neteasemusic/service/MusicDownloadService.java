@@ -131,8 +131,33 @@ public class MusicDownloadService implements InitializingBean {
 		this.path = path;
 	}
 
-	private String getType(String url) {
-		return url.substring(url.lastIndexOf("."), url.indexOf("?"));
+	public static String getType(String url) {
+		return getType(url, null);
+	}
+
+	public static String getType(String url, String fallbackType) {
+		if (url != null && !url.trim().isEmpty()) {
+			String cleanUrl = url.contains("?") ? url.substring(0, url.indexOf("?")) : url;
+			int lastSlash = cleanUrl.lastIndexOf("/");
+			String lastSegment = (lastSlash >= 0) ? cleanUrl.substring(lastSlash + 1) : cleanUrl;
+			int dotIndex = lastSegment.lastIndexOf(".");
+			if (dotIndex >= 0 && dotIndex < lastSegment.length() - 1) {
+				String ext = lastSegment.substring(dotIndex).toLowerCase();
+				if (ext.matches("^\\.(mp3|flac|m4a|aac|wav|ogg|ape|wma)$")) {
+					return ext;
+				}
+			}
+		}
+		if (fallbackType != null && !fallbackType.trim().isEmpty()) {
+			String cleanFallback = fallbackType.trim().toLowerCase();
+			if (!cleanFallback.startsWith(".")) {
+				cleanFallback = "." + cleanFallback;
+			}
+			if (cleanFallback.matches("^\\.(mp3|flac|m4a|aac|wav|ogg|ape|wma)$")) {
+				return cleanFallback;
+			}
+		}
+		return ".mp3";
 	}
 
 	@Resource
@@ -226,7 +251,7 @@ public class MusicDownloadService implements InitializingBean {
 					? FileUtils.getValidatedPathName(artist + " - " + songName)
 					: FileUtils.getValidatedPathName(songName);
 			log.info("开始将歌曲: {} 写入目录: {}", fileName, dir);
-			File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl())).toFile();
+			File file = Paths.get(dir, fileName + getType(analysisSingleMusic.getUrl(), analysisSingleMusic.getType())).toFile();
 			FileUtils.writeToFile(file.toPath(),
 					HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
 

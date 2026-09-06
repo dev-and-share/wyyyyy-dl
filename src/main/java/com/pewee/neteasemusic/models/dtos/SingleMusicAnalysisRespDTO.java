@@ -27,6 +27,8 @@ public class SingleMusicAnalysisRespDTO {
 	
 	private String url;
 	
+	private String type;
+	
 	private Boolean freeTrial;
 	
 	private Integer freeTrialDuration;

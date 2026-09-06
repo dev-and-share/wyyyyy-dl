@@ -169,6 +169,7 @@ public class AnalysisService {
             if (songUrlData != null && songUrlData.getString("url") != null) {
                 dto.setUrl(songUrlData.getString("url").replace("http://", "https://"));
                 dto.setSize(formatSize(songUrlData.getLongValue("size")));
+                dto.setType(songUrlData.getString("type"));
                 dto.setStatus(200);
 
                 // 🎵 检查是否为试听片段 (Check if track is a free trial preview)
