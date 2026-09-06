@@ -7,6 +7,9 @@
   import DetailHeaderCard from './DetailHeaderCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
+  import MyPlaylistsSection from './MyPlaylistsSection.svelte';
+  import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import { cacheTrackToBrowser } from '../lib/pwaCache';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -67,6 +70,10 @@
   let songId = $state(getStored(STORAGE_KEY_SONG_ID, ''));
   let songLevel = $state('lossless');
   let songInfo: any = $state(null);
+
+  // 弹窗与交互状态
+  let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
+  let cachingTrackId = $state<string | number | null>(null);
 
   function saveAccState() {
     try {
@@ -180,13 +187,49 @@
       showToast('播放歌单失败: ' + (e.message || e), 'error');
     }
   }
-  async function downloadSingleTrack(id: string) {
+  async function downloadSingleTrack(id: string, name?: string) {
     try {
-      await api.downloadSingle(id);
-      showToast('已提交下载', 'success');
+      const res = await api.downloadSingle(id);
+      const task = res?.data;
+      if (task && typeof task === 'object') {
+        if (task.status === 'SKIP') {
+          showToast(`已跳过《${task.name || name || '歌曲'}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 4000);
+        } else if (task.status === 'FAILED') {
+          showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
+        } else if (task.status === 'SUCCESS') {
+          showToast(`下载成功: 《${task.name || name || '歌曲'}》`, 'success', 2500);
+        } else {
+          showToast(`已提交下载: 《${task.name || name || '歌曲'}》`, 'info', 2000);
+        }
+      } else {
+        showToast('已提交下载', 'info', 1500);
+      }
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
-      showToast('下载失败: ' + e, 'error');
+      showToast('下载请求异常: ' + (e.message || e), 'error');
+    }
+  }
+
+  async function handleCacheTrack(t: any) {
+    cachingTrackId = t.id;
+    showToast(`正在缓存《${t.name}》...`, 'info', 1500);
+    try {
+      const res = await cacheTrackToBrowser({
+        id: t.id,
+        name: t.name,
+        artist: formatArtist(t),
+        cover: t.al?.picUrl || t.picUrl || DEFAULT_VINYL_COVER,
+        album: t.al?.name || t.album
+      });
+      if (res.success) {
+        showToast(res.isTrial ? `已缓存(试听片段): 《${t.name}》` : `已离线缓存: 《${t.name}》`, res.isTrial ? 'warning' : 'success');
+      } else {
+        showToast(res.msg || '缓存失败', 'error');
+      }
+    } catch (e: any) {
+      showToast('缓存失败: ' + (e.message || e), 'error');
+    } finally {
+      cachingTrackId = null;
     }
   }
 
@@ -202,50 +245,13 @@
 </script>
 
 <!-- Section 1: 我的歌单 -->
-<AccordionCard title="📋 1. 我的歌单" bind:open={accMy} onToggle={saveAccState}>
-  <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
-    <span class="text-[13px] text-[var(--text-secondary)] font-medium">账号歌单快捷加载：</span>
-    <div class="flex gap-1.5 flex-nowrap w-auto max-sm:w-full max-sm:grid max-sm:grid-cols-4 max-sm:gap-1.5">
-      <button class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-sky-600 to-sky-700" onclick={() => loadMyPlaylists('created')}>📂 创建<span class="hidden sm:inline">的歌单</span></button>
-      <button class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-purple-600 to-purple-700" onclick={() => loadMyPlaylists('subscribed')}>⭐ 收藏<span class="hidden sm:inline">的歌单</span></button>
-      <button class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700" onclick={() => loadMyPlaylists('all')}>📋 全部</button>
-      <button class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-emerald-600 to-emerald-700" onclick={() => showToast('新建见外层弹窗', 'info')}>➕ 新建<span class="hidden sm:inline">歌单</span></button>
-    </div>
-  </div>
-  <ul class="data-list scrollable-list">
-    {#each myPlaylists.filter(p => playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed)) as pl, idx}
-      <li class="track-item-card">
-        <div class="track-title-row">
-          <span class="status-badge shrink-0">{pl.subscribed ? '收藏' : '创建'}</span>
-          <button
-            type="button"
-            class="clickable-track-title truncate cursor-pointer font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-            onclick={() => handleViewPlaylist(String(pl.id))}
-          >
-            {pl.name}
-          </button>
-          <span class="text-xs text-[var(--text-muted)] shrink-0">({pl.trackCount || 0}首)</span>
-        </div>
-        <div class="track-action-group">
-          <SlotBtn
-            onclick={() => playPlaylistDirect(String(pl.id), pl.name)}
-            title="立即播放整张歌单"
-          >
-            ▶️ 播放
-          </SlotBtn>
-          {#if pl.subscribed}
-            <SlotBtn onclick={() => api.playlistSubscribe(String(pl.id), false).then(j => j.code === '000000' ? showToast('已取消', 'success') : showToast(j.msg, 'warning'))}>💔 取消</SlotBtn>
-          {:else if idx > 0}
-            <SlotBtn onclick={() => api.playlistDelete(String(pl.id)).then(j => j.code === '000000' ? showToast('已删除', 'success') : showToast(j.msg, 'warning'))}>🗑️ 删除</SlotBtn>
-          {/if}
-          <SlotBtn onclick={() => handleViewPlaylist(String(pl.id))}>👉 详情</SlotBtn>
-        </div>
-      </li>
-    {:else}
-      <li style="justify-content:center; color:var(--text-muted);">暂无歌单</li>
-    {/each}
-  </ul>
-</AccordionCard>
+<MyPlaylistsSection
+  bind:open={accMy}
+  onToggle={saveAccState}
+  onViewPlaylist={(id) => handleViewPlaylist(id)}
+  onPlayPlaylist={(id, name) => playPlaylistDirect(id, name)}
+  {showToast}
+/>
 
 <!-- Section 2: 查看歌单详情 -->
 <AccordionCard title="🎼 2. 查看歌单详情" bind:open={accDetail} onToggle={saveAccState}>
@@ -290,10 +296,10 @@
             {#if isLocal}
               <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
             {:else}
-              <SlotBtn onclick={() => downloadSingleTrack(String(t.id))}>📥 下载</SlotBtn>
+              <SlotBtn onclick={() => downloadSingleTrack(String(t.id), t.name)}>📥 下载</SlotBtn>
             {/if}
-            <SlotBtn onclick={() => showToast('缓存功能开发中', 'info')}>📲 缓存</SlotBtn>
-            <SlotBtn onclick={() => showToast('添加歌单功能开发中', 'info')}>➕ 歌单</SlotBtn>
+            <SlotBtn onclick={() => handleCacheTrack(t)}>{cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
+            <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
           </div>
         </li>
       {/each}
@@ -345,7 +351,7 @@
       </button>
       <button
         class="btn-secondary"
-        onclick={() => downloadSingleTrack(String(songInfo.id || songId))}
+        onclick={() => downloadSingleTrack(String(songInfo.id || songId), songInfo.name)}
       >
         📥 下载
       </button>
@@ -378,3 +384,12 @@
     <div class="empty-placeholder-card"><div class="empty-icon">🎧</div><div class="empty-title">在歌单中点击歌曲或输入歌曲 ID 查看</div></div>
   {/if}
 </AccordionCard>
+
+{#if addToPlaylistSong}
+  <AddToPlaylistModal
+    song={addToPlaylistSong}
+    onClose={() => addToPlaylistSong = null}
+    {showToast}
+  />
+{/if}
+

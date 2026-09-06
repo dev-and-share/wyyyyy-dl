@@ -54,7 +54,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
-      class="fixed right-[18px] bottom-[calc(16px+env(safe-area-inset-bottom,0px))] w-14 h-14 rounded-full bg-[rgba(15,23,42,0.94)] dark:bg-[rgba(15,23,42,0.94)] backdrop-blur-2xl shadow-[0_12px_32px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.15)] z-[9999] flex items-center justify-center cursor-pointer select-none transition-all duration-250 hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(0,0,0,0.8),0_0_20px_rgba(239,68,68,0.35)] active:scale-95 animate-[scaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]"
+      class="player-minimized-bubble fixed right-[18px] w-14 h-14 rounded-full bg-[rgba(15,23,42,0.94)] dark:bg-[rgba(15,23,42,0.94)] backdrop-blur-2xl shadow-[0_12px_32px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.15)] z-[9999] flex items-center justify-center cursor-pointer select-none transition-all duration-250 hover:scale-110 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(0,0,0,0.8),0_0_20px_rgba(239,68,68,0.35)] active:scale-95 animate-[scaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]"
       onclick={() => minimized = false}
       title="点击展开播放控制栏 (进度 {Math.round(progressRatio * 100)}%)"
     >

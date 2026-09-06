@@ -117,6 +117,42 @@
         text-decoration: underline;
     }
 
+    /* 🏷️ Status Badges & Tag UI */
+    .status-badge {
+        padding: 1.5px 6px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.35;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        letter-spacing: 0.2px;
+    }
+
+    .status-badge.badge-subscribed {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.28);
+    }
+    [data-theme="light"] .status-badge.badge-subscribed {
+        background: #e0f2fe;
+        color: #0284c7;
+        border: 1px solid #bae6fd;
+    }
+
+    .status-badge.badge-created {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.28);
+    }
+    [data-theme="light"] .status-badge.badge-created {
+        background: #dcfce7;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+    }
+
     /* List Items */
     ul.data-list {
         list-style: none;
@@ -288,6 +324,30 @@
         align-items: center;
         gap: 6px;
         flex-shrink: 0;
+        transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 💻 PC 桌面端：列表操作按钮组默认淡化隐藏，鼠标 Hover 或键盘 Tab 聚焦该行时平滑浮现 */
+    @media (hover: hover) and (min-width: 769px) {
+        .track-item-card .track-action-group {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(4px);
+        }
+
+        .track-item-card:hover .track-action-group,
+        .track-item-card:focus-within .track-action-group {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(0);
+        }
+
+        /* 正在播放中的曲目始终保持操作按钮可见，方便用户随时暂停/查看 */
+        .track-item-card.is-active-playing .track-action-group {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: translateX(0) !important;
+        }
     }
 
     /* 📱 页面最底部微型版本号 Footer 样式 */
@@ -321,6 +381,9 @@
             width: 100% !important;
             justify-content: flex-end !important;
             margin-top: 2px !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: none !important;
         }
 
         .form-row {
@@ -333,4 +396,24 @@
             flex-wrap: nowrap !important;
         }
     }
+
+    /* 📱 移动端悬浮播放器底栏：紧凑靠近底部并自适应安全区 */
+    .mobile-player-floating-bar {
+        bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .player-minimized-bubble {
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* 📱 PWA 独立窗口模式 (无浏览器地址栏/工具栏)，紧贴屏幕底部 */
+    @media all and (display-mode: standalone) {
+        .mobile-player-floating-bar {
+            bottom: max(4px, env(safe-area-inset-bottom, 0px)) !important;
+        }
+        .player-minimized-bubble {
+            bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+        }
+    }
 }
+
