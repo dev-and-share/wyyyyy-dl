@@ -16,6 +16,7 @@
   import DesktopSidebar from './components/desktop/DesktopSidebar.svelte';
   import DesktopPlaylistView from './components/desktop/DesktopPlaylistView.svelte';
   import DesktopSearchView from './components/desktop/DesktopSearchView.svelte';
+  import DesktopDownloadMgrView from './components/desktop/DesktopDownloadMgrView.svelte';
   import PlaylistTab from './components/PlaylistTab.svelte';
   import SearchTab from './components/SearchTab.svelte';
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
@@ -202,7 +203,24 @@
       {/if}
     </div>
     <div style="display: {routerState.tab === 'download-mgr' ? 'contents' : 'none'};">
-      <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
+      {#if layoutState.mode === 'desktop-sidebar'}
+        <!-- 💻 PC 桌面端专属：本地管理双栏工作台 (>= 1024px) -->
+        <div class="hidden lg:block w-full">
+          <DesktopDownloadMgrView
+            {curTrack} {playing}
+            onPlayQueue={setQueue}
+            onReveal={handleReveal}
+            {showToast}
+          />
+        </div>
+        <!-- 📱 移动端 / 窄屏：保留原有单列折叠手风琴 (< 1024px) -->
+        <div class="block lg:hidden w-full">
+          <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
+        </div>
+      {:else}
+        <!-- 📱 精简模式 (纯折叠手风琴卡片) -->
+        <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
+      {/if}
     </div>
 
     <!-- 底部低调版本号 -->
