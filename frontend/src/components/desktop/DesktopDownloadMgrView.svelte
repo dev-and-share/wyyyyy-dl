@@ -72,7 +72,7 @@
 
   async function handleDeleteHistory(item: any) {
     if (!item?.id) return;
-    if (!confirm(`确定要从下载历史数据库中移除《${item.name || '此歌曲'}》吗？（不会删除磁盘文件）`)) {
+    if (!confirm(`确定要从下载历史数据库中移除《${item.songName || item.name || '此歌曲'}》吗？（不会删除磁盘文件）`)) {
       return;
     }
     try {
@@ -263,8 +263,10 @@
               {:else}
                 {#each histList as item, i (item.id || i)}
                   {@const idx = (histPage - 1) * 10 + i + 1}
+                  {@const songTitle = item.songName || item.name || item.title || '未知歌曲'}
                   {@const artist = item.artist || item.artists || ''}
-                  {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(item.songId) || (curTrack.name && curTrack.name === item.name)))}
+                  {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(item.songId || item.id) || (curTrack.name && curTrack.name === songTitle)))}
+                  {@const displayPath = item.hostFilePath || item.filePath || item.relativePath || item.path || '默认音乐目录'}
                   <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
                     <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
                       {#if isPlayingThis && playing}
@@ -275,11 +277,11 @@
                     </td>
                     <td class="py-2.5 px-3 min-w-0">
                       <div class="flex flex-col gap-0.5">
-                        <span class="font-semibold text-[var(--text-main)] truncate max-w-xs group-hover:text-red-400 transition-colors">
-                          {item.name || item.title || '未知歌曲'}
+                        <span class="font-semibold text-[var(--text-main)] truncate max-w-xs group-hover:text-red-400 transition-colors" title={songTitle}>
+                          {songTitle}
                         </span>
                         {#if artist}
-                          <span class="text-[11px] text-[var(--text-muted)] truncate">{artist}</span>
+                          <span class="text-[11px] text-[var(--text-muted)] truncate" title={artist}>{artist}</span>
                         {/if}
                       </div>
                     </td>
@@ -289,18 +291,26 @@
                         <span class="ml-1 text-[10px] text-red-400/80 font-mono uppercase">.{item.format}</span>
                       {/if}
                     </td>
-                    <td class="py-2.5 px-3 text-[var(--text-muted)] font-mono text-[11px] truncate max-w-[200px] hidden md:table-cell" title={item.path || ''}>
-                      {item.path || '默认音乐目录'}
+                    <td class="py-2.5 px-3 text-[var(--text-muted)] font-mono text-[11px] truncate max-w-[200px] hidden md:table-cell" title={displayPath}>
+                      {displayPath}
                     </td>
                     <td class="py-2.5 pr-4 text-right whitespace-nowrap">
                       <div class="inline-flex items-center justify-end gap-1.5">
                         <SlotBtn
                           playing={isPlayingThis && playing}
-                          onclick={() => onPlayQueue([{ id: item.songId || item.id, name: item.name, artist, cover: item.cover || DEFAULT_VINYL_COVER, isLocal: true }])}
+                          onclick={() => onPlayQueue([{
+                            id: item.songId && item.songId > 0 ? item.songId : (item.id || `local_${Date.now()}`),
+                            name: songTitle,
+                            artist: artist || '未知歌手',
+                            album: item.album || '本地曲库',
+                            cover: item.cover || DEFAULT_VINYL_COVER,
+                            url: `/v2/history/stream?path=${encodeURIComponent(item.relativePath || item.filePath || '')}`,
+                            isLocal: true
+                          }])}
                         >
                           {isPlayingThis && playing ? '⏸ 暂停' : '▶ 本地'}
                         </SlotBtn>
-                        <SlotBtn onclick={() => onReveal({ id: item.songId || item.id, name: item.name, artist, path: item.path })}>
+                        <SlotBtn onclick={() => onReveal({ id: item.songId || item.id, name: songTitle, artist, path: displayPath })}>
                           📂 定位
                         </SlotBtn>
                         <button

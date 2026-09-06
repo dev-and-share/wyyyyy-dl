@@ -47,21 +47,18 @@ describe('DesktopSidebar', () => {
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
   });
 
-  it('triggers onSwitchToLegacyTabs when clicked', async () => {
-    const onSwitchToLegacyTabs = vi.fn();
-
+  it('renders sidebar container correctly', async () => {
     const { getByTestId } = render(DesktopSidebar, {
       props: {
         tab: 'playlist',
         collapsed: false,
         onSwitchTab: vi.fn(),
         onToggleCollapse: vi.fn(),
-        onSwitchToLegacyTabs
+        onSwitchToLegacyTabs: vi.fn()
       }
     });
 
-    const legacyBtn = getByTestId('btn-sidebar-legacy-tabs');
-    await fireEvent.click(legacyBtn);
-    expect(onSwitchToLegacyTabs).toHaveBeenCalledTimes(1);
+    const sidebar = getByTestId('desktop-sidebar');
+    expect(sidebar).toBeDefined();
   });
 });

@@ -244,22 +244,6 @@
       </div>
     {/if}
   </div>
-
-  <!-- 4. 底部工具与版本回退区 -->
-  <div class="p-2 border-t border-[var(--border-color)] flex flex-col gap-1.5 shrink-0">
-    <button
-      type="button"
-      data-testid="btn-sidebar-legacy-tabs"
-      class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] cursor-pointer border-none bg-transparent transition-colors {collapsed ? 'justify-center' : ''}"
-      onclick={onSwitchToLegacyTabs}
-      title="切换为精简 Tab 折叠模式 (旧版 PC 交互)"
-    >
-      <span class="text-xs shrink-0">↩️</span>
-      {#if !collapsed}
-        <span class="truncate">切换精简版</span>
-      {/if}
-    </button>
-  </div>
 </aside>
 
 <style>
