@@ -7,8 +7,9 @@
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import AlbumDetailCard from './AlbumDetailCard.svelte';
+  import ArtistDetailCard from './ArtistDetailCard.svelte';
   import { openSheet } from '../lib/ui.svelte';
-import { cachedSongIdSet } from '../lib/pwaCache.svelte';
+  import { cachedSongIdSet } from '../lib/pwaCache.svelte';
 
   let {
     albumId = '',
@@ -60,6 +61,13 @@ import { cachedSongIdSet } from '../lib/pwaCache.svelte';
   // 展开状态持久化
   let accSearch = $state(getStored(STORAGE_KEY_ACC_SEARCH, 'true') === 'true');
   let accAlbum = $state(getStored(STORAGE_KEY_ACC_ALBUM, 'true') === 'true');
+  let accArtist = $state(false);
+  let currentArtistId = $state('');
+
+  function handleViewArtist(id: string) {
+    currentArtistId = id;
+    accArtist = true;
+  }
 
   $effect(() => {
     try {
@@ -424,11 +432,17 @@ import { cachedSongIdSet } from '../lib/pwaCache.svelte';
         {:else}
           <li class="track-item-card">
             <div class="track-title-row">
-              <strong class="truncate">{idx + 1}. {r.name}</strong>
+              <button
+                type="button"
+                class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
+                onclick={() => handleViewArtist(String(r.id))}
+              >
+                {idx + 1}. {r.name}
+              </button>
               <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID:{r.id})</span>
             </div>
             <div class="track-action-group">
-              <SlotBtn onclick={() => showToast('歌手功能开发中', 'info')}>查看</SlotBtn>
+              <SlotBtn onclick={() => handleViewArtist(String(r.id))}>👉 热门 50 首</SlotBtn>
             </div>
           </li>
         {/if}
@@ -464,4 +478,18 @@ import { cachedSongIdSet } from '../lib/pwaCache.svelte';
   {onPlayQueue}
   {onReveal}
   {onSong}
+/>
+<!-- Section 3: 歌手热门曲目与收藏 -->
+<ArtistDetailCard
+  bind:open={accArtist}
+  bind:currentArtistId
+  {curTrack}
+  {playing}
+  {likedSet}
+  {downloadedSet}
+  {onToggleLike}
+  {onPlayQueue}
+  {onReveal}
+  {onSong}
+  {showToast}
 />
