@@ -11,6 +11,7 @@
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import MyPlaylistsSection from './MyPlaylistsSection.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
@@ -44,6 +45,8 @@
     onReveal?: (item: any) => void,
     showToast: (m: string, t?: string) => void
   }>();
+
+  let showForkModal = $state(false);
 
   const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
   const STORAGE_KEY_ACC_MY = 'wyyyy_pl_acc_my';
@@ -226,6 +229,23 @@
     }
   }
 
+  async function handleToggleSubscribe() {
+    if (!playlist?.id) return;
+    const nextSub = !playlist.subscribed;
+    try {
+      const res = await api.playlistSubscribe(String(playlist.id), nextSub);
+      if (res?.code && res.code !== '000000') {
+        showToast(res.msg || (nextSub ? '收藏失败：网易云官方有设备风控限制，推荐使用「转存为自建歌单」' : '取消收藏失败'), 'warning', 5000);
+        return;
+      }
+      playlist.subscribed = nextSub;
+      showToast(nextSub ? `已收藏歌单《${playlist.name}》` : `已取消收藏歌单《${playlist.name}》`, 'success');
+      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+    } catch (e: any) {
+      showToast('操作异常，推荐使用「转存为自建歌单」', 'warning', 4000);
+    }
+  }
+
   function openTrackSheet(t: any, isLocal: boolean, isPhone: boolean, isServer: boolean, artist: string, isPlayingThis: boolean) {
     openSheet({
       title: t.name,
@@ -302,6 +322,12 @@
         if (playlist?.id) recordPlaylistPlay(playlist.id);
         onPlayQueue && onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })));
       }}>▶️ 播放歌单</button>
+      {#if playlist && !playlist.isCreator}
+        <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title="转存为自建歌单，绕过官方风控">📦 转存自建</button>
+        <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? '取消收藏' : '收藏歌单'}>
+          {playlist.subscribed ? '💔 取消收藏' : '⭐ 收藏歌单'}
+        </button>
+      {/if}
     </DetailHeaderCard>
     <ul class="data-list scrollable-list">
       {#each paged as t, i}
@@ -446,6 +472,17 @@
   <AddToPlaylistModal
     song={addToPlaylistSong}
     onClose={() => addToPlaylistSong = null}
+    {showToast}
+  />
+{/if}
+
+{#if showForkModal && playlist}
+  <ForkPlaylistModal
+    playlistName={playlist.name}
+    trackCount={allTracks.length}
+    trackIds={allTracks.map((t: any) => t.id)}
+    onClose={() => showForkModal = false}
+    onSuccess={(newId) => { if (newId) handleViewPlaylist(newId); }}
     {showToast}
   />
 {/if}

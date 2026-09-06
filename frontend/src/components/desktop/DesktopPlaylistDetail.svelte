@@ -17,6 +17,7 @@
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
+  import ForkPlaylistModal from '../ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus } from '../../lib/trackStatus.svelte';
 
@@ -52,6 +53,7 @@
   let curPage = $derived(getCurPage());
 
   let loading = $state(false);
+  let showForkModal = $state(false);
   let cachingTrackId = $state<number | null>(null);
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
 
@@ -140,6 +142,29 @@
       cachingTrackId = null;
     }
   }
+
+  async function handleToggleSubscribe() {
+    if (!playlist?.id) return;
+    const nextSub = !playlist.subscribed;
+    try {
+      const res = await api.playlistSubscribe(String(playlist.id), nextSub);
+      if (res?.code && res.code !== '000000') {
+        showToast(res.msg || (nextSub ? '收藏失败：网易云官方有设备风控限制，推荐使用「转存为自建歌单」' : '取消收藏失败'), 'warning', 5000);
+        return;
+      }
+      playlist.subscribed = nextSub;
+      showToast(nextSub ? `已收藏歌单《${playlist.name}》` : `已取消收藏歌单《${playlist.name}》`, 'success');
+      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+    } catch (e: any) {
+      showToast('操作异常，推荐使用「转存为自建歌单」', 'warning', 4000);
+    }
+  }
+
+  function handleForkSuccess(newId: string) {
+    if (newId) {
+      loadData(newId);
+    }
+  }
 </script>
 
 <!-- 🖥️ PC 桌面端：歌单详情宽屏大表 (Detail View) -->
@@ -207,6 +232,28 @@
             <span>🖥️</span>
             <span>全部下载到电脑</span>
           </button>
+          {#if playlist && !playlist.isCreator}
+            <button
+              type="button"
+              data-testid="btn-detail-fork"
+              class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer text-purple-400 hover:text-purple-300 border-purple-500/30 hover:border-purple-500/50"
+              onclick={() => showForkModal = true}
+              title="在我的网易云账号下新建为自建歌单，并批量导入所有歌曲 (曲线收藏)"
+            >
+              <span>📦</span>
+              <span>转存为自建歌单</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-detail-subscribe"
+              class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer {playlist.subscribed ? 'text-red-400 border-red-500/30' : ''}"
+              onclick={handleToggleSubscribe}
+              title={playlist.subscribed ? '取消收藏该歌单' : '收藏到我的网易云账号'}
+            >
+              <span>{playlist.subscribed ? '💔' : '⭐'}</span>
+              <span>{playlist.subscribed ? '取消收藏' : '收藏歌单'}</span>
+            </button>
+          {/if}
         </div>
       </div>
     </div>
@@ -340,6 +387,17 @@
     <AddToPlaylistModal
       song={addToPlaylistSong}
       onClose={() => addToPlaylistSong = null}
+      {showToast}
+    />
+  {/if}
+
+  {#if showForkModal && playlist}
+    <ForkPlaylistModal
+      playlistName={playlist.name}
+      trackCount={allTracks.length}
+      trackIds={allTracks.map((t: any) => t.id)}
+      onClose={() => showForkModal = false}
+      onSuccess={handleForkSuccess}
       {showToast}
     />
   {/if}
