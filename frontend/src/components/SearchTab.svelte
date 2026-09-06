@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
   import type { Track } from '../lib/types';
@@ -65,9 +65,20 @@
   let accArtist = $state(false);
   let currentArtistId = $state('');
 
-  function handleViewArtist(id: string) {
+  async function handleViewArtist(id: string) {
     currentArtistId = id;
+    accSearch = false;
+    accAlbum = false;
     accArtist = true;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await tick();
+    setTimeout(() => {
+      const el = document.getElementById('section-artist-detail');
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+      }
+    }, 280);
   }
 
   $effect(() => {
@@ -459,30 +470,19 @@
   {albumLoading}
   bind:open={accAlbum}
   bind:currentAlbumId
-  {curTrack}
-  {playing}
-  {likedSet}
-  {downloadedSet}
+  {curTrack} {playing} {likedSet} {downloadedSet}
   onLoadAlbum={loadAlbum}
   onDownloadFullAlbum={downloadFullAlbum}
   onPlayFullAlbum={playFullAlbum}
   onDownloadSingleTrack={downloadSingleTrack}
-  {onToggleLike}
-  {onPlayQueue}
-  {onReveal}
-  {onSong}
+  {onToggleLike} {onPlayQueue} {onReveal} {onSong}
 />
 <!-- Section 3: 歌手热门曲目与收藏 -->
-<ArtistDetailCard
-  bind:open={accArtist}
-  bind:currentArtistId
-  {curTrack}
-  {playing}
-  {likedSet}
-  {downloadedSet}
-  {onToggleLike}
-  {onPlayQueue}
-  {onReveal}
-  {onSong}
-  {showToast}
-/>
+<div id="section-artist-detail">
+  <ArtistDetailCard
+    bind:open={accArtist}
+    bind:currentArtistId
+    {curTrack} {playing} {likedSet} {downloadedSet}
+    {onToggleLike} {onPlayQueue} {onReveal} {onSong} {showToast}
+  />
+</div>

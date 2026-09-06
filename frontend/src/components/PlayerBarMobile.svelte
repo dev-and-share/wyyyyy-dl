@@ -49,7 +49,7 @@
   let showVolPopup = $state(false);
 </script>
 
-<div class="mobile-player-docked-bar fixed bottom-[calc(48px+env(safe-area-inset-bottom,0px))] left-0 right-0 bg-[var(--card-bg-solid,#121826)]/95 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.4)] border-t border-x-0 border-b border-[var(--border-color,rgba(255,255,255,0.15))] z-[9995] px-3 pt-2 pb-2 flex flex-col gap-1.5 transition-colors duration-300">
+<div class="mobile-player-docked-bar fixed bottom-[max(48px,calc(36px+env(safe-area-inset-bottom,0px)))] left-0 right-0 bg-[var(--card-bg-solid,#121826)]/95 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.4)] border-t border-x-0 border-b border-[var(--border-color,rgba(255,255,255,0.15))] z-[9995] px-3 pt-2 pb-2 flex flex-col gap-1.5 transition-colors duration-300">
   <!-- 2.1 顶部区域：左侧黑胶封面；右侧上下两行（上行歌名满宽独占，下行歌手与4个按钮并排） -->
   <div class="flex items-center gap-2.5 w-full">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
