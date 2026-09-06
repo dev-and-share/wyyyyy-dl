@@ -14,6 +14,7 @@
 
   import TopBar from './components/TopBar.svelte';
   import DesktopSidebar from './components/desktop/DesktopSidebar.svelte';
+  import DesktopPlaylistView from './components/desktop/DesktopPlaylistView.svelte';
   import PlaylistTab from './components/PlaylistTab.svelte';
   import SearchTab from './components/SearchTab.svelte';
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
@@ -131,12 +132,40 @@
   <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
   <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px]">
     <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
-      <PlaylistTab
-        playlistId={routerState.playlistId} {curTrack} {playing}
-        likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
-        onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
-        {showToast}
-      />
+      {#if layoutState.mode === 'desktop-sidebar'}
+        <!-- 💻 PC 桌面端专属：去手风琴画廊与宽屏大表格 (>= 1024px) -->
+        <div class="hidden lg:block w-full">
+          <DesktopPlaylistView
+            playlistId={routerState.playlistId}
+            {curTrack}
+            {playing}
+            likedSet={likeState.likedSet}
+            downloadedSet={taskState.downloadedSet}
+            onToggleLike={toggleLike}
+            onPlayQueue={setQueue}
+            onAlbum={jumpToAlbum}
+            onReveal={handleReveal}
+            {showToast}
+          />
+        </div>
+        <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
+        <div class="block lg:hidden w-full">
+          <PlaylistTab
+            playlistId={routerState.playlistId} {curTrack} {playing}
+            likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
+            onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
+            {showToast}
+          />
+        </div>
+      {:else}
+        <!-- 📱 精简模式 (纯折叠手风琴卡片) -->
+        <PlaylistTab
+          playlistId={routerState.playlistId} {curTrack} {playing}
+          likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
+          onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
+          {showToast}
+        />
+      {/if}
     </div>
     <div style="display: {routerState.tab === 'search' ? 'contents' : 'none'};">
       <SearchTab
