@@ -12,15 +12,31 @@ function getInitialPlaylistId(): string {
   return location.hash.match(/id=([0-9]+)/)?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
 }
 
+const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyyyy_sidebar_collapsed';
+
+function getInitialSidebarCollapsed(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  return localStorage.getItem(STORAGE_KEY_SIDEBAR_COLLAPSED) === 'true';
+}
+
 export const routerState = $state<{
   tab: ActiveTab;
   playlistId: string;
   albumId: string;
+  sidebarCollapsed: boolean;
 }>({
   tab: getInitialTab(),
   playlistId: getInitialPlaylistId(),
-  albumId: ''
+  albumId: '',
+  sidebarCollapsed: getInitialSidebarCollapsed()
 });
+
+export function toggleSidebarCollapse(): void {
+  routerState.sidebarCollapsed = !routerState.sidebarCollapsed;
+  try {
+    localStorage.setItem(STORAGE_KEY_SIDEBAR_COLLAPSED, String(routerState.sidebarCollapsed));
+  } catch {}
+}
 
 export function switchTab(n: ActiveTab): void {
   routerState.tab = n;

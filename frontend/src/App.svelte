@@ -4,14 +4,16 @@
   import { checkForPwaUpdate } from './lib/pwa';
   import { applyTheme, getInitialTheme, switchToLegacy, type ThemeMode } from './lib/theme';
   import { showToast } from './lib/toast.svelte';
-  import { routerState, switchTab, jumpToAlbum, jumpToPlaylist, initRouter } from './lib/router.svelte';
+  import { routerState, switchTab, jumpToAlbum, jumpToPlaylist, initRouter, toggleSidebarCollapse } from './lib/router.svelte';
+  import { layoutState, switchToLegacyTabs, switchToDesktopSidebar, initLayoutWatcher } from './lib/layout.svelte';
   import { likeState, initLikeList, toggleLike } from './lib/likeStore.svelte';
-  import { taskState, startTaskPolling, initDownloadedSet } from './lib/taskStore.svelte';
+  import { taskState, startTaskPolling, initDownloadedSet, getActiveDownloadingCount } from './lib/taskStore.svelte';
   import { sheetState } from './lib/ui.svelte';
   import { executeReveal } from './lib/revealHelper';
   import type { Track } from './lib/types';
 
   import TopBar from './components/TopBar.svelte';
+  import DesktopSidebar from './components/desktop/DesktopSidebar.svelte';
   import PlaylistTab from './components/PlaylistTab.svelte';
   import SearchTab from './components/SearchTab.svelte';
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
@@ -51,6 +53,7 @@
   onMount(() => {
     applyTheme(themeMode);
     const stopRouter = initRouter();
+    const stopLayout = initLayoutWatcher();
     startTaskPolling();
     initDownloadedSet();
     initLikeList();
@@ -69,6 +72,7 @@
 
     return () => {
       stopRouter();
+      stopLayout();
       window.removeEventListener('wyyyy:download-submitted', onDownloadSubmit);
       window.removeEventListener('wyyyy:pwa-update-available', onPwaUpdate);
     };
@@ -93,16 +97,36 @@
 <!-- 📱 手机端下拉刷新指示器 (模态框/抽屉打开时自动禁用避免手势冲突) -->
 <PullToRefresh disabled={isAnyOverlayOpen} onRefresh={handleRefresh} />
 
-<!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 优雅居中与边距) -->
-<div class="app-main-container max-w-[900px] mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8">
-  <!-- 顶栏导航 -->
-  <TopBar
-    tab={routerState.tab} {themeMode} {repeat}
-    onSwitchTab={switchTab}
-    onToggleTheme={toggleTheme}
-    onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
-    onSwitchToLegacy={switchToLegacy}
-  />
+<!-- 页面整体容器：在 PC 桌面侧边栏模式下为 flex-row，移动端/精简模式下为居中单列 -->
+<div class="min-h-screen {layoutState.mode === 'desktop-sidebar' ? 'flex flex-col lg:flex-row' : ''}">
+  {#if layoutState.mode === 'desktop-sidebar'}
+    <DesktopSidebar
+      tab={routerState.tab}
+      collapsed={routerState.sidebarCollapsed}
+      downloadingCount={getActiveDownloadingCount()}
+      onSwitchTab={switchTab}
+      onViewPlaylist={jumpToPlaylist}
+      onToggleCollapse={toggleSidebarCollapse}
+      onSwitchToLegacyTabs={switchToLegacyTabs}
+      {showToast}
+    />
+  {/if}
+
+  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 模式根据桌面分栏自适应扩展至 1400px) -->
+  <div class="flex-1 flex flex-col min-w-0 app-main-container {layoutState.mode === 'desktop-sidebar' ? 'max-w-[1400px]' : 'max-w-[900px]'} w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8">
+    <!-- 顶栏导航 -->
+    <TopBar
+      tab={routerState.tab} {themeMode} {repeat}
+      layoutMode={layoutState.mode}
+      isDesktopLayout={layoutState.mode === 'desktop-sidebar'}
+      onSwitchTab={switchTab}
+      onToggleTheme={toggleTheme}
+      onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
+      onSwitchToLegacy={switchToLegacy}
+      onSwitchToDesktopSidebar={switchToDesktopSidebar}
+      onSwitchToLegacyTabs={switchToLegacyTabs}
+      onRefresh={handleRefresh}
+    />
 
   <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换) -->
   <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px]">
@@ -131,6 +155,7 @@
     <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity">
       网易云音乐下载器 · PWA v{__APP_VERSION__}
     </footer>
+  </div>
   </div>
 </div>
 

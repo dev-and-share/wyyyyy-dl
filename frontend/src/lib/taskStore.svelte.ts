@@ -64,6 +64,13 @@ export function startTaskPolling(): void {
 }
 
 /**
+ * 获取当前正在进行或排队的活跃下载任务数
+ */
+export function getActiveDownloadingCount(): number {
+  return taskState.tasks.filter((t: any) => ACTIVE_STATUSES.has(t.status)).length;
+}
+
+/**
  * 清空任务列表
  */
 export async function clearTasks(): Promise<void> {

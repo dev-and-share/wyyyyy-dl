@@ -1,34 +1,44 @@
 <script lang="ts">
+  import type { PcLayoutMode } from '../lib/layout.svelte';
+
   let {
     tab,
     themeMode,
     repeat,
+    layoutMode = 'desktop-sidebar',
+    isDesktopLayout = false,
     onSwitchTab,
     onToggleTheme,
     onToggleRepeat,
     onSwitchToLegacy,
+    onSwitchToDesktopSidebar,
+    onSwitchToLegacyTabs,
     onRefresh
   } = $props<{
     tab: 'playlist' | 'search' | 'download-mgr';
     themeMode: 'dark' | 'light' | 'auto';
     repeat: boolean;
+    layoutMode?: PcLayoutMode;
+    isDesktopLayout?: boolean;
     onSwitchTab: (tab: 'playlist' | 'search' | 'download-mgr') => void;
     onToggleTheme: () => void;
     onToggleRepeat: () => void;
     onSwitchToLegacy: () => void;
+    onSwitchToDesktopSidebar?: () => void;
+    onSwitchToLegacyTabs?: () => void;
     onRefresh?: () => void;
   }>();
 </script>
 
 <!-- 顶栏 (TopBar) -->
-<div class="max-w-[900px] mx-auto mb-1 md:mb-4 px-3 py-1.5 md:px-3 md:py-1.5 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-1.5 md:gap-2.5 transition-all duration-300">
+<div class="{isDesktopLayout ? 'w-full' : 'max-w-[900px]'} mx-auto mb-1 md:mb-4 px-3 py-1.5 md:px-3 md:py-1.5 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-1.5 md:gap-2.5 transition-all duration-300">
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer" onclick={onRefresh} title="点击刷新数据">
     <span class="text-lg leading-none">🎵</span>
-    <span class="hidden sm:inline font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">网易云下载器</span>
+    <span class="{isDesktopLayout ? 'hidden sm:inline lg:hidden' : 'hidden sm:inline'} font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">网易云下载器</span>
   </div>
-  <div class="hidden md:flex bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-[440px] justify-center">
+  <div class="hidden md:flex {isDesktopLayout ? 'lg:hidden' : ''} bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-[440px] justify-center">
     <button
       data-testid="tab-playlist"
       class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'playlist' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
@@ -42,7 +52,7 @@
       class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
       onclick={() => onSwitchTab('download-mgr')}>📥 本地</button>
   </div>
-  <div class="shrink-0 flex items-center gap-1 md:gap-1.5 pr-0.5">
+  <div class="shrink-0 flex items-center gap-1 md:gap-1.5 pr-0.5 ml-auto">
     <button
       data-testid="btn-toggle-theme"
       class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
@@ -58,13 +68,26 @@
       <input type="checkbox" checked={repeat} onchange={onToggleRepeat} class="m-0 accent-[var(--primary-color)] cursor-pointer" />
       <span class="hidden sm:inline">允许重复</span>
     </label>
-    <button
-      data-testid="btn-switch-legacy"
-      class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-      onclick={onSwitchToLegacy}
-      title="返回旧版 (localStorage+Cookie)"
-    >
-      <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
-    </button>
+    {#if layoutMode === 'legacy-tabs'}
+      <button
+        type="button"
+        data-testid="btn-switch-desktop"
+        class="bg-blue-500/12 hover:bg-blue-500/22 text-blue-400 border border-blue-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+        onclick={onSwitchToDesktopSidebar}
+        title="切换为 PC 桌面侧边栏模式"
+      >
+        <span>🖥️</span><span class="hidden sm:inline"> 桌面版</span>
+      </button>
+    {:else}
+      <button
+        type="button"
+        data-testid="btn-switch-legacy"
+        class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+        onclick={onSwitchToLegacy}
+        title="返回纯 JS 旧版 (Cookie 切换)"
+      >
+        <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
+      </button>
+    {/if}
   </div>
 </div>
