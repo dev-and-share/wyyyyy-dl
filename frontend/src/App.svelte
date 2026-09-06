@@ -225,8 +225,8 @@
       {/if}
     </div>
 
-    <!-- 底部低调版本号 -->
-    <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity">
+    <!-- 底部低调版本号 (移动端展示，PC 桌面端已移至左侧边栏底部) -->
+    <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity lg:hidden">
       网易云音乐下载器 · PWA v{__APP_VERSION__}
     </footer>
   </div>

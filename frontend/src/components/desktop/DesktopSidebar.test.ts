@@ -60,5 +60,8 @@ describe('DesktopSidebar', () => {
 
     const sidebar = getByTestId('desktop-sidebar');
     expect(sidebar).toBeDefined();
+
+    const versionInfo = getByTestId('sidebar-version-info');
+    expect(versionInfo).toBeDefined();
   });
 });

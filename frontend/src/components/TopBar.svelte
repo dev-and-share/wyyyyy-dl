@@ -31,73 +31,108 @@
 </script>
 
 <!-- 顶栏 (TopBar) -->
-<div class="{isDesktopLayout ? 'w-full' : 'max-w-[900px]'} mx-auto mb-1 md:mb-4 px-3 py-1.5 md:px-3 md:py-1.5 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-1.5 md:gap-2.5 transition-all duration-300">
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer" onclick={onRefresh} title="点击刷新数据">
-    <span class="text-lg leading-none">🎵</span>
-    <span class="{isDesktopLayout ? 'hidden sm:inline lg:hidden' : 'hidden sm:inline'} font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">网易云下载器</span>
-  </div>
-  <div class="hidden md:flex {isDesktopLayout ? 'lg:hidden' : ''} bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-[440px] justify-center">
-    <button
-      data-testid="tab-playlist"
-      class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'playlist' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
-      onclick={() => onSwitchTab('playlist')}>📁 歌单</button>
-    <button
-      data-testid="tab-search"
-      class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'search' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
-      onclick={() => onSwitchTab('search')}>🔍 搜索</button>
-    <button
-      data-testid="tab-download-mgr"
-      class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
-      onclick={() => onSwitchTab('download-mgr')}>📥 本地</button>
-  </div>
-  <div class="shrink-0 flex items-center gap-1 md:gap-1.5 pr-0.5 ml-auto">
-    <button
-      data-testid="btn-toggle-theme"
-      class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-      onclick={onToggleTheme}
-      title="切换主题"
-    >
-      {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
-    </button>
-    <label
-      class="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer select-none bg-[var(--nav-tabs-bg)] py-1 px-1.5 sm:px-2.5 rounded-[12px] sm:rounded-[14px] border border-[var(--border-color)] transition-all duration-200"
-      title="允许重复下载"
-    >
-      <input type="checkbox" checked={repeat} onchange={onToggleRepeat} class="m-0 accent-[var(--primary-color)] cursor-pointer" />
-      <span class="hidden sm:inline">允许重复</span>
-    </label>
-    {#if layoutMode === 'legacy-tabs'}
-      <!-- 精简版：承上（桌面版）启下（旧版）-->
+{#if isDesktopLayout}
+  <!-- 💻 PC 桌面侧边栏模式：右上角极简控制胶囊 (释放顶部大横幅空间) -->
+  <header class="w-full flex items-center justify-end mb-2.5 px-1 select-none" data-testid="desktop-top-bar">
+    <div class="flex items-center gap-1.5 p-1 bg-[var(--topbar-bg)] backdrop-blur-md rounded-2xl border border-[var(--topbar-border)] shadow-sm">
       <button
-        type="button"
-        data-testid="btn-switch-desktop"
-        class="bg-blue-500/12 hover:bg-blue-500/22 text-blue-400 border border-blue-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-        onclick={onSwitchToDesktopSidebar}
-        title="切换为 PC 桌面侧边栏模式"
+        data-testid="btn-toggle-theme"
+        class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] w-7 h-7 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all select-none shrink-0"
+        onclick={onToggleTheme}
+        title="切换主题"
       >
-        <span>🖥️</span><span class="hidden sm:inline"> 桌面版</span>
+        {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
       </button>
-      <button
-        type="button"
-        data-testid="btn-switch-js-legacy"
-        class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-        onclick={onSwitchToLegacy}
-        title="返回纯 JS 旧版 (Cookie 切换)"
+
+      <label
+        class="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer select-none bg-[var(--nav-tabs-bg)] px-2.5 py-1 rounded-xl border border-[var(--border-color)] transition-all"
+        title="允许重复下载"
       >
-        <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
-      </button>
-    {:else}
+        <input type="checkbox" checked={repeat} onchange={onToggleRepeat} class="m-0 accent-[var(--primary-color)] cursor-pointer" />
+        <span>允许重复</span>
+      </label>
+
       <button
         type="button"
         data-testid="btn-switch-legacy"
-        class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-        onclick={isDesktopLayout ? onSwitchToLegacyTabs : onSwitchToLegacy}
-        title={isDesktopLayout ? "切换为精简 Tab 折叠模式（Svelte 版）" : "返回纯 JS 旧版 (Cookie 切换)"}
+        class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all select-none shrink-0"
+        onclick={onSwitchToLegacyTabs}
+        title="切换为精简 Tab 折叠模式（Svelte 版）"
       >
-        <span>↩️</span><span class="hidden sm:inline"> {isDesktopLayout ? '精简版' : '旧版'}</span>
+        <span>📱</span><span> 精简版</span>
       </button>
-    {/if}
+    </div>
+  </header>
+{:else}
+  <!-- 📱 移动端 / 精简折叠模式：标准顶栏 -->
+  <div class="max-w-[900px] mx-auto mb-1 md:mb-4 px-3 py-1.5 md:px-3 md:py-1.5 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-1.5 md:gap-2.5 transition-all duration-300">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer" onclick={onRefresh} title="点击刷新数据">
+      <span class="text-lg leading-none">🎵</span>
+      <span class="hidden sm:inline font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">网易云下载器</span>
+    </div>
+    <div class="hidden md:flex bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-[440px] justify-center">
+      <button
+        data-testid="tab-playlist"
+        class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'playlist' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
+        onclick={() => onSwitchTab('playlist')}>📁 歌单</button>
+      <button
+        data-testid="tab-search"
+        class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'search' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
+        onclick={() => onSwitchTab('search')}>🔍 搜索</button>
+      <button
+        data-testid="tab-download-mgr"
+        class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
+        onclick={() => onSwitchTab('download-mgr')}>📥 本地</button>
+    </div>
+    <div class="shrink-0 flex items-center gap-1 md:gap-1.5 pr-0.5 ml-auto">
+      <button
+        data-testid="btn-toggle-theme"
+        class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+        onclick={onToggleTheme}
+        title="切换主题"
+      >
+        {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
+      </button>
+      <label
+        class="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer select-none bg-[var(--nav-tabs-bg)] py-1 px-1.5 sm:px-2.5 rounded-[12px] sm:rounded-[14px] border border-[var(--border-color)] transition-all duration-200"
+        title="允许重复下载"
+      >
+        <input type="checkbox" checked={repeat} onchange={onToggleRepeat} class="m-0 accent-[var(--primary-color)] cursor-pointer" />
+        <span class="hidden sm:inline">允许重复</span>
+      </label>
+      {#if layoutMode === 'legacy-tabs'}
+        <!-- 精简版：承上（桌面版）启下（旧版）-->
+        <button
+          type="button"
+          data-testid="btn-switch-desktop"
+          class="bg-blue-500/12 hover:bg-blue-500/22 text-blue-400 border border-blue-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+          onclick={onSwitchToDesktopSidebar}
+          title="切换为 PC 桌面侧边栏模式"
+        >
+          <span>🖥️</span><span class="hidden sm:inline"> 桌面版</span>
+        </button>
+        <button
+          type="button"
+          data-testid="btn-switch-js-legacy"
+          class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+          onclick={onSwitchToLegacy}
+          title="返回纯 JS 旧版 (Cookie 切换)"
+        >
+          <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
+        </button>
+      {:else}
+        <button
+          type="button"
+          data-testid="btn-switch-legacy"
+          class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
+          onclick={onSwitchToLegacy}
+          title="返回纯 JS 旧版 (Cookie 切换)"
+        >
+          <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
+        </button>
+      {/if}
+    </div>
   </div>
-</div>
+{/if}

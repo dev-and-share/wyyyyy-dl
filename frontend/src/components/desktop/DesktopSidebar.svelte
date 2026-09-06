@@ -19,7 +19,7 @@
     onViewPlaylist?: (id: string) => void;
     onPlayPlaylist?: (id: string, name: string) => void;
     onToggleCollapse: () => void;
-    onSwitchToLegacyTabs: () => void;
+    onSwitchToLegacyTabs?: () => void;
     showToast?: (m: string, t?: string) => void;
   }>();
 
@@ -242,6 +242,19 @@
           📂
         </button>
       </div>
+    {/if}
+  </div>
+
+  <!-- 4. 底部版本信息区 -->
+  <div
+    class="p-2.5 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] opacity-60 hover:opacity-100 transition-opacity shrink-0 select-none {collapsed ? 'justify-center' : ''}"
+    data-testid="sidebar-version-info"
+  >
+    {#if !collapsed}
+      <span class="truncate">网易云下载器</span>
+      <span class="text-[10px] px-1.5 py-0.5 rounded bg-[var(--btn-secondary-bg)] border border-[var(--border-color)] text-[var(--text-secondary)]">v{__APP_VERSION__}</span>
+    {:else}
+      <span class="text-[10px] cursor-default font-semibold" title="网易云下载器 v{__APP_VERSION__}">v{__APP_VERSION__}</span>
     {/if}
   </div>
 </aside>
