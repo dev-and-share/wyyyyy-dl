@@ -71,4 +71,37 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(api.songV1).toHaveBeenCalledWith('3', 'lossless');
     expect(api.songV1).toHaveBeenCalledWith('1', 'lossless');
   });
+
+  it('playPlaylistTracks safely handles string artists, ar array, and artist properties without throwing .map errors', async () => {
+    const { playPlaylistTracks } = await import('./playerHelper');
+    const mockOnPlayQueue = vi.fn();
+    const mockShowToast = vi.fn();
+
+    (api as any).playlist = vi.fn().mockResolvedValue({
+      code: '000000',
+      data: {
+        playlist: {
+          id: '12345',
+          name: '我的歌单',
+          tracks: [
+            { id: 101, name: '晴天', artists: '周杰伦', picUrl: '/pic1.png' },
+            { id: 102, name: '枫', ar: [{ name: '周杰伦' }], al: { picUrl: '/pic2.png' } },
+            { id: 103, name: '七里香', artist: '周杰伦' },
+            { id: 104, name: '纯音乐', artists: null }
+          ]
+        }
+      }
+    });
+
+    await playPlaylistTracks('12345', '我的歌单', mockOnPlayQueue, mockShowToast);
+
+    expect(mockOnPlayQueue).toHaveBeenCalledTimes(1);
+    const queued = mockOnPlayQueue.mock.calls[0][0];
+    expect(queued).toHaveLength(4);
+    expect(queued[0]).toMatchObject({ id: 101, name: '晴天', artist: '周杰伦', cover: '/pic1.png' });
+    expect(queued[1]).toMatchObject({ id: 102, name: '枫', artist: '周杰伦', cover: '/pic2.png' });
+    expect(queued[2]).toMatchObject({ id: 103, name: '七里香', artist: '周杰伦' });
+    expect(queued[3]).toMatchObject({ id: 104, name: '纯音乐', artist: '' });
+    expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('已开始播放《我的歌单》'), 'success', 2000);
+  });
 });

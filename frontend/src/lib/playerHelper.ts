@@ -1,8 +1,9 @@
 import { api } from './api';
 import type { Track } from './types';
 import { cachedSongIdSet } from './pwaCache.svelte';
-import { markSongDownloaded } from './trackStatus.svelte';
+import { markSongDownloaded, getTrackSourceStatus } from './trackStatus.svelte';
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
+import { recordPlaylistPlay } from './playlist.svelte';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -98,12 +99,13 @@ export async function playPlaylistTracks(
     const res = await api.playlist(playlistId);
     const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
     if (tracks && tracks.length > 0) {
+      recordPlaylistPlay(playlistId);
       onPlayQueue(tracks.map((t: any) => ({
         id: t.id,
         name: t.name,
-        artist: formatArtist(t.artists || t.ar || t.artist),
+        artist: formatArtist(t),
         cover: t.picUrl || t.al?.picUrl || DEFAULT_VINYL_COVER,
-        isLocal: false
+        isLocal: getTrackSourceStatus(t.id, t.isLocal).isLocal
       })), 0);
       showToast(`已开始播放《${playlistName}》(${tracks.length} 首)`, 'success', 2000);
     } else {

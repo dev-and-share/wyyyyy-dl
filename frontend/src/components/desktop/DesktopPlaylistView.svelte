@@ -1,10 +1,7 @@
 <script lang="ts">
   import DesktopPlaylistGallery from './DesktopPlaylistGallery.svelte';
   import DesktopPlaylistDetail from './DesktopPlaylistDetail.svelte';
-  import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../../lib/utils';
-  import { getTrackSourceStatus } from '../../lib/trackStatus.svelte';
-  import { recordPlaylistPlay } from '../../lib/playlist.svelte';
+  import { playPlaylistTracks } from '../../lib/playerHelper';
 
   let {
     playlistId = '',
@@ -41,31 +38,9 @@
 
   let activePlaylistId = $derived(dismissed ? '' : (selectedId || playlistId || ''));
 
-  async function handlePlayPlaylistDirect(id: string, name: string) {
-    if (!id) return;
-    try {
-      showToast(`正在载入《${name}》...`, 'info', 1500);
-      const res = await api.playlist(id);
-      const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
-      if (tracks && tracks.length > 0) {
-        const queueTracks = tracks.map((t: any) => ({
-          id: t.id,
-          name: t.name,
-          artist: formatArtist(t.artists || t.ar || t.artist),
-          cover: t.picUrl || t.al?.picUrl || DEFAULT_VINYL_COVER,
-          isLocal: getTrackSourceStatus(t.id, t.isLocal, curTrack).isLocal
-        }));
-        if (onPlayQueue) {
-          recordPlaylistPlay(id);
-          onPlayQueue(queueTracks, 0);
-          showToast(`已开始播放歌单《${name}》(${queueTracks.length} 首)`, 'success', 2000);
-        }
-      } else {
-        showToast('歌单内暂无曲目', 'warning');
-      }
-    } catch (e: any) {
-      showToast('播放歌单失败: ' + (e?.message || e), 'error');
-    }
+  function handlePlayPlaylistDirect(id: string, name: string) {
+    if (!id || !onPlayQueue) return;
+    playPlaylistTracks(id, name, onPlayQueue, showToast);
   }
 </script>
 

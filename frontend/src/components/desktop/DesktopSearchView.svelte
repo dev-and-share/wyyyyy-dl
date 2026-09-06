@@ -179,7 +179,7 @@
       const res = await cacheTrackToBrowser({
         id: t.id,
         name: t.name,
-        artist: formatArtist(t.artists || t.ar || t.artist),
+        artist: formatArtist(t),
         cover: t.al?.picUrl || t.picUrl || DEFAULT_VINYL_COVER,
         album: t.al?.name || t.album
       });
@@ -327,7 +327,7 @@
             </thead>
             <tbody class="divide-y divide-[var(--border-subtle)]">
               {#each sResults as r, idx (r.id)}
-                {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
+                {@const artistName = formatArtist(r)}
                 {@const status = getTrackSourceStatus(r.id, r.isLocal, curTrack)}
                 {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
                 <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
