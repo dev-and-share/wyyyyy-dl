@@ -143,8 +143,8 @@
 
   <!-- 右栏：下载历史表格 & 离线缓存工作台 (约 62% 宽度) -->
   <div class="flex-1 min-w-0 w-full flex flex-col gap-4">
-    <!-- 1. 顶部统计与曲库维护栏 -->
-    <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs">
+    <!-- 1. 顶部统计与曲库维护栏 (右侧 lg:pr-[220px] 避让控制胶囊) -->
+    <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs lg:pr-[220px]">
       <div class="flex items-center gap-3 flex-wrap">
         <span class="text-[var(--text-secondary)]">
           已记录下载: <strong class="text-[var(--text-main)] font-semibold">{histStats?.totalCount ?? histTotal ?? 0}</strong> 首

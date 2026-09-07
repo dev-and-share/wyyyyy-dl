@@ -212,8 +212,8 @@
       {showToast}
     />
   {:else}
-    <!-- 1. 顶部控制栏：搜索类型胶囊 + 大搜索框 + 单页条数 -->
-    <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
+    <!-- 1. 顶部控制栏：搜索类型胶囊 + 大搜索框 + 单页条数 (右侧 lg:pr-[220px] 避让控制胶囊) -->
+    <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm lg:pr-[220px]">
     <!-- 类型切换 -->
     <div class="flex items-center gap-1.5 flex-wrap">
       <button type="button" data-testid="search-type-1" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1')}>🎵 单曲</button>

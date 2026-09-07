@@ -71,10 +71,10 @@
 
 <!-- 🖥️ PC 桌面端：歌单封面画廊 (Gallery View) -->
 <div class="flex flex-col gap-5 select-none animate-fade-in" data-testid="desktop-playlist-gallery">
-  <!-- 1. 顶部操作栏：快速输入解析 + 实时筛选搜索 -->
-  <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
+  <!-- 1. 顶部操作栏：快速输入解析 (右侧预留 lg:pr-[220px] 避开右上角浮动控制胶囊) -->
+  <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm lg:pr-[220px]">
     <!-- 快捷解析框 -->
-    <div class="flex items-center gap-2 flex-1 max-w-lg">
+    <div class="flex items-center gap-2 flex-1 max-w-xl">
       <input
         type="text"
         placeholder="输入或粘贴歌单 ID / 链接 (回车解析)"
@@ -90,29 +90,12 @@
         解析详情
       </button>
     </div>
-
-    <!-- 筛选过滤与刷新 -->
-    <div class="flex items-center gap-2 shrink-0">
-      <input
-        type="text"
-        placeholder="搜索本地缓存歌单..."
-        class="w-36 lg:w-48 px-3 py-1.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
-        bind:value={searchKeyword}
-      />
-      <button
-        type="button"
-        class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer"
-        onclick={handleRefresh}
-        title="重新从网易云同步歌单"
-      >
-        {loading ? '⏳' : '🔄'}
-      </button>
-    </div>
   </div>
 
-  <!-- 2. 分类标签栏 -->
-  <div class="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
-    <div class="flex items-center gap-1.5">
+  <!-- 2. 分类标签与歌单检索栏 (同排对齐：左侧分类 Tab，右侧搜索与刷新) -->
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-2.5">
+    <!-- 分类过滤 -->
+    <div class="flex items-center gap-1.5 flex-wrap">
       <button
         type="button"
         class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'all' ? 'bg-red-500/15 text-red-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
@@ -133,6 +116,24 @@
         onclick={() => filter = 'subscribed'}
       >
         我收藏的 ({myPlaylists.filter(p => p.subscribed).length})
+      </button>
+    </div>
+
+    <!-- 筛选过滤与刷新 -->
+    <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+      <input
+        type="text"
+        placeholder="搜索本地缓存歌单..."
+        class="w-36 sm:w-44 lg:w-52 px-3 py-1.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
+        bind:value={searchKeyword}
+      />
+      <button
+        type="button"
+        class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer"
+        onclick={handleRefresh}
+        title="重新从网易云同步歌单"
+      >
+        {loading ? '⏳' : '🔄'}
       </button>
     </div>
   </div>
