@@ -1,4 +1,4 @@
-const CACHE_NAME = 'netease-dl-v4.6.36';
+const CACHE_NAME = 'netease-dl-v4.6.37';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const PRECACHE_URLS = [
   '/',
