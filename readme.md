@@ -150,7 +150,7 @@ cd wyyyyy-dl
 ./gradlew clean build -x test
 
 # 4. 运行服务
-java -jar build/libs/neteasemusic-1.0.0.jar --download.path=/path/to/music/
+java -jar build/libs/wyyyyy-dl-5.0.0.jar --download.path=/path/to/music/
 ```
 
 ---
@@ -158,7 +158,7 @@ java -jar build/libs/neteasemusic-1.0.0.jar --download.path=/path/to/music/
 ## 📂 项目工程架构
 
 ```
-src/main/java/com/pewee/neteasemusic/
+src/main/java/com/wyyyyydl/
 ├── config/                  # 配置加载与全局异常捕获
 ├── controller/              # 控制器层 (单曲/歌单/专辑解析、下载调度、历史管理、本地文件夹浏览)
 ├── service/                 # 核心解析与下载业务逻辑

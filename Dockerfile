@@ -29,6 +29,6 @@ FROM eclipse-temurin:21-jre
 RUN mkdir -p /app/java/ /media/music
 ENV auther=pewee
 WORKDIR /app/java/
-COPY --from=jar-builder /build/build/libs/neteasemusic-1.0.0.jar /app/java/app.jar
+COPY --from=jar-builder /build/build/libs/wyyyyy-dl-*.jar /app/java/app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

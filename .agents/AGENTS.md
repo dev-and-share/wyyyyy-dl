@@ -10,5 +10,5 @@
 | 你要做什么 | 看哪份 / 路径 |
 |---|---|
 | 前端界面、组件、Stores、样式 | `frontend/src/*`，参考 `AGENTS_svelte.md` |
-| 后端 API、Service、SQLite DAO | `src/main/java/com/pewee/...` |
+| 后端 API、Service、SQLite DAO | `src/main/java/com/wyyyyydl/...` |
 | 构建与部署 | 根目录 `./deploy.sh` 或 `Dockerfile` |
