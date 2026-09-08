@@ -42,10 +42,24 @@ export function renderPlaylist(pl:any){
   allTracks.length=0; allTracks.push(...(pl.tracks||[]));
   playlistState.curPage=1;
 }
+let currentLoadRequestId = 0;
+let activeTargetPlaylistId = '';
+
+export function getActiveTargetPlaylistId(): string {
+  return activeTargetPlaylistId;
+}
+
+export function resetActiveTargetPlaylist(): void {
+  activeTargetPlaylistId = '';
+}
+
 export async function loadPlaylistDetail(playlistId: string, force = false){
   if(!playlistId) throw new Error('请输入歌单 ID');
   const pidStr = String(playlistId).trim();
   const key = 'playlist_' + pidStr;
+
+  activeTargetPlaylistId = pidStr;
+  const requestId = ++currentLoadRequestId;
 
   const cached = getApiCache(key);
   const hasCache = !!(cached?.data?.playlist?.tracks?.length);
@@ -57,7 +71,10 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
     api.playlist(pidStr).then((j) => {
       if (j?.code === '000000' && j?.data?.playlist?.tracks?.length) {
         setApiCache(key, j.data);
-        renderPlaylist(j.data.playlist);
+        // 关键防竞态：仅当当前用户依然停留在本歌单，且当前请求为最新请求时才更新 UI
+        if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
+          renderPlaylist(j.data.playlist);
+        }
       }
     }).catch(() => {});
     return cached.data.playlist;
@@ -77,11 +94,15 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
     const pl = j?.data?.playlist;
     if(!pl?.tracks?.length) throw new Error('未找到歌单或为空');
     setApiCache(key, j.data);
-    renderPlaylist(pl);
+    if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
+      renderPlaylist(pl);
+    }
     return pl;
   } finally {
-    playlistState.loading = false;
-    playlistState.loadingId = '';
+    if (requestId === currentLoadRequestId) {
+      playlistState.loading = false;
+      playlistState.loadingId = '';
+    }
   }
 }
 

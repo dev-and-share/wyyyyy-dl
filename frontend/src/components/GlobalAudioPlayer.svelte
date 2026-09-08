@@ -4,7 +4,7 @@
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
-  import { markSongDownloaded } from '../lib/trackStatus.svelte';
+  import { markSongDownloaded, getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { savePlayerStateToStorage, loadPlayerStateFromStorage } from '../lib/playerStorage';
   import { resolveTrackUrl, preloadSurroundingTracks } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
@@ -42,6 +42,7 @@
   let pendingSeekTime = $state<number | null>(null);
   let vol = $state(typeof localStorage !== 'undefined' ? (Number(localStorage.getItem('wyyyy_player_vol')) || 0.8) : 0.8);
   let autoSkipTrial = $state(true);
+  let serverOnly = $state(false);
   let offlineOnly = $state(false);
   let showDrawer = $state(false);
   let showLyric = $state(false);
@@ -61,7 +62,7 @@
   $effect(() => { updateMediaSessionPlaybackState(playing); });
 
   function savePlayerState() {
-    savePlayerStateToStorage({ queue, qIndex, playMode, curTime, autoSkipTrial, offlineOnly });
+    savePlayerStateToStorage({ queue, qIndex, playMode, curTime, autoSkipTrial, serverOnly, offlineOnly });
   }
 
   async function prepareTrackInUI(track: Track) {
@@ -79,6 +80,7 @@
     queue = s.queue; qIndex = s.qIndex ?? 0;
     if (s.playMode) playMode = s.playMode;
     if (s.autoSkipTrial !== undefined) autoSkipTrial = s.autoSkipTrial;
+    if (s.serverOnly !== undefined) serverOnly = s.serverOnly;
     if (s.offlineOnly !== undefined) offlineOnly = s.offlineOnly;
     if (s.curTime && s.curTime > 0) {
       curTime = s.curTime;
@@ -138,6 +140,12 @@
       }
     }
 
+    // 🛡️ 智能跳过试听（已知试听曲目）
+    if (autoSkipTrial && track.freeTrial === true) {
+      showToast(`🛡️ 已跳过试听曲目《${track.name}》`, 'info', 1500);
+      return next();
+    }
+
     // ① 在 await 之前同步触发 play()，保留 iOS 手势上下文
     if (existingUrl) {
       if (resetTime) {
@@ -167,6 +175,10 @@
     if (resetTime) curTime = 0;
     try { audioEl.play().catch(() => {}); } catch {}
     const url = await resolveTrackUrl(track);
+    if (autoSkipTrial && track.freeTrial === true) {
+      showToast(`🛡️ 已跳过试听曲目《${track.name}》`, 'info', 1500);
+      return next();
+    }
     if (url && audioEl && queue[qIndex] === track) {
       audioEl.src = url;
       if (resetTime) {
@@ -206,19 +218,29 @@
     }
   }
 
+  function isValidTrackForMode(track: Track): boolean {
+    if (!track) return false;
+    const status = getTrackSourceStatus(track.id, track.isLocal);
+    if (offlineOnly && !status.isPhone) return false;
+    if (serverOnly && !status.isServer) return false;
+    if (autoSkipTrial && track.freeTrial === true) return false;
+    return true;
+  }
+
   async function next() {
     if (queue.length === 0) return;
     if (playMode === 'shuffle') {
-      let nextIdx = Math.floor(Math.random() * queue.length);
-      if (queue.length > 1 && nextIdx === qIndex) nextIdx = (qIndex + 1) % queue.length;
-      qIndex = nextIdx;
+      const validIndices = queue.map((t, i) => isValidTrackForMode(t) ? i : -1).filter(i => i !== -1);
+      if (validIndices.length > 0) {
+        let pool = validIndices.filter(i => i !== qIndex);
+        qIndex = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : validIndices[0];
+      }
     } else {
       let attempts = 0;
       do {
         qIndex = (qIndex + 1) % queue.length;
         attempts++;
-        if (!offlineOnly) break;
-        if (queue[qIndex]?.isLocal) break;
+        if (isValidTrackForMode(queue[qIndex])) break;
       } while (attempts < queue.length);
       // autoSkipTrial：只跳过真正的试听片段（freeTrial===true），不误判普通在线歌曲
       if (autoSkipTrial && (queue[qIndex] as any)?.freeTrial === true) {
@@ -234,16 +256,17 @@
   async function prev() {
     if (queue.length === 0) return;
     if (playMode === 'shuffle') {
-      let prevIdx = Math.floor(Math.random() * queue.length);
-      if (queue.length > 1 && prevIdx === qIndex) prevIdx = (qIndex - 1 + queue.length) % queue.length;
-      qIndex = prevIdx;
+      const validIndices = queue.map((t, i) => isValidTrackForMode(t) ? i : -1).filter(i => i !== -1);
+      if (validIndices.length > 0) {
+        let pool = validIndices.filter(i => i !== qIndex);
+        qIndex = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : validIndices[0];
+      }
     } else {
       let attempts = 0;
       do {
         qIndex = (qIndex - 1 + queue.length) % queue.length;
         attempts++;
-        if (!offlineOnly) break;
-        if (queue[qIndex]?.isLocal) break;
+        if (isValidTrackForMode(queue[qIndex])) break;
       } while (attempts < queue.length);
     }
     curTime = 0;
@@ -392,13 +415,24 @@
 <!-- 📜 播放列表 & 下载任务 统一抽屉 -->
 {#if showDrawer}
   <PlaylistDrawer
-    {queue} {qIndex} tasks={taskState.tasks} {likedSet} {autoSkipTrial} {offlineOnly} downloadedSet={taskState.downloadedSet}
+    {queue} {qIndex} tasks={taskState.tasks} {likedSet}
+    {autoSkipTrial} {serverOnly} {offlineOnly}
+    downloadedSet={taskState.downloadedSet}
     onPlayIndex={(idx) => { qIndex = idx; curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
     onClearQueue={() => { queue = []; qIndex = 0; savePlayerState(); showToast('播放队列已清空', 'info'); }}
     onRemoveItem={(realIdx) => { queue = queue.filter((_, idx) => idx !== realIdx); if (qIndex >= queue.length) qIndex = Math.max(0, queue.length - 1); savePlayerState(); }}
     onToggleLike={onToggleLike}
     onToggleAutoSkip={(val) => { autoSkipTrial = val; savePlayerState(); }}
-    onToggleOfflineOnly={(val) => { offlineOnly = val; savePlayerState(); }}
+    onToggleServerOnly={(val) => {
+      serverOnly = val;
+      if (val) offlineOnly = false;
+      savePlayerState();
+    }}
+    onToggleOfflineOnly={(val) => {
+      offlineOnly = val;
+      if (val) serverOnly = false;
+      savePlayerState();
+    }}
     onClearTasks={clearTasks} {onReveal} onClose={() => showDrawer = false}
   />
 {/if}

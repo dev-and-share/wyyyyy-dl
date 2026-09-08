@@ -58,6 +58,28 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(onlineTrack.lyric).toBe('[00:00.00]塞纳河畔');
   });
 
+  it('records freeTrial flags accurately when resolving trial track', async () => {
+    const trialTrack: Track = {
+      id: 303,
+      name: 'VIP试听曲目',
+      artist: '某歌手'
+    };
+
+    (api.songV1 as any).mockResolvedValueOnce({
+      code: '000000',
+      data: {
+        url: 'http://m701.music.126.net/trial.mp3',
+        freeTrial: true,
+        freeTrialDuration: 30
+      }
+    });
+
+    await resolveTrackUrl(trialTrack);
+
+    expect(trialTrack.freeTrial).toBe(true);
+    expect(trialTrack.freeTrialDuration).toBe(30);
+  });
+
   it('preloadSurroundingTracks triggers pre-resolution for both next and previous tracks in queue', () => {
     const queue: Track[] = [
       { id: 1, name: '曲目1', artist: '歌手1' }, // prev of index 1

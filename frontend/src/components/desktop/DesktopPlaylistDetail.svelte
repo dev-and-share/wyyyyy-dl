@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import {
     allTracks,
     pageSize,
@@ -54,19 +53,16 @@
   let playlist = $derived(getPlaylist());
   let curPage = $derived(getCurPage());
 
-  let loading = $state(false);
+  let isCurrentPlaylistLoaded = $derived(
+    !!playlist && String(playlist.id) === String(playlistId)
+  );
+
+  let loadError = $state('');
   let showForkModal = $state(false);
   let cachingTrackId = $state<number | null>(null);
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
-  let lastSeenTrigger = $state(-1);
-  let lastSeenId = $state('');
-
-  onMount(() => {
-    if (playlistId) {
-      lastSeenId = playlistId;
-      loadData(playlistId);
-    }
-  });
+  let lastSeenTrigger = -1;
+  let lastSeenId = '';
 
   $effect(() => {
     const curId = playlistId;
@@ -78,14 +74,14 @@
     }
   });
 
-  async function loadData(id: string) {
-    loading = true;
+  async function loadData(id: string, force = false) {
+    if (!id) return;
+    loadError = '';
     try {
-      await loadPlaylistDetail(id);
+      await loadPlaylistDetail(id, force);
     } catch (e: any) {
-      showToast(e?.message || '获取歌单详情失败', 'error');
-    } finally {
-      loading = false;
+      loadError = e?.message || '获取歌单详情失败';
+      showToast(loadError, 'error');
     }
   }
 
@@ -190,16 +186,10 @@
       <span>返回歌单画廊</span>
     </button>
     <span class="opacity-40 shrink-0">/</span>
-    <span class="truncate font-semibold text-[var(--text-main)]">{playlist?.name || '歌单详情'}</span>
+    <span class="truncate font-semibold text-[var(--text-main)]">{isCurrentPlaylistLoaded ? playlist.name : (loadError ? '获取失败' : '正在加载...')}</span>
   </div>
 
-  {#if loading && (!playlist || String(playlist.id) !== String(playlistId))}
-    <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
-      <span class="text-3xl animate-spin text-red-500">⏳</span>
-      <span class="text-sm font-semibold text-[var(--text-main)]">正在加载歌单内容...</span>
-      <span class="text-xs text-[var(--text-muted)] max-w-sm">若为包含上千首曲目的超大歌单，系统正在并发补全完整曲目详情，请稍候</span>
-    </div>
-  {:else if playlist}
+  {#if isCurrentPlaylistLoaded}
     <!-- 2. 精致紧凑 Hero 横幅区 -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
       <img
@@ -387,9 +377,32 @@
         </button>
       </div>
     </div>
+  {:else if loadError}
+    <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
+      <span class="text-3xl">⚠️</span>
+      <span class="text-sm font-semibold text-red-400">{loadError}</span>
+      <div class="flex items-center gap-2 mt-2">
+        <button
+          type="button"
+          class="btn-primary text-xs px-4 py-1.5 rounded-xl cursor-pointer"
+          onclick={() => loadData(playlistId, true)}
+        >
+          重试
+        </button>
+        <button
+          type="button"
+          class="btn-secondary text-xs px-4 py-1.5 rounded-xl cursor-pointer"
+          onclick={onBackToGallery}
+        >
+          返回画廊
+        </button>
+      </div>
+    </div>
   {:else}
-    <div class="py-16 text-center text-xs text-[var(--text-muted)]">
-      未找到歌单信息
+    <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
+      <span class="text-3xl animate-spin text-red-500">⏳</span>
+      <span class="text-sm font-semibold text-[var(--text-main)]">正在加载歌单内容...</span>
+      <span class="text-xs text-[var(--text-muted)] max-w-sm">若为包含上千首曲目的超大歌单，系统正在并发补全完整曲目详情，请稍候</span>
     </div>
   {/if}
 

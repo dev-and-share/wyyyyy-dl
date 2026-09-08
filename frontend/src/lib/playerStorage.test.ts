@@ -19,6 +19,7 @@ describe('playerStorage persistence contracts', () => {
       playMode: 'shuffle',
       curTime: 92.5,
       autoSkipTrial: true,
+      serverOnly: true,
       offlineOnly: false
     });
 
@@ -31,6 +32,7 @@ describe('playerStorage persistence contracts', () => {
     // 关键断点验证：必须能够无损还原 92.5 秒供冷启动续播
     expect(state.curTime).toBe(92.5);
     expect(state.autoSkipTrial).toBe(true);
+    expect(state.serverOnly).toBe(true);
     expect(state.offlineOnly).toBe(false);
   });
 

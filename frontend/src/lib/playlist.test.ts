@@ -143,4 +143,66 @@ describe('Playlist Play Count & Sorting Contract', () => {
     expect(playlistState.playlist?.name).toBe('后台最新歌单');
     expect(getApiCache('playlist_8888')?.data?.playlist?.name).toBe('后台最新歌单');
   });
+
+  it('Anti-Race Condition: ignores stale background revalidate when user switched to another playlist', async () => {
+    const { loadPlaylistDetail, playlistState } = await import('./playlist.svelte');
+    const { api } = await import('./api');
+    const { setApiCache, getApiCache } = await import('./utils');
+    const { vi } = await import('vitest');
+
+    // 预置两个不同歌单的旧缓存数据
+    setApiCache('playlist_111', {
+      playlist: { id: 111, name: '黄磊经典', tracks: [{ id: 11, name: '边走边唱' }] }
+    });
+    setApiCache('playlist_222', {
+      playlist: { id: 222, name: '张宇精选', tracks: [{ id: 22, name: '用心良苦' }] }
+    });
+
+    let resolve111: any;
+    let resolve222: any;
+    const promise111 = new Promise((resolve) => { resolve111 = resolve; });
+    const promise222 = new Promise((resolve) => { resolve222 = resolve; });
+
+    vi.spyOn(api, 'playlist').mockImplementation((id: string) => {
+      if (id === '111') return promise111 as any;
+      if (id === '222') return promise222 as any;
+      return Promise.resolve({ code: '000000', data: { playlist: { id: Number(id), tracks: [{ id: 1 }] } } });
+    });
+
+    // 1. 用户先切换到黄磊（Cache First 立即显示黄磊，后台发起了 111 的网络请求）
+    await loadPlaylistDetail('111');
+    expect(playlistState.playlist?.name).toBe('黄磊经典');
+
+    // 2. 用户快速切换到张宇（Cache First 立即显示张宇，后台发起了 222 的网络请求）
+    await loadPlaylistDetail('222');
+    expect(playlistState.playlist?.name).toBe('张宇精选');
+
+    // 3. 模拟“黄磊”慢速后台请求耗时 1s 后终于返回
+    resolve111({
+      code: '000000',
+      data: {
+        playlist: { id: 111, name: '后台最新黄磊', tracks: [{ id: 11, name: '边走边唱新版' }] }
+      }
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // 关键断言：即使黄磊请求返回了，UI 也决不能跳回黄磊！张宇保持不变！
+    expect(playlistState.playlist?.name).toBe('张宇精选');
+    expect(playlistState.playlist?.id).toBe(222);
+    // 但黄磊的本地离线缓存依然默默被更新了
+    expect(getApiCache('playlist_111')?.data?.playlist?.name).toBe('后台最新黄磊');
+
+    // 4. “张宇”请求返回
+    resolve222({
+      code: '000000',
+      data: {
+        playlist: { id: 222, name: '后台最新张宇', tracks: [{ id: 22, name: '用心良苦新版' }] }
+      }
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // 当前处于张宇，张宇的最新数据成功应用
+    expect(playlistState.playlist?.name).toBe('后台最新张宇');
+    expect(playlistState.playlist?.id).toBe(222);
+  });
 });

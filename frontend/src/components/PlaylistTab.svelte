@@ -28,6 +28,7 @@
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
+  import { layoutState } from '../lib/layout.svelte';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -105,7 +106,8 @@
 
   // 初始化自动拉取/读取 SWR 缓存
   onMount(() => {
-    const targetPid = pid || playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
+    const isDesktopMode = layoutState.mode === 'desktop-sidebar' && layoutState.isDesktop;
+    const targetPid = playlistId || (!isDesktopMode ? (pid || getStored(STORAGE_KEY_PLAYLIST_ID, '')) : '');
     if (targetPid) {
       pid = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});

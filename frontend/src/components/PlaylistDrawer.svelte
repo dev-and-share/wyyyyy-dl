@@ -12,6 +12,7 @@
     tasks = [],
     likedSet = new Set<number>(),
     autoSkipTrial = true,
+    serverOnly = false,
     offlineOnly = false,
     downloadedSet = new Set<number>(),
     onPlayIndex,
@@ -19,6 +20,7 @@
     onRemoveItem,
     onToggleLike,
     onToggleAutoSkip,
+    onToggleServerOnly,
     onToggleOfflineOnly,
     onClearTasks,
     onReveal,
@@ -29,6 +31,7 @@
     tasks: any[];
     likedSet: Set<number>;
     autoSkipTrial: boolean;
+    serverOnly: boolean;
     offlineOnly: boolean;
     downloadedSet: Set<number>;
     onPlayIndex: (index: number) => void;
@@ -36,6 +39,7 @@
     onRemoveItem: (index: number) => void;
     onToggleLike: (id: number, name: string) => void;
     onToggleAutoSkip: (val: boolean) => void;
+    onToggleServerOnly: (val: boolean) => void;
     onToggleOfflineOnly: (val: boolean) => void;
     onClearTasks: () => void;
     onReveal: (item: any) => void;
@@ -50,6 +54,12 @@
   let filteredQueueWithIndex = $derived.by(() => {
     return queue.map((t: Track, realIdx: number) => ({ t, realIdx })).filter(({ t }: { t: Track }) => {
       const status = getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]);
+      // 模式 2: 仅播服务器已下载
+      if (serverOnly && !status.isServer) return false;
+      // 模式 3: 纯离线模式 (手机零流量，仅手机本地已缓存)
+      if (offlineOnly && !status.isPhone) return false;
+
+      // 顶部 Tab 过滤
       if (filterType === 'server' && !status.isServer) return false;
       if (filterType === 'ready' && !status.isLocal) return false;
       if (filterText.trim()) {
@@ -64,7 +74,10 @@
 
   // 统计数
   let countAll = $derived(queue.length);
+  let countReady = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isLocal).length);
   let countServer = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer).length);
+  let countPhone = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isPhone).length);
+  let displayedCount = $derived(filteredQueueWithIndex.length);
 
   // 退出动画与手势下拉状态
   let closing = $state(false);
@@ -152,7 +165,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {activeTab === 'queue' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'queue'}
         >
-          📜 播放队列 {offlineOnly ? `(${countServer}/${countAll})` : `(${countAll})`}
+          📜 播放队列 {displayedCount < countAll ? `(${displayedCount}/${countAll})` : `(${countAll})`}
         </button>
         <button
           type="button"
@@ -226,39 +239,53 @@
               type="button"
               class="px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer {filterType === 'ready' ? 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 font-semibold' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
               onclick={() => filterType = 'ready'}
-              title="本地就绪曲目"
+              title="本地就绪曲目 (包含服务器与手机离线)"
             >
-              ✨ 离线就绪 {countServer}
+              ✨ 离线就绪 {countReady}
             </button>
             <button
               type="button"
               class="px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer {filterType === 'server' ? 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 font-semibold' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
               onclick={() => filterType = 'server'}
-              title="已存在服务器磁盘"
+              title="已下载到服务器磁盘"
             >
-              🖥️ 本地 {countServer}
+              💻 本地磁盘 {countServer}
             </button>
           </div>
 
-          <!-- ⚙️ 智能跳过与播放策略开关 -->
-          <div class="flex items-center gap-3.5 text-[11px] text-[var(--text-secondary)] select-none">
-            <label class="flex items-center gap-1.5 cursor-pointer" title="播放遇到 30 秒试听曲目时，自动跳过并播放下一首完整歌曲">
+          <!-- ⚙️ 智能跳过与播放策略开关（3 种播放模式） -->
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--text-secondary)] select-none pt-0.5">
+            <!-- 模式 1: 默认打勾 跳过试听 -->
+            <label class="flex items-center gap-1.5 cursor-pointer" title="遇到 30 秒试听曲目自动切下一首完整歌曲">
               <input
                 type="checkbox"
                 checked={autoSkipTrial}
                 onchange={(e) => onToggleAutoSkip((e.currentTarget as HTMLInputElement).checked)}
                 class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
               />
-              <span>🛡️ 自动跳过试听</span>
+              <span class={autoSkipTrial ? 'font-medium text-[var(--text-main)]' : ''}>🛡️ 跳过试听</span>
             </label>
-            <label class="flex items-center gap-1.5 cursor-pointer" title="仅播放服务器已下载的歌曲">
+
+            <!-- 模式 2: 仅播服务器已下载 -->
+            <label class="flex items-center gap-1.5 cursor-pointer" title="只播放已下载到服务器磁盘的曲目（💻），列表联动过滤">
+              <input
+                type="checkbox"
+                checked={serverOnly}
+                onchange={(e) => onToggleServerOnly((e.currentTarget as HTMLInputElement).checked)}
+                class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+              />
+              <span class={serverOnly ? 'font-medium text-[var(--text-main)]' : ''}>💻 仅播服务器已下载</span>
+            </label>
+
+            <!-- 模式 3: 纯离线模式 (手机零流量) -->
+            <label class="flex items-center gap-1.5 cursor-pointer" title="手机纯离线模式（仅播手机浏览器本地缓存，绝不消耗手机流量）">
               <input
                 type="checkbox"
                 checked={offlineOnly}
                 onchange={(e) => onToggleOfflineOnly((e.currentTarget as HTMLInputElement).checked)}
                 class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
               />
-              <span>📴 纯离线模式</span>
+              <span class={offlineOnly ? 'font-medium text-[var(--text-main)]' : ''}>📴 纯离线模式</span>
             </label>
           </div>
         </div>

@@ -19,6 +19,8 @@ export interface Track {
   ar?: Array<{
     name: string;
   }>;
+  freeTrial?: boolean;
+  freeTrialDuration?: number;
 }
 
 export interface DownloadTask {

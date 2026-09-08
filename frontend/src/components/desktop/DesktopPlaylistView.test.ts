@@ -64,4 +64,18 @@ describe('DesktopPlaylistView', () => {
 
     expect(getByTestId('desktop-playlist-gallery')).toBeInTheDocument();
   });
+
+  it('does NOT show "未找到歌单信息" while loading or on initial render', async () => {
+    const { queryByText } = render(DesktopPlaylistView, {
+      props: {
+        playlistId: '999999',
+        likedSet: new Set<number>(),
+        onToggleLike: vi.fn(),
+        onPlayQueue: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    expect(queryByText('未找到歌单信息')).toBeNull();
+  });
 });

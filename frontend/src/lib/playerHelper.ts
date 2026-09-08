@@ -45,6 +45,8 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
         track.isLocal = true;
         markSongDownloaded(track.id);
       }
+      track.freeTrial = song.freeTrial === true;
+      track.freeTrialDuration = song.freeTrialDuration;
       const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
       if (newPic) track.cover = newPic;
       if (song.lyric && !track.lyric) track.lyric = song.lyric;

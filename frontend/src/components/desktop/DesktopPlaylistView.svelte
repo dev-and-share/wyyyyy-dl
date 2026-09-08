@@ -2,6 +2,7 @@
   import DesktopPlaylistGallery from './DesktopPlaylistGallery.svelte';
   import DesktopPlaylistDetail from './DesktopPlaylistDetail.svelte';
   import { playPlaylistTracks } from '../../lib/playerHelper';
+  import { resetActiveTargetPlaylist } from '../../lib/playlist.svelte';
 
   let {
     playlistId = '',
@@ -64,7 +65,7 @@
       {playing}
       {likedSet}
       {downloadedSet}
-      onBackToGallery={() => { dismissed = true; selectedId = ''; }}
+      onBackToGallery={() => { dismissed = true; selectedId = ''; resetActiveTargetPlaylist(); }}
       {onToggleLike}
       {onPlayQueue}
       {onAlbum}

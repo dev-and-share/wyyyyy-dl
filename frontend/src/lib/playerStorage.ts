@@ -6,6 +6,7 @@ export interface PlayerPersistedState {
   playMode: 'list' | 'single' | 'shuffle';
   curTime: number;
   autoSkipTrial: boolean;
+  serverOnly: boolean;
   offlineOnly: boolean;
 }
 
@@ -15,6 +16,7 @@ export function savePlayerStateToStorage(state: {
   playMode: 'list' | 'single' | 'shuffle';
   curTime: number;
   autoSkipTrial: boolean;
+  serverOnly: boolean;
   offlineOnly: boolean;
 }) {
   if (typeof localStorage === 'undefined') return;
@@ -29,6 +31,7 @@ export function savePlayerStateToStorage(state: {
       localStorage.setItem('wyyyy_player_time', String(state.curTime));
     }
     localStorage.setItem('wyyyy_player_auto_skip_trial', String(state.autoSkipTrial));
+    localStorage.setItem('wyyyy_player_server_only', String(state.serverOnly));
     localStorage.setItem('wyyyy_player_offline_only', String(state.offlineOnly));
   } catch (e) {}
 }
@@ -41,6 +44,7 @@ export function loadPlayerStateFromStorage(): Partial<PlayerPersistedState> {
     const modeStr = localStorage.getItem('wyyyy_player_mode');
     const timeStr = localStorage.getItem('wyyyy_player_time');
     const skipTrialStr = localStorage.getItem('wyyyy_player_auto_skip_trial');
+    const serverStr = localStorage.getItem('wyyyy_player_server_only');
     const offlineStr = localStorage.getItem('wyyyy_player_offline_only');
 
     const result: Partial<PlayerPersistedState> = {};
@@ -57,7 +61,9 @@ export function loadPlayerStateFromStorage(): Partial<PlayerPersistedState> {
     else if (modeStr === 'random') result.playMode = 'shuffle';
     else if (modeStr) result.playMode = 'list';
 
-    if (skipTrialStr !== null) result.autoSkipTrial = skipTrialStr === 'true';
+    // 默认跳过试听为 true
+    result.autoSkipTrial = skipTrialStr !== null ? skipTrialStr === 'true' : true;
+    if (serverStr !== null) result.serverOnly = serverStr === 'true';
     if (offlineStr !== null) result.offlineOnly = offlineStr === 'true';
 
     const seekTime = parseFloat(timeStr || '0') || 0;
