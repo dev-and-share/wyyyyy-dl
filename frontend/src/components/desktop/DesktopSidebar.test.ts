@@ -6,7 +6,6 @@ describe('DesktopSidebar', () => {
   it('renders navigation tabs and triggers onSwitchTab', async () => {
     const onSwitchTab = vi.fn();
     const onToggleCollapse = vi.fn();
-    const onSwitchToLegacyTabs = vi.fn();
 
     const { getByTestId } = render(DesktopSidebar, {
       props: {
@@ -14,8 +13,7 @@ describe('DesktopSidebar', () => {
         collapsed: false,
         downloadingCount: 3,
         onSwitchTab,
-        onToggleCollapse,
-        onSwitchToLegacyTabs
+        onToggleCollapse
       }
     });
 
@@ -36,8 +34,7 @@ describe('DesktopSidebar', () => {
         tab: 'playlist',
         collapsed: false,
         onSwitchTab: vi.fn(),
-        onToggleCollapse,
-        onSwitchToLegacyTabs: vi.fn()
+        onToggleCollapse
       }
     });
 
@@ -53,8 +50,7 @@ describe('DesktopSidebar', () => {
         tab: 'playlist',
         collapsed: false,
         onSwitchTab: vi.fn(),
-        onToggleCollapse: vi.fn(),
-        onSwitchToLegacyTabs: vi.fn()
+        onToggleCollapse: vi.fn()
       }
     });
 

@@ -6,7 +6,6 @@ WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json* ./frontend/
 RUN --mount=type=cache,target=/root/.npm cd frontend && npm ci
 COPY frontend/ ./frontend/
-COPY src/main/resources/static/css/ ./src/main/resources/static/css/
 RUN cd frontend && npm run build
 
 # ==============================================================================

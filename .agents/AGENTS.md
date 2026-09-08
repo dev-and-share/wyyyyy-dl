@@ -1,17 +1,14 @@
-# AGENTS.md — 路由导航
+# AGENTS.md — 架构导航
 
-> 本项目双栈并存，按任务选对应手册，**不要混用**。
+> 本项目已彻底移除旧版 Vanilla JS 与精简版模式，全面统一为 **Svelte 5 (Vite + Tailwind v4 + Runes) + Spring Boot 3** 现代化架构。
 
-- **旧版 vanilla JS（Thymeleaf + 11 JS）**：`./AGENTS_js.md` — 历次重构沉淀的硬核避坑（DAO/status、SWR、PWA、SP 适配、拖拽、Docker `v4.6.7`）。
-- **新版 Svelte 5（Vite + Runes）**：`./AGENTS_svelte.md` — 选型/双版 `?v/Cookie` 隔离、`Runes` 拆分、样式复用、5 阶段收口、组件测试。
+- **核心技术栈手册**：`./AGENTS_svelte.md` — Runes 状态拆分、组件单文件 <500 行规范、桌面宽屏分栏与 SP 自适应、自动化测试。
+- **Java 后端规范**：Spring Boot 3.2.5 + JDK 21，所有业务与流媒体接口收口至 `/v3/` 规范。
 
 **快速路由：**
 
-| 你要做什么 | 看哪份 |
+| 你要做什么 | 看哪份 / 路径 |
 |---|---|
-| 修/增旧版 `static/js`、`home.html`、`DownloadHistoryDAO` | `AGENTS_js.md` |
-| 修/增新版 `frontend/src/*`、`static/svelte`、`QrLoginController ?v` | `AGENTS_svelte.md` |
-| 双版切换、Docker 多段、`compose --build` | `AGENTS_svelte.md` §2 |
-| 加新功能前必查 | 两份的“新增功能必查清单”都要过 |
-
-> 新需求默认走 **Svelte 版**，旧版仅修 Bug。`feature/svelte5-migration` 为当前主战场，`8080/?v=svelte` 新版，`?v=legacy` 秒回旧版。
+| 前端界面、组件、Stores、样式 | `frontend/src/*`，参考 `AGENTS_svelte.md` |
+| 后端 API、Service、SQLite DAO | `src/main/java/com/pewee/...` |
+| 构建与部署 | 根目录 `./deploy.sh` 或 `Dockerfile` |

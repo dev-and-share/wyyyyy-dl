@@ -106,7 +106,7 @@
 
   // 初始化自动拉取/读取 SWR 缓存
   onMount(() => {
-    const isDesktopMode = layoutState.mode === 'desktop-sidebar' && layoutState.isDesktop;
+    const isDesktopMode = layoutState.isDesktop;
     const targetPid = playlistId || (!isDesktopMode ? (pid || getStored(STORAGE_KEY_PLAYLIST_ID, '')) : '');
     if (targetPid) {
       pid = targetPid;

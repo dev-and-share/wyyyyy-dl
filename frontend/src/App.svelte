@@ -2,10 +2,10 @@
   import { onMount } from 'svelte';
   import { api } from './lib/api';
   import { checkForPwaUpdate } from './lib/pwa';
-  import { applyTheme, getInitialTheme, switchToLegacy, type ThemeMode } from './lib/theme';
+  import { applyTheme, getInitialTheme, type ThemeMode } from './lib/theme';
   import { showToast } from './lib/toast.svelte';
   import { routerState, switchTab, jumpToAlbum, jumpToPlaylist, initRouter, toggleSidebarCollapse } from './lib/router.svelte';
-  import { layoutState, switchToLegacyTabs, switchToDesktopSidebar, initLayoutWatcher } from './lib/layout.svelte';
+  import { layoutState, initLayoutWatcher } from './lib/layout.svelte';
   import { likeState, initLikeList, toggleLike } from './lib/likeStore.svelte';
   import { taskState, startTaskPolling, initDownloadedSet, getActiveDownloadingCount } from './lib/taskStore.svelte';
   import { sheetState } from './lib/ui.svelte';
@@ -101,9 +101,10 @@
 <!-- 📱 手机端下拉刷新指示器 (模态框/抽屉打开时自动禁用避免手势冲突) -->
 <PullToRefresh disabled={isAnyOverlayOpen} onRefresh={handleRefresh} />
 
-<!-- 页面整体容器：在 PC 桌面侧边栏模式下锁定整屏视口，左侧边栏固定，右侧独立滚动 -->
-<div class="min-h-screen {layoutState.mode === 'desktop-sidebar' ? 'flex flex-col lg:flex-row lg:h-screen lg:max-h-screen lg:overflow-hidden' : ''}">
-  {#if layoutState.mode === 'desktop-sidebar'}
+<!-- 页面整体容器：在宽屏 (>= 1024px) 锁定视口左侧边栏固定右侧独立滚动，窄屏竖屏自由流动 -->
+<div class="min-h-screen flex flex-col lg:flex-row lg:h-screen lg:max-h-screen lg:overflow-hidden">
+  <!-- 💻 PC 桌面侧边栏 (>= 1024px 显示) -->
+  <div class="hidden lg:contents">
     <DesktopSidebar
       tab={routerState.tab}
       collapsed={routerState.sidebarCollapsed}
@@ -112,60 +113,44 @@
       onViewPlaylist={jumpToPlaylist}
       onPlayPlaylist={(id: string, name: string) => playPlaylistTracks(id, name, setQueue, showToast)}
       onToggleCollapse={toggleSidebarCollapse}
-      onSwitchToLegacyTabs={switchToLegacyTabs}
       {showToast}
     />
-  {/if}
+  </div>
 
-  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 桌面模式下为独立纵向滚动区) -->
-  <div class="flex-1 flex flex-col min-w-0 app-main-container {layoutState.mode === 'desktop-sidebar' ? 'max-w-[1400px] relative lg:h-[calc(100vh-74px)] lg:overflow-y-auto' : 'max-w-[900px]'} w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0">
+  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 宽屏模式下为独立纵向滚动区) -->
+  <div class="flex-1 flex flex-col min-w-0 app-main-container max-w-[1400px] relative lg:h-[calc(100vh-74px)] lg:overflow-y-auto w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0">
     <!-- 顶栏导航 -->
     <TopBar
       tab={routerState.tab} {themeMode} {repeat}
-      layoutMode={layoutState.mode}
-      isDesktopLayout={layoutState.mode === 'desktop-sidebar'}
+      isDesktopLayout={layoutState.isDesktop}
       onSwitchTab={switchTab}
       onToggleTheme={toggleTheme}
       onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
-      onSwitchToLegacy={switchToLegacy}
-      onSwitchToDesktopSidebar={switchToDesktopSidebar}
-      onSwitchToLegacyTabs={switchToLegacyTabs}
       onRefresh={handleRefresh}
     />
 
   <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；PC 模式下减少冗余内边距) -->
   <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px] lg:pb-4">
+    <!-- 📁 歌单 Tab -->
     <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
-      {#if layoutState.mode === 'desktop-sidebar'}
-        <!-- 💻 PC 桌面端专属：去手风琴画廊与宽屏大表格 (>= 1024px) -->
-        <div class="hidden lg:block w-full">
-          <DesktopPlaylistView
-            playlistId={routerState.playlistId}
-            playlistTrigger={routerState.playlistTrigger}
-            {curTrack}
-            {playing}
-            likedSet={likeState.likedSet}
-            downloadedSet={taskState.downloadedSet}
-            onToggleLike={toggleLike}
-            onPlayQueue={setQueue}
-            onAlbum={jumpToAlbum}
-            onReveal={handleReveal}
-            {showToast}
-          />
-        </div>
-        <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
-        <div class="block lg:hidden w-full">
-          <PlaylistTab
-            playlistId={routerState.playlistId}
-            playlistTrigger={routerState.playlistTrigger}
-            {curTrack} {playing}
-            likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
-            onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
-            {showToast}
-          />
-        </div>
-      {:else}
-        <!-- 📱 精简模式 (纯折叠手风琴卡片) -->
+      <!-- 💻 PC 桌面端专属：去手风琴画廊与宽屏大表格 (>= 1024px) -->
+      <div class="hidden lg:block w-full">
+        <DesktopPlaylistView
+          playlistId={routerState.playlistId}
+          playlistTrigger={routerState.playlistTrigger}
+          {curTrack}
+          {playing}
+          likedSet={likeState.likedSet}
+          downloadedSet={taskState.downloadedSet}
+          onToggleLike={toggleLike}
+          onPlayQueue={setQueue}
+          onAlbum={jumpToAlbum}
+          onReveal={handleReveal}
+          {showToast}
+        />
+      </div>
+      <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
+      <div class="block lg:hidden w-full">
         <PlaylistTab
           playlistId={routerState.playlistId}
           playlistTrigger={routerState.playlistTrigger}
@@ -174,32 +159,23 @@
           onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
           {showToast}
         />
-      {/if}
+      </div>
     </div>
+
+    <!-- 🔍 搜索 Tab -->
     <div style="display: {routerState.tab === 'search' ? 'contents' : 'none'};">
-      {#if layoutState.mode === 'desktop-sidebar'}
-        <!-- 💻 PC 桌面端专属：去手风琴全宽搜索中心 (>= 1024px) -->
-        <div class="hidden lg:block w-full">
-          <DesktopSearchView
-            {curTrack} {playing}
-            downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
-            onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
-            onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
-            {showToast}
-          />
-        </div>
-        <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
-        <div class="block lg:hidden w-full">
-          <SearchTab
-            albumId={routerState.albumId} {curTrack} {playing}
-            downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
-            onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
-            onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
-            {showToast}
-          />
-        </div>
-      {:else}
-        <!-- 📱 精简模式 (纯折叠手风琴卡片) -->
+      <!-- 💻 PC 桌面端专属：去手风琴全宽搜索中心 (>= 1024px) -->
+      <div class="hidden lg:block w-full">
+        <DesktopSearchView
+          {curTrack} {playing}
+          downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
+          onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
+          onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
+          {showToast}
+        />
+      </div>
+      <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
+      <div class="block lg:hidden w-full">
         <SearchTab
           albumId={routerState.albumId} {curTrack} {playing}
           downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
@@ -207,27 +183,24 @@
           onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
           {showToast}
         />
-      {/if}
+      </div>
     </div>
+
+    <!-- 📥 本地管理 Tab -->
     <div style="display: {routerState.tab === 'download-mgr' ? 'contents' : 'none'};">
-      {#if layoutState.mode === 'desktop-sidebar'}
-        <!-- 💻 PC 桌面端专属：本地管理双栏工作台 (>= 1024px) -->
-        <div class="hidden lg:block w-full">
-          <DesktopDownloadMgrView
-            {curTrack} {playing}
-            onPlayQueue={setQueue}
-            onReveal={handleReveal}
-            {showToast}
-          />
-        </div>
-        <!-- 📱 移动端 / 窄屏：保留原有单列折叠手风琴 (< 1024px) -->
-        <div class="block lg:hidden w-full">
-          <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
-        </div>
-      {:else}
-        <!-- 📱 精简模式 (纯折叠手风琴卡片) -->
+      <!-- 💻 PC 桌面端专属：本地管理双栏工作台 (>= 1024px) -->
+      <div class="hidden lg:block w-full">
+        <DesktopDownloadMgrView
+          {curTrack} {playing}
+          onPlayQueue={setQueue}
+          onReveal={handleReveal}
+          {showToast}
+        />
+      </div>
+      <!-- 📱 移动端 / 窄屏：保留原有单列折叠手风琴 (< 1024px) -->
+      <div class="block lg:hidden w-full">
         <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
-      {/if}
+      </div>
     </div>
 
     <!-- 底部低调版本号 (移动端展示，PC 桌面端已移至左侧边栏底部) -->

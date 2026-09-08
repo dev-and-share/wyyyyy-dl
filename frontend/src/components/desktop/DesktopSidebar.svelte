@@ -9,7 +9,6 @@
     onViewPlaylist,
     onPlayPlaylist,
     onToggleCollapse,
-    onSwitchToLegacyTabs,
     showToast
   } = $props<{
     tab: 'playlist' | 'search' | 'download-mgr';
@@ -19,7 +18,6 @@
     onViewPlaylist?: (id: string) => void;
     onPlayPlaylist?: (id: string, name: string) => void;
     onToggleCollapse: () => void;
-    onSwitchToLegacyTabs?: () => void;
     showToast?: (m: string, t?: string) => void;
   }>();
 

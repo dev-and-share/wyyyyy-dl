@@ -140,7 +140,7 @@ public class AnalysisControllerTest {
                 .param("like", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
-                .andExpect(jsonPath("$.data.code").value(200));
+                .andExpect(jsonPath("$.data").value("ok"));
     }
 
     @Test

@@ -4,24 +4,15 @@ const BASE = process.env.BASE_URL || 'http://localhost:8080';
 
 test.describe('全栈端到端功能冒烟套件', () => {
 
-  test('冒烟 1: 双核路由互通（新版直达与无痕切回旧版）', async ({ page }) => {
-    // 1. 访问 Svelte 5 新版主入口
+  test('冒烟 1: Svelte 5 核心路由直达（根路径与主入口响应）', async ({ page }) => {
+    // 1. 访问根路径，验证直接渲染 Svelte 5 主站
+    await page.goto(`${BASE}/`);
+    await expect(page).toHaveTitle(/网易云/);
+
+    // 2. 访问 /svelte/index.html 主入口
     await page.goto(`${BASE}/svelte/index.html`);
     await expect(page).toHaveTitle(/网易云/);
-    const switchLegacyBtn = page.getByTestId('btn-switch-legacy');
-    await expect(switchLegacyBtn).toBeVisible();
-
-    // 2. 点击「旧版」按键，能成功跳转或切回旧版（验证 Cookie 与 URL 参数）
-    await switchLegacyBtn.click();
-    await page.waitForURL(/(\/|\/\?v=legacy)/);
-    // 旧版应渲染「试用新版」按钮或未登录二维码
-    const legacyBtn = page.locator('button:has-text("试用新版")');
-    const legacyQr = page.locator('text=扫码登录');
-    await expect(legacyBtn.or(legacyQr)).toBeVisible({ timeout: 6000 });
-
-    // 3. 验证直接访问 /?v=legacy 稳定可用
-    await page.goto(`${BASE}/?v=legacy`);
-    await expect(legacyBtn.or(legacyQr)).toBeVisible({ timeout: 6000 });
+    await expect(page.locator('#app')).toBeVisible();
   });
 
   test('冒烟 2: 顶栏功能（主题切换与暗色设计契约）', async ({ page }) => {

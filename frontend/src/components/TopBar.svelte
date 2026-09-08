@@ -1,31 +1,21 @@
 <script lang="ts">
-  import type { PcLayoutMode } from '../lib/layout.svelte';
-
   let {
     tab,
     themeMode,
     repeat,
-    layoutMode = 'desktop-sidebar',
     isDesktopLayout = false,
     onSwitchTab,
     onToggleTheme,
     onToggleRepeat,
-    onSwitchToLegacy,
-    onSwitchToDesktopSidebar,
-    onSwitchToLegacyTabs,
     onRefresh
   } = $props<{
     tab: 'playlist' | 'search' | 'download-mgr';
     themeMode: 'dark' | 'light' | 'auto';
     repeat: boolean;
-    layoutMode?: PcLayoutMode;
     isDesktopLayout?: boolean;
     onSwitchTab: (tab: 'playlist' | 'search' | 'download-mgr') => void;
     onToggleTheme: () => void;
     onToggleRepeat: () => void;
-    onSwitchToLegacy: () => void;
-    onSwitchToDesktopSidebar?: () => void;
-    onSwitchToLegacyTabs?: () => void;
     onRefresh?: () => void;
   }>();
 </script>
@@ -51,20 +41,10 @@
         <input type="checkbox" checked={repeat} onchange={onToggleRepeat} class="m-0 accent-[var(--primary-color)] cursor-pointer" />
         <span>允许重复</span>
       </label>
-
-      <button
-        type="button"
-        data-testid="btn-switch-legacy"
-        class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all select-none shrink-0"
-        onclick={onSwitchToLegacyTabs}
-        title="切换为精简 Tab 折叠模式（Svelte 版）"
-      >
-        <span>📱</span><span> 精简版</span>
-      </button>
     </div>
   </header>
 {:else}
-  <!-- 📱 移动端 / 精简折叠模式：标准顶栏 -->
+  <!-- 📱 移动端：标准顶栏 -->
   <div class="max-w-[900px] mx-auto mb-1 md:mb-4 px-3 py-1.5 md:px-3 md:py-1.5 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-1.5 md:gap-2.5 transition-all duration-300">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -102,37 +82,6 @@
         <input type="checkbox" checked={repeat} onchange={onToggleRepeat} class="m-0 accent-[var(--primary-color)] cursor-pointer" />
         <span class="hidden sm:inline">允许重复</span>
       </label>
-      {#if layoutMode === 'legacy-tabs'}
-        <!-- 精简版：承上（桌面版）启下（旧版）-->
-        <button
-          type="button"
-          data-testid="btn-switch-desktop"
-          class="bg-blue-500/12 hover:bg-blue-500/22 text-blue-400 border border-blue-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-          onclick={onSwitchToDesktopSidebar}
-          title="切换为 PC 桌面侧边栏模式"
-        >
-          <span>🖥️</span><span class="hidden sm:inline"> 桌面版</span>
-        </button>
-        <button
-          type="button"
-          data-testid="btn-switch-js-legacy"
-          class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-          onclick={onSwitchToLegacy}
-          title="返回纯 JS 旧版 (Cookie 切换)"
-        >
-          <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
-        </button>
-      {:else}
-        <button
-          type="button"
-          data-testid="btn-switch-legacy"
-          class="bg-purple-500/12 hover:bg-purple-500/22 text-purple-400 border border-purple-500/30 py-1 px-1.5 sm:px-2.5 rounded-[12px] text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0"
-          onclick={onSwitchToLegacy}
-          title="返回纯 JS 旧版 (Cookie 切换)"
-        >
-          <span>↩️</span><span class="hidden sm:inline"> 旧版</span>
-        </button>
-      {/if}
     </div>
   </div>
 {/if}
