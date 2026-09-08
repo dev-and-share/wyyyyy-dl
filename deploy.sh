@@ -28,7 +28,8 @@ node -e "
   pkg.version = '$NEW_VERSION';
   fs.writeFileSync('$PKG', JSON.stringify(pkg, null, 2) + '\n');
 "
-echo "✅ package.json 已更新"
+sed -i '' "s/version = '[^']*'/version = '$NEW_VERSION'/" "build.gradle"
+echo "✅ package.json 与 build.gradle 已更新"
 
 # ── 4. 同步更新 sw.js 的 CACHE_NAME（触发浏览器检测到 SW 变更，清除旧缓存）────
 SW_FILE="src/main/resources/static/sw.js"
@@ -36,7 +37,7 @@ sed -i '' "s/const CACHE_NAME = 'wyyyyy-dl-v[^']*'/const CACHE_NAME = 'wyyyyy-dl
 echo "✅ sw.js CACHE_NAME 已更新为 wyyyyy-dl-v$NEW_VERSION"
 
 # ── 5. git commit + tag + push ───────────────────────────────────────────────
-git add "$PKG" "$SW_FILE"
+git add "$PKG" "$SW_FILE" "build.gradle"
 git commit -m "chore: bump version to v$NEW_VERSION"
 git tag "v$NEW_VERSION"
 git push
