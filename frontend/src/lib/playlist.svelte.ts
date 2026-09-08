@@ -3,7 +3,13 @@ import { api } from './api';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
-export const playlistState = $state({ filter: 'created' as any, playlist: null as any, curPage: 1 });
+export const playlistState = $state({
+  filter: 'created' as any,
+  playlist: null as any,
+  curPage: 1,
+  loading: false,
+  loadingId: ''
+});
 export const pageSize = 10;
 const _paged = $derived(allTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
 const _totalPages = $derived(Math.max(1, Math.ceil(allTracks.length/pageSize)));
@@ -15,6 +21,8 @@ export function getTotalPages(){ return _totalPages; }
 export function getPlaylist(){ return _playlist; }
 export function getPlaylistFilter(){ return _playlistFilter; }
 export function getCurPage(){ return _curPage; }
+export function isPlaylistLoading(): boolean { return playlistState.loading; }
+export function getPlaylistLoadingId(): string { return playlistState.loadingId; }
 export function setCurPage(v:number){ playlistState.curPage=v; }
 export function incPage(d:number){ playlistState.curPage=Math.max(1, Math.min(_totalPages, playlistState.curPage+d)); }
 
@@ -34,16 +42,47 @@ export function renderPlaylist(pl:any){
   allTracks.length=0; allTracks.push(...(pl.tracks||[]));
   playlistState.curPage=1;
 }
-export async function loadPlaylistDetail(playlistId:string){
+export async function loadPlaylistDetail(playlistId: string, force = false){
   if(!playlistId) throw new Error('请输入歌单 ID');
-  const key='playlist_'+playlistId;
-  const cached=getApiCache(key);
-  if(cached?.data?.playlist?.tracks?.length) renderPlaylist(cached.data.playlist);
-  const j=await api.playlist(playlistId);
-  if(j?.code && j.code!=='000000') throw new Error(j.msg || '获取失败');
-  const pl=j?.data?.playlist;
-  if(!pl?.tracks?.length) throw new Error('未找到歌单或为空');
-  setApiCache(key, j.data); renderPlaylist(pl); return pl;
+  const pidStr = String(playlistId).trim();
+  const key = 'playlist_' + pidStr;
+
+  const cached = getApiCache(key);
+  const hasCache = !!(cached?.data?.playlist?.tracks?.length);
+
+  // 1. Cache First: 若已有缓存且非强制刷新，立即秒显数据，无任何 loading UI！
+  if (hasCache && !force) {
+    renderPlaylist(cached.data.playlist);
+    // 后台静默调用 API 进行 Revalidate，更新最新数据与本地缓存
+    api.playlist(pidStr).then((j) => {
+      if (j?.code === '000000' && j?.data?.playlist?.tracks?.length) {
+        setApiCache(key, j.data);
+        renderPlaylist(j.data.playlist);
+      }
+    }).catch(() => {});
+    return cached.data.playlist;
+  }
+
+  // 2. Cache Miss: 无本地缓存时，才激活 loading UI 并在前台并发拉取
+  playlistState.loading = true;
+  playlistState.loadingId = pidStr;
+
+  try {
+    if (playlistState.playlist && String(playlistState.playlist.id) !== pidStr) {
+      playlistState.playlist = null;
+      allTracks.length = 0;
+    }
+    const j = await api.playlist(pidStr);
+    if(j?.code && j.code!=='000000') throw new Error(j.msg || '获取失败');
+    const pl = j?.data?.playlist;
+    if(!pl?.tracks?.length) throw new Error('未找到歌单或为空');
+    setApiCache(key, j.data);
+    renderPlaylist(pl);
+    return pl;
+  } finally {
+    playlistState.loading = false;
+    playlistState.loadingId = '';
+  }
 }
 
 const STORAGE_KEY_PLAYLIST_PLAY_COUNTS = 'wyyyy_playlist_play_counts';

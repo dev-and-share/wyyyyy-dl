@@ -23,6 +23,7 @@
 
   let {
     playlistId,
+    playlistTrigger = 0,
     curTrack = null,
     playing = false,
     likedSet,
@@ -35,6 +36,7 @@
     showToast
   } = $props<{
     playlistId: string;
+    playlistTrigger?: number;
     curTrack?: any;
     playing?: boolean;
     likedSet: Set<number>;
@@ -56,16 +58,23 @@
   let showForkModal = $state(false);
   let cachingTrackId = $state<number | null>(null);
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
+  let lastSeenTrigger = $state(-1);
+  let lastSeenId = $state('');
 
   onMount(() => {
     if (playlistId) {
+      lastSeenId = playlistId;
       loadData(playlistId);
     }
   });
 
   $effect(() => {
-    if (playlistId && String(playlist?.id) !== String(playlistId)) {
-      loadData(playlistId);
+    const curId = playlistId;
+    const curTrig = playlistTrigger;
+    if (curId && (curId !== lastSeenId || curTrig !== lastSeenTrigger)) {
+      lastSeenId = curId;
+      lastSeenTrigger = curTrig;
+      loadData(curId);
     }
   });
 
@@ -184,10 +193,11 @@
     <span class="truncate font-semibold text-[var(--text-main)]">{playlist?.name || '歌单详情'}</span>
   </div>
 
-  {#if loading && !playlist}
-    <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
-      <span class="text-3xl animate-spin">⏳</span>
-      <span>正在加载歌单内容...</span>
+  {#if loading && (!playlist || String(playlist.id) !== String(playlistId))}
+    <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
+      <span class="text-3xl animate-spin text-red-500">⏳</span>
+      <span class="text-sm font-semibold text-[var(--text-main)]">正在加载歌单内容...</span>
+      <span class="text-xs text-[var(--text-muted)] max-w-sm">若为包含上千首曲目的超大歌单，系统正在并发补全完整曲目详情，请稍候</span>
     </div>
   {:else if playlist}
     <!-- 2. 精致紧凑 Hero 横幅区 -->

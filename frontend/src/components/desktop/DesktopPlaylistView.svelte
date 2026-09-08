@@ -5,6 +5,7 @@
 
   let {
     playlistId = '',
+    playlistTrigger = 0,
     curTrack = null,
     playing = false,
     likedSet,
@@ -16,6 +17,7 @@
     showToast
   } = $props<{
     playlistId?: string;
+    playlistTrigger?: number;
     curTrack?: any;
     playing?: boolean;
     likedSet: Set<number>;
@@ -29,10 +31,19 @@
 
   let selectedId = $state('');
   let dismissed = $state(false);
+  let lastSeenTrigger = $state(-1);
 
   $effect(() => {
-    if (playlistId) {
-      dismissed = false;
+    const curId = playlistId;
+    const curTrig = playlistTrigger;
+    if (curId) {
+      if (curTrig !== lastSeenTrigger) {
+        lastSeenTrigger = curTrig;
+        dismissed = false;
+        selectedId = curId;
+      } else if (!dismissed && !selectedId) {
+        selectedId = curId;
+      }
     }
   });
 
@@ -48,6 +59,7 @@
   {#if activePlaylistId}
     <DesktopPlaylistDetail
       playlistId={activePlaylistId}
+      {playlistTrigger}
       {curTrack}
       {playing}
       {likedSet}

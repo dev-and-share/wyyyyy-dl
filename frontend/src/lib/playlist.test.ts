@@ -76,4 +76,71 @@ describe('Playlist Play Count & Sorting Contract', () => {
     // 4. 普通备份排第 4 位
     expect(sorted[3].id).toBe(102);
   });
+
+  it('manages loading state and clears stale playlist during loadPlaylistDetail', async () => {
+    const { loadPlaylistDetail, isPlaylistLoading, getPlaylistLoadingId, playlistState } = await import('./playlist.svelte');
+    const { api } = await import('./api');
+    const { vi } = await import('vitest');
+
+    playlistState.playlist = { id: 999, name: '旧歌单', tracks: [{ id: 1 }] };
+
+    let loadingDuringRequest = false;
+    let loadingIdDuringRequest = '';
+    let stalePlaylistClearedDuringRequest = false;
+
+    vi.spyOn(api, 'playlist').mockImplementation(async (id: string) => {
+      loadingDuringRequest = isPlaylistLoading();
+      loadingIdDuringRequest = getPlaylistLoadingId();
+      stalePlaylistClearedDuringRequest = playlistState.playlist === null;
+      return {
+        code: '000000',
+        data: {
+          playlist: { id: Number(id), name: '新歌单', tracks: [{ id: 2, name: '歌曲2' }] }
+        }
+      };
+    });
+
+    const res = await loadPlaylistDetail('4658757');
+    expect(loadingDuringRequest).toBe(true);
+    expect(loadingIdDuringRequest).toBe('4658757');
+    expect(stalePlaylistClearedDuringRequest).toBe(true);
+    expect(isPlaylistLoading()).toBe(false);
+    expect(getPlaylistLoadingId()).toBe('');
+    expect(res.name).toBe('新歌单');
+  });
+
+  it('Cache First: renders immediately from cache with NO loading UI, while silently revalidating in background', async () => {
+    const { loadPlaylistDetail, isPlaylistLoading, playlistState } = await import('./playlist.svelte');
+    const { api } = await import('./api');
+    const { setApiCache, getApiCache } = await import('./utils');
+    const { vi } = await import('vitest');
+
+    // 预置旧缓存数据
+    setApiCache('playlist_8888', {
+      playlist: { id: 8888, name: '旧缓存歌单', tracks: [{ id: 88, name: '旧歌曲' }] }
+    });
+
+    const apiSpy = vi.spyOn(api, 'playlist').mockResolvedValue({
+      code: '000000',
+      data: {
+        playlist: { id: 8888, name: '后台最新歌单', tracks: [{ id: 88, name: '新歌曲' }] }
+      }
+    });
+
+    const res = await loadPlaylistDetail('8888');
+
+    // 断言 1: 秒显缓存数据
+    expect(res.name).toBe('旧缓存歌单');
+    // 断言 2: 零 loading UI (isPlaylistLoading 始终保持 false)
+    expect(isPlaylistLoading()).toBe(false);
+    // 断言 3: 后台依然静默调用了 API
+    expect(apiSpy).toHaveBeenCalledWith('8888');
+
+    // 等待微任务队列执行完成
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // 断言 4: 后台 API 成功后默默更新了数据
+    expect(playlistState.playlist?.name).toBe('后台最新歌单');
+    expect(getApiCache('playlist_8888')?.data?.playlist?.name).toBe('后台最新歌单');
+  });
 });

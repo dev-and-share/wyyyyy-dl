@@ -24,11 +24,13 @@ export const routerState = $state<{
   playlistId: string;
   albumId: string;
   sidebarCollapsed: boolean;
+  playlistTrigger: number;
 }>({
   tab: getInitialTab(),
   playlistId: getInitialPlaylistId(),
   albumId: '',
-  sidebarCollapsed: getInitialSidebarCollapsed()
+  sidebarCollapsed: getInitialSidebarCollapsed(),
+  playlistTrigger: 0
 });
 
 export function toggleSidebarCollapse(): void {
@@ -53,6 +55,7 @@ export function jumpToAlbum(id: string): void {
 
 export function jumpToPlaylist(id: string): void {
   routerState.playlistId = id;
+  routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
   switchTab('playlist');
 }
 

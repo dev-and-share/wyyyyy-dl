@@ -1,6 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { myPlaylists, allTracks, pageSize, getPaged, getTotalPages, getPlaylist, getPlaylistFilter, getCurPage, loadMyPlaylists, loadPlaylistDetail, incPage, recordPlaylistPlay } from '../lib/playlist.svelte';
+  import {
+    allTracks,
+    pageSize,
+    getPaged,
+    getTotalPages,
+    getPlaylist,
+    getCurPage,
+    loadMyPlaylists,
+    loadPlaylistDetail,
+    isPlaylistLoading,
+    incPage,
+    recordPlaylistPlay
+  } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import { playPlaylistTracks } from '../lib/playerHelper';
@@ -10,6 +22,7 @@
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import MyPlaylistsSection from './MyPlaylistsSection.svelte';
+  import SongDetailSection from './SongDetailSection.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
@@ -19,11 +32,11 @@
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
   let playlist = $derived(getPlaylist());
-  let playlistFilter = $derived(getPlaylistFilter());
   let curPage = $derived(getCurPage());
 
   let {
     playlistId,
+    playlistTrigger = 0,
     curTrack = null,
     playing = false,
     likedSet,
@@ -34,16 +47,17 @@
     onReveal,
     showToast
   } = $props<{
-    playlistId: string,
-    curTrack?: any,
-    playing?: boolean,
-    likedSet: Set<number>,
-    downloadedSet?: Set<number>,
-    onToggleLike: (id: number, name: string) => void,
-    onPlayQueue: (tracks: any[], idx?: number) => void,
-    onAlbum?: (albumId: string) => void,
-    onReveal?: (item: any) => void,
-    showToast: (m: string, t?: string) => void
+    playlistId: string;
+    playlistTrigger?: number;
+    curTrack?: any;
+    playing?: boolean;
+    likedSet: Set<number>;
+    downloadedSet?: Set<number>;
+    onToggleLike: (id: number, name: string) => void;
+    onPlayQueue: (tracks: any[], idx?: number) => void;
+    onAlbum?: (albumId: string) => void;
+    onReveal?: (item: any) => void;
+    showToast: (m: string, t?: string) => void;
   }>();
 
   let showForkModal = $state(false);
@@ -65,10 +79,9 @@
   }
 
   let pid = $state(initPlaylistId());
-  // Separate display value for the input — only committed to pid on explicit action
   let pidInput = $state(initPlaylistId());
-  // Sentinel: track the last external playlistId prop we acted on, to avoid feedback loops
   let lastSeenPlaylistId = $state('');
+  let lastSeenTrigger = $state(-1);
   let accMy = $state(getStored(STORAGE_KEY_ACC_MY, 'true') === 'true');
   let accDetail = $state(getStored(STORAGE_KEY_ACC_DETAIL, 'true') === 'true');
   let accSong = $state(getStored(STORAGE_KEY_ACC_SONG, 'false') === 'true');
@@ -92,7 +105,6 @@
 
   // 初始化自动拉取/读取 SWR 缓存
   onMount(() => {
-    // 1. 优先即时恢复上次查看的歌单详情（SWR 缓存优先秒显）
     const targetPid = pid || playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
     if (targetPid) {
       pid = targetPid;
@@ -101,17 +113,19 @@
     if (accSong && songId) {
       handleViewSong(songId, false).catch(() => {});
     }
-    // 2. 异步拉取账号歌单列表
     loadMyPlaylists('created').catch(() => {});
   });
 
-  // 监听外部传入的歌单 ID 变动（只响应真正的外部变化，避免内部 pid 反写 prop 造成死循环）
+  // 监听外部传入的歌单 ID 变动或 trigger 刷新动作
   $effect(() => {
-    if (playlistId && playlistId !== lastSeenPlaylistId) {
-      lastSeenPlaylistId = playlistId;
-      pid = playlistId;
-      pidInput = playlistId;
-      handleViewPlaylist(playlistId);
+    const curId = playlistId;
+    const curTrig = playlistTrigger;
+    if (curId && (curId !== lastSeenPlaylistId || curTrig !== lastSeenTrigger)) {
+      lastSeenPlaylistId = curId;
+      lastSeenTrigger = curTrig;
+      pid = curId;
+      pidInput = curId;
+      handleViewPlaylist(curId, true);
     }
   });
 
@@ -123,7 +137,7 @@
       return;
     }
     pid = trimmed;
-    pidInput = trimmed;  // sync display value too
+    pidInput = trimmed;
     try {
       localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, trimmed);
       history.replaceState(null, '', `#/playlist?id=${trimmed}`);
@@ -173,6 +187,7 @@
     if (!id || !onPlayQueue) return;
     playPlaylistTracks(id, name, onPlayQueue, showToast);
   }
+
   async function downloadSingleTrack(id: string, name?: string) {
     try {
       const res = await api.downloadSingle(id);
@@ -254,43 +269,19 @@
         {
           label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
           style: 'primary',
-          onclick: () => {
-            onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }]);
-          }
+          onclick: () => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }])
         },
         isServer
-          ? {
-              label: '📂 在服务器磁盘中定位',
-              style: 'default',
-              onclick: () => onReveal && onReveal({ id: t.id, name: t.name, artist })
-            }
-          : {
-              label: '📥 下载到电脑服务器',
-              style: 'default',
-              onclick: () => downloadSingleTrack(String(t.id), t.name)
-            },
+          ? { label: '📂 在服务器磁盘中定位', style: 'default', onclick: () => onReveal && onReveal({ id: t.id, name: t.name, artist }) }
+          : { label: '📥 下载到电脑服务器', style: 'default', onclick: () => downloadSingleTrack(String(t.id), t.name) },
         {
           label: cachingTrackId === t.id ? '⏳ 正在离线缓存...' : (isPhone ? '📲 重新离线缓存 (手机已存)' : '📲 离线缓存到本手机 (PWA)'),
           style: 'default',
           onclick: () => handleCacheTrack(t)
         },
-        {
-          label: '➕ 添加到歌单',
-          style: 'default',
-          onclick: () => {
-            addToPlaylistSong = { id: t.id, name: t.name, artist };
-          }
-        },
-        {
-          label: '🎧 查看歌曲详情 / 音质',
-          style: 'default',
-          onclick: () => handleViewSong(String(t.id))
-        },
-        {
-          label: likedSet.has(Number(t.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
-          style: 'default',
-          onclick: () => onToggleLike(Number(t.id), t.name)
-        }
+        { label: '➕ 添加到歌单', style: 'default', onclick: () => { addToPlaylistSong = { id: t.id, name: t.name, artist }; } },
+        { label: '🎧 查看歌曲详情 / 音质', style: 'default', onclick: () => handleViewSong(String(t.id)) },
+        { label: likedSet.has(Number(t.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢', style: 'default', onclick: () => onToggleLike(Number(t.id), t.name) }
       ]
     });
   }
@@ -307,166 +298,144 @@
 
 <!-- Section 2: 查看歌单详情 -->
 <AccordionCard title="🎼 2. 查看歌单详情" bind:open={accDetail} onToggle={saveAccState}>
-  <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
-    <input type="text" placeholder="输入歌单 ID (如 123456，按回车查看)" class="flex-1 min-w-0" bind:value={pidInput} onkeydown={(e) => e.key === 'Enter' && handleViewPlaylist(pidInput)} />
-    <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => handleViewPlaylist(pidInput)}>查看<span class="hidden sm:inline">歌单详情</span></button>
-  </div>
-  {#if playlist}
-    <DetailHeaderCard
-      cover={playlist.coverImgUrl || '/favicon.png'}
-      title={playlist.name}
-      subtitle={`${playlist.creator || '未知'} | 共 ${allTracks.length} 首`}
-    >
-      <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))}>🖥️ 下载到电脑</button>
-      <button class="btn-secondary" onclick={() => {
-        if (playlist?.id) recordPlaylistPlay(playlist.id);
-        onPlayQueue && onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })));
-      }}>▶️ 播放歌单</button>
-      {#if playlist && !playlist.isCreator}
-        <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title="转存为自建歌单，绕过官方风控">📦 转存自建</button>
-        <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? '取消收藏' : '收藏歌单'}>
-          {playlist.subscribed ? '💔 取消收藏' : '⭐ 收藏歌单'}
-        </button>
-      {/if}
-    </DetailHeaderCard>
-    <ul class="data-list scrollable-list">
-      {#each paged as t, i}
-        {@const idx = (curPage - 1) * pageSize + i + 1}
-        {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
-        {@const artist = formatArtist(t)}
-        {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
-        <li class="track-item-card" class:is-active-playing={isPlayingThis}>
-          <div class="track-title-row">
-            <button
-              type="button"
-              class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-              onclick={() => handleViewSong(String(t.id))}
-            >
-              {idx}. {t.name}{artist ? ' - ' + artist : ''}
-            </button>
-            <TrackSourceBadge id={t.id} isLocal={t.isLocal} {curTrack} class="ml-1.5" />
-            <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
-          </div>
-          <div class="track-action-group">
-            <!-- 💻 PC 桌面端：宽屏时显示完整快捷按钮组 -->
-            <div class="hidden md:inline-flex items-center gap-1.5">
-              <SlotBtn
-                playing={isPlayingThis && playing}
-                onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
-              >
-                {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
-              </SlotBtn>
-              {#if status.isServer}
-                <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
-              {:else}
-                <SlotBtn onclick={() => downloadSingleTrack(String(t.id), t.name)}>📥 下载</SlotBtn>
-              {/if}
-              <SlotBtn onclick={() => handleCacheTrack(t)}>{status.isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
-              <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
-            </div>
+    <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
+      <input
+        type="text"
+        placeholder="输入歌单 ID (如 123456，按回车查看)"
+        class="flex-1 min-w-0"
+        bind:value={pidInput}
+        disabled={isPlaylistLoading()}
+        onkeydown={(e) => e.key === 'Enter' && !isPlaylistLoading() && handleViewPlaylist(pidInput)}
+      />
+      <button
+        class="btn-primary shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[84px] md:min-w-[100px]"
+        disabled={isPlaylistLoading()}
+        onclick={() => handleViewPlaylist(pidInput)}
+      >
+        {#if isPlaylistLoading()}
+          <span class="inline-block animate-spin text-xs">⏳</span>
+          <span>加载中...</span>
+        {:else}
+          <span>查看<span class="hidden sm:inline">歌单详情</span></span>
+        {/if}
+      </button>
+    </div>
 
-            <!-- 📱 SP 移动端：外面仅保留核心常用功能 (▶️播放) + (··· 更多选项抽屉) -->
-            <div class="inline-flex md:hidden items-center gap-1.5">
-              <SlotBtn
-                playing={isPlayingThis && playing}
-                onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
-              >
-                {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
-              </SlotBtn>
+    {#if isPlaylistLoading() && (!playlist || String(playlist.id) !== pid)}
+      <!-- 优雅加载骨架屏与提示 -->
+      <div class="py-8 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm">
+        <div class="text-3xl animate-spin text-red-500">⏳</div>
+        <div class="text-sm font-semibold text-[var(--text-main)]">正在拉取歌单 #{pid} 数据...</div>
+        <p class="text-xs text-[var(--text-muted)] text-center max-w-sm m-0 leading-relaxed">
+          若为包含上千首曲目的超大歌单（如置顶红心歌单），系统正在并发补全完整歌曲详情，首次加载需数秒，请稍候
+        </p>
+        <div class="w-full max-w-sm flex flex-col gap-2 mt-2">
+          <div class="h-12 rounded-xl bg-white/5 animate-pulse w-full"></div>
+          <div class="h-6 rounded-lg bg-white/5 animate-pulse w-4/5"></div>
+          <div class="h-6 rounded-lg bg-white/5 animate-pulse w-3/5"></div>
+        </div>
+      </div>
+    {:else if playlist}
+      <DetailHeaderCard
+        cover={playlist.coverImgUrl || '/favicon.png'}
+        title={playlist.name}
+        subtitle={`${playlist.creator || '未知'} | 共 ${allTracks.length} 首`}
+      >
+        <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))}>🖥️ 下载到电脑</button>
+        <button class="btn-secondary" onclick={() => {
+          if (playlist?.id) recordPlaylistPlay(playlist.id);
+          onPlayQueue && onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })));
+        }}>▶️ 播放歌单</button>
+        {#if playlist && !playlist.isCreator}
+          <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title="转存为自建歌单，绕过官方风控">📦 转存自建</button>
+          <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? '取消收藏' : '收藏歌单'}>
+            {playlist.subscribed ? '💔 取消收藏' : '⭐ 收藏歌单'}
+          </button>
+        {/if}
+      </DetailHeaderCard>
+      <ul class="data-list scrollable-list">
+        {#each paged as t, i}
+          {@const idx = (curPage - 1) * pageSize + i + 1}
+          {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
+          {@const artist = formatArtist(t)}
+          {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
+          <li class="track-item-card" class:is-active-playing={isPlayingThis}>
+            <div class="track-title-row">
               <button
                 type="button"
-                class="btn-more-actions"
-                onclick={() => openTrackSheet(t, status.isLocal, status.isPhone, status.isServer, artist, isPlayingThis)}
-                title="更多操作"
-                aria-label="更多操作"
+                class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
+                onclick={() => handleViewSong(String(t.id))}
               >
-                ···
+                {idx}. {t.name}{artist ? ' - ' + artist : ''}
               </button>
+              <TrackSourceBadge id={t.id} isLocal={t.isLocal} {curTrack} class="ml-1.5" />
+              <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
             </div>
-          </div>
-        </li>
-      {/each}
-    </ul>
-    <div class="flex justify-between items-center gap-2.5 mt-3">
-      <button class="btn-secondary" disabled={curPage <= 1} onclick={() => incPage(-1)}>上一页</button>
-      <span class="text-xs text-[var(--text-secondary)] whitespace-nowrap">第 {curPage} / {totalPages} 页 ({allTracks.length}首)</span>
-      <button class="btn-secondary" disabled={curPage >= totalPages} onclick={() => incPage(1)}>下一页</button>
-    </div>
-  {/if}
-</AccordionCard>
+            <div class="track-action-group">
+              <!-- 💻 PC 桌面端：宽屏时显示完整快捷按钮组 -->
+              <div class="hidden md:inline-flex items-center gap-1.5">
+                <SlotBtn
+                  playing={isPlayingThis && playing}
+                  onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                >
+                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                </SlotBtn>
+                {#if status.isServer}
+                  <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
+                {:else}
+                  <SlotBtn onclick={() => downloadSingleTrack(String(t.id), t.name)}>📥 下载</SlotBtn>
+                {/if}
+                <SlotBtn onclick={() => handleCacheTrack(t)}>{status.isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
+                <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
+              </div>
+
+              <!-- 📱 SP 移动端：外面仅保留核心常用功能 (▶️播放) + (··· 更多选项抽屉) -->
+              <div class="inline-flex md:hidden items-center gap-1.5">
+                <SlotBtn
+                  playing={isPlayingThis && playing}
+                  onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                >
+                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                </SlotBtn>
+                <button
+                  type="button"
+                  class="btn-more-actions"
+                  onclick={() => openTrackSheet(t, status.isLocal, status.isPhone, status.isServer, artist, isPlayingThis)}
+                  title="更多操作"
+                  aria-label="更多操作"
+                >
+                  ···
+                </button>
+              </div>
+            </div>
+          </li>
+        {/each}
+      </ul>
+      <div class="flex justify-between items-center gap-2.5 mt-3">
+        <button class="btn-secondary" disabled={curPage <= 1} onclick={() => incPage(-1)}>上一页</button>
+        <span class="text-xs text-[var(--text-secondary)] whitespace-nowrap">第 {curPage} / {totalPages} 页 ({allTracks.length}首)</span>
+        <button class="btn-secondary" disabled={curPage >= totalPages} onclick={() => incPage(1)}>下一页</button>
+      </div>
+    {:else}
+      <div class="empty-placeholder-card">
+        <div class="empty-icon">🎼</div>
+        <div class="empty-title">请输入歌单 ID 查看，或从上方账号歌单中选择</div>
+      </div>
+    {/if}
+  </AccordionCard>
 
 <!-- Section 3: 查看歌曲信息 -->
-<AccordionCard title="🎧 3. 查看歌曲信息" bind:open={accSong} onToggle={saveAccState}>
-  <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
-    <input type="text" placeholder="输入歌曲 ID (按回车查看)" class="flex-1 min-w-0" bind:value={songId} onkeydown={(e) => e.key === 'Enter' && handleViewSong(songId)} />
-    <select bind:value={songLevel} class="w-auto shrink-0">
-      <option value="standard">标准</option>
-      <option value="exhigh">极高</option>
-      <option value="lossless">无损</option>
-    </select>
-    <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => handleViewSong(songId)}>查看<span class="hidden sm:inline">单曲信息</span></button>
-  </div>
-  {#if songInfo}
-    {@const arText = formatArtist(songInfo) || '群星 / 未知'}
-    {@const alText = songInfo.al_name || songInfo.album || '暂无专辑'}
-    {@const sizeText = songInfo.size || '未知大小'}
-    {@const levelText = songInfo.level || songLevel}
-    {@const imgSrc = songInfo.pic || songInfo.picUrl || '/favicon.png'}
-
-    <DetailHeaderCard
-      cover={imgSrc}
-      title={songInfo.name || songInfo.songName || '未知歌曲'}
-      subtitle={`歌手：${arText} | 专辑：${alText}`}
-      subDetail={`大小：${sizeText} | 音质：${levelText}`}
-    >
-      <button
-        class="btn-primary"
-        onclick={() => onPlayQueue([{
-          id: songInfo.id || songId,
-          name: songInfo.name || '单曲',
-          artist: arText,
-          cover: imgSrc,
-          url: songInfo.url,
-          lyric: songInfo.lyric
-        }])}
-      >
-        ▶️ 试听
-      </button>
-      <button
-        class="btn-secondary"
-        onclick={() => downloadSingleTrack(String(songInfo.id || songId), songInfo.name)}
-      >
-        📥 下载
-      </button>
-      {#if songInfo.al_id || songInfo.albumId || songInfo.al?.id}
-        <button
-          class="btn-secondary"
-          onclick={() => {
-            const aid = songInfo.al_id || songInfo.albumId || songInfo.al?.id;
-            if (aid && onAlbum) onAlbum(String(aid));
-          }}
-        >
-          💽 专辑
-        </button>
-      {/if}
-    </DetailHeaderCard>
-
-    <!-- 📄 查看 Raw JSON 响应数据 -->
-    <div style="margin-top:10px;">
-      <details style="border:1px solid var(--border-color); border-radius:6px; padding:6px 10px; background:var(--tag-btn-bg);">
-        <summary style="font-size:12px; color:var(--primary-color); cursor:pointer; font-weight:600; outline:none;">▶ 📄 查看 Raw JSON 响应数据</summary>
-        <pre style="background:#0f172a; color:#38bdf8; padding:10px; border-radius:6px; font-size:11px; max-height:200px; overflow-y:auto; margin-top:6px; font-family:Consolas, monospace; border:1px solid rgba(255,255,255,0.06); white-space:pre-wrap;">{JSON.stringify(songInfo.rawData || songInfo, null, 2)}</pre>
-      </details>
-    </div>
-
-    <!-- 歌词预览面板 -->
-    <div style="margin-top:10px; font-size:12px; color:var(--text-secondary); max-height:150px; overflow-y:auto; background:var(--tag-btn-bg); padding:8px 12px; border-radius:6px; border:1px solid var(--border-subtle);">
-      <pre style="margin:0; font-family:inherit; white-space:pre-wrap; line-height:1.6;">{songInfo.lyric || '暂无歌词'}</pre>
-    </div>
-  {:else}
-    <div class="empty-placeholder-card"><div class="empty-icon">🎧</div><div class="empty-title">在歌单中点击歌曲或输入歌曲 ID 查看</div></div>
-  {/if}
-</AccordionCard>
+<SongDetailSection
+  bind:open={accSong}
+  onToggle={saveAccState}
+  bind:songId
+  bind:songLevel
+  {songInfo}
+  onViewSong={(sid) => handleViewSong(sid)}
+  onPlayQueue={(tracks) => onPlayQueue(tracks)}
+  onDownloadSingle={(sid, sname) => downloadSingleTrack(sid, sname)}
+  {onAlbum}
+/>
 
 {#if addToPlaylistSong}
   <AddToPlaylistModal
@@ -486,4 +455,3 @@
     {showToast}
   />
 {/if}
-

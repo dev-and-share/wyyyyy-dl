@@ -141,6 +141,7 @@
         <div class="hidden lg:block w-full">
           <DesktopPlaylistView
             playlistId={routerState.playlistId}
+            playlistTrigger={routerState.playlistTrigger}
             {curTrack}
             {playing}
             likedSet={likeState.likedSet}
@@ -155,7 +156,9 @@
         <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
         <div class="block lg:hidden w-full">
           <PlaylistTab
-            playlistId={routerState.playlistId} {curTrack} {playing}
+            playlistId={routerState.playlistId}
+            playlistTrigger={routerState.playlistTrigger}
+            {curTrack} {playing}
             likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
             onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
             {showToast}
@@ -164,7 +167,9 @@
       {:else}
         <!-- 📱 精简模式 (纯折叠手风琴卡片) -->
         <PlaylistTab
-          playlistId={routerState.playlistId} {curTrack} {playing}
+          playlistId={routerState.playlistId}
+          playlistTrigger={routerState.playlistTrigger}
+          {curTrack} {playing}
           likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
           onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
           {showToast}
