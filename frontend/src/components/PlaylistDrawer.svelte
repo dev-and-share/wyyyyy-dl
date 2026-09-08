@@ -48,20 +48,16 @@
 
   let activeTab: 'queue' | 'tasks' = $state('queue');
   let filterText = $state('');
-  let filterType: 'all' | 'ready' | 'server' = $state('all');
 
   // 计算过滤后的队列
   let filteredQueueWithIndex = $derived.by(() => {
     return queue.map((t: Track, realIdx: number) => ({ t, realIdx })).filter(({ t }: { t: Track }) => {
       const status = getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]);
-      // 模式 2: 仅播服务器已下载
+      // 范围筛选：仅播服务器已下载
       if (serverOnly && !status.isServer) return false;
-      // 模式 3: 纯离线模式 (手机零流量，仅手机本地已缓存)
+      // 范围筛选：纯离线模式 (手机零流量，仅手机本地已缓存)
       if (offlineOnly && !status.isPhone) return false;
 
-      // 顶部 Tab 过滤
-      if (filterType === 'server' && !status.isServer) return false;
-      if (filterType === 'ready' && !status.isLocal) return false;
       if (filterText.trim()) {
         const kw = filterText.toLowerCase();
         const nameMatch = (t.name || '').toLowerCase().includes(kw);
@@ -74,7 +70,6 @@
 
   // 统计数
   let countAll = $derived(queue.length);
-  let countReady = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isLocal).length);
   let countServer = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer).length);
   let countPhone = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isPhone).length);
   let displayedCount = $derived(filteredQueueWithIndex.length);
@@ -226,66 +221,45 @@
             {/if}
           </div>
 
-          <!-- 🏷️ 筛选 Tab 按钮组 -->
-          <div class="flex items-center gap-1.5">
-            <button
-              type="button"
-              class="px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer {filterType === 'all' ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/30 font-semibold' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
-              onclick={() => filterType = 'all'}
-            >
-              全部 {countAll}
-            </button>
-            <button
-              type="button"
-              class="px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer {filterType === 'ready' ? 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/30 font-semibold' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
-              onclick={() => filterType = 'ready'}
-              title="本地就绪曲目 (包含服务器与手机离线)"
-            >
-              ✨ 离线就绪 {countReady}
-            </button>
-            <button
-              type="button"
-              class="px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer {filterType === 'server' ? 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 font-semibold' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
-              onclick={() => filterType = 'server'}
-              title="已下载到服务器磁盘"
-            >
-              💻 本地磁盘 {countServer}
-            </button>
-          </div>
+          <!-- 🏷️ 播放范围 Tab + 🛡️ 跳过试听策略（合二为一，极简清爽） -->
+          <div class="flex items-center justify-between gap-2 text-[11px] select-none pt-0.5">
+            <!-- 左侧：播放范围 Tab 切换 -->
+            <div class="flex items-center gap-1.5 min-w-0 overflow-x-auto py-0.5">
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {!serverOnly && !offlineOnly ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
+                onclick={() => { onToggleServerOnly(false); onToggleOfflineOnly(false); }}
+                title="浏览并播放当前队列全部歌曲"
+              >
+                全部 {countAll}
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {serverOnly ? 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
+                onclick={() => onToggleServerOnly(!serverOnly)}
+                title="仅播已下载到服务器磁盘的曲目（💻）"
+              >
+                💻 服务器 {countServer}
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {offlineOnly ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
+                onclick={() => onToggleOfflineOnly(!offlineOnly)}
+                title="手机纯离线模式（仅播手机浏览器本地缓存，绝不消耗手机流量）"
+              >
+                📴 纯离线 {countPhone}
+              </button>
+            </div>
 
-          <!-- ⚙️ 智能跳过与播放策略开关（3 种播放模式） -->
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--text-secondary)] select-none pt-0.5">
-            <!-- 模式 1: 默认打勾 跳过试听 -->
-            <label class="flex items-center gap-1.5 cursor-pointer" title="遇到 30 秒试听曲目自动切下一首完整歌曲">
+            <!-- 右侧：通用跳过试听策略开关 -->
+            <label class="flex items-center gap-1.5 cursor-pointer shrink-0 text-[var(--text-secondary)] hover:text-[var(--text-main)] transition-colors pl-1" title="遇到 30 秒试听曲目自动切下一首完整歌曲">
               <input
                 type="checkbox"
                 checked={autoSkipTrial}
                 onchange={(e) => onToggleAutoSkip((e.currentTarget as HTMLInputElement).checked)}
                 class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
               />
-              <span class={autoSkipTrial ? 'font-medium text-[var(--text-main)]' : ''}>🛡️ 跳过试听</span>
-            </label>
-
-            <!-- 模式 2: 仅播服务器已下载 -->
-            <label class="flex items-center gap-1.5 cursor-pointer" title="只播放已下载到服务器磁盘的曲目（💻），列表联动过滤">
-              <input
-                type="checkbox"
-                checked={serverOnly}
-                onchange={(e) => onToggleServerOnly((e.currentTarget as HTMLInputElement).checked)}
-                class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
-              />
-              <span class={serverOnly ? 'font-medium text-[var(--text-main)]' : ''}>💻 仅播服务器已下载</span>
-            </label>
-
-            <!-- 模式 3: 纯离线模式 (手机零流量) -->
-            <label class="flex items-center gap-1.5 cursor-pointer" title="手机纯离线模式（仅播手机浏览器本地缓存，绝不消耗手机流量）">
-              <input
-                type="checkbox"
-                checked={offlineOnly}
-                onchange={(e) => onToggleOfflineOnly((e.currentTarget as HTMLInputElement).checked)}
-                class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
-              />
-              <span class={offlineOnly ? 'font-medium text-[var(--text-main)]' : ''}>📴 纯离线模式</span>
+              <span class="whitespace-nowrap {autoSkipTrial ? 'font-medium text-[var(--text-main)]' : ''}">🛡️ 跳过试听</span>
             </label>
           </div>
         </div>
