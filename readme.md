@@ -1,183 +1,140 @@
-# 🎵 网易云音乐全能下载器 & 离线 Web Player (PWA)
+# 🎵 wyyyyy-dl (网易云音乐全能下载器 & 离线 Web Player)
 
 <p align="center">
-  <img src="src/main/resources/static/favicon.png" width="100" height="100" alt="Logo" />
+  <img src="src/main/resources/static/favicon.png" width="96" height="96" alt="wyyyyy-dl Logo" />
 </p>
 
 <p align="center">
-  <b>极速解析 · 无损下载 · 智能比对 · SWR 秒开 · PWA 离线缓存 · 沉浸黑胶播放器</b>
+  <b>极速解析 · 无损下载 · 智能比对 · SWR 秒开 · PWA 离线黑胶播放器 · 现代化全栈架构</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Spring%20Boot-2.7.x-brightgreen.svg" alt="Spring Boot" />
-  <img src="https://img.shields.io/badge/Java-8%2B-orange.svg" alt="Java" />
-  <img src="https://img.shields.io/badge/PWA-Supported-blue.svg" alt="PWA" />
-  <img src="https://img.shields.io/badge/Docker-Ready-2496ED.svg" alt="Docker" />
+  <a href="https://github.com/dev-and-share/wyyyyy-dl/releases"><img src="https://img.shields.io/github/v/release/dev-and-share/wyyyyy-dl?color=blue&label=Release" alt="Release" /></a>
+  <img src="https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg" alt="Spring Boot 3" />
+  <img src="https://img.shields.io/badge/Java-21-orange.svg" alt="Java 21" />
+  <img src="https://img.shields.io/badge/Svelte-5-ff3e00.svg" alt="Svelte 5" />
+  <img src="https://img.shields.io/badge/Tailwind-v4-38bdf8.svg" alt="Tailwind CSS v4" />
+  <img src="https://img.shields.io/badge/Docker-Multi--Arch-2496ED.svg" alt="Docker Multi-Arch" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
 </p>
 
 ---
 
-## 🌟 核心亮点与特性
+## 🌟 核心特性
 
-本项目是一个基于 **Spring Boot + Thymeleaf + SQLite + PWA** 打造的现代化网易云音乐解析下载与随身播放中心。不仅支持极速无损音质下载，更深度适配了移动端与桌面端的无缝播放与离线体验。
-
-### 1. ⚡ SWR（Stale-While-Revalidate）零延迟秒开
-- **Cache-First 渲染**：歌单、专辑、用户收藏列表打开时**0 毫秒优先加载本地缓存**，秒级呈现曲目与封面，告别转圈白屏。
-- **静默后台刷新**：在毫秒展现的同时后台异步拉取最新数据，数据有变动时平滑热更新，无变动静默保持，体验丝滑流畅。
-
-### 2. 📴 PWA & Cache API 全量离线随身听
-- **手机/浏览器本地缓存**：支持将单曲、歌单、专辑一键批量缓存至移动端/电脑浏览器 Cache Storage 中。
-- **永久存储保护**：接入 `navigator.storage.persist()` API，防止浏览器因存储清理策略误删音频缓存。
-- **离线无网秒播**：断网或飞行模式下，PWA 应用离线正常打开并播放所有已缓存歌曲。
-
-### 3. 🏷️ 三态音轨 Badge 体系
-每首歌曲均配有直观的来源状态指示：
-- 🖥️ **服务器本地（绿色）**：曲目已在 NAS / 服务器磁盘下载落盘。
-- 📲 **浏览器缓存（蓝紫）**：曲目已离线缓存至当前设备浏览器。
-- ✨ **双端就绪（金色）**：服务器与当前设备均已就绪，100% 0 延迟秒播。
-
-### 4. 📜 交互式播放列表 (Draggable & Resizable)
-- **自由拖拽与大小调整**：播放列表窗口支持按住顶栏自由拖拽移动至任意位置，右下角可随心缩放窗口尺寸。
-- **分类过滤与实时搜索**：支持一键筛选 `全部` / `✨ 离线就绪` / `🖥️ 本地` / `📲 缓存`，并支持输入歌名/歌手快速过滤。
-- **智能播放策略开关**：
-  - 🛡️ **自动跳过试听**：切歌遇到 30 秒试听片段时，自动提示并直接切到下一首完整歌曲。
-  - 📴 **纯离线模式**：仅在本地/已缓存曲目中流转播放，不耗费任何外网流量。
-- **✂️ 一键裁剪队列**：激活筛选时，一键将当前筛选出的子集曲目直接设为新的播放队列。
-
-### 5. 🚀 突破官方 1000 首超大歌单限制
-- **自动全量补齐**：针对超出网易云官方 1000 首限制的超大歌单（如 1600+ 首），后端自动分页分批抓取全部剩余歌曲详情，实现 100% 完整解析与批量下载。
-- **内存级极速索引**：毫秒级全量本地数据库智能模糊匹配，瞬间识别全歌单本地已下载状态。
-
-### 6. 🗄️ SQLite 历史管理 & 多路径外部曲库挂载
-- **智能跨专辑音轨比对**：点击任意在线精选辑或翻唱歌曲时，自动识别匹配本地已有无损文件，拦截线上试听片段，实现 0 延迟本地无损秒播。
-- **外部曲库索引**：支持只读挂载主机已有的大容量音乐库（`EXTERNAL_LIBRARY_PATHS`），一键扫描并建立检索索引。
-- **下载历史全生命周期**：支持按歌曲 ID/名称模糊搜索、缺失文件检测与清理、本地未录入音频一键导入、系统文件管理器定位（Reveal in Finder/Explorer）。
-- **🔍 数据库健康诊断弹窗**：
-  - **⚠️ 缺失文件明细弹窗**：实时定位物理文件已丢失或移动的记录，支持单项删除、一键复制路径与一键批量清理。
-  - **📁 非 MP3 格式明细弹窗**：直观展示数据库中的 `.flac`、`.m4a` 等非 MP3 记录，支持单项/批量清理，全面保障曲库格式纯净。
-
-### 7. 📁 本地曲库与文件夹树 (Folder Tree View & 连播管理)
-- **现代文件夹树 (Tree View)**：采用类似 VSCode / Finder 侧边栏的就地展开/折叠树形架构，支持任意层级目录递归浏览与搜索过滤。
-- **▶ 文件夹一键连播**：每个文件夹均配备「▶ 连播」按钮，点击自动将该目录下全部 MP3 构造成**临时本地歌单**并立即从第 1 首开始连续播放，支持列表循环、随机播放、单曲循环。
-- **➕ 追加到队列**：支持将任意文件夹一键追加到当前正在播放的列表末尾，听歌不中断。
-- **🚫 一键 `.musicignore` 目录忽略**：点击文件夹右侧 `🚫` 按钮并确认，自动在该目录下创建 `.musicignore` 标记文件，系统扫描、入库及目录浏览时将**自动彻底跳过该子文件夹及其内部所有层级**。
-- **🗑️ 物理删除文件夹**：点击文件夹右侧 `🗑️` 按钮并确认，安全从磁盘物理清理该文件夹及全部内容，并同步擦除数据库下载历史。
-- **⚡ 本地音频 0 延迟秒播**：本地曲库与离线音频 100% 走本地流传输，彻底隔离线上接口网络延迟与失效报错。
-
-### 8. 🎤 沉浸式大黑胶播放器 & 硬件级 MediaSession
-- **全屏黑胶唱片模式**：随音乐旋律平滑旋转的唱片封面与全屏大字歌词逐字同步滚动。
-- **锁屏与耳机遥控**：深度接入原生 `MediaSession API`，支持 iOS / Android 锁屏界面显示封面、歌名、歌手与上一曲/下一曲/进度条拖拽控制。
-- **iOS 锁屏保活切歌**：底层纯同步切歌架构，消除网络请求等待，防止系统后台休眠中断。
+- 🖥️ **现代化多端自适应界面**：全面采用 **Svelte 5 + Tailwind CSS v4**。PC 端提供专业侧边栏与宽屏分栏布局，移动端自然适配 PWA 随身听。
+- ⚡ **无损解析与高速下载**：支持单曲、歌单（突破官方 1000 首限制）、专辑批量解析；智能比对本地已有音轨，杜绝重复下载。
+- 📴 **PWA & Cache API 离线随身听**：支持将单曲/歌单直接离线保存在浏览器本地，断网或飞行模式下 0 延迟秒播。
+- 📁 **本地曲库树与文件夹连播**：支持文件夹递归浏览、一键创建临时歌单连播、`.musicignore` 忽略管理以及外置硬盘/NAS 曲库只读挂载。
+- 💿 **沉浸式黑胶播放器**：逐字同步歌词、系统级 MediaSession 锁屏控制（支持上一曲/下一曲/封面显示）。
+- 🚀 **标准规范 /v3/ RESTful API**：全栈接口统一收口，模块清晰高内聚。
 
 ---
 
-## 🖼️ 界面预览
+## 🚀 快速上手 (两种方式任选)
 
-| 桌面端主界面 | 移动端 PWA 与离线管理 | 沉浸式全屏黑胶播放器 |
-| :---: | :---: | :---: |
-| ![PC](https://raw.githubusercontent.com/dev-and-share/wyyyyy-dl/refs/heads/master/pics/2.JPG) | ![SP](https://raw.githubusercontent.com/dev-and-share/wyyyyy-dl/refs/heads/master/pics/1.JPG) | 🎵 逐字歌词 & 锁屏遥控 |
-
----
-
-## 🐳 Docker 快速部署（推荐）
-
-通过 Docker 即可实现开箱即用，支持将宿主机下载目录与已有音乐库直接挂载：
+### 方式 1：Docker 部署 (推荐，免配环境)
 
 ```bash
 docker run -d \
-  --name=netease-music-dl \
+  --name=wyyyyy-dl \
   -p 8080:8080 \
-  -v /path/to/downloads:/media/music \
-  -v "/path/to/external_music:/media/external_music:ro" \
-  -e HOST_DOWNLOAD_PATH="/path/to/downloads" \
-  -e EXTERNAL_LIBRARY_PATHS="/media/external_music" \
+  -v /your/music/path:/media/music \
+  -e HOST_DOWNLOAD_PATH="/your/music/path" \
   -e TZ=Asia/Shanghai \
   --restart unless-stopped \
-  wyyyyy-dl:latest
+  ghcr.io/dev-and-share/wyyyyy-dl:latest
 ```
 
-启动后在浏览器打开 `http://<服务器IP>:8080/` 即可开始使用。
-
----
-
-## 📦 docker-compose 部署
-
-创建 `docker-compose.yml` 文件：
+或使用 **Docker Compose**（创建 `docker-compose.yml`）：
 
 ```yaml
-version: '3.8'
-
 services:
-  netease-music-dl:
-    image: wyyyyy-dl:latest
-    container_name: netease-music-dl
+  wyyyyy-dl:
+    image: ghcr.io/dev-and-share/wyyyyy-dl:latest
+    container_name: wyyyyy-dl
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       - TZ=Asia/Shanghai
-      - HOST_DOWNLOAD_PATH=/your/host/download/path
-      - EXTERNAL_LIBRARY_PATHS=/media/external_music
+      - HOST_DOWNLOAD_PATH=/your/music/path
     volumes:
-      - /your/host/download/path:/media/music
-      - /your/host/external_music:/media/external_music:ro
+      - /your/music/path:/media/music
 ```
 
-运行：
+启动命令：
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
+
+启动后在浏览器打开：`http://localhost:8080` 即可开始使用！
 
 ---
 
-## 🛠️ 本地开发与构建
+### 方式 2：直接下载可执行 JAR (需本地安装 Java 21)
+
+1. 前往 [Releases 页面](https://github.com/dev-and-share/wyyyyy-dl/releases) 下载最新版的 `wyyyyy-dl-*.jar`；
+2. 一键启动：
+   ```bash
+   java -jar wyyyyy-dl-5.0.0.jar --download.path=/your/music/path
+   ```
+3. 打开浏览器访问 `http://localhost:8080`。
+
+---
+
+## 🛠️ 本地开发与贡献
 
 ### 环境要求
-- **Java**: OpenJDK 8 ~ 15
-- **Gradle**: 7.x+ (项目自带 `./gradlew`)
+- **JDK**: 21+
+- **Node.js**: 20+
 
-### 构建步骤
+### 本地启动
 ```bash
-# 1. 克隆代码库
+# 1. 克隆项目
 git clone https://github.com/dev-and-share/wyyyyy-dl.git
 cd wyyyyy-dl
 
-# 2. 运行测试
-./gradlew test
+# 2. 启动前端开发服务器 (支持热重载，自动代理后端接口)
+cd frontend
+npm install
+npm run dev
 
-# 3. 编译打包 Jar
-./gradlew clean build -x test
+# 3. 启动后端服务 (另开一个终端窗口)
+./gradlew bootRun
+```
 
-# 4. 运行服务
-java -jar build/libs/wyyyyy-dl-5.0.0.jar --download.path=/path/to/music/
+### 全栈构建与打包
+```bash
+# 运行前端测试与构建
+cd frontend && npm run check && npm run test && npm run build
+
+# 运行后端单元测试与独立 Jar 打包
+./gradlew clean test bootJar
 ```
 
 ---
 
-## 📂 项目工程架构
+## 📂 工程架构
 
 ```
-src/main/java/com/wyyyyydl/
-├── config/                  # 配置加载与全局异常捕获
-├── controller/              # 控制器层 (单曲/歌单/专辑解析、下载调度、历史管理、本地文件夹浏览)
-├── service/                 # 核心解析与下载业务逻辑
-├── dao/                     # SQLite 数据访问层（本地音轨索引、智能匹配、目录树提取）
-├── models/                  # 数据模型与传输 DTO
-└── utils/                   # ID3 标签读写、文件流落盘、二维码生成
-
-src/main/resources/
-├── static/
-│   ├── css/style.css        # 现代暗黑自适应样式
-│   ├── js/                  # 模块化前端引擎 (app/playlist/album/search/download-mgr/folder-explorer)
-│   └── sw.js                # Service Worker 离线缓存与资源预载
-└── templates/
-    ├── home.html            # 主操作台 (Thymeleaf)
-    └── qr_login.html        # 二维码扫码登录页
+wyyyyy-dl/
+├── frontend/               # Svelte 5 + Vite + Tailwind v4 现代前端
+│   ├── src/
+│   │   ├── components/     # 播放器、歌单、桌面侧边栏等 UI 组件 (<500行)
+│   │   └── lib/            # Runes 状态管理、PWA Cache、API 客户端
+│   └── tests/              # Vitest 单元测试 & Playwright E2E 测试
+├── src/main/java/com/wyyyyydl/ # Spring Boot 3 后端源码
+│   ├── config/             # 全局异常处理与过滤器
+│   ├── controller/         # /v3/ RESTful API 控制器层
+│   ├── service/            # 网易云解析与多线程下载调度服务
+│   ├── dao/                # SQLite 本地音轨索引与历史持久化
+│   └── utils/              # 音频流 Range 分片传输、ID3 标签读写
+└── Dockerfile              # 多阶段容器化构建 (Node.js 22 + JDK 21)
 ```
 
 ---
 
 ## 📜 开源协议
 
-本项目基于 [MIT License](LICENSE) 开源。仅供个人学习与音乐存档交流使用，请支持正版音乐。
+本项目基于 [MIT License](LICENSE) 开源。仅供个人学习、离线音乐备份与交流使用，请支持正版音乐。
