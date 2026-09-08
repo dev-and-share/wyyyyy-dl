@@ -94,7 +94,7 @@ docker run -d \
   -e EXTERNAL_LIBRARY_PATHS="/media/external_music" \
   -e TZ=Asia/Shanghai \
   --restart unless-stopped \
-  peweelive/netease-music-dl:latest
+  wyyyyy-dl:latest
 ```
 
 启动后在浏览器打开 `http://<服务器IP>:8080/` 即可开始使用。
@@ -110,7 +110,7 @@ version: '3.8'
 
 services:
   netease-music-dl:
-    image: peweelive/netease-music-dl:latest
+    image: wyyyyy-dl:latest
     container_name: netease-music-dl
     restart: unless-stopped
     ports:

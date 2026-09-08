@@ -4,7 +4,7 @@ import com.wyyyyydl.models.common.IResponse;
 
 /**
  * 返回
- * @author pewee
+ * @author wyyyyy-dl
  *
  */
 public enum CommonRespInfo implements IResponse {

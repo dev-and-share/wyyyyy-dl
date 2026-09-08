@@ -3,7 +3,7 @@ version: '3.8'
 services:
   netease-music-dl:
     build: .
-    image: peweelive/netease-music-dl:latest
+    image: wyyyyy-dl:latest
     container_name: netease-music-dl
     restart: unless-stopped
     ports:

@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/root/.gradle ./gradlew bootJar -x test --no-daemo
 # ==============================================================================
 FROM eclipse-temurin:21-jre
 RUN mkdir -p /app/java/ /media/music
-ENV auther=pewee
+ENV auther=wyyyyy-dl
 WORKDIR /app/java/
 COPY --from=jar-builder /build/build/libs/wyyyyy-dl-*.jar /app/java/app.jar
 EXPOSE 8080

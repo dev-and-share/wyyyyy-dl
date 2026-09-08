@@ -65,7 +65,7 @@ COPY --from=builder /build/build/native/nativeCompile/netease-music-dl-native /a
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV TZ=Asia/Shanghai
-ENV AUTHER=pewee
+ENV AUTHER=wyyyyy-dl
 
 EXPOSE 8080
 

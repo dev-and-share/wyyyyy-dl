@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 提供扫码登录功能
- * @author pewee
+ * @author wyyyyy-dl
  *
  */
 @Controller

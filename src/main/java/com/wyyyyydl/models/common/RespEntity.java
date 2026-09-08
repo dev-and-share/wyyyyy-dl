@@ -9,7 +9,7 @@ import com.wyyyyydl.exceptions.ServiceException;
 
 /**
  * 返回对象
- * @author pewee && gongran
+ * @author wyyyyy-dl
  *
  */
 public class RespEntity<T> implements IResponse,Serializable{

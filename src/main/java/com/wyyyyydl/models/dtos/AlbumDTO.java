@@ -4,7 +4,7 @@ import lombok.Data;
 
 /**
  * 列表展示用的专辑实体
- * @author pewee
+ * @author wyyyyy-dl
  *
  */
 @Data

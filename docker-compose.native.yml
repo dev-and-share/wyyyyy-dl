@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.native
-    image: peweelive/netease-music-dl:native
+    image: wyyyyy-dl:native
     container_name: netease-music-dl-native-test
     restart: unless-stopped
     ports:

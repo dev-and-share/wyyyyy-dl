@@ -92,7 +92,7 @@ graalvmNative {
 
 // build-image 使用 Paketo + Java21
 tasks.named("bootBuildImage") {
-    imageName = "peweelive/netease-music-dl:native"
+    imageName = "wyyyyy-dl:native"
     builder = "paketobuildpacks/builder-jammy-tiny"
     environment = ["BP_NATIVE_IMAGE": "true"]
     pullPolicy = "IF_NOT_PRESENT"

@@ -4,7 +4,7 @@ import com.wyyyyydl.models.common.IResponse;
 
 /**
  * 通用的服务异常
- * @author pewee
+ * @author wyyyyy-dl
  *
  */
 public class ServiceException extends RuntimeException implements IResponse {

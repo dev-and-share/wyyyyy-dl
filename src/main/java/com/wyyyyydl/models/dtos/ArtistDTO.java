@@ -4,7 +4,7 @@ import lombok.Data;
 
 /**
  * 歌手实体
- * @author pewee
+ * @author wyyyyy-dl
  *
  */
 @Data

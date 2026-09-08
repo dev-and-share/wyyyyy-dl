@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 基于 Java 直接调用 API 方式解析的下载功能控制器 (v3 规范)
- * @author pewee
+ * @author wyyyyy-dl
  */
 @RestController
 @Slf4j
