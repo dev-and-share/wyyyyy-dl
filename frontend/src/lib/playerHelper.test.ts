@@ -20,7 +20,7 @@ describe('playerHelper URL resolution & preload contracts', () => {
       id: 101,
       name: '夜曲',
       artist: '周杰伦',
-      url: '/v2/stream?id=101',
+      url: '/v3/stream?id=101',
       cover: '/cover.png',
       lyric: '[00:00.00]一群嗜血的蚂蚁',
       isLocal: true
@@ -28,7 +28,7 @@ describe('playerHelper URL resolution & preload contracts', () => {
 
     const url = await resolveTrackUrl(localTrack);
 
-    expect(url).toBe('/v2/stream?id=101');
+    expect(url).toBe('/v3/stream?id=101');
     // 如果封面和歌词均完整，绝不对外发起线上网络解析
     expect(api.songV1).not.toHaveBeenCalled();
   });

@@ -28,7 +28,7 @@
   let browserCacheLoading = $state(false);
 
   function isAudioCacheUrl(url: string) {
-    return url.includes('/v2/stream') || url.includes('/v2/history/stream');
+    return url.includes('/v3/stream') || url.includes('/v3/history/stream');
   }
 
   function readCachedTrackMeta() {
@@ -73,7 +73,7 @@
           if (byKey.has(uniqueKey)) {
             const existing = byKey.get(uniqueKey)!;
             // 🛡️ 检测底层物理 Cache 是否存了非标准冗余 Key：
-            // 如果已存在或当前是标准规范 Key (/v2/stream?id=xxx)，则物理删除非标准冗余项，释放磁盘！
+            // 如果已存在或当前是标准规范 Key (/v3/stream?id=xxx)，则物理删除非标准冗余项，释放磁盘！
             const isCurrentCanonical = urlIdMatch && !relUrl.includes('historyId=');
             const isExistingCanonical = existing.relUrl.match(/[?&]id=([1-9]\d*)/) && !existing.relUrl.includes('historyId=');
 

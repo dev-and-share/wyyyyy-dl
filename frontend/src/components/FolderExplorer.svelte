@@ -62,7 +62,7 @@
           artist: t.artist || '未知歌手',
           album: t.album || name,
           cover: DEFAULT_VINYL_COVER,
-          url: `/v2/history/stream?path=${encodeURIComponent(playPath)}`,
+          url: `/v3/history/stream?path=${encodeURIComponent(playPath)}`,
           isLocal: true
         };
       });
@@ -83,7 +83,7 @@
       artist: item.artist || '未知歌手',
       album: item.album || '本地曲库',
       cover: DEFAULT_VINYL_COVER,
-      url: item.streamUrl || `/v2/history/stream?path=${encodeURIComponent(playPath)}`,
+      url: item.streamUrl || `/v3/history/stream?path=${encodeURIComponent(playPath)}`,
       isLocal: true
     };
     if (onPlayQueue) {

@@ -25,12 +25,12 @@ import com.pewee.neteasemusic.service.NeteaseAPIService;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 整体api接口和https://github.com/Suxiaoqinx/Netease_url相同
+ * 🎵 核心解析控制器 (AnalysisController) — /v3/ 统一规范
  * @author pewee
- *
  */
 @RestController
 @Slf4j
+@RequestMapping("/v3")
 public class AnalysisController {
 	
 	@Autowired
@@ -38,16 +38,20 @@ public class AnalysisController {
 
 	@Autowired
     private NeteaseAPIService neteaseAPIService;
+
+	@Autowired
+    private com.pewee.neteasemusic.dao.DownloadHistoryDAO downloadHistoryDAO;
+
+	@Autowired
+    private com.pewee.neteasemusic.service.MusicDownloadService musicDownloadService;
 	
-	@RequestMapping(value = "/setCookie", method = {RequestMethod.GET, RequestMethod.POST})
-	public RespEntity<?> refreshCookie(@RequestParam(value = "cookie",required = true) String cookie) {
+	@RequestMapping(value = "/cookie", method = {RequestMethod.GET, RequestMethod.POST})
+	public RespEntity<?> refreshCookie(@RequestParam(value = "cookie", required = true) String cookie) {
 		analysisService.refreshCookie(cookie);
-		return RespEntity.apply(CommonRespInfo.SUCCESS,"OK");
+		return RespEntity.apply(CommonRespInfo.SUCCESS, "OK");
 	}
 
-	
-	
-	@RequestMapping(value = "/Album", method = {RequestMethod.GET, RequestMethod.POST})
+	@RequestMapping(value = "/album", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> album(@RequestParam(required = true) Long id) {
 		AlbumAnalysisRespDTO result = analysisService.analyzeAlbum(id);
 		if (result != null && result.getAlbum() != null && result.getAlbum().getSongs() != null) {
@@ -56,7 +60,7 @@ public class AnalysisController {
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
-    @RequestMapping(value = "/Playlist", method = {RequestMethod.GET, RequestMethod.POST})
+    @RequestMapping(value = "/playlist", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> playlist(@RequestParam(required = true) Long id) {
     	PlaylistAnalysisRespDTO result = analysisService.analyzePlaylist(id);
     	if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
@@ -65,7 +69,7 @@ public class AnalysisController {
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
-    @RequestMapping(value = "/Artist", method = {RequestMethod.GET, RequestMethod.POST})
+    @RequestMapping(value = "/artist", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> artist(@RequestParam(required = true) Long id) {
         ArtistAnalysisRespDTO result = analysisService.analyzeArtist(id);
         if (result != null && result.getArtist() != null && result.getArtist().getSongs() != null) {
@@ -74,24 +78,14 @@ public class AnalysisController {
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
     
-    
     /**
-     * 搜索 
-     * @param keyword 关键词
+     * 搜索音乐
+     * @param keywords 关键词
      * @param limit 每页条数
      * @param offset 偏移量
-     * @param type  搜索类型
-     * 	单曲	1
-		歌手	100
-		专辑	10
-		歌单	1000
-		用户	1002
-		MV	1004
-		歌词	1006
-     * @return
-     * @throws Exception
+     * @param type 搜索类型 (单曲1/歌手100/专辑10/歌单1000)
      */
-    @RequestMapping(value = "/Search", method = {RequestMethod.GET, RequestMethod.POST})
+    @RequestMapping(value = "/search", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> search(@RequestParam(required = false) String keywords,
                                 @RequestParam(required = false) String keyword,
                                 @RequestParam(required = false, defaultValue = "50") int limit,
@@ -110,13 +104,7 @@ public class AnalysisController {
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
-    @Autowired
-    private com.pewee.neteasemusic.dao.DownloadHistoryDAO downloadHistoryDAO;
-
-    @Autowired
-    private com.pewee.neteasemusic.service.MusicDownloadService musicDownloadService;
-
-    @RequestMapping(value = "/Song_V1", method = {RequestMethod.GET, RequestMethod.POST})
+    @RequestMapping(value = "/song", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> songV1(@RequestParam(required = true) Long id,
                                 @RequestParam(required = true) String level,
                                 @RequestParam(required = false) String name,
@@ -134,7 +122,7 @@ public class AnalysisController {
         if (localItem != null && Boolean.TRUE.equals(localItem.getFileExists())) {
             if (songInfo != null) {
                 // 瞬间切为本地无损秒播流！
-                songInfo.setUrl("/v2/stream?id=" + localItem.getSongId() + "&historyId=" + localItem.getId());
+                songInfo.setUrl("/v3/stream?id=" + localItem.getSongId() + "&historyId=" + localItem.getId());
                 songInfo.setFreeTrial(false);
                 songInfo.setFreeTrialDuration(null);
                 songInfo.setUnplayableReason(null);
@@ -149,7 +137,7 @@ public class AnalysisController {
                     boolean isTrial = Boolean.TRUE.equals(songInfo.getFreeTrial());
 
                     // 构造带 CORS 头与分片支持的在线代理播放地址
-                    StringBuilder sb = new StringBuilder("/v2/online/stream?id=").append(id);
+                    StringBuilder sb = new StringBuilder("/v3/stream/online?id=").append(id);
                     try {
                         sb.append("&url=").append(java.net.URLEncoder.encode(rawUrl, "UTF-8"));
                     } catch (Exception e) {
@@ -189,7 +177,7 @@ public class AnalysisController {
     /**
      * 🌐 在线音频 CORS 代理流接口（解决 Web Audio API 均衡器跨域静音，并支持 Range 分片拖拽与边播边存）
      */
-    @RequestMapping(value = "/v2/online/stream", method = {RequestMethod.GET, RequestMethod.HEAD, RequestMethod.OPTIONS})
+    @RequestMapping(value = "/stream/online", method = {RequestMethod.GET, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public void streamOnlineAudio(
             @RequestParam(required = false) String url,
             @RequestParam(required = false) Long id,
@@ -239,7 +227,10 @@ public class AnalysisController {
         com.pewee.neteasemusic.utils.AudioStreamUtil.streamOnlineUrl(url, request, response);
     }
 
-    @RequestMapping(value = "/v2/stream", method = {RequestMethod.GET})
+    /**
+     * 📁 本地已下载音频播放/流传输接口（支持 /v3/stream 与 /v3/stream/local 双路由别名）
+     */
+    @RequestMapping(value = {"/stream", "/stream/local"}, method = {RequestMethod.GET})
     public void streamAudio(@RequestParam(required = false) Long id,
                             @RequestParam(required = false) Long historyId,
                             jakarta.servlet.http.HttpServletRequest request,
@@ -266,21 +257,17 @@ public class AnalysisController {
         com.pewee.neteasemusic.utils.AudioStreamUtil.streamLocalFile(file, request, response);
     }
     
-    
-    @RequestMapping(value = "/MyPlaylist", method = {RequestMethod.GET, RequestMethod.POST})
+    @RequestMapping(value = "/my_playlists", method = {RequestMethod.GET, RequestMethod.POST})
     public RespEntity<?> getUserPlaylists(
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(defaultValue = "0") int offset) {
-        return RespEntity.apply(CommonRespInfo.SUCCESS,analysisService.getUserPlaylists(limit, offset));
+        return RespEntity.apply(CommonRespInfo.SUCCESS, analysisService.getUserPlaylists(limit, offset));
     }
 
     /**
-     * 获取当前登录用户喜欢的全部红心歌曲 ID 列表
-     */
-    /**
      * 获取当前登录用户喜欢的全部红心歌曲 ID 列表 (本地数据库优先保障 + 线上双向同步)
      */
-    @RequestMapping(value = "/v2/like/list", method = {RequestMethod.GET})
+    @RequestMapping(value = "/like/list", method = {RequestMethod.GET})
     public RespEntity<?> getLikedSongIds() {
         Set<Long> mergedIds = new HashSet<>();
         try {
@@ -324,7 +311,7 @@ public class AnalysisController {
     /**
      * 添加红心 / 取消红心单曲 (本地 SQLite 强持久化落库 + 网易云线上双向同步)
      */
-    @RequestMapping(value = "/v2/like", method = {RequestMethod.POST, RequestMethod.GET})
+    @RequestMapping(value = "/like", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> toggleLikeTrack(@RequestParam Long id,
                                          @RequestParam(defaultValue = "true") boolean like,
                                          @RequestParam(required = false) String name,
@@ -353,7 +340,7 @@ public class AnalysisController {
     /**
      * 收藏 / 取消收藏歌单
      */
-    @RequestMapping(value = "/v2/playlist/subscribe", method = {RequestMethod.POST, RequestMethod.GET})
+    @RequestMapping(value = "/playlist/subscribe", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> subscribePlaylist(@RequestParam Long id,
                                            @RequestParam(defaultValue = "true") boolean subscribe) {
         try {
@@ -377,7 +364,7 @@ public class AnalysisController {
     /**
      * 添加歌曲到歌单
      */
-    @RequestMapping(value = "/v2/playlist/tracks/add", method = {RequestMethod.POST, RequestMethod.GET})
+    @RequestMapping(value = "/playlist/tracks/add", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> addTracksToPlaylist(@RequestParam Long playlistId,
                                              @RequestParam String trackIds) {
         try {
@@ -386,7 +373,6 @@ public class AnalysisController {
             if (jsonResp != null) {
                 com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
                 if (obj.getIntValue("code") == 200 || obj.getIntValue("code") == 502) {
-                    // code 502 在部分网易云返回中可能表示包含重复歌曲但其余已添加，返回给前端处理
                     if (obj.getIntValue("code") == 200) {
                         return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
                     }
@@ -407,7 +393,7 @@ public class AnalysisController {
     /**
      * 从歌单删除歌曲
      */
-    @RequestMapping(value = "/v2/playlist/tracks/remove", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
+    @RequestMapping(value = "/playlist/tracks/remove", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
     public RespEntity<?> removeTracksFromPlaylist(@RequestParam Long playlistId,
                                                 @RequestParam String trackIds) {
         try {
@@ -432,7 +418,7 @@ public class AnalysisController {
     /**
      * 创建新歌单
      */
-    @RequestMapping(value = "/v2/playlist/create", method = {RequestMethod.POST, RequestMethod.GET})
+    @RequestMapping(value = "/playlist/create", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> createPlaylist(@RequestParam String name,
                                         @RequestParam(defaultValue = "false") boolean isPrivate) {
         try {
@@ -456,7 +442,7 @@ public class AnalysisController {
     /**
      * 转存 / 克隆歌单为我的自建歌单 (新建歌单并批量添加选中的曲目)
      */
-    @RequestMapping(value = "/v2/playlist/fork", method = {RequestMethod.POST, RequestMethod.GET})
+    @RequestMapping(value = "/playlist/fork", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> forkPlaylist(@RequestParam String name,
                                       @RequestParam(defaultValue = "false") boolean isPrivate,
                                       @RequestParam String trackIds) {
@@ -509,7 +495,7 @@ public class AnalysisController {
     /**
      * 删除歌单
      */
-    @RequestMapping(value = "/v2/playlist/delete", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
+    @RequestMapping(value = "/playlist/delete", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
     public RespEntity<?> deletePlaylist(@RequestParam Long id) {
         try {
             String jsonResp = neteaseAPIService.deletePlaylist(id);

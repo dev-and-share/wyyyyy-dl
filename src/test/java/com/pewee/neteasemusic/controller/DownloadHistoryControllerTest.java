@@ -41,7 +41,7 @@ public class DownloadHistoryControllerTest {
     private com.pewee.neteasemusic.service.NeteaseAPIService neteaseAPIService;
 
     @Test
-    @DisplayName("测试 /v2/history/list: 分页查询与列表数据包装")
+    @DisplayName("测试 /v3/history/list: 分页查询与列表数据包装")
     public void testGetHistoryList() throws Exception {
         Map<String, Object> mockResp = new HashMap<>();
         mockResp.put("list", new ArrayList<>());
@@ -52,7 +52,7 @@ public class DownloadHistoryControllerTest {
         Mockito.when(downloadHistoryDAO.getRecords(any(), anyInt(), anyInt())).thenReturn(new ArrayList<>());
         Mockito.when(downloadHistoryDAO.countRecords(any())).thenReturn(0);
 
-        mockMvc.perform(get("/v2/history/list")
+        mockMvc.perform(get("/v3/history/list")
                 .param("page", "1")
                 .param("pageSize", "10"))
                 .andExpect(status().isOk())
@@ -61,7 +61,7 @@ public class DownloadHistoryControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/history/stats: 统计数据获取")
+    @DisplayName("测试 /v3/history/stats: 统计数据获取")
     public void testGetHistoryStats() throws Exception {
         Map<String, Object> mockStats = new HashMap<>();
         mockStats.put("totalCount", 5);
@@ -70,14 +70,14 @@ public class DownloadHistoryControllerTest {
 
         Mockito.when(downloadHistoryDAO.getStats()).thenReturn(mockStats);
 
-        mockMvc.perform(get("/v2/history/stats"))
+        mockMvc.perform(get("/v3/history/stats"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.totalCount").value(5));
     }
 
     @Test
-    @DisplayName("测试 /v2/history/detail: 单条详情获取")
+    @DisplayName("测试 /v3/history/detail: 单条详情获取")
     public void testGetHistoryDetail() throws Exception {
         DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
         item.setId(10L);
@@ -86,19 +86,19 @@ public class DownloadHistoryControllerTest {
 
         Mockito.when(downloadHistoryDAO.getRecordById(10L)).thenReturn(item);
 
-        mockMvc.perform(get("/v2/history/detail").param("historyId", "10"))
+        mockMvc.perform(get("/v3/history/detail").param("historyId", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.songName").value("用心良苦"));
     }
 
     @Test
-    @DisplayName("测试 /v2/history/batch_detail: 批量详情获取")
+    @DisplayName("测试 /v3/history/batch_detail: 批量详情获取")
     public void testGetBatchHistoryDetail() throws Exception {
         Mockito.when(downloadHistoryDAO.getRecordsByIds(any())).thenReturn(new ArrayList<>());
         Mockito.when(downloadHistoryDAO.getRecordsBySongIds(any())).thenReturn(new ArrayList<>());
 
-        mockMvc.perform(post("/v2/history/batch_detail")
+        mockMvc.perform(post("/v3/history/batch_detail")
                 .contentType("application/json")
                 .content("{\"historyIds\":[1,2], \"songIds\":[100,200]}"))
                 .andExpect(status().isOk())
@@ -106,7 +106,7 @@ public class DownloadHistoryControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/reveal: 物理文件定位查询与智能查找")
+    @DisplayName("测试 /v3/reveal: 物理文件定位查询与智能查找")
     public void testRevealFile() throws Exception {
         java.io.File mockFile = java.io.File.createTempFile("mock_track", ".mp3");
         mockFile.deleteOnExit();
@@ -118,7 +118,7 @@ public class DownloadHistoryControllerTest {
         Mockito.when(downloadHistoryDAO.resolveFile(anyString())).thenReturn(mockFile);
         Mockito.when(downloadHistoryDAO.toHostPath(any())).thenReturn("/Users/houtokki/Downloads/fast_sr/周杰伦 - 晴天.flac");
 
-        mockMvc.perform(get("/v2/reveal")
+        mockMvc.perform(get("/v3/reveal")
                 .param("id", "18915")
                 .param("name", "晴天"))
                 .andExpect(status().isOk())
@@ -127,7 +127,7 @@ public class DownloadHistoryControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/history/missing: 获取缺失文件清单")
+    @DisplayName("测试 /v3/history/missing: 获取缺失文件清单")
     public void testGetMissingRecords() throws Exception {
         java.util.List<DownloadHistoryDAO.DownloadHistoryItem> list = new ArrayList<>();
         DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
@@ -139,14 +139,14 @@ public class DownloadHistoryControllerTest {
 
         Mockito.when(downloadHistoryDAO.getMissingRecords()).thenReturn(list);
 
-        mockMvc.perform(get("/v2/history/missing"))
+        mockMvc.perform(get("/v3/history/missing"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data[0].songName").value("缺失歌曲"));
     }
 
     @Test
-    @DisplayName("测试 /v2/history/non_mp3: 获取非 MP3 格式清单")
+    @DisplayName("测试 /v3/history/non_mp3: 获取非 MP3 格式清单")
     public void testGetNonMp3Records() throws Exception {
         java.util.List<DownloadHistoryDAO.DownloadHistoryItem> list = new ArrayList<>();
         DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
@@ -157,18 +157,18 @@ public class DownloadHistoryControllerTest {
 
         Mockito.when(downloadHistoryDAO.getNonMp3Records()).thenReturn(list);
 
-        mockMvc.perform(get("/v2/history/non_mp3"))
+        mockMvc.perform(get("/v3/history/non_mp3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data[0].songName").value("FLAC歌曲"));
     }
 
     @Test
-    @DisplayName("测试 /v2/history/cleanNonMp3: 批量清理非 MP3 记录")
+    @DisplayName("测试 /v3/history/cleanNonMp3: 批量清理非 MP3 记录")
     public void testCleanNonMp3Records() throws Exception {
         Mockito.when(downloadHistoryDAO.cleanNonMp3Records()).thenReturn(5);
 
-        mockMvc.perform(post("/v2/history/cleanNonMp3"))
+        mockMvc.perform(post("/v3/history/cleanNonMp3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data").value(5));

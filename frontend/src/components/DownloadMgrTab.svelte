@@ -237,7 +237,7 @@
                       name: h.songName || h.name,
                       artist: artistName,
                       cover: DEFAULT_VINYL_COVER,
-                      url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`,
+                      url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`,
                       isLocal: true
                     }
                   ])
@@ -375,7 +375,7 @@
             <button
               type="button"
               class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-              onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+              onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
             >
               {(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || '未知歌曲'}
             </button>
@@ -391,7 +391,7 @@
               {#if h.fileExists !== false}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
                 >
                   {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
                 </SlotBtn>
@@ -409,7 +409,7 @@
               {#if h.fileExists !== false}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v2/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
+                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
                 >
                   {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
                 </SlotBtn>

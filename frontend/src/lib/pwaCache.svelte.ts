@@ -63,10 +63,10 @@ export async function isSongCached(id: string | number): Promise<boolean> {
   if (typeof window === 'undefined' || !('caches' in window)) return false;
   try {
     const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const aliasUrl = `/v2/stream?id=${id}`;
-    if (metaMap[aliasUrl]) return true;
+    const canonicalUrl = `/v3/stream?id=${id}`;
+    if (metaMap[canonicalUrl]) return true;
     const cache = await caches.open(PWA_CACHE_NAME);
-    const match = await cache.match(aliasUrl);
+    const match = await cache.match(canonicalUrl);
     return !!match;
   } catch {
     return false;
@@ -118,8 +118,8 @@ export async function cacheTrackToBrowser(track: {
       headers: streamResp.headers
     });
 
-    // 🎯 规范化唯一缓存键：统一只存储一份标准 URL (/v2/stream?id=...)，彻底消除重复 Blob 存储
-    const canonicalUrl = `/v2/stream?id=${id}`;
+    // 🎯 规范化唯一缓存键：统一只存储一份标准 URL (/v3/stream?id=...)，彻底消除重复 Blob 存储
+    const canonicalUrl = `/v3/stream?id=${id}`;
     await cache.put(canonicalUrl, validResponse);
     if (audioUrl && audioUrl !== canonicalUrl) {
       await cache.delete(audioUrl).catch(() => {});

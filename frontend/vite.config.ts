@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
 // https://vite.dev/config/
-// 双版并存：产物隔离至 ../src/main/resources/static/svelte，不覆盖 static/js|css|sw.js
+// 纯净 Svelte 5 架构：前端产物输出至 ../src/main/resources/static/svelte
 export default defineConfig({
   plugins: [svelte(), tailwindcss()],
   base: '/svelte/',
@@ -16,17 +16,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/MyPlaylist': 'http://localhost:8080',
-      '/Playlist': 'http://localhost:8080',
-      '/Song_V1': 'http://localhost:8080',
-      '/Search': 'http://localhost:8080',
-      '/Album': 'http://localhost:8080',
-      '/Artist': 'http://localhost:8080',
-      '/setCookie': 'http://localhost:8080',
-      '/api': 'http://localhost:8080',
-      '/v2': 'http://localhost:8080',
-      '/login': 'http://localhost:8080',
-      '/qr': 'http://localhost:8080',
+      '/v3': 'http://localhost:8080',
       '/sw.js': 'http://localhost:8080',
       '/manifest.json': 'http://localhost:8080',
       '/favicon.png': 'http://localhost:8080',

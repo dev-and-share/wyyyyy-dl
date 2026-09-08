@@ -28,7 +28,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
 
   // 2. 如果已在手机浏览器离线缓存中，直接使用标准离线流地址秒播 (无需联网)
   if (track.id && cachedSongIdSet.has(Number(track.id))) {
-    track.url = `/v2/stream?id=${track.id}`;
+    track.url = `/v3/stream?id=${track.id}`;
     track.isLocal = true;
     return track.url;
   }
@@ -40,7 +40,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     const song = j?.data;
     if (song) {
       if (song.url) track.url = song.url;
-      const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v2/stream'));
+      const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v3/stream'));
       if (isServerLocal) {
         track.isLocal = true;
         markSongDownloaded(track.id);

@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @RestController
 @Slf4j
-@RequestMapping("/v2/folder")
+@RequestMapping("/v3/folder")
 public class FolderExplorerController {
 
     @Resource

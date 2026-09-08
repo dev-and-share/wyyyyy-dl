@@ -347,7 +347,7 @@
       const q = tracks.map((t: any, idx: number) => ({
         id: t.songId || t.id || `local_${Date.now()}_${idx}`,
         name: t.songName || t.name || '未知', artist: t.artist || '未知', cover: t.cover || '/favicon.png',
-        url: t.url || (t.relativePath ? `/v2/history/stream?path=${encodeURIComponent(t.relativePath)}` : t.filePath ? `/v2/history/stream?path=${encodeURIComponent(t.filePath)}` : t.streamUrl || ''),
+        url: t.url || (t.relativePath ? `/v3/history/stream?path=${encodeURIComponent(t.relativePath)}` : t.filePath ? `/v3/history/stream?path=${encodeURIComponent(t.filePath)}` : t.streamUrl || ''),
         isLocal: true
       }));
       handleSetQueue(q, 0);

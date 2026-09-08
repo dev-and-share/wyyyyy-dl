@@ -83,7 +83,7 @@ public class QrLoginController {
      * 轮询查询二维码扫码状态
      */
     @ResponseBody
-    @GetMapping("/qr/status")
+    @GetMapping({"/v3/auth/qr/status", "/qr/status"})
     public RespEntity<Boolean> checkQrStatus(@RequestParam("unikey") String unikey)  throws Exception{
     	if (!neteaseAPIService.checkReady()) {
     		neteaseAPIService.checkLoginQrStatus(unikey);
@@ -95,7 +95,7 @@ public class QrLoginController {
      * 查询当前登录状态
      */
     @ResponseBody
-    @GetMapping("/login/status")
+    @GetMapping({"/v3/auth/status", "/login/status"})
     public RespEntity<Boolean> checkLoginStatus()  throws Exception{
         return RespEntity.apply(CommonRespInfo.SUCCESS,neteaseAPIService.checkReady());
     }

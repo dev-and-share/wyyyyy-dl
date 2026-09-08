@@ -45,7 +45,7 @@ public class AnalysisControllerTest {
     private com.pewee.neteasemusic.service.MusicDownloadService musicDownloadService;
 
     @Test
-    @DisplayName("测试 /Song_V1: 当本地存在文件时，自动返回 /v2/stream 本地播放地址")
+    @DisplayName("测试 /v3/song: 当本地存在文件时，自动返回 /v3/stream 本地播放地址")
     public void testSongV1ReturnsLocalStreamUrlWhenFileExists() throws Exception {
         SingleMusicAnalysisRespDTO mockSong = new SingleMusicAnalysisRespDTO();
         mockSong.setId(1975924437L);
@@ -64,27 +64,27 @@ public class AnalysisControllerTest {
         Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(1975924437L), eq("用心良苦"), eq("张宇")))
                 .thenReturn(mockItem);
 
-        mockMvc.perform(post("/Song_V1")
+        mockMvc.perform(post("/v3/song")
                 .param("id", "1975924437")
                 .param("name", "用心良苦")
                 .param("artist", "张宇")
                 .param("level", "lossless"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
-                .andExpect(jsonPath("$.data.url").value("/v2/stream?id=326696&historyId=88"));
+                .andExpect(jsonPath("$.data.url").value("/v3/stream?id=326696&historyId=88"));
     }
 
     @Test
-    @DisplayName("测试 /Search: 兼容 keywords 与 keyword 两种参数发起搜索")
+    @DisplayName("测试 /v3/search: 兼容 keywords 与 keyword 两种参数发起搜索")
     public void testSearchApiCompatibility() throws Exception {
-        mockMvc.perform(post("/Search")
+        mockMvc.perform(post("/v3/search")
                 .param("keywords", "周杰伦")
                 .param("type", "1")
                 .param("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"));
 
-        mockMvc.perform(post("/Search")
+        mockMvc.perform(post("/v3/search")
                 .param("keyword", "周杰伦")
                 .param("type", "1")
                 .param("limit", "10"))
@@ -93,7 +93,7 @@ public class AnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /Song_V1: 试听歌曲在无本地匹配时保留 freeTrial=true，有本地匹配时 freeTrial 置为 false")
+    @DisplayName("测试 /v3/song: 试听歌曲在无本地匹配时保留 freeTrial=true，有本地匹配时 freeTrial 置为 false")
     public void testSongV1FreeTrialHandling() throws Exception {
         SingleMusicAnalysisRespDTO mockSong = new SingleMusicAnalysisRespDTO();
         mockSong.setId(12345L);
@@ -107,7 +107,7 @@ public class AnalysisControllerTest {
         Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(12345L), eq("Chupee"), eq("Eric Hutchinson")))
                 .thenReturn(null);
 
-        mockMvc.perform(post("/Song_V1")
+        mockMvc.perform(post("/v3/song")
                 .param("id", "12345")
                 .param("name", "Chupee")
                 .param("artist", "Eric Hutchinson")
@@ -119,13 +119,13 @@ public class AnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/like/list 和 /v2/like 红心接口")
+    @DisplayName("测试 /v3/like/list 和 /v3/like 红心接口")
     public void testLikeEndpoints() throws Exception {
         // 1. 测试获取红心列表
         Mockito.when(neteaseAPIService.getLikedSongIds(null))
                 .thenReturn("{\"code\":200, \"ids\":[186016, 326696]}");
 
-        mockMvc.perform(get("/v2/like/list"))
+        mockMvc.perform(get("/v3/like/list"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data[0]").value(186016))
@@ -135,7 +135,7 @@ public class AnalysisControllerTest {
         Mockito.when(neteaseAPIService.likeTrack(eq(186016L), eq(true)))
                 .thenReturn("{\"code\":200, \"playlistId\":3554571}");
 
-        mockMvc.perform(post("/v2/like")
+        mockMvc.perform(post("/v3/like")
                 .param("id", "186016")
                 .param("like", "true"))
                 .andExpect(status().isOk())
@@ -144,12 +144,12 @@ public class AnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/playlist/subscribe 歌单收藏与取消收藏接口")
+    @DisplayName("测试 /v3/playlist/subscribe 歌单收藏与取消收藏接口")
     public void testPlaylistSubscribeEndpoint() throws Exception {
         Mockito.when(neteaseAPIService.subscribePlaylist(eq(123456L), eq(true)))
                 .thenReturn("{\"code\":200, \"message\":\"ok\"}");
 
-        mockMvc.perform(post("/v2/playlist/subscribe")
+        mockMvc.perform(post("/v3/playlist/subscribe")
                 .param("id", "123456")
                 .param("subscribe", "true"))
                 .andExpect(status().isOk())
@@ -159,7 +159,7 @@ public class AnalysisControllerTest {
         Mockito.when(neteaseAPIService.subscribePlaylist(eq(123456L), eq(false)))
                 .thenReturn("{\"code\":200, \"message\":\"ok\"}");
 
-        mockMvc.perform(post("/v2/playlist/subscribe")
+        mockMvc.perform(post("/v3/playlist/subscribe")
                 .param("id", "123456")
                 .param("subscribe", "false"))
                 .andExpect(status().isOk())
@@ -167,13 +167,13 @@ public class AnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/playlist/tracks/add 与 remove 歌单曲目增删接口")
+    @DisplayName("测试 /v3/playlist/tracks/add 与 remove 歌单曲目增删接口")
     public void testPlaylistTracksManipulateEndpoints() throws Exception {
         // 添加歌曲
         Mockito.when(neteaseAPIService.addTracksToPlaylist(eq(123456L), anyList()))
                 .thenReturn("{\"code\":200, \"count\":1}");
 
-        mockMvc.perform(post("/v2/playlist/tracks/add")
+        mockMvc.perform(post("/v3/playlist/tracks/add")
                 .param("playlistId", "123456")
                 .param("trackIds", "186016,326696"))
                 .andExpect(status().isOk())
@@ -184,7 +184,7 @@ public class AnalysisControllerTest {
         Mockito.when(neteaseAPIService.removeTracksFromPlaylist(eq(123456L), anyList()))
                 .thenReturn("{\"code\":200, \"count\":1}");
 
-        mockMvc.perform(post("/v2/playlist/tracks/remove")
+        mockMvc.perform(post("/v3/playlist/tracks/remove")
                 .param("playlistId", "123456")
                 .param("trackIds", "186016"))
                 .andExpect(status().isOk())
@@ -193,13 +193,13 @@ public class AnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/playlist/create 与 delete 歌单创建与删除接口")
+    @DisplayName("测试 /v3/playlist/create 与 delete 歌单创建与删除接口")
     public void testPlaylistCreateAndDeleteEndpoints() throws Exception {
         // 创建歌单
         Mockito.when(neteaseAPIService.createPlaylist(eq("心动精选"), eq(false)))
                 .thenReturn("{\"code\":200, \"id\":998877}");
 
-        mockMvc.perform(post("/v2/playlist/create")
+        mockMvc.perform(post("/v3/playlist/create")
                 .param("name", "心动精选")
                 .param("isPrivate", "false"))
                 .andExpect(status().isOk())
@@ -210,7 +210,7 @@ public class AnalysisControllerTest {
         Mockito.when(neteaseAPIService.deletePlaylist(eq(998877L)))
                 .thenReturn("{\"code\":200, \"message\":\"ok\"}");
 
-        mockMvc.perform(post("/v2/playlist/delete")
+        mockMvc.perform(post("/v3/playlist/delete")
                 .param("id", "998877"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
@@ -218,7 +218,7 @@ public class AnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /Artist 获取歌手热门歌曲与详情接口")
+    @DisplayName("测试 /v3/artist 获取歌手热门歌曲与详情接口")
     public void testArtistEndpoint() throws Exception {
         com.pewee.neteasemusic.models.dtos.ArtistAnalysisRespDTO respDTO = new com.pewee.neteasemusic.models.dtos.ArtistAnalysisRespDTO();
         com.pewee.neteasemusic.models.dtos.ArtistInfoDTO artistInfo = new com.pewee.neteasemusic.models.dtos.ArtistInfoDTO();
@@ -238,7 +238,7 @@ public class AnalysisControllerTest {
 
         Mockito.when(analysisService.analyzeArtist(eq(6452L))).thenReturn(respDTO);
 
-        mockMvc.perform(get("/Artist").param("id", "6452"))
+        mockMvc.perform(get("/v3/artist").param("id", "6452"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.artist.name").value("周杰伦"))
@@ -246,9 +246,9 @@ public class AnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/online/stream: 跨域 OPTIONS 预检请求与 CORS 响应头注入")
+    @DisplayName("测试 /v3/stream/online: 跨域 OPTIONS 预检请求与 CORS 响应头注入")
     public void testOnlineStreamCorsHeaders() throws Exception {
-        mockMvc.perform(options("/v2/online/stream"))
+        mockMvc.perform(options("/v3/stream/online"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "*"))
                 .andExpect(header().string("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS"))

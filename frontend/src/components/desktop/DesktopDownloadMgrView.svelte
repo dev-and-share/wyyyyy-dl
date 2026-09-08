@@ -304,7 +304,7 @@
                             artist: artist || '未知歌手',
                             album: item.album || '本地曲库',
                             cover: item.cover || DEFAULT_VINYL_COVER,
-                            url: `/v2/history/stream?path=${encodeURIComponent(item.relativePath || item.filePath || '')}`,
+                            url: `/v3/history/stream?path=${encodeURIComponent(item.relativePath || item.filePath || '')}`,
                             isLocal: true
                           }])}
                         >

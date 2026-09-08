@@ -1038,9 +1038,9 @@ public class DownloadHistoryDAO {
                 String relPath = toRelativePath(f.getAbsolutePath());
                 String playPath = relPath.isEmpty() ? f.getAbsolutePath() : relPath;
                 try {
-                    dto.setStreamUrl("/v2/history/stream?path=" + java.net.URLEncoder.encode(playPath, "UTF-8"));
+                    dto.setStreamUrl("/v3/history/stream?path=" + java.net.URLEncoder.encode(playPath, "UTF-8"));
                 } catch (Exception e) {
-                    dto.setStreamUrl("/v2/history/stream?path=" + playPath);
+                    dto.setStreamUrl("/v3/history/stream?path=" + playPath);
                 }
                 fileList.add(dto);
             }

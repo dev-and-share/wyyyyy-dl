@@ -22,9 +22,9 @@ import lombok.extern.slf4j.Slf4j;
  *
  * 三处流接口共用同一套 Range 分片 / CORS / Content-Type / 代理透传逻辑：
  * <ul>
- *   <li>{@code /v2/stream}          —— 本地文件按 songId/historyId 播放</li>
- *   <li>{@code /v2/history/stream}  —— 本地文件按 path 播放</li>
- *   <li>{@code /v2/online/stream}   —— 在线歌曲 CORS 代理</li>
+ *   <li>{@code /v3/stream}          —— 本地文件按 songId/historyId 播放</li>
+ *   <li>{@code /v3/history/stream}  —— 本地文件按 path 播放</li>
+ *   <li>{@code /v3/stream/online}   —— 在线歌曲 CORS 代理</li>
  * </ul>
  * 修改 Range 处理只需改这里，避免"改一处漏一处"。
  */

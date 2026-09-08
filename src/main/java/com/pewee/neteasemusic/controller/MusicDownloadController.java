@@ -17,14 +17,13 @@ import com.pewee.neteasemusic.service.MusicDownloadService;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 基于java直接调用api的方式解析的下载功能
+ * 基于 Java 直接调用 API 方式解析的下载功能控制器 (v3 规范)
  * @author pewee
- *
  */
 @RestController
 @Slf4j
-@RequestMapping("/v2")
-public class MusicDownloadControllerV2 {
+@RequestMapping("/v3/download")
+public class MusicDownloadController {
 	
 	@Resource
 	private MusicDownloadService musicService;

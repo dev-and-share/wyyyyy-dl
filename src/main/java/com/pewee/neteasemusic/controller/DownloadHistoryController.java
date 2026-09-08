@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @Slf4j
-@RequestMapping("/v2")
+@RequestMapping("/v3")
 public class DownloadHistoryController {
 
     @Resource

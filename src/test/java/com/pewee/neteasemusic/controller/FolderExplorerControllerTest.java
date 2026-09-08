@@ -35,7 +35,7 @@ public class FolderExplorerControllerTest {
     private DownloadHistoryDAO downloadHistoryDAO;
 
     @Test
-    @DisplayName("测试 /v2/folder/roots 获取根目录列表")
+    @DisplayName("测试 /v3/folder/roots 获取根目录列表")
     public void testGetFolderRoots() throws Exception {
         List<Map<String, String>> roots = new ArrayList<>();
         Map<String, String> r = new HashMap<>();
@@ -45,14 +45,14 @@ public class FolderExplorerControllerTest {
 
         Mockito.when(downloadHistoryDAO.getFolderRoots()).thenReturn(roots);
 
-        mockMvc.perform(get("/v2/folder/roots"))
+        mockMvc.perform(get("/v3/folder/roots"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data[0].name").value("下载目录"));
     }
 
     @Test
-    @DisplayName("测试 /v2/folder/browse 浏览目录")
+    @DisplayName("测试 /v3/folder/browse 浏览目录")
     public void testBrowseFolder() throws Exception {
         List<DownloadHistoryDAO.FolderItemDTO> list = new ArrayList<>();
         DownloadHistoryDAO.FolderItemDTO item = new DownloadHistoryDAO.FolderItemDTO();
@@ -63,7 +63,7 @@ public class FolderExplorerControllerTest {
 
         Mockito.when(downloadHistoryDAO.listFolderContents(any())).thenReturn(list);
 
-        mockMvc.perform(get("/v2/folder/browse").param("path", "/media/music/周杰伦"))
+        mockMvc.perform(get("/v3/folder/browse").param("path", "/media/music/周杰伦"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data[0].name").value("叶惠美"))
@@ -71,7 +71,7 @@ public class FolderExplorerControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/folder/tracks 提取文件夹全部 MP3 音轨")
+    @DisplayName("测试 /v3/folder/tracks 提取文件夹全部 MP3 音轨")
     public void testGetFolderTracks() throws Exception {
         List<DownloadHistoryDAO.DownloadHistoryItem> tracks = new ArrayList<>();
         DownloadHistoryDAO.DownloadHistoryItem track = new DownloadHistoryDAO.DownloadHistoryItem();
@@ -82,7 +82,7 @@ public class FolderExplorerControllerTest {
 
         Mockito.when(downloadHistoryDAO.getFolderTracks(anyString(), anyBoolean())).thenReturn(tracks);
 
-        mockMvc.perform(get("/v2/folder/tracks")
+        mockMvc.perform(get("/v3/folder/tracks")
                 .param("path", "/media/music/周杰伦/叶惠美")
                 .param("recursive", "true"))
                 .andExpect(status().isOk())
@@ -91,11 +91,11 @@ public class FolderExplorerControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/folder/ignore 忽略文件夹")
+    @DisplayName("测试 /v3/folder/ignore 忽略文件夹")
     public void testIgnoreFolder() throws Exception {
         Mockito.when(downloadHistoryDAO.ignoreFolder(anyString())).thenReturn(true);
 
-        mockMvc.perform(post("/v2/folder/ignore")
+        mockMvc.perform(post("/v3/folder/ignore")
                 .param("path", "/media/music/Unknown Artist"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
@@ -103,7 +103,7 @@ public class FolderExplorerControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/folder/check 预检文件夹信息")
+    @DisplayName("测试 /v3/folder/check 预检文件夹信息")
     public void testCheckFolder() throws Exception {
         DownloadHistoryDAO.FolderCheckDTO check = new DownloadHistoryDAO.FolderCheckDTO();
         check.setFolderName("2023.08DJ");
@@ -114,7 +114,7 @@ public class FolderExplorerControllerTest {
 
         Mockito.when(downloadHistoryDAO.checkFolder(anyString())).thenReturn(check);
 
-        mockMvc.perform(get("/v2/folder/check")
+        mockMvc.perform(get("/v3/folder/check")
                 .param("path", "/media/external/2023.08DJ"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
@@ -123,11 +123,11 @@ public class FolderExplorerControllerTest {
     }
 
     @Test
-    @DisplayName("测试 /v2/folder/delete 物理删除文件夹")
+    @DisplayName("测试 /v3/folder/delete 物理删除文件夹")
     public void testDeleteFolder() throws Exception {
         Mockito.when(downloadHistoryDAO.deleteFolder(anyString())).thenReturn(true);
 
-        mockMvc.perform(post("/v2/folder/delete")
+        mockMvc.perform(post("/v3/folder/delete")
                 .param("path", "/media/music/周杰伦/临时文件夹"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
