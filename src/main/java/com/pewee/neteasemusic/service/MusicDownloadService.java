@@ -32,6 +32,7 @@ import com.pewee.neteasemusic.models.dtos.TrackDTO;
 import com.pewee.neteasemusic.utils.FileUtils;
 import com.pewee.neteasemusic.utils.HttpClientUtil;
 import com.pewee.neteasemusic.utils.TagUtils;
+import com.pewee.neteasemusic.dao.DownloadHistoryDAO;
 
 import java.io.BufferedWriter;
 import java.io.File;
