@@ -1,0 +1,28 @@
+changelog:
+  categories:
+    - title: '🚀 Features & Enhancements'
+      labels:
+        - 'feat'
+        - 'feature'
+        - 'enhancement'
+    - title: '🔨 Architecture & Refactoring'
+      labels:
+        - 'refactor'
+        - 'architecture'
+    - title: '🐛 Bug Fixes'
+      labels:
+        - 'fix'
+        - 'bug'
+    - title: '⚡ Performance'
+      labels:
+        - 'perf'
+        - 'performance'
+    - title: '⚙️ CI/CD & Maintenance'
+      labels:
+        - 'chore'
+        - 'ci'
+        - 'build'
+        - 'dependencies'
+    - title: 'Other Changes'
+      labels:
+        - '*'
