@@ -48,11 +48,15 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  const desktopPageSize = 20;
   let desktopCurPage = $state(1);
-  let totalPages = $derived(Math.max(1, Math.ceil(allTracks.length / desktopPageSize)));
-  let paged = $derived(allTracks.slice((desktopCurPage - 1) * desktopPageSize, desktopCurPage * desktopPageSize));
+  let totalPages = $derived(Math.max(1, Math.ceil(allTracks.length / pageSize)));
+  let paged = $derived(allTracks.slice((desktopCurPage - 1) * pageSize, desktopCurPage * pageSize));
   let playlist = $derived(getPlaylist());
+
+  let downloadedCount = $derived(
+    allTracks.filter((t: any) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length
+  );
+  let pendingCount = $derived(Math.max(0, allTracks.length - downloadedCount));
 
   let isCurrentPlaylistLoaded = $derived(
     !!playlist && String(playlist.id) === String(playlistId)
@@ -209,9 +213,16 @@
         <h1 class="text-lg sm:text-xl font-bold text-[var(--text-main)] truncate tracking-tight">
           {playlist.name}
         </h1>
-        <p class="text-xs text-[var(--text-secondary)] flex items-center gap-3">
+        <p class="text-xs text-[var(--text-secondary)] flex items-center gap-2 flex-wrap">
           <span>创建者: <strong class="text-[var(--text-main)]">{playlist.creator || '网易云音乐'}</strong></span>
           <span>共 <strong class="text-red-400">{allTracks.length}</strong> 首歌曲</span>
+          {#if allTracks.length > 0}
+            <span class="text-[11px] opacity-85 flex items-center gap-1.5 ml-1">
+              <span>(💻 已下 <strong class="text-emerald-500 dark:text-emerald-400">{downloadedCount}</strong></span>
+              <span>·</span>
+              <span>📥 待下 <strong class="text-purple-500 dark:text-purple-400">{pendingCount}</strong>)</span>
+            </span>
+          {/if}
         </p>
 
         <!-- 快捷操作按钮组 -->
@@ -276,7 +287,7 @@
           </thead>
           <tbody class="divide-y divide-[var(--border-subtle)]">
             {#each paged as t, i (t.id)}
-              {@const idx = (desktopCurPage - 1) * desktopPageSize + i + 1}
+              {@const idx = (desktopCurPage - 1) * pageSize + i + 1}
               {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
               {@const artist = formatArtist(t)}
               {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}

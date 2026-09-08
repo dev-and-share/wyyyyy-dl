@@ -10,7 +10,7 @@ export const playlistState = $state({
   loading: false,
   loadingId: ''
 });
-export const pageSize = 10;
+export const pageSize = 20;
 const _paged = $derived(allTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
 const _totalPages = $derived(Math.max(1, Math.ceil(allTracks.length/pageSize)));
 const _playlist = $derived(playlistState.playlist);

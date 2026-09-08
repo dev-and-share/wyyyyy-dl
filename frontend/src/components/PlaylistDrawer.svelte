@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Track } from '../lib/types';
   import { formatArtist } from '../lib/utils';
+  import { api } from '../lib/api';
+  import { showToast } from '../lib/toast.svelte';
   import TaskStatusBadge from './TaskStatusBadge.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
@@ -48,6 +50,8 @@
 
   let activeTab: 'queue' | 'tasks' = $state('queue');
   let filterText = $state('');
+  let pendingOnly = $state(false);
+  let downloadingIds = $state(new Set<string>());
 
   // 计算过滤后的队列
   let filteredQueueWithIndex = $derived.by(() => {
@@ -57,6 +61,8 @@
       if (serverOnly && !status.isServer) return false;
       // 范围筛选：纯离线模式 (手机零流量，仅手机本地已缓存)
       if (offlineOnly && !status.isPhone) return false;
+      // 搜集癖筛选：仅看待下载到服务器磁盘的曲目
+      if (pendingOnly && status.isServer) return false;
 
       if (filterText.trim()) {
         const kw = filterText.toLowerCase();
@@ -72,7 +78,55 @@
   let countAll = $derived(queue.length);
   let countServer = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer).length);
   let countPhone = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isPhone).length);
+  let countPending = $derived(queue.filter((t: Track) => !getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer).length);
   let displayedCount = $derived(filteredQueueWithIndex.length);
+
+  async function handleDownloadSingle(e: MouseEvent, track: Track) {
+    e.stopPropagation();
+    const idStr = String(track.id);
+    if (downloadingIds.has(idStr)) return;
+
+    downloadingIds = new Set([...downloadingIds, idStr]);
+    try {
+      const res = await api.downloadSingle(idStr);
+      const task = res?.data;
+      if (task?.status === 'SKIP') {
+        showToast(`已跳过《${track.name}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 3000);
+      } else if (task?.status === 'FAILED') {
+        showToast(`下载失败《${track.name}》: ${task.errorMsg || '无法下载'}`, 'error', 3000);
+      } else {
+        showToast(`已提交下载: 《${track.name}》`, 'info', 2000);
+      }
+      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    } catch (err: any) {
+      showToast('下载异常: ' + (err?.message || err), 'error', 3000);
+    } finally {
+      const nextSet = new Set(downloadingIds);
+      nextSet.delete(idStr);
+      downloadingIds = nextSet;
+    }
+  }
+
+  async function handleDownloadAllPending() {
+    const pendingTracks = queue.filter((t: Track) => !getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer);
+    if (!pendingTracks.length) return;
+    showToast(`正在批量提交 ${pendingTracks.length} 首待下载歌曲...`, 'info', 2000);
+    const newIds = new Set(downloadingIds);
+    for (const t of pendingTracks) {
+      newIds.add(String(t.id));
+    }
+    downloadingIds = newIds;
+
+    for (const t of pendingTracks) {
+      api.downloadSingle(String(t.id)).catch(() => {}).finally(() => {
+        const nextSet = new Set(downloadingIds);
+        nextSet.delete(String(t.id));
+        downloadingIds = nextSet;
+      });
+    }
+    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    showToast(`已将 ${pendingTracks.length} 首待下载歌曲加入后台队列`, 'success', 2500);
+  }
 
   // 退出动画与手势下拉状态
   let closing = $state(false);
@@ -227,8 +281,8 @@
             <div class="flex items-center gap-1.5 min-w-0 overflow-x-auto py-0.5">
               <button
                 type="button"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {!serverOnly && !offlineOnly ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
-                onclick={() => { onToggleServerOnly(false); onToggleOfflineOnly(false); }}
+                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {!serverOnly && !offlineOnly && !pendingOnly ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
+                onclick={() => { pendingOnly = false; onToggleServerOnly(false); onToggleOfflineOnly(false); }}
                 title="浏览并播放当前队列全部歌曲"
               >
                 全部 {countAll}
@@ -236,7 +290,7 @@
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {serverOnly ? 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
-                onclick={() => onToggleServerOnly(!serverOnly)}
+                onclick={() => { pendingOnly = false; onToggleServerOnly(!serverOnly); }}
                 title="仅播已下载到服务器磁盘的曲目（💻）"
               >
                 💻 服务器 {countServer}
@@ -244,10 +298,24 @@
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {offlineOnly ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
-                onclick={() => onToggleOfflineOnly(!offlineOnly)}
+                onclick={() => { pendingOnly = false; onToggleOfflineOnly(!offlineOnly); }}
                 title="手机纯离线模式（仅播手机浏览器本地缓存，绝不消耗手机流量）"
               >
                 📴 纯离线 {countPhone}
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {pendingOnly ? 'bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
+                onclick={() => {
+                  pendingOnly = !pendingOnly;
+                  if (pendingOnly) {
+                    onToggleServerOnly(false);
+                    onToggleOfflineOnly(false);
+                  }
+                }}
+                title="搜集癖专区：仅展示尚未下载到服务器磁盘的歌曲"
+              >
+                待下载 {countPending}
               </button>
             </div>
 
@@ -264,11 +332,26 @@
           </div>
         </div>
 
+        <!-- 搜集癖待下载提示与一键批量补齐横幅 -->
+        {#if pendingOnly && countPending > 0}
+          <div class="px-3 py-1.5 bg-rose-500/10 border-b border-rose-500/20 flex items-center justify-between text-xs text-rose-600 dark:text-rose-300 shrink-0">
+            <span class="truncate pr-2">💡 搜集癖专区：发现 <strong>{countPending}</strong> 首待下载</span>
+            <button
+              type="button"
+              class="px-2.5 py-0.5 rounded-lg bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-medium text-[11px] cursor-pointer transition-all shadow-xs shrink-0"
+              onclick={handleDownloadAllPending}
+              title="一键将所有待下载歌曲提交到服务器后台任务"
+            >
+              ⬇️ 批量补齐下载
+            </button>
+          </div>
+        {/if}
+
         <!-- 队列曲目列表 -->
         <div class="flex-1 overflow-y-auto p-1.5">
           <ul class="divide-y divide-black/5 dark:divide-white/5 m-0 p-0 list-none">
             {#each filteredQueueWithIndex as { t, realIdx }}
-              {@const isServer = (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true}
+              {@const status = getTrackSourceStatus(t.id, t.isLocal, queue[qIndex])}
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
               <li
@@ -285,6 +368,20 @@
                     </span>
                   {/if}
                   <TrackSourceBadge id={t.id} isLocal={t.isLocal} curTrack={queue[qIndex]} />
+                  {#if !status.isServer}
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/15 hover:bg-blue-500/25 active:scale-95 text-blue-500 dark:text-blue-400 border border-blue-500/30 text-[10px] shrink-0 transition-all cursor-pointer shadow-2xs {downloadingIds.has(String(t.id)) ? 'animate-pulse' : ''}"
+                      onclick={(e) => handleDownloadSingle(e, t)}
+                      title="快速下载到服务器磁盘"
+                    >
+                      {#if downloadingIds.has(String(t.id))}
+                        <span class="animate-spin inline-block text-[9px]">⏳</span>
+                      {:else}
+                        <span>⬇️</span>
+                      {/if}
+                    </button>
+                  {/if}
                   {#if realIdx === qIndex}
                     <span class="text-[11px] font-semibold text-emerald-500 shrink-0 ml-1">▶ 播放中</span>
                   {/if}
@@ -306,7 +403,7 @@
               </li>
             {:else}
               <li class="py-8 px-4 text-center text-[var(--text-muted)] text-xs list-none">
-                {filterText ? '未找到匹配曲目' : '播放队列为空，请先在歌单或搜索中点播歌曲'}
+                {pendingOnly ? '🎉 太棒了！当前播放列表的所有歌曲已全部下载到服务器！' : (filterText ? '未找到匹配曲目' : '播放队列为空，请先在歌单或搜索中点播歌曲')}
               </li>
             {/each}
           </ul>
