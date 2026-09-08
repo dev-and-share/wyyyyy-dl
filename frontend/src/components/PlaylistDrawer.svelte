@@ -6,7 +6,7 @@
   import TaskStatusBadge from './TaskStatusBadge.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
-  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, markSongDownloaded } from '../lib/trackStatus.svelte';
 
   let {
     queue = [],
@@ -91,7 +91,13 @@
       const res = await api.downloadSingle(idStr);
       const task = res?.data;
       if (task?.status === 'SKIP') {
-        showToast(`已跳过《${track.name}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 3000);
+        const msg = task.errorMsg || '';
+        if (msg.includes('已存在') || msg.includes('磁盘中')) {
+          markSongDownloaded(track.id);
+          showToast(`《${track.name}》已存在于本地磁盘，已同步状态`, 'info', 3000);
+        } else {
+          showToast(`已跳过《${track.name}》: ${msg || '试听片段或已存在'}`, 'warning', 3000);
+        }
       } else if (task?.status === 'FAILED') {
         showToast(`下载失败《${track.name}》: ${task.errorMsg || '无法下载'}`, 'error', 3000);
       } else {
@@ -118,7 +124,12 @@
     downloadingIds = newIds;
 
     for (const t of pendingTracks) {
-      api.downloadSingle(String(t.id)).catch(() => {}).finally(() => {
+      api.downloadSingle(String(t.id)).then((res) => {
+        const msg = res?.data?.errorMsg || '';
+        if (res?.data?.status === 'SKIP' && (msg.includes('已存在') || msg.includes('磁盘中'))) {
+          markSongDownloaded(t.id);
+        }
+      }).catch(() => {}).finally(() => {
         const nextSet = new Set(downloadingIds);
         nextSet.delete(String(t.id));
         downloadingIds = nextSet;
@@ -327,7 +338,7 @@
                 onchange={(e) => onToggleAutoSkip((e.currentTarget as HTMLInputElement).checked)}
                 class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
               />
-              <span class="whitespace-nowrap {autoSkipTrial ? 'font-medium text-[var(--text-main)]' : ''}">🛡️ 跳过试听</span>
+              <span class="whitespace-nowrap {autoSkipTrial ? 'font-medium text-[var(--text-main)]' : ''}">跳过试听</span>
             </label>
           </div>
         </div>

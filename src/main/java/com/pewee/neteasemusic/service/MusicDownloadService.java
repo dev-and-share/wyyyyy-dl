@@ -55,12 +55,6 @@ public class MusicDownloadService implements InitializingBean {
 
 	private Boolean repeat = true;
 
-	private BufferedWriter bw;
-
-	private HashSet<Long> hs;
-
-	private ArrayBlockingQueue<Long> queue;
-
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		String repeatFilePath = path + "repeat";
@@ -73,7 +67,7 @@ public class MusicDownloadService implements InitializingBean {
 				fileInputStream.read(arr);
 				fileInputStream.close();
 				String string = new String(arr);
-				log.info("读取到repeat:{}",string);
+				log.info("读取到repeat:{}", string);
 				if ("1".equals(string)) {
 					this.repeat = true;
 				} else {
@@ -84,39 +78,13 @@ public class MusicDownloadService implements InitializingBean {
 			}
 		}
 
-		
-		String idsFile = path + "ids.txt";
-		File file = new File(idsFile);
-		if (!file.exists()) {
-			file.createNewFile();
-		}
-		bw = new BufferedWriter(new FileWriter(idsFile, true));
-		hs = new HashSet<>();
-		queue = new ArrayBlockingQueue<>(5000);
-		
-		long length = file.length();
-		byte[] arr = new byte[(int) length];
-		try (FileInputStream i = new FileInputStream(file)) {
-			i.read(arr);
-		}
-		String origin = new String(arr);
-		hs.addAll(Arrays.asList(origin.split(" ")).stream().map(String::trim).filter(StringUtils::isNotBlank)
-				.map(Long::valueOf).collect(Collectors.toList()));
-		log.info("读取到已下载记录{}条!", hs.size());
-	}
-
-	// @Scheduled(cron = "0 */5 * * * ?")
-	@Scheduled(cron = "*/5 * * * * ?")
-	public void syncLocalFile() {
-		if (!repeat && !queue.isEmpty()) {
-			String join = " " + String.join(" ", queue.stream().map(String::valueOf).collect(Collectors.toList()));
-			try {
-				bw.append(join);
-				bw.flush();
-				queue.clear();
-			} catch (IOException e) {
-				log.error("写入文件失败!", e);
+		// 📦 拔除 ids.txt：启动时一次性将历史遗留的 ids.txt 迁移入 SQLite 数据库并彻底归档
+		try {
+			if (downloadHistoryDAO != null) {
+				downloadHistoryDAO.migrateLegacyIdsFileIfPresent(this.path);
 			}
+		} catch (Exception e) {
+			log.warn("检查并迁移历史 ids.txt 异常", e);
 		}
 	}
 
@@ -200,19 +168,28 @@ public class MusicDownloadService implements InitializingBean {
 			downloadTasks.put(id, taskStatus);
 		}
 
-		if (!repeat && hs.contains(id)) {
-			log.info("歌曲id: {} 已存在,跳过!", id);
-			taskStatus.setStatus("SKIP");
-			taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
-			if ("未知歌曲".equals(taskStatus.getName()) || taskStatus.getName() == null) {
-				try {
-					SingleMusicAnalysisRespDTO analysis = analysisService.analyzeSingleSong(id, "standard");
-					if (analysis != null && analysis.getName() != null) {
-						taskStatus.setName(analysis.getName());
-					}
-				} catch (Exception ignored) {}
+		if (!repeat) {
+			// 1. 优先查 SQLite 数据库中是否已记录该歌曲已下载
+			if (downloadHistoryDAO.isSongDownloaded(id)) {
+				log.info("歌曲id: {} 在 SQLite 已下载数据库中已存在, 跳过重复下载!", id);
+				taskStatus.setStatus("SKIP");
+				taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
+				return;
 			}
-			return;
+
+			// 2. 检查本地物理磁盘中是否已存在匹配的音频文件
+			DownloadHistoryDAO.DownloadHistoryItem localMatch = downloadHistoryDAO.findLocalFileBySongOrName(id, trackName, null);
+			if (localMatch != null && Boolean.TRUE.equals(localMatch.getFileExists())) {
+				log.info("歌曲id: {} ({}) 本地文件已存在: {}, 跳过重复下载!", id, trackName, localMatch.getFilePath());
+				taskStatus.setStatus("SKIP");
+				taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
+				taskStatus.setFilePath(localMatch.getFilePath());
+				// 自愈：如果该条历史记录之前 song_id 为 0，立即纠偏补齐
+				if (localMatch.getSongId() == null || localMatch.getSongId() <= 0) {
+					downloadHistoryDAO.updateSongIdIfEmpty(localMatch.getId(), id);
+				}
+				return;
+			}
 		}
 
 		taskStatus.setStatus("DOWNLOADING");
@@ -273,8 +250,6 @@ public class MusicDownloadService implements InitializingBean {
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
 			}
-			hs.add(id);
-			queue.offer(id);
 			taskStatus.setStatus("SUCCESS");
 			taskStatus.setFilePath(file.getAbsolutePath());
 

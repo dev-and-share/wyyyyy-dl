@@ -18,7 +18,7 @@
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import ForkPlaylistModal from '../ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
-  import { getTrackSourceStatus } from '../../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, markSongDownloaded } from '../../lib/trackStatus.svelte';
 
   let {
     playlistId,
@@ -124,7 +124,13 @@
       const res = await api.downloadSingle(id);
       const task = res?.data;
       if (task?.status === 'SKIP') {
-        showToast(`已跳过《${task.name || name || '歌曲'}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 4000);
+        const msg = task.errorMsg || '';
+        if (msg.includes('已存在') || msg.includes('磁盘中')) {
+          markSongDownloaded(id);
+          showToast(`《${task.name || name || '歌曲'}》已在本地磁盘中，已同步状态`, 'info', 3000);
+        } else {
+          showToast(`已跳过《${task.name || name || '歌曲'}》: ${msg || '试听片段或已存在'}`, 'warning', 4000);
+        }
       } else if (task?.status === 'FAILED') {
         showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
       } else {

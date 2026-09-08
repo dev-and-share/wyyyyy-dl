@@ -123,6 +123,12 @@ public class DownloadHistoryDAO {
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ")";
                 stmt.execute(likedSql);
+
+                String legacyIdsSql = "CREATE TABLE IF NOT EXISTS legacy_downloaded_ids (" +
+                        "song_id BIGINT PRIMARY KEY, " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        ")";
+                stmt.execute(legacyIdsSql);
             }
 
             loadIgnoredFolders();
@@ -1391,11 +1397,13 @@ public class DownloadHistoryDAO {
 
     public Set<Long> getAllDownloadedSongIds() {
         Set<Long> ids = new HashSet<>();
+        String sql = "SELECT DISTINCT song_id FROM download_history WHERE (status = 'SUCCESS' OR status IS NULL) AND song_id IS NOT NULL AND song_id > 0 " +
+                     "UNION SELECT song_id FROM legacy_downloaded_ids";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT DISTINCT song_id FROM download_history WHERE (status = 'SUCCESS' OR status IS NULL) AND song_id IS NOT NULL AND song_id > 0")) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                long sid = rs.getLong("song_id");
+                long sid = rs.getLong(1);
                 if (sid > 0) {
                     ids.add(sid);
                 }
@@ -1404,6 +1412,101 @@ public class DownloadHistoryDAO {
             log.warn("获取全部已下载歌曲ID失败: {}", e.getMessage());
         }
         return ids;
+    }
+
+    /**
+     * 判断指定网易云歌曲 ID 是否已经在本地下载落盘
+     */
+    public boolean isSongDownloaded(Long songId) {
+        if (songId == null || songId <= 0) return false;
+        String sql = "SELECT 1 FROM download_history WHERE song_id = ? AND (status = 'SUCCESS' OR status IS NULL) " +
+                     "UNION SELECT 1 FROM legacy_downloaded_ids WHERE song_id = ? LIMIT 1";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, songId);
+            pstmt.setLong(2, songId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            log.warn("检查歌曲是否已下载异常, songId={}: {}", songId, e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * 当命中本地文件但之前记录 song_id 为 0 或空时，自动纠偏补齐真实的网易云 ID
+     */
+    public void updateSongIdIfEmpty(Long historyId, Long songId) {
+        if (historyId == null || historyId <= 0 || songId == null || songId <= 0) return;
+        String sql = "UPDATE download_history SET song_id = ? WHERE id = ? AND (song_id IS NULL OR song_id = 0)";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, songId);
+            pstmt.setLong(2, historyId);
+            int rows = pstmt.executeUpdate();
+            if (rows > 0) {
+                log.info("🩹 成功为历史记录补齐真实网易云 ID: historyId={}, songId={}", historyId, songId);
+            }
+        } catch (Exception e) {
+            log.warn("自愈更新 song_id 失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 📦 一次性平滑迁移历史遗留的 ids.txt 文本文件入库，然后彻底拔除重命名为 .migrated
+     */
+    public void migrateLegacyIdsFileIfPresent(String basePath) {
+        if (basePath == null) return;
+        File idsFile = new File(basePath, "ids.txt");
+        if (!idsFile.exists() || idsFile.length() == 0) {
+            return;
+        }
+        log.info("📦 发现历史遗留 ids.txt 文件，正在全量迁移入 SQLite 数据库...");
+        try {
+            byte[] arr = java.nio.file.Files.readAllBytes(idsFile.toPath());
+            String content = new String(arr, java.nio.charset.StandardCharsets.UTF_8);
+            String[] tokens = content.split("\\s+");
+            List<Long> idsToInsert = new ArrayList<>();
+            for (String token : tokens) {
+                String clean = token.trim();
+                if (!clean.isEmpty()) {
+                    try {
+                        long sid = Long.parseLong(clean);
+                        if (sid > 0) {
+                            idsToInsert.add(sid);
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+
+            if (!idsToInsert.isEmpty()) {
+                String sql = "INSERT OR IGNORE INTO legacy_downloaded_ids (song_id) VALUES (?)";
+                try (Connection conn = getConnection()) {
+                    conn.setAutoCommit(false);
+                    try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                        for (Long sid : idsToInsert) {
+                            pstmt.setLong(1, sid);
+                            pstmt.addBatch();
+                        }
+                        pstmt.executeBatch();
+                    }
+                    conn.commit();
+                    conn.setAutoCommit(true);
+                }
+                log.info("✅ 成功将 {} 个历史已下载歌曲 ID 迁移至 SQLite legacy_downloaded_ids 表！", idsToInsert.size());
+            }
+
+            // 迁移完成，将 ids.txt 彻底拔除并重命名归档
+            File migratedFile = new File(basePath, "ids.txt.migrated");
+            if (migratedFile.exists()) {
+                migratedFile.delete();
+            }
+            boolean renamed = idsFile.renameTo(migratedFile);
+            log.info("🗑️ ids.txt 已彻底拔除，重命名归档为 ids.txt.migrated (success: {})", renamed);
+        } catch (Exception e) {
+            log.error("迁移历史 ids.txt 失败", e);
+        }
     }
 
     /**
