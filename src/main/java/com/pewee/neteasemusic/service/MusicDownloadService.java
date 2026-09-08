@@ -169,28 +169,11 @@ public class MusicDownloadService implements InitializingBean {
 			downloadTasks.put(id, taskStatus);
 		}
 
-		if (!repeat) {
-			// 1. 优先查 SQLite 数据库中是否已记录该歌曲已下载
-			if (downloadHistoryDAO.isSongDownloaded(id)) {
-				log.info("歌曲id: {} 在 SQLite 已下载数据库中已存在, 跳过重复下载!", id);
-				taskStatus.setStatus("SKIP");
-				taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
-				return;
-			}
-
-			// 2. 检查本地物理磁盘中是否已存在匹配的音频文件
-			DownloadHistoryDAO.DownloadHistoryItem localMatch = downloadHistoryDAO.findLocalFileBySongOrName(id, trackName, null);
-			if (localMatch != null && Boolean.TRUE.equals(localMatch.getFileExists())) {
-				log.info("歌曲id: {} ({}) 本地文件已存在: {}, 跳过重复下载!", id, trackName, localMatch.getFilePath());
-				taskStatus.setStatus("SKIP");
-				taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
-				taskStatus.setFilePath(localMatch.getFilePath());
-				// 自愈：如果该条历史记录之前 song_id 为 0，立即纠偏补齐
-				if (localMatch.getSongId() == null || localMatch.getSongId() <= 0) {
-					downloadHistoryDAO.updateSongIdIfEmpty(localMatch.getId(), id);
-				}
-				return;
-			}
+		if (!repeat && downloadHistoryDAO.isSongDownloaded(id)) {
+			log.info("歌曲id: {} 在 SQLite 已下载数据库中已存在, 跳过重复下载!", id);
+			taskStatus.setStatus("SKIP");
+			taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
+			return;
 		}
 
 		taskStatus.setStatus("DOWNLOADING");

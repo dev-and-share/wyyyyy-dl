@@ -1434,24 +1434,6 @@ public class DownloadHistoryDAO {
         return false;
     }
 
-    /**
-     * 当命中本地文件但之前记录 song_id 为 0 或空时，自动纠偏补齐真实的网易云 ID
-     */
-    public void updateSongIdIfEmpty(Long historyId, Long songId) {
-        if (historyId == null || historyId <= 0 || songId == null || songId <= 0) return;
-        String sql = "UPDATE download_history SET song_id = ? WHERE id = ? AND (song_id IS NULL OR song_id = 0)";
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setLong(1, songId);
-            pstmt.setLong(2, historyId);
-            int rows = pstmt.executeUpdate();
-            if (rows > 0) {
-                log.info("🩹 成功为历史记录补齐真实网易云 ID: historyId={}, songId={}", historyId, songId);
-            }
-        } catch (Exception e) {
-            log.warn("自愈更新 song_id 失败: {}", e.getMessage());
-        }
-    }
 
     /**
      * 📦 一次性平滑迁移历史遗留的 ids.txt 文本文件入库，然后彻底拔除重命名为 .migrated
