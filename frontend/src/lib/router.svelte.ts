@@ -42,7 +42,11 @@ export function toggleSidebarCollapse(): void {
 
 export function switchTab(n: ActiveTab): void {
   routerState.tab = n;
-  history.pushState(null, '', '#' + n);
+  if (n === 'playlist' && routerState.playlistId) {
+    history.pushState(null, '', `#playlist?id=${routerState.playlistId}`);
+  } else {
+    history.pushState(null, '', '#' + n);
+  }
   try {
     localStorage.setItem('wyyyy_active_tab', n);
   } catch {}
@@ -54,16 +58,43 @@ export function jumpToAlbum(id: string): void {
 }
 
 export function jumpToPlaylist(id: string): void {
-  routerState.playlistId = id;
+  const pid = String(id || '').trim();
+  routerState.playlistId = pid;
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
-  switchTab('playlist');
+  routerState.tab = 'playlist';
+  if (pid) {
+    history.pushState(null, '', `#playlist?id=${pid}`);
+  } else {
+    history.pushState(null, '', '#playlist');
+  }
+  try {
+    localStorage.setItem('wyyyy_active_tab', 'playlist');
+    if (pid) {
+      localStorage.setItem('wyyyy_last_playlist_id', pid);
+    }
+  } catch {}
+}
+
+export function exitPlaylistToGallery(): void {
+  routerState.playlistId = '';
+  routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
+  history.pushState(null, '', '#playlist');
+  try {
+    localStorage.removeItem('wyyyy_last_playlist_id');
+  } catch {}
 }
 
 export function initRouter(): () => void {
   const syncRoute = () => {
-    const m = location.hash.match(/id=([0-9]+)/);
-    if (m?.[1]) routerState.playlistId = m[1];
-    const h = location.hash.replace('#', '').split('?')[0];
+    const raw = typeof location !== 'undefined' ? location.hash.replace('#', '') : '';
+    const m = raw.match(/id=([0-9]+)/);
+    if (m?.[1]) {
+      routerState.playlistId = m[1];
+    } else if (raw.startsWith('playlist')) {
+      // 当 URL 是 #playlist 且没有 id 时，回到歌单画廊
+      routerState.playlistId = '';
+    }
+    const h = raw.split('?')[0];
     if (h === 'playlist' || h === 'search' || h === 'download-mgr') {
       routerState.tab = h as ActiveTab;
     }
@@ -71,5 +102,9 @@ export function initRouter(): () => void {
 
   syncRoute();
   window.addEventListener('hashchange', syncRoute);
-  return () => window.removeEventListener('hashchange', syncRoute);
+  window.addEventListener('popstate', syncRoute);
+  return () => {
+    window.removeEventListener('hashchange', syncRoute);
+    window.removeEventListener('popstate', syncRoute);
+  };
 }

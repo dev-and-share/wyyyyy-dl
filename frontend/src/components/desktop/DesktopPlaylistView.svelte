@@ -3,6 +3,7 @@
   import DesktopPlaylistDetail from './DesktopPlaylistDetail.svelte';
   import { playPlaylistTracks } from '../../lib/playerHelper';
   import { resetActiveTargetPlaylist } from '../../lib/playlist.svelte';
+  import { exitPlaylistToGallery, jumpToPlaylist } from '../../lib/router.svelte';
 
   let {
     playlistId = '',
@@ -45,10 +46,27 @@
       } else if (!dismissed && !selectedId) {
         selectedId = curId;
       }
+    } else {
+      // 路由无 ID 或退出详情时回到画廊
+      selectedId = '';
+      dismissed = true;
     }
   });
 
   let activePlaylistId = $derived(dismissed ? '' : (selectedId || playlistId || ''));
+
+  function handleBackToGallery() {
+    dismissed = true;
+    selectedId = '';
+    resetActiveTargetPlaylist();
+    exitPlaylistToGallery();
+  }
+
+  function handleSelectPlaylist(id: string) {
+    dismissed = false;
+    selectedId = id;
+    jumpToPlaylist(id);
+  }
 
   function handlePlayPlaylistDirect(id: string, name: string) {
     if (!id || !onPlayQueue) return;
@@ -65,7 +83,7 @@
       {playing}
       {likedSet}
       {downloadedSet}
-      onBackToGallery={() => { dismissed = true; selectedId = ''; resetActiveTargetPlaylist(); }}
+      onBackToGallery={handleBackToGallery}
       {onToggleLike}
       {onPlayQueue}
       {onAlbum}
@@ -74,7 +92,7 @@
     />
   {:else}
     <DesktopPlaylistGallery
-      onSelectPlaylist={(id) => { dismissed = false; selectedId = id; }}
+      onSelectPlaylist={handleSelectPlaylist}
       onPlayPlaylist={handlePlayPlaylistDirect}
       {showToast}
     />

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { myPlaylists, isFavoritePlaylist } from '../../lib/playlist.svelte';
+  import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount } from '../../lib/playlist.svelte';
 
   let {
     tab,
@@ -23,9 +23,9 @@
     showToast?: (m: string, t?: string) => void;
   }>();
 
-  // 歌单分类：创建 vs 收藏
-  const createdPlaylists = $derived(myPlaylists.filter(p => !p.subscribed));
-  const subscribedPlaylists = $derived(myPlaylists.filter(p => p.subscribed));
+  // 歌单分类：创建 vs 收藏，按播放频率排序（喜欢的音乐始终置顶）
+  const createdPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => !p.subscribed)));
+  const subscribedPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => p.subscribed)));
 
   // 侧栏歌单搜索过滤
   let sidebarSearchKw = $state('');
