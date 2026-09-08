@@ -1,0 +1,25 @@
+# Lefthook Git Hooks Configuration
+# Reference: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    check-lines:
+      root: "frontend"
+      glob: "src/**/*.{svelte,ts,js,css}"
+      run: npm run check:lines
+
+    svelte-check:
+      root: "frontend"
+      glob: "**/*.{svelte,ts,js,json}"
+      run: npm run check
+
+    vitest:
+      root: "frontend"
+      glob: "**/*.{svelte,ts,js,json}"
+      run: npm test
+
+    frontend-build:
+      root: "frontend"
+      glob: "**/*.{svelte,ts,js,css,html,json}"
+      run: npm run build
