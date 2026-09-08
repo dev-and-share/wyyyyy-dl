@@ -1393,7 +1393,7 @@ public class DownloadHistoryDAO {
         Set<Long> ids = new HashSet<>();
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT song_id FROM download_history WHERE (file_exists IS NULL OR file_exists = 1) AND song_id IS NOT NULL AND song_id > 0")) {
+             ResultSet rs = stmt.executeQuery("SELECT DISTINCT song_id FROM download_history WHERE (status = 'SUCCESS' OR status IS NULL) AND song_id IS NOT NULL AND song_id > 0")) {
             while (rs.next()) {
                 long sid = rs.getLong("song_id");
                 if (sid > 0) {

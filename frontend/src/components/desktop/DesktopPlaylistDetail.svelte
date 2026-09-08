@@ -48,10 +48,11 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let paged = $derived(getPaged());
-  let totalPages = $derived(getTotalPages());
+  const desktopPageSize = 20;
+  let desktopCurPage = $state(1);
+  let totalPages = $derived(Math.max(1, Math.ceil(allTracks.length / desktopPageSize)));
+  let paged = $derived(allTracks.slice((desktopCurPage - 1) * desktopPageSize, desktopCurPage * desktopPageSize));
   let playlist = $derived(getPlaylist());
-  let curPage = $derived(getCurPage());
 
   let isCurrentPlaylistLoaded = $derived(
     !!playlist && String(playlist.id) === String(playlistId)
@@ -70,6 +71,7 @@
     if (curId && (curId !== lastSeenId || curTrig !== lastSeenTrigger)) {
       lastSeenId = curId;
       lastSeenTrigger = curTrig;
+      desktopCurPage = 1;
       loadData(curId);
     }
   });
@@ -258,9 +260,9 @@
       </div>
     </div>
 
-    <!-- 3. 宽屏歌曲大表格 (高度自适应视口，表头 Sticky 吸顶，无外层滚动) -->
+    <!-- 3. 宽屏歌曲大表格 (流式平滑展开，表头吸顶，与外层视口完美契合) -->
     <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
-      <div class="overflow-x-auto max-h-[calc(100vh-325px)] min-h-[240px] overflow-y-auto custom-table-scroll">
+      <div class="overflow-x-auto custom-table-scroll">
         <table class="w-full text-left border-collapse text-xs">
           <!-- 吸顶表头 -->
           <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
@@ -274,7 +276,7 @@
           </thead>
           <tbody class="divide-y divide-[var(--border-subtle)]">
             {#each paged as t, i (t.id)}
-              {@const idx = (curPage - 1) * pageSize + i + 1}
+              {@const idx = (desktopCurPage - 1) * desktopPageSize + i + 1}
               {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
               {@const artist = formatArtist(t)}
               {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
@@ -359,19 +361,19 @@
         <button
           type="button"
           class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
-          disabled={curPage <= 1}
-          onclick={() => incPage(-1)}
+          disabled={desktopCurPage <= 1}
+          onclick={() => desktopCurPage = Math.max(1, desktopCurPage - 1)}
         >
           上一页
         </button>
         <span class="text-xs text-[var(--text-secondary)]">
-          第 <strong class="text-[var(--text-main)]">{curPage}</strong> / {totalPages} 页 (共 {allTracks.length} 首)
+          第 <strong class="text-[var(--text-main)]">{desktopCurPage}</strong> / {totalPages} 页 (共 {allTracks.length} 首)
         </span>
         <button
           type="button"
           class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
-          disabled={curPage >= totalPages}
-          onclick={() => incPage(1)}
+          disabled={desktopCurPage >= totalPages}
+          onclick={() => desktopCurPage = Math.min(totalPages, desktopCurPage + 1)}
         >
           下一页
         </button>

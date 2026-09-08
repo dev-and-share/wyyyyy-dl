@@ -51,20 +51,20 @@
 <!-- 🖥️ PC 桌面级左侧常驻/折叠边栏 (仅在 >= 1024px 显示) -->
 <aside
   data-testid="desktop-sidebar"
-  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width] duration-200 ease-in-out self-start sticky top-0 h-[calc(100vh-74px)] max-h-[calc(100vh-74px)] overflow-hidden {collapsed ? 'w-[58px]' : 'w-[220px]'}"
+  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width] duration-200 ease-in-out self-start sticky top-0 h-[calc(100vh-74px)] max-h-[calc(100vh-74px)] overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
 >
-  <!-- 1. 顶栏：Logo 与折叠切换按钮 -->
-  <div class="h-14 flex items-center px-3 border-b border-[var(--border-color)] justify-between gap-1 overflow-hidden shrink-0">
+  <!-- 1. 顶栏：Logo 与折叠切换按钮 (更从容舒适的高度与呼吸感) -->
+  <div class="h-16 flex items-center px-3.5 border-b border-[var(--border-color)] justify-between gap-1 overflow-hidden shrink-0">
     {#if !collapsed}
-      <div class="flex items-center gap-2 min-w-0 pl-1">
-        <span class="text-lg leading-none shrink-0">🎵</span>
-        <span class="font-bold text-sm text-[var(--text-main)] tracking-tight truncate">
+      <div class="flex items-center gap-2.5 min-w-0 pl-1">
+        <span class="text-xl leading-none shrink-0">🎵</span>
+        <span class="font-bold text-[15px] text-[var(--text-main)] tracking-tight truncate">
           网易云下载器
         </span>
       </div>
     {:else}
       <div class="w-full flex justify-center" title="网易云下载器">
-        <span class="text-lg leading-none">🎵</span>
+        <span class="text-xl leading-none">🎵</span>
       </div>
     {/if}
 
@@ -80,13 +80,13 @@
     </button>
   </div>
 
-  <!-- 2. 主导航区 -->
-  <nav class="p-2 flex flex-col gap-1 border-b border-[var(--border-color)] shrink-0">
+  <!-- 2. 主导航区 (舒适的卡片间距与饱满的点击区) -->
+  <nav class="p-2.5 flex flex-col gap-1.5 border-b border-[var(--border-color)] shrink-0">
     <!-- 歌单 -->
     <button
       type="button"
       data-testid="sidebar-tab-playlist"
-      class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all duration-150 {tab === 'playlist' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
+      class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all duration-150 {tab === 'playlist' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('playlist')}
       title="歌单"
     >
@@ -100,7 +100,7 @@
     <button
       type="button"
       data-testid="sidebar-tab-search"
-      class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all duration-150 {tab === 'search' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
+      class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all duration-150 {tab === 'search' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('search')}
       title="搜索"
     >
@@ -114,7 +114,7 @@
     <button
       type="button"
       data-testid="sidebar-tab-download-mgr"
-      class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all duration-150 relative {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
+      class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all duration-150 relative {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('download-mgr')}
       title="本地与下载"
     >
@@ -156,12 +156,12 @@
       <!-- 我的歌单：占 50% 高度，独立滚动 -->
       <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar border-b border-[var(--border-subtle)] pb-1 mb-1">
         {#if filteredCreated.length > 0}
-          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
+          <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
             <span>我的歌单</span>
             <span class="text-[10px] opacity-70">{filteredCreated.length}</span>
           </div>
           {#each filteredCreated as pl (pl.id)}
-            <div class="group relative flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
+            <div class="group relative flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
               <button
                 type="button"
                 class="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
@@ -171,7 +171,7 @@
                 <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-red-400">
                   {isFavoritePlaylist(pl) ? '❤️' : '📂'}
                 </span>
-                <span class="truncate flex-1">{pl.name}</span>
+                <span class="truncate flex-1 font-medium">{pl.name}</span>
                 {#if typeof pl.trackCount === 'number'}
                   <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
                 {/if}
@@ -196,12 +196,12 @@
       <!-- 收藏歌单：占 50% 高度，独立滚动 -->
       <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar pt-0.5">
         {#if filteredSubscribed.length > 0}
-          <div class="px-2 py-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
+          <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
             <span>收藏歌单</span>
             <span class="text-[10px] opacity-70">{filteredSubscribed.length}</span>
           </div>
           {#each filteredSubscribed as pl (pl.id)}
-            <div class="group relative flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
+            <div class="group relative flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
               <button
                 type="button"
                 class="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
@@ -209,7 +209,7 @@
                 title={pl.name}
               >
                 <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-amber-400">⭐</span>
-                <span class="truncate flex-1">{pl.name}</span>
+                <span class="truncate flex-1 font-medium">{pl.name}</span>
                 {#if typeof pl.trackCount === 'number'}
                   <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
                 {/if}
