@@ -247,25 +247,25 @@
 
     <!-- 抽屉头部 (四个角弧形胶囊设计) -->
     <div
-      class="mx-3 my-1.5 px-3 py-1.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] flex justify-between items-center shrink-0 select-none"
+      class="mx-3 my-1.5 px-2.5 py-1.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] flex justify-between items-center shrink-0 select-none"
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
       ontouchend={handleTouchEnd}
     >
-      <div class="flex items-center gap-1.5">
+      <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
         <button
           type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer {activeTab === 'queue' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
+          class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer {activeTab === 'queue' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'queue'}
         >
-          📜 播放队列 {displayedCount < countAll ? `(${displayedCount}/${countAll})` : `(${countAll})`}
+          📜 <span class="hidden sm:inline">播放</span>队列 {displayedCount < countAll ? `(${displayedCount}/${countAll})` : `(${countAll})`}
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 {activeTab === 'tasks' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
+          class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-1 {activeTab === 'tasks' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'tasks'}
         >
-          📥 下载任务
+          📥 <span class="hidden sm:inline">下载</span>任务
           {#if tasks.length > 0}
             <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full leading-tight">
               {tasks.length}
@@ -273,11 +273,11 @@
           {/if}
         </button>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div class="flex items-center gap-1 shrink-0">
         {#if activeTab === 'queue' && queue.length > 1}
           <button
             type="button"
-            class="px-2 py-1 rounded-lg text-xs text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 active:scale-95 transition-all cursor-pointer font-medium"
+            class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium"
             onclick={() => {
               onShuffle();
               showToast('🎲 已随机洗牌！当前曲目置顶，后续顺序播放', 'info', 2000);
@@ -289,7 +289,7 @@
         {/if}
         <button
           type="button"
-          class="px-2.5 py-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer"
+          class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer"
           onclick={() => {
             if (activeTab === 'queue') onClearQueue();
             else onClearTasks();
@@ -298,9 +298,10 @@
         >
           清空
         </button>
+        <!-- 💻 PC 桌面端保留 X 按钮；📱 SP 移动端去除 X 按钮（靠遮罩层点击与下拉手势关闭） -->
         <button
           type="button"
-          class="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all cursor-pointer text-sm"
+          class="hidden md:flex w-7 h-7 rounded-lg items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all cursor-pointer text-sm"
           onclick={handleClose}
           title="关闭"
         >
