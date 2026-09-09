@@ -2,7 +2,8 @@
 # deploy.sh — 一键 patch 版本升级 + commit + git tag + push + docker build
 # 用法：
 #   ./deploy.sh                      (默认：本地运行，仅更新本地缓存名 + docker build，绝不提交和推送)
-#   ./deploy.sh release [patch|minor|major] (生产发布：自动 commit + git tag + push + docker build)
+#   ./deploy.sh native               (本地 Native 模式：构建并启动原生镜像，端口 8081)
+#   ./deploy.sh release [patch|minor|major] (生产发布：自动 commit + git tag + push + 触发 CI 构建)
 set -euo pipefail
 
 ACTION=${1:-local}
@@ -10,6 +11,12 @@ IS_RELEASE=false
 BUMP="patch"
 
 case "$ACTION" in
+  native)
+    echo "⚡ 本地 Native 模式：使用 docker-compose.native.yml 启动原生容器..."
+    docker compose -f docker-compose.native.yml up -d --build
+    echo "🎉 Native 容器已启动！访问地址：http://localhost:8081"
+    exit 0
+    ;;
   release|push|prod)
     IS_RELEASE=true
     BUMP=${2:-patch}

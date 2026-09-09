@@ -74,7 +74,7 @@ wrapper {
 graalvmNative {
     binaries {
         main {
-            imageName = 'netease-music-dl-native'
+            imageName = 'wyyyyy-dl-native'
             buildArgs.add('--verbose')
             // 放宽 native 构建限制，兼容 sqlite/jaudiotagger/fastjson
             buildArgs.add('-H:+AllowIncompleteClasspath')
