@@ -275,14 +275,15 @@
       onPlay: () => { if (audioEl?.paused) togglePlay(); },
       onPause: () => { if (!audioEl?.paused) togglePlay(); },
       onPrev: prev,
-      onNext: next,
-      onSeekTo: (time) => {
-        if (audioEl) {
-          audioEl.currentTime = time;
-          playerStore.curTime = time;
-          updateMediaSessionPosition(audioEl);
-        }
-      }
+      onNext: next
+      // 🛡️ 禁用锁屏 seekto：防止锁屏拖动触发 iOS 熄屏后台断流静音、假走针与 15s 跳秒退化
+      // onSeekTo: (time) => {
+      //   if (audioEl) {
+      //     audioEl.currentTime = time;
+      //     playerStore.curTime = time;
+      //     updateMediaSessionPosition(audioEl);
+      //   }
+      // }
     });
 
     window.addEventListener('beforeunload', () => playerStore.save());

@@ -77,7 +77,7 @@ describe('mediaSession iOS contracts', () => {
     Object.defineProperty(navigator, 'userAgent', { value: originalUA, configurable: true });
   });
 
-  it('updateMediaSessionPosition correctly invokes setPositionState with duration, playbackRate and clamped position', () => {
+  it('updateMediaSessionPosition is a no-op to prevent iOS lockscreen fake ticking and 15s fallback', () => {
     const mockAudio = {
       duration: 200,
       currentTime: 45,
@@ -85,41 +85,6 @@ describe('mediaSession iOS contracts', () => {
     } as unknown as HTMLAudioElement;
 
     updateMediaSessionPosition(mockAudio);
-
-    expect(mockSetPositionState).toHaveBeenCalledWith({
-      duration: 200,
-      playbackRate: 1.25,
-      position: 45
-    });
-  });
-
-  it('updateMediaSessionPosition clamps currentTime within [0, duration]', () => {
-    const mockAudio = {
-      duration: 100,
-      currentTime: 150,
-      playbackRate: 1
-    } as unknown as HTMLAudioElement;
-
-    updateMediaSessionPosition(mockAudio);
-
-    expect(mockSetPositionState).toHaveBeenCalledWith({
-      duration: 100,
-      playbackRate: 1,
-      position: 100
-    });
-  });
-
-  it('updateMediaSessionPosition safely handles null audio or invalid duration', () => {
-    updateMediaSessionPosition(null);
-    expect(mockSetPositionState).not.toHaveBeenCalled();
-
-    const invalidAudio = {
-      duration: NaN,
-      currentTime: 0,
-      playbackRate: 1
-    } as unknown as HTMLAudioElement;
-
-    updateMediaSessionPosition(invalidAudio);
     expect(mockSetPositionState).not.toHaveBeenCalled();
   });
 

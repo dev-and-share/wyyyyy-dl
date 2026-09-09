@@ -95,27 +95,34 @@ export function updateMediaSessionPlaybackState(playing: boolean) {
 /**
  * 实时同步当前音频进度与总时长至系统锁屏进度条
  *
- * 关键性能与系统协同规范：
- * 1. 锁屏进度条依托 W3C MediaSession positionState（duration, playbackRate, position）。
- * 2. 严禁在 `timeupdate`（每秒 4 次）等高频轮询中调用！高频 IPC 会导致 WebKit/MediaRemote 状态抖动并重置回系统默认跳秒。
- * 3. 仅在低频事件点触发：loadedmetadata、play、pause、seeked。
- * 4. 系统底层会根据上报的 position 与 playbackRate 自动平滑走针，无需前端轮询。
+ * 🛡️ 架构防御契约（iOS WebKit 避坑）：
+ * 1. 绝不上报 setPositionState，保持完全空实现。
+ * 2. 根因剖析：
+ *    - 假走针与断流：iOS 熄屏状态下无用户前台手势令牌，后台网络处于深度节流。一旦上报 setPositionState
+ *      或响应锁屏 seek，用户在锁屏拖拽会导致音频 Range 拉流挂死静音，而系统 NowPlaying 却以 1.0 倍速独立空转（假走针），
+ *      直到用户重新点亮屏幕打开 App，音频才被迫从 0 秒重新拉流起播。
+ *    - 播客模式降级：向苹果 WebKit 暴露时间轴进度或跳转意图，会导致系统强行将【⏮ 播放/暂停 ⏭】
+ *      降级为【↺15 播放/暂停 ↻15】跳秒按钮。
+ * 3. 锁屏歌词解耦：锁屏动态歌词（Title / Artist / Album 映射）与进度条完全独立，绝不受此影响。
+ * 4. 结论：锁屏进度条保持静默，进度调节完全收拢在 App 内部，换取 100% 稳定的熄屏后台连续播放与曲目导航。
  */
-export function updateMediaSessionPosition(audioEl: HTMLAudioElement | null) {
-  if (typeof window === 'undefined' || !('mediaSession' in navigator) || !audioEl) return;
-  if (!('setPositionState' in navigator.mediaSession)) return;
-
-  try {
-    const duration = audioEl.duration;
-    if (duration && !isNaN(duration) && isFinite(duration) && duration > 0) {
-      const position = Math.min(Math.max(0, audioEl.currentTime || 0), duration);
-      navigator.mediaSession.setPositionState({
-        duration,
-        playbackRate: audioEl.playbackRate || 1.0,
-        position
-      });
-    }
-  } catch (e) {
-    console.warn('[MediaSession] 同步进度状态失败:', e);
-  }
+export function updateMediaSessionPosition(_audioEl: HTMLAudioElement | null) {
+  // 保持完全空实现：彻底杜绝锁屏假走针、后台断流静音以及退化为 15s 跳秒
+  // 原始实现保留备查（供非 iOS 平台或未来系统策略更新时参考）：
+  // if (typeof window === 'undefined' || !('mediaSession' in navigator) || !_audioEl) return;
+  // if (!('setPositionState' in navigator.mediaSession)) return;
+  // try {
+  //   const duration = _audioEl.duration;
+  //   if (duration && !isNaN(duration) && isFinite(duration) && duration > 0) {
+  //     const position = Math.min(Math.max(0, _audioEl.currentTime || 0), duration);
+  //     navigator.mediaSession.setPositionState({
+  //       duration,
+  //       playbackRate: _audioEl.playbackRate || 1.0,
+  //       position
+  //     });
+  //   }
+  // } catch (e) {
+  //   console.warn('[MediaSession] 同步进度状态失败:', e);
+  // }
+  return;
 }
