@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import type { Track } from '../lib/types';
   import { formatArtist } from '../lib/utils';
   import { api } from '../lib/api';
@@ -118,6 +119,7 @@
   async function handleDownloadAllPending() {
     const pendingTracks = queue.filter((t: Track) => !getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer);
     if (!pendingTracks.length) return;
+
     showToast(`正在批量提交 ${pendingTracks.length} 首待下载歌曲...`, 'info', 2000);
     const newIds = new Set(downloadingIds);
     for (const t of pendingTracks) {
@@ -151,6 +153,262 @@
     if (closing) return;
     closing = true;
     setTimeout(() => { closing = false; onClose(); }, 200);
+  }
+
+  // 💻 PC 桌面端窗口拖拽与尺寸调节支持
+  const DEFAULT_WIDTH = 420;
+  const DEFAULT_HEIGHT = 530;
+  const MIN_WIDTH = 340;
+  const MIN_HEIGHT = 360;
+
+  let isDesktop = $state(false);
+  let drawerWidth = $state(DEFAULT_WIDTH);
+  let drawerHeight = $state(DEFAULT_HEIGHT);
+  let drawerPos = $state<{ x: number | null; y: number | null }>({ x: null, y: null });
+  let isMoving = $state(false);
+  let isResizing = $state(false);
+  let drawerEl = $state<HTMLElement | null>(null);
+
+  let cleanUpDrag: (() => void) | null = null;
+  let cleanUpResize: (() => void) | null = null;
+
+  onMount(() => {
+    const checkDesktop = () => {
+      isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+      if (isDesktop && drawerPos.x !== null && drawerPos.y !== null) {
+        const maxX = Math.max(10, window.innerWidth - drawerWidth - 10);
+        const maxY = Math.max(10, window.innerHeight - drawerHeight - 10);
+        drawerPos = {
+          x: Math.max(10, Math.min(maxX, drawerPos.x)),
+          y: Math.max(10, Math.min(maxY, drawerPos.y))
+        };
+      }
+    };
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+
+    try {
+      const savedSize = localStorage.getItem('wyyyy_drawer_size');
+      if (savedSize) {
+        const parsed = JSON.parse(savedSize);
+        if (parsed?.w >= MIN_WIDTH) drawerWidth = Math.min(parsed.w, window.innerWidth - 20);
+        if (parsed?.h >= MIN_HEIGHT) drawerHeight = Math.min(parsed.h, window.innerHeight - 20);
+      }
+      const savedPos = localStorage.getItem('wyyyy_drawer_pos');
+      if (savedPos) {
+        const parsed = JSON.parse(savedPos);
+        if (typeof parsed?.x === 'number' && typeof parsed?.y === 'number') {
+          const maxX = Math.max(10, window.innerWidth - drawerWidth - 10);
+          const maxY = Math.max(10, window.innerHeight - drawerHeight - 10);
+          drawerPos = {
+            x: Math.max(10, Math.min(maxX, parsed.x)),
+            y: Math.max(10, Math.min(maxY, parsed.y))
+          };
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+
+    return () => {
+      window.removeEventListener('resize', checkDesktop);
+    };
+  });
+
+  onDestroy(() => {
+    if (cleanUpDrag) cleanUpDrag();
+    if (cleanUpResize) cleanUpResize();
+    if (typeof document !== 'undefined') {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  });
+
+  // PC 端容器动态内联样式
+  let containerStyle = $derived.by(() => {
+    if (!isDesktop) {
+      return dragOffset > 0
+        ? `transform: translateY(${dragOffset}px); transition: ${isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'};`
+        : '';
+    }
+    const parts: string[] = [];
+    parts.push(`width: ${drawerWidth}px`);
+    parts.push(`height: ${drawerHeight}px`);
+    parts.push(`max-width: calc(100vw - 20px)`);
+    parts.push(`max-height: calc(100vh - 20px)`);
+    if (drawerPos.x !== null && drawerPos.y !== null) {
+      parts.push(`position: fixed`);
+      parts.push(`left: ${drawerPos.x}px`);
+      parts.push(`top: ${drawerPos.y}px`);
+      parts.push(`margin: 0`);
+      parts.push(`z-index: 10003`);
+    }
+    if (isMoving || isResizing) {
+      parts.push(`transition: none !important`);
+      parts.push(`animation: none !important`);
+    }
+    return parts.join('; ') + ';';
+  });
+
+  // 🖱️ PC 拖拽顶栏移动窗口
+  function handleHeaderMouseDown(e: MouseEvent) {
+    if (!isDesktop || e.button !== 0 || !drawerEl) return;
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('button, input, a, [role="button"], label')) return;
+
+    const rect = drawerEl.getBoundingClientRect();
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
+    const startPosX = drawerPos.x ?? rect.left;
+    const startPosY = drawerPos.y ?? rect.top;
+
+    drawerPos = { x: startPosX, y: startPosY };
+    drawerWidth = rect.width;
+    drawerHeight = rect.height;
+
+    isMoving = true;
+    document.body.style.cursor = 'move';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startMouseX;
+      const dy = ev.clientY - startMouseY;
+      const maxX = Math.max(10, window.innerWidth - drawerWidth - 10);
+      const maxY = Math.max(10, window.innerHeight - drawerHeight - 10);
+      const newX = Math.max(10, Math.min(maxX, startPosX + dx));
+      const newY = Math.max(10, Math.min(maxY, startPosY + dy));
+      drawerPos = { x: newX, y: newY };
+    };
+
+    const onMouseUp = () => {
+      isMoving = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      cleanUpDrag = null;
+      try {
+        localStorage.setItem('wyyyy_drawer_pos', JSON.stringify(drawerPos));
+      } catch {}
+    };
+
+    cleanUpDrag = () => {
+      isMoving = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }
+
+  // 🖱️ PC 双击顶栏恢复默认居右下停靠与初始尺寸
+  function handleHeaderDblClick(e: MouseEvent) {
+    if (!isDesktop) return;
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('button, input, a, [role="button"], label')) return;
+    drawerPos = { x: null, y: null };
+    drawerWidth = DEFAULT_WIDTH;
+    drawerHeight = DEFAULT_HEIGHT;
+    try {
+      localStorage.removeItem('wyyyy_drawer_pos');
+      localStorage.removeItem('wyyyy_drawer_size');
+    } catch {}
+    showToast('已重置播放列表窗口位置与大小', 'info', 1500);
+  }
+
+  // ↔️ PC 边缘及角落八向拉伸尺寸调节
+  type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+
+  function handleResizeMouseDown(dir: ResizeDir, e: MouseEvent) {
+    if (!isDesktop || e.button !== 0 || !drawerEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = drawerEl.getBoundingClientRect();
+    const startX = drawerPos.x ?? rect.left;
+    const startY = drawerPos.y ?? rect.top;
+    const startW = drawerWidth || rect.width;
+    const startH = drawerHeight || rect.height;
+
+    drawerPos = { x: startX, y: startY };
+    drawerWidth = startW;
+    drawerHeight = startH;
+
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    isResizing = true;
+
+    const cursorMap: Record<ResizeDir, string> = {
+      n: 'ns-resize',
+      s: 'ns-resize',
+      e: 'ew-resize',
+      w: 'ew-resize',
+      ne: 'nesw-resize',
+      nw: 'nwse-resize',
+      se: 'nwse-resize',
+      sw: 'nesw-resize'
+    };
+    document.body.style.cursor = cursorMap[dir] || 'default';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+
+      let newW = startW;
+      let newH = startH;
+      let newX = startX;
+      let newY = startY;
+
+      if (dir.includes('e')) {
+        const maxW = window.innerWidth - startX - 10;
+        newW = Math.max(MIN_WIDTH, Math.min(maxW, startW + dx));
+      } else if (dir.includes('w')) {
+        const maxW = startW + (startX - 10);
+        const rawW = startW - dx;
+        const clampedW = Math.max(MIN_WIDTH, Math.min(maxW, rawW));
+        newX = startX + (startW - clampedW);
+        newW = clampedW;
+      }
+
+      if (dir.includes('s')) {
+        const maxH = window.innerHeight - startY - 10;
+        newH = Math.max(MIN_HEIGHT, Math.min(maxH, startH + dy));
+      } else if (dir.includes('n')) {
+        const maxH = startH + (startY - 10);
+        const rawH = startH - dy;
+        const clampedH = Math.max(MIN_HEIGHT, Math.min(maxH, rawH));
+        newY = startY + (startH - clampedH);
+        newH = clampedH;
+      }
+
+      drawerWidth = newW;
+      drawerHeight = newH;
+      drawerPos = { x: newX, y: newY };
+    };
+
+    const onMouseUp = () => {
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      cleanUpResize = null;
+      try {
+        localStorage.setItem('wyyyy_drawer_size', JSON.stringify({ w: drawerWidth, h: drawerHeight }));
+        localStorage.setItem('wyyyy_drawer_pos', JSON.stringify(drawerPos));
+      } catch {}
+    };
+
+    cleanUpResize = () => {
+      isResizing = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   }
 
   // 📱 移动端防滚动穿透：抽屉打开时锁定外部页面滚动
@@ -221,7 +479,7 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && handleClose()} />
 
-<!-- 📜 播放列表 & 下载任务 Drawer 统一抽屉 (SP 底部滑出 Bottom Sheet / PC 右下弹窗) -->
+<!-- 📜 播放列表 & 下载任务 Drawer 统一抽屉 (SP 底部滑出 Bottom Sheet / PC 右下弹窗，支持拖拽与缩放) -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
@@ -230,11 +488,77 @@
   ontouchmove={(e) => { if (e.target === e.currentTarget && e.cancelable) e.preventDefault(); }}
 >
   <div
+    bind:this={drawerEl}
     data-testid="playlist-drawer"
-    class="w-full max-md:max-w-full max-md:h-[75vh] max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(12px+env(safe-area-inset-bottom,0px))] md:w-[420px] md:h-[530px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col overflow-hidden text-[var(--text-main)] box-border overscroll-contain {closing && dragOffset === 0 ? 'max-md:animate-[drawerSlideDownSP_0.2s_ease-in] md:animate-[drawerSlideDownPC_0.2s_ease-in]' : 'max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:animate-[drawerSlideUpPC_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
-    style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: ${isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'};` : ''}
+    class="relative w-full max-md:max-w-full max-md:h-[75vh] max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(12px+env(safe-area-inset-bottom,0px))] md:w-[420px] md:h-[530px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col overflow-hidden text-[var(--text-main)] box-border overscroll-contain {closing && dragOffset === 0 ? 'max-md:animate-[drawerSlideDownSP_0.2s_ease-in] md:animate-[drawerSlideDownPC_0.2s_ease-in]' : 'max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:animate-[drawerSlideUpPC_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
+    style={containerStyle}
     onclick={(e) => e.stopPropagation()}
   >
+    <!-- 💻 PC 桌面端八向窗口拉伸热区与右下角抓手 -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="hidden md:block">
+      <!-- 边缘拖拽条 (8px 触控/点击宽度) -->
+      <div
+        class="absolute top-0 left-3 right-3 h-2 cursor-ns-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('n', e)}
+        aria-label="拉伸窗口顶部"
+        role="separator"
+      ></div>
+      <div
+        class="absolute bottom-0 left-3 right-3 h-2 cursor-ns-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('s', e)}
+        aria-label="拉伸窗口底部"
+        role="separator"
+      ></div>
+      <div
+        class="absolute left-0 top-3 bottom-3 w-2 cursor-ew-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('w', e)}
+        aria-label="拉伸窗口左侧"
+        role="separator"
+      ></div>
+      <div
+        class="absolute right-0 top-3 bottom-3 w-2 cursor-ew-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('e', e)}
+        aria-label="拉伸窗口右侧"
+        role="separator"
+      ></div>
+
+      <!-- 四个角拖拽区 (16x16px) -->
+      <div
+        class="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('nw', e)}
+        aria-label="拉伸左上角"
+        role="separator"
+      ></div>
+      <div
+        class="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('ne', e)}
+        aria-label="拉伸右上角"
+        role="separator"
+      ></div>
+      <div
+        class="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('sw', e)}
+        aria-label="拉伸左下角"
+        role="separator"
+      ></div>
+      <div
+        class="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-50 select-none touch-none"
+        onmousedown={(e) => handleResizeMouseDown('se', e)}
+        aria-label="拉伸右下角"
+        role="separator"
+      ></div>
+
+      <!-- 右下角拉伸指示角标 -->
+      <div class="absolute bottom-1 right-1 pointer-events-none opacity-30 dark:opacity-20 text-[var(--text-muted)] select-none">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+          <line x1="8.5" y1="2.5" x2="2.5" y2="8.5" />
+          <line x1="8.5" y1="5.5" x2="5.5" y2="8.5" />
+          <line x1="8.5" y1="8.5" x2="8.5" y2="8.5" />
+        </svg>
+      </div>
+    </div>
+
     <!-- 移动端手势拖拽指示条 -->
     <div
       class="w-full pt-2.5 pb-1 flex justify-center md:hidden cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
@@ -245,12 +569,15 @@
       <div class="w-9 h-1 rounded-full bg-black/20 dark:bg-white/25"></div>
     </div>
 
-    <!-- 抽屉头部 (四个角弧形胶囊设计) -->
+    <!-- 抽屉头部 (四个角弧形胶囊设计，PC支持按住拖动窗口与双击重置) -->
     <div
-      class="mx-3 my-1.5 px-2.5 py-1.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] flex justify-between items-center shrink-0 select-none"
+      class="mx-3 my-1.5 px-2.5 py-1.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] flex justify-between items-center shrink-0 select-none md:cursor-grab md:active:cursor-grabbing"
+      onmousedown={handleHeaderMouseDown}
+      ondblclick={handleHeaderDblClick}
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
       ontouchend={handleTouchEnd}
+      title="💡 PC端按住此处可自由拖拽窗口，双击恢复默认位置"
     >
       <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
         <button

@@ -153,4 +153,44 @@ describe('PlaylistDrawer Collector Mode (Pending Download)', () => {
 
     expect(mockOnShuffle).toHaveBeenCalledTimes(1);
   });
+
+  it('renders PC resize handles and draggable header attributes', () => {
+    const { getByTitle, getByLabelText } = render(PlaylistDrawer, {
+      props: {
+        queue: mockQueue,
+        qIndex: 0,
+        tasks: [],
+        likedSet: new Set<number>(),
+        autoSkipTrial: true,
+        serverOnly: false,
+        offlineOnly: false,
+        downloadedSet: taskState.downloadedSet,
+        onPlayIndex: vi.fn(),
+        onClearQueue: vi.fn(),
+        onRemoveItem: vi.fn(),
+        onToggleLike: vi.fn(),
+        onToggleAutoSkip: vi.fn(),
+        onToggleServerOnly: vi.fn(),
+        onToggleOfflineOnly: vi.fn(),
+        onClearTasks: vi.fn(),
+        onReveal: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // Draggable header
+    const header = getByTitle(/PC端按住此处可自由拖拽窗口/);
+    expect(header).toBeInTheDocument();
+    expect(header.className).toContain('md:cursor-grab');
+
+    // Resize handles
+    expect(getByLabelText('拉伸窗口顶部')).toBeInTheDocument();
+    expect(getByLabelText('拉伸窗口底部')).toBeInTheDocument();
+    expect(getByLabelText('拉伸窗口左侧')).toBeInTheDocument();
+    expect(getByLabelText('拉伸窗口右侧')).toBeInTheDocument();
+    expect(getByLabelText('拉伸左上角')).toBeInTheDocument();
+    expect(getByLabelText('拉伸右上角')).toBeInTheDocument();
+    expect(getByLabelText('拉伸左下角')).toBeInTheDocument();
+    expect(getByLabelText('拉伸右下角')).toBeInTheDocument();
+  });
 });
