@@ -2,16 +2,13 @@
   import { onMount, tick } from 'svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
-  import { playPlaylistTracks, toPlayerTrack } from '../lib/playerHelper';
+  import { playPlaylistTracks } from '../lib/playerHelper';
   import type { Track } from '../lib/types';
   import AccordionCard from './AccordionCard.svelte';
-  import SlotBtn from './SlotBtn.svelte';
-  import TrackLikeBtn from './TrackLikeBtn.svelte';
-  import TrackSourceBadge from './TrackSourceBadge.svelte';
   import AlbumDetailCard from './AlbumDetailCard.svelte';
   import ArtistDetailCard from './ArtistDetailCard.svelte';
-  import { openSheet } from '../lib/ui.svelte';
-  import { getTrackSourceStatus, getTrackPlayActionLabel } from '../lib/trackStatus.svelte';
+  import SearchResultsSection from './SearchResultsSection.svelte';
+  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
 
   let {
     albumId = '',
@@ -264,52 +261,6 @@
       showToast('提交单曲下载失败: ' + (e.message || e), 'error');
     }
   }
-
-  function openSearchTrackSheet(r: any, isLocal: boolean, artistName: string, isPlayingThis: boolean) {
-    openSheet({
-      title: r.name,
-      subtitle: artistName || '未知歌手',
-      actions: [
-        ...(onPlayQueue
-          ? [
-              {
-                label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }),
-                style: 'primary' as const,
-                onclick: () =>
-                  onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal })])
-              }
-            ]
-          : []),
-        ...(isLocal && onReveal
-          ? [
-              {
-                label: '📂 在服务器磁盘中定位',
-                style: 'default' as const,
-                onclick: () => onReveal({ id: r.id, name: r.name, artist: artistName })
-              }
-            ]
-          : []),
-        ...(onSong
-          ? [
-              {
-                label: '🎧 查看单曲详情 / 下载',
-                style: 'default' as const,
-                onclick: () => onSong(String(r.id))
-              }
-            ]
-          : []),
-        ...(onToggleLike
-          ? [
-              {
-                label: likedSet.has(Number(r.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
-                style: 'default' as const,
-                onclick: () => onToggleLike(Number(r.id), r.name, artistName)
-              }
-            ]
-          : [])
-      ]
-    });
-  }
 </script>
 
 <!-- Section 1: 在线搜索 -->
@@ -337,138 +288,25 @@
     <input type="number" bind:value={sLimit} min="1" max="100" class="w-[50px] md:w-[60px] text-center shrink-0" title="单页条数" />
     <button type="button" class="btn-primary shrink-0 whitespace-nowrap hidden sm:inline-flex" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
   </div>
-  <ul class="data-list scrollable-list">
-    {#if searchLoading}
-      <li style="justify-content:center; color:var(--text-secondary); padding:20px 0; font-size:13px;">🔄 正在检索，请稍候...</li>
-    {:else}
-      {#each sResults as r, idx}
-        {#if sType === '1'}
-          {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
-          {@const status = getTrackSourceStatus(r.id, r.isLocal, curTrack)}
-          {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
-          {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
-          <li class="track-item-card" class:is-active-playing={isPlayingThis}>
-            <div class="track-title-row">
-              <button
-                type="button"
-                class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-                onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal: status.isLocal })]))}
-              >
-                {idx + 1}. {r.name}
-              </button>
-              {#if artistName}<span class="text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
-              <TrackSourceBadge id={r.id} isLocal={r.isLocal} {curTrack} class="ml-1.5" />
-              <span class="text-[11px] text-[var(--text-muted)] shrink-0">(ID:{r.id})</span>
-            </div>
-            <div class="track-action-group">
-              <!-- 💻 PC 桌面端快捷操作 -->
-              <div class="hidden md:inline-flex items-center gap-1.5">
-                {#if onToggleLike}
-                  <TrackLikeBtn liked={likedSet.has(Number(r.id))} onclick={() => onToggleLike(Number(r.id), r.name, artistName)} />
-                {/if}
-                {#if onPlayQueue}
-                  <SlotBtn
-                    playing={isPlayingThis && playing}
-                    onclick={() => onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal: status.isLocal })])}
-                  >
-                    {playLabel}
-                  </SlotBtn>
-                {/if}
-                {#if status.isServer}
-                  <SlotBtn onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</SlotBtn>
-                {/if}
-                {#if onSong}
-                  <SlotBtn onclick={() => onSong(String(r.id))}>👉 详情</SlotBtn>
-                {/if}
-              </div>
-
-              <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
-              <div class="inline-flex md:hidden items-center gap-1.5">
-                {#if onPlayQueue}
-                  <SlotBtn
-                    playing={isPlayingThis && playing}
-                    onclick={() => onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal: status.isLocal })])}
-                  >
-                    {playLabel}
-                  </SlotBtn>
-                {/if}
-                <button
-                  type="button"
-                  class="btn-more-actions"
-                  onclick={() => openSearchTrackSheet(r, status.isLocal, artistName, isPlayingThis)}
-                  title="更多操作"
-                  aria-label="更多操作"
-                >
-                  ···
-                </button>
-              </div>
-            </div>
-          </li>
-        {:else if sType === '10'}
-          {@const albumArtist = formatArtist(r.artist || r.artists)}
-          <li class="track-item-card">
-            <div class="track-title-row">
-              <button
-                type="button"
-                class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-                onclick={() => handleAlbum(String(r.id))}
-              >
-                {idx + 1}. {r.name}
-              </button>
-              {#if albumArtist}<span class="text-[var(--text-secondary)] truncate"> - {albumArtist}</span>{/if}
-              {#if r.size}<span class="text-xs text-[var(--text-muted)] shrink-0"> ({r.size} 首歌)</span>{/if}
-              <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID: {r.id})</span>
-            </div>
-            <div class="track-action-group">
-              <SlotBtn onclick={() => handleAlbum(String(r.id))}>👉 查看专辑详情</SlotBtn>
-            </div>
-          </li>
-        {:else if sType === '1000'}
-          <li class="track-item-card">
-            <div class="track-title-row">
-              <button
-                type="button"
-                class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-                onclick={() => onPlaylist(String(r.id))}
-              >
-                {idx + 1}. {r.name}
-              </button>
-              <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID:{r.id})</span>
-            </div>
-            <div class="track-action-group">
-              <SlotBtn onclick={() => handleDownloadPlaylist(String(r.id), r.name)} title="立即下载整张歌单全部歌曲">📥 下载整单</SlotBtn>
-              {#if onPlayQueue}
-                <SlotBtn onclick={() => handlePlayPlaylist(String(r.id), r.name)}>▶ 播放</SlotBtn>
-              {/if}
-              <SlotBtn onclick={() => onPlaylist(String(r.id))}>👉 查看详情</SlotBtn>
-            </div>
-          </li>
-        {:else}
-          <li class="track-item-card">
-            <div class="track-title-row">
-              <button
-                type="button"
-                class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-                onclick={() => handleViewArtist(String(r.id))}
-              >
-                {idx + 1}. {r.name}
-              </button>
-              <span class="text-xs text-[var(--text-muted)] shrink-0"> (ID:{r.id})</span>
-            </div>
-            <div class="track-action-group">
-              <SlotBtn onclick={() => handleViewArtist(String(r.id))}>👉 热门 50 首</SlotBtn>
-            </div>
-          </li>
-        {/if}
-      {:else}
-        {#if hasSearched}
-          <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">未搜索到相关结果</li>
-        {:else}
-          <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">输入关键词后按回车搜索</li>
-        {/if}
-      {/each}
-    {/if}
-  </ul>
+  <SearchResultsSection
+    {sResults}
+    {sType}
+    {searchLoading}
+    {hasSearched}
+    {curTrack}
+    {playing}
+    {likedSet}
+    {onToggleLike}
+    {onPlaylist}
+    onAlbum={handleAlbum}
+    {onPlayQueue}
+    {onSong}
+    {onReveal}
+    onViewArtist={handleViewArtist}
+    {handlePlayPlaylist}
+    {handleDownloadPlaylist}
+    {showToast}
+  />
   {#if hasSearched && sResults.length > 0}
     <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
   {/if}
