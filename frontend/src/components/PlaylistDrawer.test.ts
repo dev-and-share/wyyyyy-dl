@@ -119,4 +119,38 @@ describe('PlaylistDrawer Collector Mode (Pending Download)', () => {
       expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'wyyyy:download-submitted' }));
     });
   });
+
+  it('triggers onShuffle when clicking shuffle button in drawer header', async () => {
+    const mockOnShuffle = vi.fn();
+
+    const { getByTitle } = render(PlaylistDrawer, {
+      props: {
+        queue: mockQueue,
+        qIndex: 0,
+        tasks: [],
+        likedSet: new Set<number>(),
+        autoSkipTrial: true,
+        serverOnly: false,
+        offlineOnly: false,
+        downloadedSet: taskState.downloadedSet,
+        onPlayIndex: vi.fn(),
+        onClearQueue: vi.fn(),
+        onRemoveItem: vi.fn(),
+        onToggleLike: vi.fn(),
+        onToggleAutoSkip: vi.fn(),
+        onToggleServerOnly: vi.fn(),
+        onToggleOfflineOnly: vi.fn(),
+        onClearTasks: vi.fn(),
+        onShuffle: mockOnShuffle,
+        onReveal: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    const shuffleBtn = getByTitle('WYSIWYG 洗牌：当前歌曲置顶，剩余曲目随机重排');
+    expect(shuffleBtn).toBeInTheDocument();
+    await fireEvent.click(shuffleBtn);
+
+    expect(mockOnShuffle).toHaveBeenCalledTimes(1);
+  });
 });

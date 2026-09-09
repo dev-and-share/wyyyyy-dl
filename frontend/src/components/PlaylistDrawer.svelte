@@ -3,7 +3,7 @@
   import { formatArtist } from '../lib/utils';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
-  import TaskStatusBadge from './TaskStatusBadge.svelte';
+  import TaskQueueView from './TaskQueueView.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { getTrackSourceStatus, markSongDownloaded } from '../lib/trackStatus.svelte';
@@ -25,6 +25,7 @@
     onToggleServerOnly,
     onToggleOfflineOnly,
     onClearTasks,
+    onShuffle = () => {},
     onReveal,
     onClose
   } = $props<{
@@ -44,6 +45,7 @@
     onToggleServerOnly: (val: boolean) => void;
     onToggleOfflineOnly: (val: boolean) => void;
     onClearTasks: () => void;
+    onShuffle?: () => void;
     onReveal: (item: any) => void;
     onClose: () => void;
   }>();
@@ -172,7 +174,6 @@
     if (!isDragging) return;
     isDragging = false;
     if (dragOffset > 75) {
-      // 从当前拖拽位置继续顺畅滑出屏幕，绝不瞬间回弹到 0
       dragOffset = 600;
       closing = true;
       setTimeout(() => {
@@ -181,7 +182,6 @@
         onClose();
       }, 200);
     } else {
-      // 没达到阈值，平滑弹性回弹归零
       dragOffset = 0;
     }
   }
@@ -241,6 +241,19 @@
         </button>
       </div>
       <div class="flex items-center gap-1.5">
+        {#if activeTab === 'queue' && queue.length > 1}
+          <button
+            type="button"
+            class="px-2 py-1 rounded-lg text-xs text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 active:scale-95 transition-all cursor-pointer font-medium"
+            onclick={() => {
+              onShuffle();
+              showToast('🎲 已随机洗牌！当前曲目置顶，后续顺序播放', 'info', 2000);
+            }}
+            title="WYSIWYG 洗牌：当前歌曲置顶，剩余曲目随机重排"
+          >
+            🎲 洗牌
+          </button>
+        {/if}
         <button
           type="button"
           class="px-2.5 py-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer"
@@ -248,32 +261,34 @@
             if (activeTab === 'queue') onClearQueue();
             else onClearTasks();
           }}
-          title="清空列表"
+          title={activeTab === 'queue' ? '清空播放队列' : '清空下载历史任务'}
         >
-          🗑️ 清空
+          清空
         </button>
         <button
           type="button"
-          class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+          class="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all cursor-pointer text-sm"
           onclick={handleClose}
-          title="关闭抽屉"
+          title="关闭"
         >
           ✕
         </button>
       </div>
     </div>
 
-    <!-- 1. 播放队列视图 -->
+    <!-- 选项卡内容区 -->
     {#if activeTab === 'queue'}
       <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <!-- 🔍 队列内搜索与快速过滤栏 -->
-        <div class="p-3 bg-black/5 dark:bg-white/[0.02] border-b border-[var(--border-subtle,rgba(255,255,255,0.06))] flex flex-col gap-2.5 shrink-0">
+        <!-- 队列专属工具栏 -->
+        <div class="px-3.5 py-2 border-b border-[var(--border-subtle,rgba(255,255,255,0.08))] flex flex-col gap-1.5 shrink-0 bg-black/[0.02] dark:bg-white/[0.01]">
+          <!-- 搜索过滤输入框 -->
           <div class="relative flex items-center">
+            <span class="absolute left-2.5 text-xs text-[var(--text-muted)] pointer-events-none">🔍</span>
             <input
               type="text"
-              class="w-full pl-3 pr-7 py-1.5 rounded-lg bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500 transition-all"
-              placeholder="🔍 筛选当前列表 (歌名 / 歌手)..."
+              placeholder="搜索当前队列歌曲 / 歌手..."
               bind:value={filterText}
+              class="w-full bg-black/5 dark:bg-white/5 border border-[var(--border-subtle,rgba(255,255,255,0.1))] rounded-lg pl-7 pr-7 py-1 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500/50 transition-colors"
             />
             {#if filterText}
               <button
@@ -286,7 +301,7 @@
             {/if}
           </div>
 
-          <!-- 🏷️ 播放范围 Tab + 🛡️ 跳过试听策略（合二为一，极简清爽） -->
+          <!-- 🏷️ 播放范围 Tab + 🛡️ 跳过试听策略 -->
           <div class="flex items-center justify-between gap-2 text-[11px] select-none pt-0.5">
             <!-- 左侧：播放范围 Tab 切换 -->
             <div class="flex items-center gap-1.5 min-w-0 overflow-x-auto py-0.5">
@@ -421,42 +436,8 @@
         </div>
       </div>
     {:else}
-      <!-- 2. 后台下载任务视图 -->
-      <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div class="flex-1 overflow-y-auto p-2.5">
-          <div class="flex flex-col gap-1.5">
-            {#each tasks as t}
-              <div class="flex justify-between items-center px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/[0.02] border border-black/5 dark:border-white/5 gap-2">
-                <div class="flex-1 min-w-0">
-                  <span class="truncate block text-xs text-[var(--text-main)] font-medium">
-                    {t.name || t.id}
-                  </span>
-                  {#if t.errorMsg}
-                    <span class="text-[10px] text-amber-500/90 dark:text-amber-400/90 block truncate mt-0.5" title={t.errorMsg}>
-                      {t.errorMsg}
-                    </span>
-                  {/if}
-                </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                  {#if t.status === 'SUCCESS'}
-                    <button
-                      type="button"
-                      class="btn-primary px-2 py-0.5 text-[11px] rounded"
-                      onclick={() => onReveal(t)}
-                      title="在系统文件管理器中定位真实物理路径"
-                    >
-                      📂 定位
-                    </button>
-                  {/if}
-                  <TaskStatusBadge status={t.status} />
-                </div>
-              </div>
-            {:else}
-              <div class="py-12 px-4 text-center text-[var(--text-muted)] text-xs">暂无下载任务</div>
-            {/each}
-          </div>
-        </div>
-      </div>
+      <!-- 2. 后台下载任务视图 (已抽离为独立子组件 TaskQueueView) -->
+      <TaskQueueView {tasks} {onReveal} />
     {/if}
   </div>
 </div>

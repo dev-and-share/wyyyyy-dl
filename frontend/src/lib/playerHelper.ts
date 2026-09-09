@@ -4,6 +4,7 @@ import { cachedSongIdSet } from './pwaCache.svelte';
 import { markSongDownloaded, getTrackSourceStatus } from './trackStatus.svelte';
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
 import { recordPlaylistPlay } from './playlist.svelte';
+import { playerStore } from './playerStore.svelte';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -63,20 +64,24 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
 export function preloadSurroundingTracks(queue: Track[], curIndex: number, playMode: string) {
   if (!queue || queue.length <= 1) return;
 
-  // 1. 优先预解析下一首（最高频切歌路径）
-  const nextIdx = (curIndex + 1) % queue.length;
-  const nextTrack = queue[nextIdx];
+  // 1. 优先从 playerStore 获取经过模式与过滤校验的确定性下一首（WYSIWYG 100% 命中）
+  let nextTrack = playerStore.queue.length > 0 ? playerStore.getNextTrack() : null;
+  if (!nextTrack) {
+    const nextIdx = (curIndex + 1) % queue.length;
+    nextTrack = queue[nextIdx];
+  }
   if (nextTrack && !nextTrack.url) {
     resolveTrackUrl(nextTrack).catch(() => {});
   }
 
-  // 2. 紧接着预解析上一首（保障锁屏点击「上一首」同样零延迟、手势不断链）
-  const prevIdx = (curIndex - 1 + queue.length) % queue.length;
-  if (prevIdx !== nextIdx) {
-    const prevTrack = queue[prevIdx];
-    if (prevTrack && !prevTrack.url) {
-      resolveTrackUrl(prevTrack).catch(() => {});
-    }
+  // 2. 紧接着预解析确定性上一首（保障锁屏点击「上一首」/ AirPods 三击同样零延迟、手势不断链）
+  let prevTrack = playerStore.queue.length > 0 ? playerStore.getPrevTrack() : null;
+  if (!prevTrack) {
+    const prevIdx = (curIndex - 1 + queue.length) % queue.length;
+    prevTrack = queue[prevIdx];
+  }
+  if (prevTrack && prevTrack !== nextTrack && !prevTrack.url) {
+    resolveTrackUrl(prevTrack).catch(() => {});
   }
 }
 
