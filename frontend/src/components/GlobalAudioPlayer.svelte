@@ -9,6 +9,7 @@
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore } from '../lib/playerStore.svelte';
+  import { handleTrackPlayback, resetTrackPlayback } from '../lib/pwaCache.svelte';
   import type { Track } from '../lib/types';
 
   import PlayerBar from './PlayerBar.svelte';
@@ -206,6 +207,7 @@
 
   async function next() {
     if (playerStore.queue.length === 0) return;
+    resetTrackPlayback();
     playerStore.stepNext();
     if (playerStore.autoSkipTrial && (playerStore.activeTrack as any)?.freeTrial === true) {
       playerStore.stepNext();
@@ -216,6 +218,7 @@
 
   async function prev() {
     if (playerStore.queue.length === 0) return;
+    resetTrackPlayback();
     playerStore.stepPrev();
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
@@ -336,7 +339,10 @@
   onplay={() => {
     playerStore.playing = true;
     updateMediaSessionPlaybackState(true);
-    if (playerStore.activeTrack) updateMediaSessionMetadata(playerStore.activeTrack);
+    if (playerStore.activeTrack) {
+      updateMediaSessionMetadata(playerStore.activeTrack);
+      handleTrackPlayback(playerStore.activeTrack, () => playerStore.playing);
+    }
     updateMediaSessionPosition(audioEl);
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
   }}
@@ -384,6 +390,7 @@
     playerStore.playing = false;
   }}
   onended={(e) => {
+    resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
     // 🛡️ 弱网防抖：若播放时间过短且总时长正常，可能是网络提前断裂导致误发 ended，尝试重试拉流
     if (a.currentTime < 3 && a.duration > 10) {
