@@ -429,6 +429,7 @@
     .mobile-bottom-tab-bar {
         height: var(--mobile-nav-height) !important;
         padding-bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)) !important;
+        box-shadow: var(--docked-bar-shadow) !important;
     }
 
     /* 📱 移动端固定迷你播放器 (零缝隙紧密吸附在底部 Tab 栏正上方) */
@@ -436,6 +437,7 @@
         bottom: var(--mobile-nav-height) !important;
         left: 0 !important;
         right: 0 !important;
+        box-shadow: var(--docked-bar-shadow) !important;
     }
 
     .player-minimized-bubble {
