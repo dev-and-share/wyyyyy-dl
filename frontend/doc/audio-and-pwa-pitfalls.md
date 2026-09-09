@@ -42,3 +42,8 @@ iOS Safari 的手势激活令牌（User Gesture Activation）在经过异步 `aw
 ### 原则 4：PWA 零残留热更与原生网络直连
 1. 每次生产部署**必须通过根目录 `./deploy.sh`**，确保版本号与 `sw.js` 缓存版本严格同步自增；
 2. 带 Range 头的音频流请求一律绕过 Service Worker，直通后端 206 分片流服务，杜绝后台休眠中断。
+
+### 原则 5：锁屏沉浸歌词 MediaSession 动态映射与增量 Diff
+纯 PWA 无法直接调用原生 iOS Live Activities（灵动岛小组件），但可通过 `navigator.mediaSession.metadata` 动态映射实现极致锁屏读歌词体验：
+1. **视觉排版**：Title（居中大字）显示当前唱到的歌词；Artist（副标题）显示 `曲名 · 歌手`；Album（第三行）显示 `⏭ [下一句预告]`；前奏、间奏或无歌词时优雅回退为标准曲目信息；
+2. **增量 Diff 节流**：通过 `activeLyric.index !== lastLyricIndex` 仅在歌词行实际跃迁的瞬间触发单次更新（平均数秒一次），整曲播放仅几十次低频调用，系统 IPC、性能与电池零额外损耗。

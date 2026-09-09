@@ -7,6 +7,7 @@
   import { markSongDownloaded } from '../lib/trackStatus.svelte';
   import { resolveTrackUrl, preloadSurroundingTracks } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
+  import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore } from '../lib/playerStore.svelte';
   import type { Track } from '../lib/types';
 
@@ -39,6 +40,8 @@
   let showPeq = $state(false);
   let pendingSeekTime = $state<number | null>(null);
   let audioEl: HTMLAudioElement | null = $state(null);
+  let parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric));
+  let lastLyricIndex = $state(-2);
 
   // 状态同步
   $effect(() => { curTrack = playerStore.activeTrack; });
@@ -48,7 +51,22 @@
     if (audioEl) audioEl.volume = playerStore.vol;
     try { localStorage.setItem('wyyyy_player_vol', String(playerStore.vol)); } catch {}
   });
-  $effect(() => { updateMediaSessionMetadata(playerStore.activeTrack); });
+  $effect(() => {
+    const t = playerStore.activeTrack;
+    lastLyricIndex = -2;
+    updateMediaSessionMetadata(t);
+  });
+  $effect(() => {
+    const t = playerStore.activeTrack;
+    if (t?.id && !t.lyric) {
+      api.songV1(String(t.id), 'lossless').then((j: any) => {
+        if (j?.data?.lyric && playerStore.activeTrack?.id === t.id) {
+          t.lyric = j.data.lyric;
+          playerStore.activeTrack.lyric = j.data.lyric;
+        }
+      }).catch(() => {});
+    }
+  });
   $effect(() => { updateMediaSessionPlaybackState(playerStore.playing); });
 
   async function prepareTrackInUI(track: Track) {
@@ -335,7 +353,14 @@
     if (playerStore.curTime > 0) {
       try { localStorage.setItem('wyyyy_player_time', String(playerStore.curTime)); } catch {}
     }
-    // 🛡️ 严格禁止在此处调用 updateMediaSessionPosition(a)，避免每秒 4 次跨进程 IPC 冲刷导致锁屏状态抖动
+    // 🎵 锁屏歌词增量比对：仅在歌词行实际切换瞬间（数秒才发生一次）低频更新 MediaSession
+    if (parsedLyrics.length > 0 && playerStore.activeTrack) {
+      const activeLyric = getActiveLyric(parsedLyrics, a.currentTime);
+      if (activeLyric.index !== lastLyricIndex) {
+        lastLyricIndex = activeLyric.index;
+        updateMediaSessionMetadata(playerStore.activeTrack, activeLyric);
+      }
+    }
   }}
   onloadedmetadata={(e) => {
     const a = e.currentTarget as HTMLAudioElement;
@@ -347,6 +372,11 @@
   onseeked={(e) => {
     const a = e.currentTarget as HTMLAudioElement;
     updateMediaSessionPosition(a);
+    if (parsedLyrics.length > 0 && playerStore.activeTrack) {
+      const activeLyric = getActiveLyric(parsedLyrics, a.currentTime);
+      lastLyricIndex = activeLyric.index;
+      updateMediaSessionMetadata(playerStore.activeTrack, activeLyric);
+    }
   }}
   onerror={() => {
     console.warn('[Player] 原生音频流加载失败:', audioEl?.error);

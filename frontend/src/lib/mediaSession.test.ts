@@ -136,7 +136,44 @@ describe('mediaSession iOS contracts', () => {
     expect(navigator.mediaSession.metadata).not.toBeNull();
     expect(navigator.mediaSession.metadata?.title).toBe('七里香');
     expect(navigator.mediaSession.metadata?.artist).toBe('周杰伦');
+    expect(navigator.mediaSession.metadata?.album).toBe('网易云音乐');
     // 封面为空时兜底到 /favicon.png
     expect(navigator.mediaSession.metadata?.artwork[0].src).toContain('/favicon.png');
+  });
+
+  it('updateMediaSessionMetadata maps active and next lyrics to title, artist and album', () => {
+    const track: Track = {
+      id: 123,
+      name: '七里香',
+      artist: '周杰伦',
+      cover: 'https://example.com/cover.jpg'
+    };
+
+    updateMediaSessionMetadata(track, {
+      currentText: '雨下整夜 我的爱溢出就像雨水',
+      nextText: '院子落叶 跟我的思念厚厚一叠'
+    });
+
+    expect(navigator.mediaSession.metadata?.title).toBe('雨下整夜 我的爱溢出就像雨水');
+    expect(navigator.mediaSession.metadata?.artist).toBe('七里香 · 周杰伦');
+    expect(navigator.mediaSession.metadata?.album).toBe('⏭ 院子落叶 跟我的思念厚厚一叠');
+
+    // 播放到没有下一句的最后一句
+    updateMediaSessionMetadata(track, {
+      currentText: '几句是非 也无法将我的热情冷却',
+      nextText: ''
+    });
+    expect(navigator.mediaSession.metadata?.title).toBe('几句是非 也无法将我的热情冷却');
+    expect(navigator.mediaSession.metadata?.artist).toBe('七里香 · 周杰伦');
+    expect(navigator.mediaSession.metadata?.album).toBe('七里香');
+
+    // 前奏/无歌词时优雅回退
+    updateMediaSessionMetadata(track, {
+      currentText: '',
+      nextText: '第一句歌词'
+    });
+    expect(navigator.mediaSession.metadata?.title).toBe('七里香');
+    expect(navigator.mediaSession.metadata?.artist).toBe('周杰伦');
+    expect(navigator.mediaSession.metadata?.album).toBe('⏭ 第一句歌词');
   });
 });

@@ -32,10 +32,20 @@ export function setupMediaSession(handlers: MediaSessionHandlers) {
   }
 }
 
+export interface MediaSessionLyricInfo {
+  currentText?: string;
+  nextText?: string;
+}
+
 /**
  * 实时同步当前曲目元信息至系统锁屏界面、Apple Watch 与蓝牙设备
+ *
+ * 🎵 锁屏沉浸歌词映射：
+ * - Title（锁屏居中大字）：有歌词时显示当前句（极佳清晰度）；无歌词/前奏时回退到曲目名称。
+ * - Artist（副标题）：有歌词时显示 "曲名 · 歌手"；无歌词时显示纯歌手名。
+ * - Album（第三行）：有下一句时显示 "⏭ [下一句预告]"，若为最后一句显示曲目名，无歌词显示 "网易云音乐"。
  */
-export function updateMediaSessionMetadata(track: Track | null) {
+export function updateMediaSessionMetadata(track: Track | null, lyricInfo?: MediaSessionLyricInfo) {
   if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
   if (!track) {
     navigator.mediaSession.metadata = null;
@@ -43,11 +53,21 @@ export function updateMediaSessionMetadata(track: Track | null) {
   }
 
   const coverSrc = track.cover && track.cover !== DEFAULT_VINYL_COVER ? track.cover : '/favicon.png';
+  const songName = track.name || '未知歌曲';
+  const artistName = formatArtist(track.artist) || '未知歌手';
+
+  const currentText = lyricInfo?.currentText?.trim();
+  const nextText = lyricInfo?.nextText?.trim();
+
+  const title = currentText || songName;
+  const artist = currentText ? `${songName} · ${artistName}` : artistName;
+  const album = nextText ? `⏭ ${nextText}` : (currentText ? songName : '网易云音乐');
+
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: track.name || '未知歌曲',
-      artist: formatArtist(track.artist) || '未知歌手',
-      album: '网易云音乐',
+      title,
+      artist,
+      album,
       artwork: [
         { src: coverSrc, sizes: '96x96' },
         { src: coverSrc, sizes: '128x128' },

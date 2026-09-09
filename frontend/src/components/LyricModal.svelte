@@ -2,10 +2,11 @@
   import { onMount } from 'svelte';
   import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
   import { api } from '../lib/api';
+  import { parseLrc, type LrcLine } from '../lib/lyricParser';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
 
-  type Lrc = { time: number; text: string };
+  type Lrc = LrcLine;
 
   let {
     track,
@@ -51,26 +52,6 @@
   // 用户手动点击歌词跳转后，暂停自动滚动 3s
   let userSeekedAt = $state(0);
   const AUTO_SCROLL_PAUSE_MS = 3000;
-
-  // 歌词解析
-  function parseLrc(t: string): Lrc[] {
-    if (!t) return [];
-    const lines = t.split(/\r?\n/);
-    const out: Lrc[] = [];
-    const re = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
-    for (const line of lines) {
-      const m = re.exec(line);
-      if (m) {
-        const min = parseInt(m[1], 10);
-        const sec = parseInt(m[2], 10);
-        const ms = parseInt(m[3], 10);
-        const time = min * 60 + sec + (ms > 99 ? ms / 1000 : ms / 100);
-        const text = line.replace(re, '').trim();
-        if (text) out.push({ time, text });
-      }
-    }
-    return out;
-  }
 
   let lrcs = $derived(parseLrc(rawLyricText));
 
