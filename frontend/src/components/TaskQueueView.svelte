@@ -12,7 +12,10 @@
 
 <!-- 📥 后台下载任务独立抽屉视图 (已从 PlaylistDrawer 解耦) -->
 <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
-  <div class="flex-1 overflow-y-auto p-2.5">
+  <div
+    class="flex-1 overflow-y-auto overscroll-contain p-2.5 custom-table-scroll"
+    style="-webkit-overflow-scrolling: touch; touch-action: pan-y;"
+  >
     <div class="flex flex-col gap-1.5">
       {#each tasks as t}
         <div class="flex justify-between items-center px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/[0.02] border border-black/5 dark:border-white/5 gap-2">

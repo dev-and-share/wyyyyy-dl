@@ -153,6 +153,37 @@
     setTimeout(() => { closing = false; onClose(); }, 200);
   }
 
+  // 📱 移动端防滚动穿透：抽屉打开时锁定外部页面滚动
+  $effect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  });
+
+  // 🎯 自动聚焦/滚动到当前正在播放的曲目
+  function scrollActiveTrack(node: HTMLElement, active: boolean) {
+    if (active) {
+      setTimeout(() => {
+        if (typeof node.scrollIntoView === 'function') {
+          node.scrollIntoView({ block: 'center', behavior: 'instant' });
+        }
+      }, 60);
+    }
+    return {
+      update(newActive: boolean) {
+        if (newActive && typeof node.scrollIntoView === 'function') {
+          node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      }
+    };
+  }
+
   function handleTouchStart(e: TouchEvent) {
     if (e.touches.length === 1) {
       startY = e.touches[0].clientY;
@@ -165,6 +196,7 @@
     const diff = e.touches[0].clientY - startY;
     if (diff > 0) {
       dragOffset = diff;
+      if (e.cancelable) e.preventDefault();
     } else {
       dragOffset = 0;
     }
@@ -193,28 +225,29 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002] flex items-end justify-center md:justify-end md:items-end box-border {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
+  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10002] flex items-end justify-center md:justify-end md:items-end box-border overscroll-none touch-none {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
   onclick={handleClose}
+  ontouchmove={(e) => { if (e.target === e.currentTarget && e.cancelable) e.preventDefault(); }}
 >
   <div
     data-testid="playlist-drawer"
-    class="w-full max-md:max-w-full max-md:h-[75vh] max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(12px+env(safe-area-inset-bottom,0px))] md:w-[420px] md:h-[530px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col overflow-hidden text-[var(--text-main)] box-border {closing && dragOffset === 0 ? 'max-md:animate-[drawerSlideDownSP_0.2s_ease-in] md:animate-[drawerSlideDownPC_0.2s_ease-in]' : 'max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:animate-[drawerSlideUpPC_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
+    class="w-full max-md:max-w-full max-md:h-[75vh] max-md:max-h-[85vh] max-md:rounded-t-[20px] max-md:rounded-b-none max-md:pb-[calc(12px+env(safe-area-inset-bottom,0px))] md:w-[420px] md:h-[530px] md:max-w-[calc(100vw-30px)] md:max-h-[calc(100vh-100px)] md:mr-5 md:mb-[75px] md:rounded-2xl bg-[var(--card-bg-solid,#111827)]/95 backdrop-blur-2xl border border-[var(--border-color,rgba(255,255,255,0.12))] shadow-2xl flex flex-col overflow-hidden text-[var(--text-main)] box-border overscroll-contain {closing && dragOffset === 0 ? 'max-md:animate-[drawerSlideDownSP_0.2s_ease-in] md:animate-[drawerSlideDownPC_0.2s_ease-in]' : 'max-md:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] md:animate-[drawerSlideUpPC_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
     style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: ${isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'};` : ''}
     onclick={(e) => e.stopPropagation()}
   >
     <!-- 移动端手势拖拽指示条 -->
     <div
-      class="w-full py-1.5 flex justify-center md:hidden cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
+      class="w-full pt-2.5 pb-1 flex justify-center md:hidden cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
       ontouchend={handleTouchEnd}
     >
-      <div class="w-9 h-1 rounded-full bg-white/25"></div>
+      <div class="w-9 h-1 rounded-full bg-black/20 dark:bg-white/25"></div>
     </div>
 
-    <!-- 抽屉头部 (支持移动端下拉手势) -->
+    <!-- 抽屉头部 (四个角弧形胶囊设计) -->
     <div
-      class="px-3.5 py-2 bg-black/5 dark:bg-white/[0.03] border-b border-[var(--border-subtle,rgba(255,255,255,0.08))] flex justify-between items-center shrink-0 select-none"
+      class="mx-3 my-1.5 px-3 py-1.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] flex justify-between items-center shrink-0 select-none"
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
       ontouchend={handleTouchEnd}
@@ -373,14 +406,18 @@
           </div>
         {/if}
 
-        <!-- 队列曲目列表 -->
-        <div class="flex-1 overflow-y-auto p-1.5">
+        <!-- 队列曲目列表 (隔离移动端手势与滚动链) -->
+        <div
+          class="flex-1 overflow-y-auto overscroll-contain p-1.5 custom-table-scroll"
+          style="-webkit-overflow-scrolling: touch; touch-action: pan-y;"
+        >
           <ul class="divide-y divide-black/5 dark:divide-white/5 m-0 p-0 list-none">
             {#each filteredQueueWithIndex as { t, realIdx }}
               {@const status = getTrackSourceStatus(t.id, t.isLocal, queue[qIndex])}
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
               <li
+                use:scrollActiveTrack={realIdx === qIndex}
                 class="flex justify-between items-center px-2.5 py-2 rounded-xl transition-all cursor-pointer group {realIdx === qIndex ? 'bg-red-500/10 dark:bg-red-500/15' : 'hover:bg-black/5 dark:hover:bg-white/5'}"
                 onclick={() => onPlayIndex(realIdx)}
               >
