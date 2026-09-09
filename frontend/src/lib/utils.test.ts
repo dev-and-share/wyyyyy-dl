@@ -29,3 +29,26 @@ describe('formatArtist', () => {
     expect(formatArtist({ ar_name: '周杰伦' })).toBe('周杰伦');
   });
 });
+
+import { showToast, toastState } from './toast.svelte';
+
+describe('showToast anti-spam protection', () => {
+  it('deduplicates identical messages and caps active toasts to at most 3', () => {
+    toastState.toasts = [];
+
+    // 发送 20 条相同的消息
+    for (let i = 0; i < 20; i++) {
+      showToast('🛡️ 已跳过试听曲目《エルフ》', 'info');
+    }
+    // 必须去重，只保留 1 条
+    expect(toastState.toasts).toHaveLength(1);
+    expect(toastState.toasts[0].msg).toBe('🛡️ 已跳过试听曲目《エルフ》');
+
+    // 发送 10 条不同的消息
+    for (let i = 0; i < 10; i++) {
+      showToast(`提示消息 ${i}`, 'info');
+    }
+    // 屏幕上最多同时展示 3 条
+    expect(toastState.toasts.length).toBeLessThanOrEqual(3);
+  });
+});

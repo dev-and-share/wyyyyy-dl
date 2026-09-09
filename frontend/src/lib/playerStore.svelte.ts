@@ -87,17 +87,19 @@ export class PlayerStore {
    */
   getNextTrackIndex(): number {
     if (this.queue.length === 0) return -1;
-    if (this.playMode === 'single') return this.qIndex;
+    if (this.playMode === 'single' && this.isValidTrack(this.queue[this.qIndex])) {
+      return this.qIndex;
+    }
 
     let attempts = 0;
     let nextIdx = this.qIndex;
-    do {
+    while (attempts < this.queue.length) {
       nextIdx = (nextIdx + 1) % this.queue.length;
       attempts++;
       if (this.isValidTrack(this.queue[nextIdx])) return nextIdx;
-    } while (attempts < this.queue.length);
+    }
 
-    return nextIdx;
+    return -1;
   }
 
   /**
@@ -105,17 +107,19 @@ export class PlayerStore {
    */
   getPrevTrackIndex(): number {
     if (this.queue.length === 0) return -1;
-    if (this.playMode === 'single') return this.qIndex;
+    if (this.playMode === 'single' && this.isValidTrack(this.queue[this.qIndex])) {
+      return this.qIndex;
+    }
 
     let attempts = 0;
     let prevIdx = this.qIndex;
-    do {
+    while (attempts < this.queue.length) {
       prevIdx = (prevIdx - 1 + this.queue.length) % this.queue.length;
       attempts++;
       if (this.isValidTrack(this.queue[prevIdx])) return prevIdx;
-    } while (attempts < this.queue.length);
+    }
 
-    return prevIdx;
+    return -1;
   }
 
   /**

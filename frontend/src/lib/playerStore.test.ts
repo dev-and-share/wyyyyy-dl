@@ -134,4 +134,18 @@ describe('PlayerStore WYSIWYG shuffle & deterministic queue navigation', () => {
     expect(singleStore.shuffleQueue()).toHaveLength(1);
     expect(singleStore.qIndex).toBe(0);
   });
+
+  it('returns -1 when all tracks in queue are trial tracks and autoSkipTrial is enabled', () => {
+    const trialStore = new PlayerStore();
+    trialStore.autoSkipTrial = true;
+    trialStore.setQueue([
+      { id: 101, name: '试听1', artist: '歌手', freeTrial: true },
+      { id: 102, name: '试听2', artist: '歌手', freeTrial: true }
+    ], 0);
+
+    expect(trialStore.getNextTrackIndex()).toBe(-1);
+    expect(trialStore.getPrevTrackIndex()).toBe(-1);
+    expect(trialStore.getNextTrack()).toBeNull();
+    expect(trialStore.getPrevTrack()).toBeNull();
+  });
 });

@@ -45,10 +45,11 @@
   let lastLyricIndex = $state(-2);
 
   // 状态同步
-  $effect(() => { curTrack = playerStore.activeTrack; });
-  $effect(() => { playing = playerStore.playing; });
-  $effect(() => { isOverlayOpen = showDrawer || showLyric || showPeq; });
   $effect(() => {
+    curTrack = playerStore.activeTrack;
+    playing = playerStore.playing;
+    isOverlayOpen = showDrawer || showLyric || showPeq;
+    updateMediaSessionPlaybackState(playerStore.playing);
     if (audioEl) audioEl.volume = playerStore.vol;
     try { localStorage.setItem('wyyyy_player_vol', String(playerStore.vol)); } catch {}
   });
@@ -56,9 +57,6 @@
     const t = playerStore.activeTrack;
     lastLyricIndex = -2;
     updateMediaSessionMetadata(t);
-  });
-  $effect(() => {
-    const t = playerStore.activeTrack;
     if (t?.id && !t.lyric) {
       api.songV1(String(t.id), 'lossless').then((j: any) => {
         if (j?.data?.lyric && playerStore.activeTrack?.id === t.id) {
@@ -68,12 +66,10 @@
       }).catch(() => {});
     }
   });
-  $effect(() => { updateMediaSessionPlaybackState(playerStore.playing); });
 
   async function prepareTrackInUI(track: Track) {
     if (track.isLocal && track.id) markSongDownloaded(track.id);
     const url = track.url || (await resolveTrackUrl(track));
-    if (track.isLocal && track.id) markSongDownloaded(track.id);
     if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href)) {
       audioEl.src = url;
     }
@@ -105,6 +101,22 @@
     setTimeout(doSeek, 60);
   }
 
+  async function handleSkipTrial(trackName: string) {
+    const nextIdx = playerStore.getNextTrackIndex();
+    if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
+      playerStore.playing = false;
+      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
+      showToast(`🛡️ 《${trackName}》为试听片段，队列中暂无其他完整曲目`, 'warning', 2500);
+      return;
+    }
+    showToast(`🛡️ 已跳过试听曲目《${trackName}》`, 'info', 1500);
+    playerStore.qIndex = nextIdx;
+    playerStore.curTime = 0;
+    playerStore.save();
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
+    await ensurePlay(true);
+  }
+
   async function ensurePlay(resetTime = false) {
     const track = playerStore.activeTrack;
     if (!track || !audioEl) return;
@@ -121,8 +133,7 @@
 
     // 智能跳过已知试听曲目
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      showToast(`🛡️ 已跳过试听曲目《${track.name}》`, 'info', 1500);
-      return next();
+      return handleSkipTrial(track.name);
     }
 
     // ① 已有 URL：同步触发播放，保留 iOS 手势令牌
@@ -162,8 +173,7 @@
     audioEl.muted = prevMuted;
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      showToast(`🛡️ 已跳过试听曲目《${track.name}》`, 'info', 1500);
-      return next();
+      return handleSkipTrial(track.name);
     }
 
     if (url && audioEl && playerStore.activeTrack === track) {
@@ -208,10 +218,19 @@
   async function next() {
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
-    playerStore.stepNext();
-    if (playerStore.autoSkipTrial && (playerStore.activeTrack as any)?.freeTrial === true) {
-      playerStore.stepNext();
+    const nextIdx = playerStore.getNextTrackIndex();
+    if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
+      if (playerStore.autoSkipTrial && (playerStore.activeTrack as any)?.freeTrial === true) {
+        playerStore.playing = false;
+        if (audioEl) {
+          audioEl.pause();
+          try { audioEl.currentTime = 0; } catch {}
+        }
+        showToast('🛡️ 队列中暂无其他可播放的完整曲目', 'info', 2000);
+        return;
+      }
     }
+    playerStore.stepNext();
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
   }
@@ -279,14 +298,6 @@
       onPause: () => { if (!audioEl?.paused) togglePlay(); },
       onPrev: prev,
       onNext: next
-      // 🛡️ 禁用锁屏 seekto：防止锁屏拖动触发 iOS 熄屏后台断流静音、假走针与 15s 跳秒退化
-      // onSeekTo: (time) => {
-      //   if (audioEl) {
-      //     audioEl.currentTime = time;
-      //     playerStore.curTime = time;
-      //     updateMediaSessionPosition(audioEl);
-      //   }
-      // }
     });
 
     window.addEventListener('beforeunload', () => playerStore.save());
