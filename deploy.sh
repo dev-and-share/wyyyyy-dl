@@ -1,9 +1,30 @@
 #!/usr/bin/env bash
 # deploy.sh — 一键 patch 版本升级 + commit + git tag + push + docker build
-# 用法：./deploy.sh [patch|minor|major]  (默认 patch)
+# 用法：
+#   ./deploy.sh                      (默认：本地运行，仅更新本地缓存名 + docker build，绝不提交和推送)
+#   ./deploy.sh release [patch|minor|major] (生产发布：自动 commit + git tag + push + docker build)
 set -euo pipefail
 
-BUMP=${1:-patch}
+ACTION=${1:-local}
+IS_RELEASE=false
+BUMP="patch"
+
+case "$ACTION" in
+  release|push|prod)
+    IS_RELEASE=true
+    BUMP=${2:-patch}
+    ;;
+  major|minor|patch)
+    # 兼容传入版本幅度，但默认依然是安全的本地模式
+    IS_RELEASE=false
+    BUMP="$ACTION"
+    ;;
+  *)
+    IS_RELEASE=false
+    BUMP="patch"
+    ;;
+esac
+
 PKG="frontend/package.json"
 
 # ── 1. 读取当前版本 ──────────────────────────────────────────────────────────
@@ -18,7 +39,7 @@ case "$BUMP" in
   *)     PATCH=$((PATCH + 1)) ;;
 esac
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-echo "🚀 升级到：$NEW_VERSION"
+echo "🚀 目标版本：$NEW_VERSION"
 
 # ── 3. 写入 package.json ─────────────────────────────────────────────────────
 # 用 node 原地修改，避免 sed 的跨平台差异
@@ -37,13 +58,21 @@ sed -i '' "s/const CACHE_NAME = 'wyyyyy-dl-v[^']*'/const CACHE_NAME = 'wyyyyy-dl
 echo "✅ sw.js CACHE_NAME 已更新为 wyyyyy-dl-v$NEW_VERSION"
 
 # ── 5. git commit + tag + push ───────────────────────────────────────────────
-git add "$PKG" "$SW_FILE" "build.gradle"
-git commit -m "chore: bump version to v$NEW_VERSION"
-git tag "v$NEW_VERSION"
-git push
-git push origin "v$NEW_VERSION"
-echo "✅ git tag v$NEW_VERSION 已推送"
+if [ "$IS_RELEASE" = false ]; then
+  echo "⏩ 本地模式 (默认)：跳过 git commit、tag 与 push 流程，纯本地运行"
+else
+  git add "$PKG" "$SW_FILE" "build.gradle"
+  git commit -m "chore: bump version to v$NEW_VERSION"
+  git tag "v$NEW_VERSION"
+  git push
+  git push origin "v$NEW_VERSION"
+  echo "✅ git tag v$NEW_VERSION 已推送"
+fi
 
-# ── 5. docker build + 启动 ───────────────────────────────────────────────────
+# ── 6. docker build + 启动 ───────────────────────────────────────────────────
 docker compose up -d --build
-echo "✅ 部署完成：v$NEW_VERSION 已上线"
+if [ "$IS_RELEASE" = false ]; then
+  echo "🎉 本地部署成功：v$NEW_VERSION 已在本地 Docker 运行 (未推送代码，无 git tag)"
+else
+  echo "✅ 部署完成：v$NEW_VERSION 已上线并推送"
+fi
