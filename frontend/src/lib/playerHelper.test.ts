@@ -126,4 +126,60 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(queued[3]).toMatchObject({ id: 104, name: '纯音乐', artist: '' });
     expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('已开始播放《我的歌单》'), 'success', 2000);
   });
+
+  it('toPlayerTrack normalizes metadata and preserves isLocal/freeTrial contracts (DRY)', async () => {
+    const { toPlayerTrack } = await import('./playerHelper');
+
+    // 1. 空输入兜底
+    expect(toPlayerTrack(null)).toMatchObject({ id: 0, name: '未知曲目' });
+
+    // 2. 带有本地 stream URL 的曲目自动标记 isLocal=true
+    const songWithStream = {
+      id: 190596,
+      name: '爱到这样',
+      ar_name: '张宇',
+      url: '/v3/stream?id=0&historyId=1304',
+      pic: 'http://pic.jpg',
+      freeTrial: false
+    };
+    const track1 = toPlayerTrack(songWithStream);
+    expect(track1.isLocal).toBe(true);
+    expect(track1.freeTrial).toBe(false);
+    expect(track1.name).toBe('爱到这样');
+    expect(track1.artist).toBe('张宇');
+
+    // 3. 试听曲目保留 freeTrial=true
+    const trialSong = {
+      id: 999,
+      name: '试听曲',
+      artist: '某歌手',
+      url: 'http://trial.mp3',
+      freeTrial: true,
+      freeTrialDuration: 30
+    };
+    const track2 = toPlayerTrack(trialSong);
+    expect(track2.isLocal).toBe(false);
+    expect(track2.freeTrial).toBe(true);
+    expect(track2.freeTrialDuration).toBe(30);
+  });
+
+  it('getTrackPlayActionLabel generates correct label across modes and variants (DRY)', async () => {
+    const { getTrackPlayActionLabel } = await import('./trackStatus.svelte');
+
+    // 播放中状态
+    expect(getTrackPlayActionLabel({ isPlaying: true, isLocal: true, variant: 'short' })).toBe('⏸ 播放中');
+    expect(getTrackPlayActionLabel({ isPlaying: true, isLocal: false, variant: 'desktop' })).toBe('⏸ 暂停');
+
+    // 本地 vs 试听 - short 模式
+    expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: true, variant: 'short' })).toBe('▶️ 播放');
+    expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: false, variant: 'short' })).toBe('▶️ 试听');
+
+    // 本地 vs 试听 - desktop 模式
+    expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: true, variant: 'desktop' })).toBe('▶ 本地');
+    expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: false, variant: 'desktop' })).toBe('▶ 试听');
+
+    // 本地 vs 试听 - full 模式
+    expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: true, variant: 'full' })).toBe('▶️ 播放本地音频');
+    expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: false, variant: 'full' })).toBe('▶️ 试听在线歌曲');
+  });
 });

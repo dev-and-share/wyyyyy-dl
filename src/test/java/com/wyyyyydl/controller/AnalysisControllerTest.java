@@ -60,7 +60,9 @@ public class AnalysisControllerTest {
         mockItem.setSongId(326696L);
         mockItem.setSongName("用心良苦");
         mockItem.setFileExists(true);
+        mockItem.setFileSize(4251672L);
 
+        Mockito.doCallRealMethod().when(analysisService).applyLocalTrackOverride(any(), any());
         Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(1975924437L), eq("用心良苦"), eq("张宇")))
                 .thenReturn(mockItem);
 
@@ -71,7 +73,10 @@ public class AnalysisControllerTest {
                 .param("level", "lossless"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
-                .andExpect(jsonPath("$.data.url").value("/v3/stream?id=326696&historyId=88"));
+                .andExpect(jsonPath("$.data.url").value("/v3/stream?id=326696&historyId=88"))
+                .andExpect(jsonPath("$.data.isLocal").value(true))
+                .andExpect(jsonPath("$.data.freeTrial").value(false))
+                .andExpect(jsonPath("$.data.size").value("4.05MB"));
     }
 
     @Test

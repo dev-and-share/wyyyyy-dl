@@ -28,6 +28,7 @@ import com.wyyyyydl.models.dtos.SingleMusicAnalysisRespDTO;
 import com.wyyyyydl.models.dtos.TrackDTO;
 import com.wyyyyydl.models.dtos.UserPlaylistListRespDTO;
 import com.wyyyyydl.models.dtos.UserPlaylistSummaryDTO;
+import com.wyyyyydl.dao.DownloadHistoryDAO;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -572,7 +573,7 @@ public class AnalysisService {
         return resp;
     }
 
-    private String formatSize(long value) {
+    public static String formatSize(long value) {
         String[] units = {"B", "KB", "MB", "GB", "TB"};
         double size = value;
         for (String unit : units) {
@@ -582,6 +583,27 @@ public class AnalysisService {
             size /= 1024.0;
         }
         return String.format("%.2fPB", size);
+    }
+
+    /**
+     * 统一将已匹配到的本地音轨元数据覆盖到单曲分析 DTO 中 (DRY 收口)
+     */
+    public void applyLocalTrackOverride(SingleMusicAnalysisRespDTO songInfo, DownloadHistoryDAO.DownloadHistoryItem localItem) {
+        if (songInfo == null || localItem == null || !Boolean.TRUE.equals(localItem.getFileExists())) {
+            return;
+        }
+        songInfo.setUrl("/v3/stream?id=" + localItem.getSongId() + "&historyId=" + localItem.getId());
+        songInfo.setFreeTrial(false);
+        songInfo.setFreeTrialDuration(null);
+        songInfo.setUnplayableReason(null);
+        songInfo.setStatus(200);
+        songInfo.setIsLocal(true);
+        if (localItem.getFileSize() != null && localItem.getFileSize() > 0) {
+            songInfo.setSize(formatSize(localItem.getFileSize()));
+        }
+        if (localItem.getQuality() != null && !localItem.getQuality().trim().isEmpty()) {
+            songInfo.setType(localItem.getQuality().toUpperCase());
+        }
     }
     
     /**

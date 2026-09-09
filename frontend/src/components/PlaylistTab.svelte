@@ -15,7 +15,7 @@
   } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
-  import { playPlaylistTracks } from '../lib/playerHelper';
+  import { playPlaylistTracks, toPlayerTrack } from '../lib/playerHelper';
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
@@ -26,7 +26,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
-  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { layoutState } from '../lib/layout.svelte';
 
@@ -269,9 +269,9 @@
       subtitle: artist || '未知歌手',
       actions: [
         {
-          label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
+          label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }),
           style: 'primary',
-          onclick: () => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal }])
+          onclick: () => onPlayQueue([toPlayerTrack(t, { artist, isLocal })])
         },
         isServer
           ? { label: '📂 在服务器磁盘中定位', style: 'default', onclick: () => onReveal && onReveal({ id: t.id, name: t.name, artist }) }
@@ -343,15 +343,37 @@
         title={playlist.name}
         subtitle={`${playlist.creator || '未知'} | 共 ${allTracks.length} 首`}
       >
-        <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))}>🖥️ 下载到电脑</button>
-        <button class="btn-secondary" onclick={() => {
-          if (playlist?.id) recordPlaylistPlay(playlist.id);
-          onPlayQueue && onPlayQueue(allTracks.map((t: any) => ({ id: t.id, name: t.name, artist: formatArtist(t), cover: t.al?.picUrl || '/favicon.png' })));
-        }}>▶️ 播放歌单</button>
+        <button
+          class="btn-primary"
+          onclick={() => downloadPlaylistById(String(playlist.id))}
+          title="下载全部歌曲到电脑"
+        >
+          <span>🖥️</span><span>下载<span class="hidden sm:inline">到电脑</span></span>
+        </button>
+        <button
+          class="btn-secondary"
+          onclick={() => {
+            if (playlist?.id) recordPlaylistPlay(playlist.id);
+            onPlayQueue && onPlayQueue(allTracks.map((t: any) => toPlayerTrack(t)));
+          }}
+          title="播放歌单全部歌曲"
+        >
+          <span>▶️</span><span>播放<span class="hidden sm:inline">歌单</span></span>
+        </button>
         {#if playlist && !playlist.isCreator}
-          <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title="转存为自建歌单，绕过官方风控">📦 转存自建</button>
-          <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? '取消收藏' : '收藏歌单'}>
-            {playlist.subscribed ? '💔 取消收藏' : '⭐ 收藏歌单'}
+          <button
+            class="btn-secondary !text-purple-400 !border-purple-500/30"
+            onclick={() => showForkModal = true}
+            title="转存为自建歌单，绕过官方风控"
+          >
+            <span>📦</span><span>转存<span class="hidden sm:inline">自建</span></span>
+          </button>
+          <button
+            class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}"
+            onclick={handleToggleSubscribe}
+            title={playlist.subscribed ? '取消收藏' : '收藏歌单'}
+          >
+            <span>{playlist.subscribed ? '💔' : '⭐'}</span><span>{playlist.subscribed ? '取消' : '收藏'}<span class="hidden sm:inline">{playlist.subscribed ? '收藏' : '歌单'}</span></span>
           </button>
         {/if}
       </DetailHeaderCard>
@@ -361,6 +383,7 @@
           {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
           {@const artist = formatArtist(t)}
           {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
+          {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
           <li class="track-item-card" class:is-active-playing={isPlayingThis}>
             <div class="track-title-row">
               <button
@@ -378,9 +401,9 @@
               <div class="hidden md:inline-flex items-center gap-1.5">
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                  onclick={() => onPlayQueue([toPlayerTrack(t, { artist, isLocal: status.isLocal })])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {playLabel}
                 </SlotBtn>
                 {#if status.isServer}
                   <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
@@ -395,9 +418,9 @@
               <div class="inline-flex md:hidden items-center gap-1.5">
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                  onclick={() => onPlayQueue([toPlayerTrack(t, { artist, isLocal: status.isLocal })])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {playLabel}
                 </SlotBtn>
                 <button
                   type="button"

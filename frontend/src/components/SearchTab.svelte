@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
-  import { playPlaylistTracks } from '../lib/playerHelper';
+  import { playPlaylistTracks, toPlayerTrack } from '../lib/playerHelper';
   import type { Track } from '../lib/types';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
@@ -11,7 +11,7 @@
   import AlbumDetailCard from './AlbumDetailCard.svelte';
   import ArtistDetailCard from './ArtistDetailCard.svelte';
   import { openSheet } from '../lib/ui.svelte';
-  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel } from '../lib/trackStatus.svelte';
 
   let {
     albumId = '',
@@ -273,10 +273,10 @@
         ...(onPlayQueue
           ? [
               {
-                label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
+                label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }),
                 style: 'primary' as const,
                 onclick: () =>
-                  onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal }])
+                  onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal })])
               }
             ]
           : []),
@@ -346,12 +346,13 @@
           {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
           {@const status = getTrackSourceStatus(r.id, r.isLocal, curTrack)}
           {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
+          {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
           <li class="track-item-card" class:is-active-playing={isPlayingThis}>
             <div class="track-title-row">
               <button
                 type="button"
                 class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-                onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }]))}
+                onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal: status.isLocal })]))}
               >
                 {idx + 1}. {r.name}
               </button>
@@ -368,9 +369,9 @@
                 {#if onPlayQueue}
                   <SlotBtn
                     playing={isPlayingThis && playing}
-                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                    onclick={() => onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal: status.isLocal })])}
                   >
-                    {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                    {playLabel}
                   </SlotBtn>
                 {/if}
                 {#if status.isServer}
@@ -386,9 +387,9 @@
                 {#if onPlayQueue}
                   <SlotBtn
                     playing={isPlayingThis && playing}
-                    onclick={() => onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                    onclick={() => onPlayQueue([toPlayerTrack(r, { artist: artistName, isLocal: status.isLocal })])}
                   >
-                    {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                    {playLabel}
                   </SlotBtn>
                 {/if}
                 <button

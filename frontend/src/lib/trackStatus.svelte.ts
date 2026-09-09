@@ -59,3 +59,27 @@ export function getTrackSourceStatus(
     isLocal: isServer || isPhone
   };
 }
+
+export interface TrackPlayActionLabelOptions {
+  isPlaying: boolean;
+  isLocal: boolean;
+  variant?: 'full' | 'short' | 'desktop';
+}
+
+/**
+ * 🎯 统一获取曲目播放按钮的展示文案与语义 (DRY Single Source of Truth)
+ */
+export function getTrackPlayActionLabel(options: TrackPlayActionLabelOptions): string {
+  const { isPlaying, isLocal, variant = 'full' } = options;
+  if (isPlaying) {
+    return variant === 'desktop' ? '⏸ 暂停' : '⏸ 播放中';
+  }
+  if (variant === 'desktop') {
+    return isLocal ? '▶ 本地' : '▶ 试听';
+  }
+  if (variant === 'short') {
+    return isLocal ? '▶️ 播放' : '▶️ 试听';
+  }
+  // full 模式（用于长按菜单或重要操作项）
+  return isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲';
+}

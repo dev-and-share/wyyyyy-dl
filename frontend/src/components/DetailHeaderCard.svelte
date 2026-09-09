@@ -39,9 +39,39 @@
       </div>
     {/if}
     {#if children}
-      <div class="flex flex-wrap gap-1.5 md:gap-2.5 items-center mt-1">
+      <div class="detail-header-actions flex items-center gap-1.5 md:gap-2 mt-1 overflow-x-auto no-scrollbar min-w-0 max-w-full flex-nowrap py-0.5">
         {@render children()}
       </div>
     {/if}
   </div>
 </div>
+
+<style>
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .detail-header-actions :global(button.btn-primary),
+  .detail-header-actions :global(button.btn-secondary),
+  .detail-header-actions :global(button) {
+    padding: 5px 9px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  @media (min-width: 640px) {
+    .detail-header-actions :global(button.btn-primary),
+    .detail-header-actions :global(button.btn-secondary),
+    .detail-header-actions :global(button) {
+      padding: 7px 13px;
+      font-size: 13px;
+      gap: 5px;
+    }
+  }
+</style>

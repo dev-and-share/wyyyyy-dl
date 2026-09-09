@@ -107,13 +107,7 @@ export async function playPlaylistTracks(
     const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
     if (tracks && tracks.length > 0) {
       recordPlaylistPlay(playlistId);
-      onPlayQueue(tracks.map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        artist: formatArtist(t),
-        cover: t.picUrl || t.al?.picUrl || DEFAULT_VINYL_COVER,
-        isLocal: getTrackSourceStatus(t.id, t.isLocal).isLocal
-      })), 0);
+      onPlayQueue(tracks.map((t: any) => toPlayerTrack(t)), 0);
       showToast(`已开始播放《${playlistName}》(${tracks.length} 首)`, 'success', 2000);
     } else {
       showToast('歌单内暂无曲目', 'warning');
@@ -121,6 +115,45 @@ export async function playPlaylistTracks(
   } catch (e: any) {
     showToast('播放失败: ' + (e?.message || e), 'error');
   }
+}
+
+/**
+ * 🎯 统一将各种来源元数据对象（songInfo、搜索条目、歌单曲目）规范化转换为 Player Track (DRY)
+ */
+export function toPlayerTrack(item: any, overrides?: Partial<Track>): Track {
+  if (!item) {
+    return {
+      id: 0,
+      name: '未知曲目',
+      artist: '未知歌手',
+      cover: DEFAULT_VINYL_COVER,
+      ...overrides
+    };
+  }
+
+  const id = item.id || item.songId || 0;
+  const name = item.name || item.songName || '未知曲目';
+  const artist = formatArtist(item) || item.artist || item.ar_name || '';
+  const cover = item.pic || item.picUrl || item.al?.picUrl || item.cover || DEFAULT_VINYL_COVER;
+  const isLocal = Boolean(
+    item.isLocal ||
+    (item.url && item.url.includes('/stream')) ||
+    getTrackSourceStatus(id, item.isLocal).isLocal
+  );
+  const freeTrial = Boolean(item.freeTrial);
+
+  return {
+    id,
+    name,
+    artist,
+    cover,
+    url: item.url,
+    lyric: item.lyric,
+    isLocal,
+    freeTrial,
+    freeTrialDuration: item.freeTrialDuration,
+    ...overrides
+  };
 }
 
 

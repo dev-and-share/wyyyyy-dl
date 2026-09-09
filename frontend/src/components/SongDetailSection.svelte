@@ -2,6 +2,9 @@
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
   import { formatArtist } from '../lib/utils';
+  import { playerStore } from '../lib/playerStore.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel } from '../lib/trackStatus.svelte';
+  import { toPlayerTrack } from '../lib/playerHelper';
 
   let {
     open = $bindable(false),
@@ -47,6 +50,11 @@
   </div>
 
   {#if songInfo}
+    {@const targetId = songInfo.id || songId}
+    {@const status = getTrackSourceStatus(targetId, songInfo.isLocal, playerStore.activeTrack)}
+    {@const isPlayingThis = playerStore.activeTrack && String(playerStore.activeTrack.id) === String(targetId)}
+    {@const isPlaying = Boolean(isPlayingThis && playerStore.playing)}
+    {@const playLabel = getTrackPlayActionLabel({ isPlaying, isLocal: status.isLocal, variant: 'short' })}
     {@const arText = formatArtist(songInfo) || '群星 / 未知'}
     {@const alText = songInfo.al_name || songInfo.album || '暂无专辑'}
     {@const sizeText = songInfo.size || '未知大小'}
@@ -61,20 +69,19 @@
     >
       <button
         class="btn-primary"
-        onclick={() => onPlayQueue([{
-          id: songInfo.id || songId,
-          name: songInfo.name || '单曲',
-          artist: arText,
-          cover: imgSrc,
-          url: songInfo.url,
-          lyric: songInfo.lyric
-        }])}
+        onclick={() => {
+          if (isPlayingThis) {
+            playerStore.togglePlay();
+          } else {
+            onPlayQueue([toPlayerTrack(songInfo, { id: targetId, isLocal: status.isLocal })]);
+          }
+        }}
       >
-        ▶️ 试听
+        {playLabel}
       </button>
       <button
         class="btn-secondary"
-        onclick={() => onDownloadSingle(String(songInfo.id || songId), songInfo.name)}
+        onclick={() => onDownloadSingle(String(targetId), songInfo.name)}
       >
         📥 下载
       </button>

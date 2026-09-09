@@ -161,6 +161,14 @@ export class PlayerStore {
   }
 
   /**
+   * 切换播放/暂停状态
+   */
+  togglePlay(): boolean {
+    this.playing = !this.playing;
+    return this.playing;
+  }
+
+  /**
    * 切换播放模式 (list -> single -> shuffle[即时洗牌] -> list)
    */
   togglePlayMode(): PlayMode {

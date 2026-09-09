@@ -120,15 +120,7 @@ public class AnalysisController {
         // 🚀 智能双重比对：优先匹配 song_id，未匹配上则比对 (歌名 + 歌手名) 本地已下载音轨！
         com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongOrName(id, searchName, searchArtist);
         if (localItem != null && Boolean.TRUE.equals(localItem.getFileExists())) {
-            if (songInfo != null) {
-                // 瞬间切为本地无损秒播流！
-                songInfo.setUrl("/v3/stream?id=" + localItem.getSongId() + "&historyId=" + localItem.getId());
-                songInfo.setFreeTrial(false);
-                songInfo.setFreeTrialDuration(null);
-                songInfo.setUnplayableReason(null);
-                songInfo.setStatus(200);
-                songInfo.setIsLocal(true);
-            }
+            analysisService.applyLocalTrackOverride(songInfo, localItem);
         } else {
             if (songInfo != null) {
                 songInfo.setIsLocal(false);
