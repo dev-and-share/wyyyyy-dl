@@ -77,63 +77,49 @@ describe('mediaSession iOS contracts', () => {
     Object.defineProperty(navigator, 'userAgent', { value: originalUA, configurable: true });
   });
 
-  it('updateMediaSessionPosition must skip setPositionState on iOS devices to prevent lock screen switching to skip buttons', () => {
-    // 模拟 iPhone UA
-    const originalUA = navigator.userAgent;
-    Object.defineProperty(navigator, 'userAgent', {
-      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15',
-      configurable: true
-    });
-
+  it('updateMediaSessionPosition correctly invokes setPositionState with duration, playbackRate and clamped position', () => {
     const mockAudio = {
       duration: 200,
       currentTime: 45,
-      playbackRate: 1
+      playbackRate: 1.25
     } as unknown as HTMLAudioElement;
 
     updateMediaSessionPosition(mockAudio);
 
-    // 关键契约：iOS 设备上绝对禁止调用 setPositionState
-    expect(mockSetPositionState).not.toHaveBeenCalled();
-
-    // 恢复 UA
-    Object.defineProperty(navigator, 'userAgent', {
-      value: originalUA,
-      configurable: true
+    expect(mockSetPositionState).toHaveBeenCalledWith({
+      duration: 200,
+      playbackRate: 1.25,
+      position: 45
     });
   });
 
-  it('updateMediaSessionPosition must also skip setPositionState on iPadOS touch devices', () => {
-    const originalPlatform = navigator.platform;
-    const originalMaxTouchPoints = navigator.maxTouchPoints;
-
-    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
-    Object.defineProperty(navigator, 'maxTouchPoints', { value: 5, configurable: true });
-
+  it('updateMediaSessionPosition clamps currentTime within [0, duration]', () => {
     const mockAudio = {
-      duration: 180,
-      currentTime: 30,
+      duration: 100,
+      currentTime: 150,
       playbackRate: 1
     } as unknown as HTMLAudioElement;
 
     updateMediaSessionPosition(mockAudio);
 
-    expect(mockSetPositionState).not.toHaveBeenCalled();
-
-    Object.defineProperty(navigator, 'platform', { value: originalPlatform, configurable: true });
-    Object.defineProperty(navigator, 'maxTouchPoints', { value: originalMaxTouchPoints, configurable: true });
+    expect(mockSetPositionState).toHaveBeenCalledWith({
+      duration: 100,
+      playbackRate: 1,
+      position: 100
+    });
   });
 
-  it('updateMediaSessionPosition must never invoke setPositionState to guarantee track navigation controls', () => {
-    const mockAudio = {
-      duration: 200,
-      currentTime: 45,
+  it('updateMediaSessionPosition safely handles null audio or invalid duration', () => {
+    updateMediaSessionPosition(null);
+    expect(mockSetPositionState).not.toHaveBeenCalled();
+
+    const invalidAudio = {
+      duration: NaN,
+      currentTime: 0,
       playbackRate: 1
     } as unknown as HTMLAudioElement;
 
-    updateMediaSessionPosition(mockAudio);
-
-    // 关键契约：无论任何平台，绝对禁止调用 setPositionState，彻底杜绝系统显示跳秒按键
+    updateMediaSessionPosition(invalidAudio);
     expect(mockSetPositionState).not.toHaveBeenCalled();
   });
 

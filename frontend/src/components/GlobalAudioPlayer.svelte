@@ -318,11 +318,13 @@
     playerStore.playing = true;
     updateMediaSessionPlaybackState(true);
     if (playerStore.activeTrack) updateMediaSessionMetadata(playerStore.activeTrack);
+    updateMediaSessionPosition(audioEl);
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
   }}
   onpause={() => {
     playerStore.playing = false;
     updateMediaSessionPlaybackState(false);
+    updateMediaSessionPosition(audioEl);
   }}
   ontimeupdate={(e) => {
     const a = e.currentTarget;
@@ -333,13 +335,17 @@
     if (playerStore.curTime > 0) {
       try { localStorage.setItem('wyyyy_player_time', String(playerStore.curTime)); } catch {}
     }
-    updateMediaSessionPosition(a);
+    // 🛡️ 严格禁止在此处调用 updateMediaSessionPosition(a)，避免每秒 4 次跨进程 IPC 冲刷导致锁屏状态抖动
   }}
   onloadedmetadata={(e) => {
     const a = e.currentTarget as HTMLAudioElement;
     if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
       playerStore.duration = a.duration;
     }
+    updateMediaSessionPosition(a);
+  }}
+  onseeked={(e) => {
+    const a = e.currentTarget as HTMLAudioElement;
     updateMediaSessionPosition(a);
   }}
   onerror={() => {
