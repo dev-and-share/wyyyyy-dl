@@ -10,17 +10,22 @@ export function parseLrc(text?: string | null): LrcLine[] {
   if (!text) return [];
   const lines = text.split(/\r?\n/);
   const out: LrcLine[] = [];
-  const re = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+  const timeTagRe = /\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
 
   for (const line of lines) {
-    const m = re.exec(line);
-    if (m) {
+    timeTagRe.lastIndex = 0;
+    const matches = Array.from(line.matchAll(timeTagRe));
+    if (matches.length === 0) continue;
+
+    const content = line.replace(timeTagRe, '').trim();
+    if (!content) continue;
+
+    for (const m of matches) {
       const min = parseInt(m[1], 10);
       const sec = parseInt(m[2], 10);
-      const ms = parseInt(m[3], 10);
-      const time = min * 60 + sec + (ms > 99 ? ms / 1000 : ms / 100);
-      const content = line.replace(re, '').trim();
-      if (content) out.push({ time, text: content });
+      const fraction = m[3] ? parseFloat('0.' + m[3]) : 0;
+      const time = min * 60 + sec + fraction;
+      out.push({ time, text: content });
     }
   }
 
