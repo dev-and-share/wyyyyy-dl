@@ -12,7 +12,9 @@
     deleteBrowserCacheEntry,
     clearLowPlayCountCacheEntries,
     clearAllBrowserAudioCache,
-    formatCacheDate
+    formatCacheDate,
+    toBrowserTrack,
+    filterCacheByMinPlayCount
   } from '../lib/browserCacheHelper';
 
   let {
@@ -28,6 +30,33 @@
   let browserCacheBytes = $state(0);
   let browserCacheLoading = $state(false);
   let minPlayThreshold = $state(2);
+  let minPlayCountToPlay = $state(1);
+
+  function handlePlayAll() {
+    if (browserCacheList.length === 0) {
+      showToast('当前设备暂无离线音乐缓存', 'info', 2000);
+      return;
+    }
+    const queue = browserCacheList.map(toBrowserTrack);
+    onPlayQueue(queue, 0);
+    showToast(`已开始播放全部离线歌曲 (共 ${queue.length} 首)`, 'success', 2000);
+  }
+
+  function handlePlayFiltered() {
+    if (browserCacheList.length === 0) {
+      showToast('当前设备暂无离线音乐缓存', 'info', 2000);
+      return;
+    }
+    const threshold = Math.max(0, Number(minPlayCountToPlay) || 0);
+    const filtered = filterCacheByMinPlayCount(browserCacheList, threshold);
+    if (filtered.length === 0) {
+      showToast(`当前没有播放次数 ≥ ${threshold} 次的离线歌曲`, 'info', 2000);
+      return;
+    }
+    const queue = filtered.map(toBrowserTrack);
+    onPlayQueue(queue, 0);
+    showToast(`已开始播放离线歌曲 (≥ ${threshold} 次，共 ${queue.length} 首)`, 'success', 2000);
+  }
 
   async function loadList() {
     if (!('caches' in window)) {
@@ -104,13 +133,7 @@
         {
           label: isPlayingThis ? '⏸ 暂停播放' : '▶️ 立即播放',
           style: 'primary',
-          onclick: () => onPlayQueue([{
-            id: item.id || item.relUrl,
-            name: item.name,
-            artist: item.artist,
-            cover: DEFAULT_VINYL_COVER,
-            url: item.relUrl
-          }])
+          onclick: () => onPlayQueue([toBrowserTrack(item)])
         },
         {
           label: `🗑️ 删除此首离线缓存 (${item.size ? formatBytes(item.size) : '释放空间'})`,
@@ -131,21 +154,18 @@
 
   onMount(() => {
     loadList();
-    const onCacheUpdate = () => { loadList(); };
-    const onPlayUpdate = () => { loadList(); };
-    window.addEventListener('wyyyy:browser-cache-updated', onCacheUpdate);
-    window.addEventListener('wyyyy:song-play-updated', onPlayUpdate);
+    const reload = () => { loadList(); };
+    window.addEventListener('wyyyy:browser-cache-updated', reload);
+    window.addEventListener('wyyyy:song-play-updated', reload);
 
     const onVisibility = () => {
-      if (document.visibilityState === 'visible' && accBrowserCache) {
-        loadList();
-      }
+      if (document.visibilityState === 'visible' && accBrowserCache) loadList();
     };
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      window.removeEventListener('wyyyy:browser-cache-updated', onCacheUpdate);
-      window.removeEventListener('wyyyy:song-play-updated', onPlayUpdate);
+      window.removeEventListener('wyyyy:browser-cache-updated', reload);
+      window.removeEventListener('wyyyy:song-play-updated', reload);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   });
@@ -160,30 +180,73 @@
         <span class="stat-divider">·</span>
         <span>大小：<strong>{browserCacheBytes ? formatBytes(browserCacheBytes) : '-'}</strong></span>
       </div>
-      
-      <!-- 边听边存 Checkbox -->
-      <label class="auto-cache-toggle" title="只要听过的非试听歌曲，都在后台自动离线缓存到手机">
-        <input
-          type="checkbox"
-          checked={autoCacheState.enabled}
-          onchange={(e) => {
-            const val = (e.currentTarget as HTMLInputElement).checked;
-            setAutoCacheEnabled(val);
-            showToast(val ? '✅ 已开启边听边存（听过即存手机）' : 'ℹ️ 已关闭边听边存', 'info', 1500);
-          }}
-        />
-        <span class="font-medium text-[var(--text-main)]">🎧 边听边存</span>
-      </label>
+
+      <div class="stat-top-actions">
+        <button
+          type="button"
+          class="btn-secondary cache-action-btn"
+          onclick={loadList}
+          disabled={browserCacheLoading}
+          title="重新扫描离线缓存"
+        >
+          {browserCacheLoading ? '🔄 扫描中…' : '🔄 刷新'}
+        </button>
+
+        <!-- 边听边存 Checkbox -->
+        <label class="auto-cache-toggle" title="只要听过的非试听歌曲，都在后台自动离线缓存到手机">
+          <input
+            type="checkbox"
+            checked={autoCacheState.enabled}
+            onchange={(e) => {
+              const val = (e.currentTarget as HTMLInputElement).checked;
+              setAutoCacheEnabled(val);
+              showToast(val ? '✅ 已开启边听边存（听过即存手机）' : 'ℹ️ 已关闭边听边存', 'info', 1500);
+            }}
+          />
+          <span class="font-medium text-[var(--text-main)]">🎧 边听边存</span>
+        </label>
+      </div>
     </div>
 
     <div class="stat-actions-row">
-      <button class="btn-secondary cache-action-btn" onclick={loadList} disabled={browserCacheLoading}>
-        {browserCacheLoading ? '🔄 扫描中…' : '🔄 刷新'}
+      <button
+        type="button"
+        data-testid="btn-cache-play-all"
+        class="btn-primary cache-action-btn play-all-btn"
+        onclick={handlePlayAll}
+        disabled={browserCacheLoading || browserCacheList.length === 0}
+        title="一键播放全部离线歌曲"
+      >
+        ▶️ 播放全部
       </button>
+
+      <div class="play-filter-control" title="播放累计次数大于等于阈值的离线歌曲">
+        <button
+          type="button"
+          data-testid="btn-cache-play-filtered"
+          class="play-filter-btn"
+          onclick={handlePlayFiltered}
+          disabled={browserCacheLoading || browserCacheList.length === 0}
+        >
+          ▶️ 播放 ≥
+        </button>
+        <input
+          type="number"
+          min="0"
+          max="99"
+          data-testid="input-cache-play-min"
+          class="clean-n-input"
+          bind:value={minPlayCountToPlay}
+          onclick={(e) => e.stopPropagation()}
+          title="最小播放次数（默认 ≥ 1 次）"
+        />
+        <span class="clean-unit-text">次</span>
+      </div>
 
       <!-- 一键清除少于 N 次播放的缓存 -->
       <div class="clean-low-control" title="一键清理播放次数少于阈值的低频离线歌曲">
         <button
+          type="button"
           class="clean-low-btn"
           onclick={handleClearLowPlayCount}
           disabled={browserCacheLoading || browserCacheList.length === 0}
@@ -197,11 +260,18 @@
           class="clean-n-input"
           bind:value={minPlayThreshold}
           onclick={(e) => e.stopPropagation()}
+          title="清理阈值（少于此次数将被清理）"
         />
         <span class="clean-unit-text">次</span>
       </div>
 
-      <button class="btn-secondary cache-action-btn btn-danger" onclick={handleClearAll} disabled={browserCacheLoading || browserCacheList.length === 0}>
+      <button
+        type="button"
+        class="btn-secondary cache-action-btn btn-danger"
+        onclick={handleClearAll}
+        disabled={browserCacheLoading || browserCacheList.length === 0}
+        title="清空全部离线缓存"
+      >
         🗑️ 清空
       </button>
     </div>
@@ -242,7 +312,7 @@
           <span class="text-xs text-[var(--text-secondary)]">{item.size ? formatBytes(item.size) : '离线存储'}</span>
           <SlotBtn
             playing={isPlayingThis}
-            onclick={() => onPlayQueue([{ id: item.id || item.relUrl, name: item.name, artist: item.artist, cover: DEFAULT_VINYL_COVER, url: item.relUrl }])}
+            onclick={() => onPlayQueue([toBrowserTrack(item)])}
           >
             {isPlayingThis ? '⏸ 播放中' : '▶️ 播放'}
           </SlotBtn>
@@ -253,7 +323,7 @@
         <div class="inline-flex md:hidden items-center gap-1.5 flex-shrink-0">
           <SlotBtn
             playing={isPlayingThis}
-            onclick={() => onPlayQueue([{ id: item.id || item.relUrl, name: item.name, artist: item.artist, cover: DEFAULT_VINYL_COVER, url: item.relUrl }])}
+            onclick={() => onPlayQueue([toBrowserTrack(item)])}
           >
             {isPlayingThis ? '⏸' : '▶️ 播放'}
           </SlotBtn>
@@ -287,24 +357,10 @@
     font-size: 13px;
   }
 
-  .stat-top-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .stat-info {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .stat-divider {
-    color: var(--text-muted);
-    opacity: 0.6;
-  }
+  .stat-top-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .stat-info { display: inline-flex; align-items: center; gap: 6px; }
+  .stat-divider { color: var(--text-muted); opacity: 0.6; }
+  .stat-top-actions { display: inline-flex; align-items: center; gap: 6px; }
 
   .auto-cache-toggle {
     display: inline-flex;
@@ -318,30 +374,21 @@
     user-select: none;
     font-size: 12px;
   }
-
-  .auto-cache-toggle input[type="checkbox"] {
-    cursor: pointer;
-    accent-color: var(--primary, #3b82f6);
-  }
+  .auto-cache-toggle input[type="checkbox"] { cursor: pointer; accent-color: var(--primary, #3b82f6); }
 
   .stat-actions-row {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 4px;
   }
+  .cache-action-btn { padding: 3px 6px; font-size: 11px; border-radius: 6px; }
+  .play-all-btn { font-weight: 600; white-space: nowrap; }
+  .btn-danger { color: #ef4444; }
 
-  .cache-action-btn {
-    padding: 4px 8px;
-    font-size: 12px;
-    border-radius: 6px;
-  }
-
-  .btn-danger {
-    color: #ef4444;
-  }
-
+  .play-filter-control,
   .clean-low-control {
     display: inline-flex;
     align-items: center;
@@ -349,41 +396,47 @@
     border: 1px solid var(--border-subtle);
     border-radius: 6px;
     overflow: hidden;
+    white-space: nowrap;
   }
+  .clean-low-control { margin-left: auto; }
+
+  .play-filter-btn {
+    padding: 3px 5px;
+    font-size: 11px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--primary, #3b82f6);
+    font-weight: 600;
+    transition: background 0.15s ease;
+  }
+  .play-filter-btn:hover:not(:disabled) { background: rgba(59, 130, 246, 0.12); }
+  .play-filter-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .clean-low-btn {
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 3px 5px;
+    font-size: 11px;
     border: none;
-    border-radius: 0;
     background: transparent;
     cursor: pointer;
     color: var(--text-primary);
   }
-
-  .clean-low-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
+  .clean-low-btn:hover { background: rgba(255, 255, 255, 0.08); }
 
   .clean-n-input {
-    width: 30px;
-    height: 22px;
-    padding: 0 2px;
+    width: 24px;
+    height: 20px;
+    padding: 0 1px;
     text-align: center;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     border: 1px solid var(--border-subtle);
     border-radius: 4px;
     background: var(--input-bg, rgba(0, 0, 0, 0.2));
     color: var(--text-primary);
-    margin: 0 2px;
+    margin: 0 1px;
   }
-
-  .clean-unit-text {
-    font-size: 11px;
-    color: var(--text-secondary);
-    padding-right: 6px;
-  }
+  .clean-unit-text { font-size: 11px; color: var(--text-secondary); padding-right: 4px; }
 
   .cache-sort-hint-bar {
     display: flex;
@@ -396,30 +449,10 @@
     margin-bottom: 8px;
     font-size: 12px;
   }
-
-  .hint-text-wrap {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .hint-icon {
-    font-size: 12px;
-  }
-
-  .hint-label {
-    color: var(--text-secondary);
-  }
-
-  .hint-badge {
-    color: var(--text-muted);
-    font-size: 11px;
-    flex-shrink: 0;
-  }
-
+  .hint-text-wrap { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hint-icon { font-size: 12px; }
+  .hint-label { color: var(--text-secondary); }
+  .hint-badge { color: var(--text-muted); font-size: 11px; flex-shrink: 0; }
   .play-count-badge {
     display: inline-flex;
     align-items: center;
@@ -431,8 +464,5 @@
     color: #60a5fa;
     border: 1px solid rgba(59, 130, 246, 0.25);
   }
-
-  .cache-time-tag {
-    opacity: 0.8;
-  }
+  .cache-time-tag { opacity: 0.8; }
 </style>

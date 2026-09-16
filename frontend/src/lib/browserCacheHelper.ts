@@ -1,4 +1,5 @@
-import { formatArtist } from './utils';
+import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
+import type { Track } from './types';
 import {
   PWA_CACHE_NAME,
   PWA_TRACK_META_KEY,
@@ -14,6 +15,7 @@ export type BrowserCacheItem = {
   relUrl: string;
   name: string;
   artist: string;
+  cover?: string;
   size: number;
   time: number;
   playCount: number;
@@ -100,6 +102,9 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
         existing.size = Math.max(existing.size, size);
         existing.time = Math.max(existing.time, itemTime);
         existing.playCount = Math.max(existing.playCount, itemPlayCount);
+        if (meta.cover && (!existing.cover || existing.cover === DEFAULT_VINYL_COVER)) {
+          existing.cover = meta.cover;
+        }
       } else {
         byKey.set(uniqueKey, {
           key: uniqueKey,
@@ -109,6 +114,7 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
           relUrl,
           name: songName || (songId ? `离线音轨 #${songId}` : (urlHistMatch ? `本地音轨 #${urlHistMatch[1]}` : '本地缓存音频')),
           artist: songArtist || '浏览器已离线',
+          cover: meta.cover || DEFAULT_VINYL_COVER,
           size,
           time: itemTime,
           playCount: itemPlayCount
@@ -208,3 +214,26 @@ export async function clearAllBrowserAudioCache(): Promise<void> {
     window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
   }
 }
+
+/**
+ * 将离线缓存曲目转换成标准 Track 对象供全局播放器调度
+ */
+export function toBrowserTrack(item: BrowserCacheItem): Track {
+  return {
+    id: item.id || item.relUrl,
+    name: item.name,
+    artist: item.artist,
+    cover: item.cover || DEFAULT_VINYL_COVER,
+    url: item.relUrl,
+    isLocal: true
+  };
+}
+
+/**
+ * 筛选累计播放次数大于等于指定阈值的离线曲目
+ */
+export function filterCacheByMinPlayCount(list: BrowserCacheItem[], minCount: number): BrowserCacheItem[] {
+  const threshold = Math.max(0, Number(minCount) || 0);
+  return list.filter((item) => item.playCount >= threshold);
+}
+

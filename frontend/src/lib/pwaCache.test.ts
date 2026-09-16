@@ -14,6 +14,8 @@ import {
   formatCacheDate,
   scanBrowserCache,
   clearLowPlayCountCacheEntries,
+  toBrowserTrack,
+  filterCacheByMinPlayCount,
   type BrowserCacheItem
 } from './browserCacheHelper';
 
@@ -170,5 +172,47 @@ describe('PWA Cache & Auto-cache Contracts', () => {
     const updatedMeta = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
     expect(updatedMeta['/v3/stream?id=1']).toBeUndefined();
     expect(updatedMeta['/v3/stream?id=2']).toBeDefined();
+  });
+
+  it('toBrowserTrack converts BrowserCacheItem to playable Track object', () => {
+    const item: BrowserCacheItem = {
+      key: 'song_123',
+      id: '123',
+      urls: ['http://localhost/v3/stream?id=123'],
+      relUrls: ['/v3/stream?id=123'],
+      relUrl: '/v3/stream?id=123',
+      name: '七里香',
+      artist: '周杰伦',
+      cover: 'https://example.com/cover.jpg',
+      size: 1024,
+      time: 123456,
+      playCount: 5
+    };
+
+    const track = toBrowserTrack(item);
+    expect(track.id).toBe('123');
+    expect(track.name).toBe('七里香');
+    expect(track.artist).toBe('周杰伦');
+    expect(track.cover).toBe('https://example.com/cover.jpg');
+    expect(track.url).toBe('/v3/stream?id=123');
+    expect(track.isLocal).toBe(true);
+  });
+
+  it('filterCacheByMinPlayCount filters items with playCount >= threshold', () => {
+    const list: BrowserCacheItem[] = [
+      { key: '1', id: '1', urls: [], relUrls: [], relUrl: '/1', name: 'A', artist: 'Art', size: 10, time: 1, playCount: 0 },
+      { key: '2', id: '2', urls: [], relUrls: [], relUrl: '/2', name: 'B', artist: 'Art', size: 20, time: 2, playCount: 1 },
+      { key: '3', id: '3', urls: [], relUrls: [], relUrl: '/3', name: 'C', artist: 'Art', size: 30, time: 3, playCount: 3 },
+      { key: '4', id: '4', urls: [], relUrls: [], relUrl: '/4', name: 'D', artist: 'Art', size: 40, time: 4, playCount: 10 }
+    ];
+
+    expect(filterCacheByMinPlayCount(list, 0).length).toBe(4);
+    expect(filterCacheByMinPlayCount(list, 1).map(i => i.id)).toEqual(['2', '3', '4']);
+    expect(filterCacheByMinPlayCount(list, 3).map(i => i.id)).toEqual(['3', '4']);
+    expect(filterCacheByMinPlayCount(list, 5).map(i => i.id)).toEqual(['4']);
+    expect(filterCacheByMinPlayCount(list, 99).length).toBe(0);
+    // 容错兜底
+    expect(filterCacheByMinPlayCount(list, -1).length).toBe(4);
+    expect(filterCacheByMinPlayCount(list, NaN).length).toBe(4);
   });
 });
