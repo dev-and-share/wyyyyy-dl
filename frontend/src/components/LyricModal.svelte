@@ -224,17 +224,14 @@
       >
         <PlayerIcon name="next" size={20} />
       </button>
-      <!-- iOS Web Audio API 会导致熄屏后台播放中断，故在 iOS 设备上隐藏 PEQ 均衡器 -->
-      {#if !isIOS()}
-        <button
-          type="button"
-          class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-          onclick={onTogglePeq}
-          title="打开均衡器"
-        >
-          <PlayerIcon name="equalizer" size={19} />
-        </button>
-      {/if}
+      <button
+        type="button"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        onclick={onTogglePeq}
+        title="打开均衡器"
+      >
+        <PlayerIcon name="equalizer" size={19} />
+      </button>
       <button
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
