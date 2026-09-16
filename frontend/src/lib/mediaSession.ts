@@ -45,14 +45,66 @@ export interface MediaSessionLyricInfo {
  * - Artist（副标题）：有歌词时显示 "曲名 · 歌手"；无歌词时显示纯歌手名。
  * - Album（第三行）：有下一句时显示 "⏭ [下一句预告]"，若为最后一句显示曲目名，无歌词显示 "网易云音乐"。
  */
+let currentTrackKey: string | number | null = null;
+let currentCoverUrl: string | null = null;
+
+function formatArtworkUrl(url: string | undefined): string {
+  if (!url || url === DEFAULT_VINYL_COVER) {
+    try {
+      return new URL('/favicon.png', window.location.href).href;
+    } catch {
+      return '/favicon.png';
+    }
+  }
+  if (url.startsWith('data:image/svg+xml')) {
+    try {
+      return new URL('/favicon.png', window.location.href).href;
+    } catch {
+      return '/favicon.png';
+    }
+  }
+  const cleanUrl = url.replace(/^http:\/\//i, 'https://');
+  try {
+    return new URL(cleanUrl, window.location.href).href;
+  } catch {
+    return cleanUrl;
+  }
+}
+
+function getArtworkMimeType(url: string): string {
+  const lower = url.toLowerCase();
+  if (lower.includes('.png')) return 'image/png';
+  if (lower.includes('.webp')) return 'image/webp';
+  return 'image/jpeg';
+}
+
+function createArtworkList(coverUrl: string) {
+  const type = getArtworkMimeType(coverUrl);
+  return [
+    { src: coverUrl, sizes: '96x96', type },
+    { src: coverUrl, sizes: '128x128', type },
+    { src: coverUrl, sizes: '192x192', type },
+    { src: coverUrl, sizes: '256x256', type },
+    { src: coverUrl, sizes: '384x384', type },
+    { src: coverUrl, sizes: '512x512', type }
+  ];
+}
+
 export function updateMediaSessionMetadata(track: Track | null, lyricInfo?: MediaSessionLyricInfo) {
   if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
   if (!track) {
     navigator.mediaSession.metadata = null;
+    currentTrackKey = null;
+    currentCoverUrl = null;
     return;
   }
 
-  const coverSrc = track.cover && track.cover !== DEFAULT_VINYL_COVER ? track.cover : '/favicon.png';
+  // 外部/测试环境重置了 metadata 时同步重置本地缓存标记
+  if (!navigator.mediaSession.metadata) {
+    currentTrackKey = null;
+    currentCoverUrl = null;
+  }
+
   const songName = track.name || '未知歌曲';
   const artistName = formatArtist(track.artist) || '未知歌手';
 
@@ -63,19 +115,34 @@ export function updateMediaSessionMetadata(track: Track | null, lyricInfo?: Medi
   const artist = currentText ? `${songName} · ${artistName}` : artistName;
   const album = nextText ? `⏭ ${nextText}` : (currentText ? songName : '网易云音乐');
 
+  const coverUrl = formatArtworkUrl(track.cover);
+  const trackKey = track.id ?? track.url ?? `${songName}-${artistName}`;
+
+  // 🛡️ 车载蓝牙与锁屏防抖契约（Tesla 封面避坑）：
+  // 仅在歌曲切换或封面发生变更时，才全量构造 new MediaMetadata 并绑定 artwork。
+  // 随后歌词跳动（每 2~3 秒一次）时，必须【就地修改】metadata 的 title / artist / album，
+  // 绝对不可重新实例化 MediaMetadata 或重新赋值 artwork！
+  // 否则会导致车载蓝牙 BIP（Basic Imaging Profile）图片传输死循环被掐断，车机超时退化为黑色默认图标。
+  if (
+    navigator.mediaSession.metadata &&
+    currentTrackKey === trackKey &&
+    currentCoverUrl === coverUrl
+  ) {
+    navigator.mediaSession.metadata.title = title;
+    navigator.mediaSession.metadata.artist = artist;
+    navigator.mediaSession.metadata.album = album;
+    return;
+  }
+
+  currentTrackKey = trackKey;
+  currentCoverUrl = coverUrl;
+
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
       artist,
       album,
-      artwork: [
-        { src: coverSrc, sizes: '96x96' },
-        { src: coverSrc, sizes: '128x128' },
-        { src: coverSrc, sizes: '192x192' },
-        { src: coverSrc, sizes: '256x256' },
-        { src: coverSrc, sizes: '384x384' },
-        { src: coverSrc, sizes: '512x512' }
-      ]
+      artwork: createArtworkList(coverUrl)
     });
   } catch (e) {
     console.warn('[MediaSession] 更新曲目元数据失败:', e);

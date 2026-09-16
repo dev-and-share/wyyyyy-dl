@@ -141,4 +141,33 @@ describe('mediaSession iOS contracts', () => {
     expect(navigator.mediaSession.metadata?.artist).toBe('周杰伦');
     expect(navigator.mediaSession.metadata?.album).toBe('⏭ 第一句歌词');
   });
+
+  it('updateMediaSessionMetadata mutates metadata in-place and preserves artwork when only lyrics change', () => {
+    const track: Track = {
+      id: 999,
+      name: '晴天',
+      artist: '周杰伦',
+      cover: 'http://p1.music.126.net/cover.jpg'
+    };
+
+    updateMediaSessionMetadata(track);
+    const initialMetadataInstance = navigator.mediaSession.metadata;
+    expect(initialMetadataInstance).not.toBeNull();
+    // 自动将 http 升级为 https，且补充 type
+    expect(initialMetadataInstance?.artwork[0].src).toBe('https://p1.music.126.net/cover.jpg');
+    expect(initialMetadataInstance?.artwork[0].type).toBe('image/jpeg');
+
+    // 歌词行切换
+    updateMediaSessionMetadata(track, {
+      currentText: '故事的小黄花',
+      nextText: '从出生那年就飘着'
+    });
+
+    // 关键契约：同一曲目切歌词时，MediaMetadata 实例必须保持同一对象，严禁重新实例化替换 artwork（避免中断车载蓝牙 BIP）
+    expect(navigator.mediaSession.metadata).toBe(initialMetadataInstance);
+    expect(navigator.mediaSession.metadata?.title).toBe('故事的小黄花');
+    expect(navigator.mediaSession.metadata?.artist).toBe('晴天 · 周杰伦');
+    expect(navigator.mediaSession.metadata?.album).toBe('⏭ 从出生那年就飘着');
+    expect(navigator.mediaSession.metadata?.artwork[0].src).toBe('https://p1.music.126.net/cover.jpg');
+  });
 });
