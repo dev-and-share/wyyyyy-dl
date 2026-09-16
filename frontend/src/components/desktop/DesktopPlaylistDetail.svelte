@@ -42,7 +42,7 @@
     downloadedSet?: Set<number>;
     onBackToGallery: () => void;
     onToggleLike: (id: number, name: string) => void;
-    onPlayQueue: (tracks: any[], idx?: number) => void;
+    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
     onAlbum?: (albumId: string) => void;
     onReveal?: (item: any) => void;
     showToast: (m: string, t?: string) => void;
@@ -104,7 +104,7 @@
         isLocal: status.isLocal
       };
     });
-    onPlayQueue(queue, 0);
+    onPlayQueue(queue, { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false });
     showToast(`已开始播放《${playlist?.name || '歌单'}》(${queue.length} 首)`, 'success', 2000);
   }
 

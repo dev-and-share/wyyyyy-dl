@@ -148,4 +148,61 @@ describe('PlayerStore WYSIWYG shuffle & deterministic queue navigation', () => {
     expect(trialStore.getNextTrack()).toBeNull();
     expect(trialStore.getPrevTrack()).toBeNull();
   });
+
+  it('setQueue in shuffle mode shuffles entire queue and starts at index 0 for whole playlist', () => {
+    store.playMode = 'shuffle';
+    store.playlistId = null;
+
+    store.setQueue([...sampleTracks], {
+      startIndex: 0,
+      playlistId: '12345',
+      isExplicitTrack: false
+    });
+
+    expect(store.playlistId).toBe('12345');
+    expect(store.qIndex).toBe(0);
+    expect(store.queue).toHaveLength(5);
+    // 集合保持一致
+    expect(new Set(store.queue.map(t => t.id))).toEqual(new Set(sampleTracks.map(t => t.id)));
+  });
+
+  it('setQueue in shuffle mode with explicit track fixes selected track at index 0 and shuffles others', () => {
+    store.playMode = 'shuffle';
+
+    // 用户在歌单中点了第 4 首「枫」(id: 4, index: 3)
+    store.setQueue([...sampleTracks], {
+      startIndex: 3,
+      playlistId: '12345',
+      isExplicitTrack: true
+    });
+
+    expect(store.playlistId).toBe('12345');
+    expect(store.qIndex).toBe(0);
+    expect(store.queue[0].id).toBe(4);
+    expect(store.queue[0].name).toBe('枫');
+    expect(store.activeTrack?.name).toBe('枫');
+    expect(store.queue).toHaveLength(5);
+    expect(new Set(store.queue.map(t => t.id))).toEqual(new Set(sampleTracks.map(t => t.id)));
+  });
+
+  it('setQueue in list mode preserves exact array order and startIndex', () => {
+    store.playMode = 'list';
+
+    store.setQueue([...sampleTracks], 2, '54321');
+
+    expect(store.playlistId).toBe('54321');
+    expect(store.qIndex).toBe(2);
+    expect(store.activeTrack?.name).toBe('夜曲');
+    expect(store.queue[0].name).toBe('晴天');
+  });
+
+  it('clearQueue resets playlistId and clears state', () => {
+    store.setQueue([...sampleTracks], 0, '999');
+    expect(store.playlistId).toBe('999');
+
+    store.clearQueue();
+    expect(store.playlistId).toBeNull();
+    expect(store.queue).toHaveLength(0);
+    expect(store.qIndex).toBe(0);
+  });
 });

@@ -119,12 +119,31 @@ describe('playerHelper URL resolution & preload contracts', () => {
 
     expect(mockOnPlayQueue).toHaveBeenCalledTimes(1);
     const queued = mockOnPlayQueue.mock.calls[0][0];
+    const options = mockOnPlayQueue.mock.calls[0][1];
     expect(queued).toHaveLength(4);
     expect(queued[0]).toMatchObject({ id: 101, name: '晴天', artist: '周杰伦', cover: '/pic1.png' });
     expect(queued[1]).toMatchObject({ id: 102, name: '枫', artist: '周杰伦', cover: '/pic2.png' });
     expect(queued[2]).toMatchObject({ id: 103, name: '七里香', artist: '周杰伦' });
     expect(queued[3]).toMatchObject({ id: 104, name: '纯音乐', artist: '' });
+    expect(options).toEqual({ startIndex: 0, playlistId: '12345', isExplicitTrack: false });
     expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('已开始播放《我的歌单》'), 'success', 2000);
+  });
+
+  it('playPlaylistTracks prevents accidental replay if the same playlist is already playing', async () => {
+    const { playPlaylistTracks } = await import('./playerHelper');
+    const { playerStore } = await import('./playerStore.svelte');
+    const mockOnPlayQueue = vi.fn();
+    const mockShowToast = vi.fn();
+
+    playerStore.playlistId = '99999';
+    playerStore.playing = true;
+    playerStore.queue = [{ id: 1, name: '测试歌曲', artist: '测试' }];
+
+    await playPlaylistTracks('99999', '同名歌单', mockOnPlayQueue, mockShowToast);
+
+    // 🛡️ 不应重新拉取接口或重置队列，仅友好提示
+    expect(mockOnPlayQueue).not.toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith('正在播放《同名歌单》', 'info', 1500);
   });
 
   it('toPlayerTrack normalizes metadata and preserves isLocal/freeTrial contracts (DRY)', async () => {

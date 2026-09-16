@@ -4,6 +4,12 @@ import { savePlayerStateToStorage, loadPlayerStateFromStorage } from './playerSt
 
 export type PlayMode = 'list' | 'single' | 'shuffle';
 
+export interface SetQueueOptions {
+  startIndex?: number;
+  playlistId?: string | number | null;
+  isExplicitTrack?: boolean;
+}
+
 /**
  * 🎵 Fisher-Yates 原地数组洗牌算法
  */
@@ -36,6 +42,7 @@ export class PlayerStore {
   autoSkipTrial = $state<boolean>(true);
   serverOnly = $state<boolean>(false);
   offlineOnly = $state<boolean>(false);
+  playlistId = $state<string | number | null>(null);
 
   // 派生：当前正在播放的曲目
   activeTrack = $derived.by<Track | null>(() => {
@@ -190,11 +197,57 @@ export class PlayerStore {
 
   /**
    * 批量重设播放队列
+   * 智能处理当前播放模式（WYSIWYG 架构）：
+   * 1. 若当前处于 shuffle 模式且为整单播放，整单洗牌，打乱后的首首立即起播；
+   * 2. 若当前处于 shuffle 模式且指定了单曲，目标歌曲置顶为第 0 项，其余曲目洗牌排后；
+   * 3. 顺序或单曲循环模式下保持原始顺序。
    */
-  setQueue(tracks: Track[], startIndex = 0) {
+  setQueue(
+    tracks: Track[],
+    optionsOrIndex: number | SetQueueOptions = 0,
+    maybePlaylistId?: string | number | null
+  ) {
     if (!tracks || tracks.length === 0) return;
-    this.queue = tracks;
-    this.qIndex = startIndex >= 0 && startIndex < tracks.length ? startIndex : 0;
+
+    let startIndex = 0;
+    let playlistId: string | number | null = null;
+    let isExplicitTrack = false;
+
+    if (typeof optionsOrIndex === 'number') {
+      startIndex = optionsOrIndex;
+      if (maybePlaylistId !== undefined) {
+        playlistId = maybePlaylistId;
+      }
+    } else if (optionsOrIndex && typeof optionsOrIndex === 'object') {
+      startIndex = optionsOrIndex.startIndex ?? 0;
+      playlistId = optionsOrIndex.playlistId ?? null;
+      isExplicitTrack = Boolean(optionsOrIndex.isExplicitTrack);
+    }
+
+    if (playlistId !== null && playlistId !== undefined) {
+      this.playlistId = String(playlistId);
+    } else {
+      this.playlistId = null;
+    }
+
+    if (this.playMode === 'shuffle' && tracks.length > 1) {
+      if (!isExplicitTrack && startIndex === 0) {
+        // 场景 A：整单随机播放（播放全部 / 点击歌单播放按钮）
+        this.queue = shuffleArray(tracks);
+        this.qIndex = 0;
+      } else {
+        // 场景 B：在随机模式下点击了指定单曲（startIndex）
+        const validIdx = startIndex >= 0 && startIndex < tracks.length ? startIndex : 0;
+        const target = tracks[validIdx];
+        const others = tracks.filter((_, i) => i !== validIdx);
+        this.queue = [target, ...shuffleArray(others)];
+        this.qIndex = 0;
+      }
+    } else {
+      this.queue = [...tracks];
+      this.qIndex = startIndex >= 0 && startIndex < tracks.length ? startIndex : 0;
+    }
+
     this.curTime = 0;
     this.save();
   }
@@ -220,6 +273,7 @@ export class PlayerStore {
     this.curTime = 0;
     this.duration = 0;
     this.playing = false;
+    this.playlistId = null;
     this.save();
   }
 
@@ -260,7 +314,8 @@ export class PlayerStore {
       curTime: this.curTime,
       autoSkipTrial: this.autoSkipTrial,
       serverOnly: this.serverOnly,
-      offlineOnly: this.offlineOnly
+      offlineOnly: this.offlineOnly,
+      playlistId: this.playlistId
     });
   }
 
@@ -277,6 +332,7 @@ export class PlayerStore {
     if (s.serverOnly !== undefined) this.serverOnly = s.serverOnly;
     if (s.offlineOnly !== undefined) this.offlineOnly = s.offlineOnly;
     if (s.curTime && s.curTime > 0) this.curTime = s.curTime;
+    if (s.playlistId) this.playlistId = s.playlistId;
   }
 }
 

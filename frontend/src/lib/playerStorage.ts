@@ -8,6 +8,7 @@ export interface PlayerPersistedState {
   autoSkipTrial: boolean;
   serverOnly: boolean;
   offlineOnly: boolean;
+  playlistId?: string | null;
 }
 
 export function savePlayerStateToStorage(state: {
@@ -18,6 +19,7 @@ export function savePlayerStateToStorage(state: {
   autoSkipTrial: boolean;
   serverOnly: boolean;
   offlineOnly: boolean;
+  playlistId?: string | number | null;
 }) {
   if (typeof localStorage === 'undefined') return;
   try {
@@ -33,6 +35,11 @@ export function savePlayerStateToStorage(state: {
     localStorage.setItem('wyyyy_player_auto_skip_trial', String(state.autoSkipTrial));
     localStorage.setItem('wyyyy_player_server_only', String(state.serverOnly));
     localStorage.setItem('wyyyy_player_offline_only', String(state.offlineOnly));
+    if (state.playlistId !== undefined && state.playlistId !== null) {
+      localStorage.setItem('wyyyy_player_playlist_id', String(state.playlistId));
+    } else {
+      localStorage.removeItem('wyyyy_player_playlist_id');
+    }
   } catch (e) {}
 }
 
@@ -68,6 +75,9 @@ export function loadPlayerStateFromStorage(): Partial<PlayerPersistedState> {
 
     const seekTime = parseFloat(timeStr || '0') || 0;
     if (seekTime > 0) result.curTime = seekTime;
+
+    const playlistId = localStorage.getItem('wyyyy_player_playlist_id');
+    if (playlistId) result.playlistId = playlistId;
 
     return result;
   } catch (e) {

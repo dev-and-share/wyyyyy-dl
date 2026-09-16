@@ -11,6 +11,7 @@
   import { sheetState } from './lib/ui.svelte';
   import { executeReveal } from './lib/revealHelper';
   import { playPlaylistTracks } from './lib/playerHelper';
+  import type { SetQueueOptions } from './lib/playerStore.svelte';
   import type { Track } from './lib/types';
 
   import TopBar from './components/TopBar.svelte';
@@ -36,7 +37,7 @@
   // ---------- 播放器状态桥接 (供各 Tab 感知) ----------
   let curTrack: Track | null = $state(null);
   let playing = $state(false);
-  let setQueue: (tracks: Track[], idx?: number) => void = $state(() => {});
+  let setQueue: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void = $state(() => {});
   let isPlayerOverlayOpen = $state(false);
 
   let isAnyOverlayOpen = $derived(isPlayerOverlayOpen || !!revealData || !!sheetState.data);

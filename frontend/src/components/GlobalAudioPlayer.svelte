@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { isIOS } from '../lib/utils';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
@@ -8,7 +7,7 @@
   import { resolveTrackUrl, preloadSurroundingTracks } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
-  import { playerStore } from '../lib/playerStore.svelte';
+  import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
   import { handleTrackPlayback, resetTrackPlayback } from '../lib/pwaCache.svelte';
   import type { Track } from '../lib/types';
 
@@ -28,7 +27,7 @@
   } = $props<{
     curTrack?: Track | null;
     playing?: boolean;
-    setQueue?: (tracks: Track[], idx?: number) => void;
+    setQueue?: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void;
     isOverlayOpen?: boolean;
     likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string) => void;
@@ -177,6 +176,7 @@
     }
 
     if (url && audioEl && playerStore.activeTrack === track) {
+      updateMediaSessionMetadata(track);
       audioEl.src = url;
       if (resetTime) {
         try { audioEl.currentTime = 0; } catch {}
@@ -252,9 +252,39 @@
     playerStore.save();
   }
 
-  function handleSetQueue(tracks: Track[], idx = 0) {
+  function handleSetQueue(
+    tracks: Track[],
+    optionsOrIdx: number | SetQueueOptions = 0,
+    maybePlaylistId?: string | number | null
+  ) {
     if (!tracks || !tracks.length) return;
-    playerStore.setQueue(tracks, idx);
+
+    let targetPlaylistId: string | number | null = null;
+    if (typeof optionsOrIdx === 'number') {
+      if (maybePlaylistId !== undefined) targetPlaylistId = maybePlaylistId;
+    } else if (optionsOrIdx && typeof optionsOrIdx === 'object') {
+      targetPlaylistId = optionsOrIdx.playlistId ?? null;
+    }
+
+    // 🛡️ 同歌单防误触保护：如果已在播放该歌单
+    if (
+      targetPlaylistId !== null &&
+      targetPlaylistId !== undefined &&
+      playerStore.playlistId &&
+      String(playerStore.playlistId) === String(targetPlaylistId) &&
+      playerStore.queue.length > 0
+    ) {
+      if (playerStore.playing) {
+        showToast('正在播放该歌单中', 'info', 1500);
+        return;
+      } else {
+        showToast('继续播放该歌单', 'info', 1500);
+        ensurePlay(false);
+        return;
+      }
+    }
+
+    playerStore.setQueue(tracks, optionsOrIdx, maybePlaylistId);
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
     setTimeout(() => ensurePlay(true), 50);
@@ -365,9 +395,7 @@
   ontimeupdate={(e) => {
     const a = e.currentTarget;
     playerStore.curTime = a.currentTime;
-    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
-      playerStore.duration = a.duration;
-    }
+    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
     if (playerStore.curTime > 0) {
       try { localStorage.setItem('wyyyy_player_time', String(playerStore.curTime)); } catch {}
     }
@@ -382,9 +410,7 @@
   }}
   onloadedmetadata={(e) => {
     const a = e.currentTarget as HTMLAudioElement;
-    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
-      playerStore.duration = a.duration;
-    }
+    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
     updateMediaSessionPosition(a);
   }}
   onseeked={(e) => {
@@ -396,10 +422,7 @@
       updateMediaSessionMetadata(playerStore.activeTrack, activeLyric);
     }
   }}
-  onerror={() => {
-    console.warn('[Player] 原生音频流加载失败:', audioEl?.error);
-    playerStore.playing = false;
-  }}
+  onerror={() => { console.warn('[Player] 原生音频流加载失败:', audioEl?.error); playerStore.playing = false; }}
   onended={(e) => {
     resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
@@ -419,34 +442,19 @@
 
 <!-- 🎬 现代专业音频播放控制栏 -->
 <PlayerBar
-  curTrack={playerStore.activeTrack}
-  queue={playerStore.queue}
-  playing={playerStore.playing}
-  curTime={playerStore.curTime}
-  duration={playerStore.duration}
-  playMode={playerStore.playMode}
-  bind:vol={playerStore.vol}
-  onTogglePlay={togglePlay}
-  onPrev={prev}
-  onNext={next}
-  onToggleMode={handleToggleMode}
-  onSeek={seek}
-  onLyric={() => showLyric = !showLyric}
-  onPeq={() => showPeq = !showPeq}
-  onQueue={() => showDrawer = !showDrawer}
+  curTrack={playerStore.activeTrack} queue={playerStore.queue} playing={playerStore.playing}
+  curTime={playerStore.curTime} duration={playerStore.duration} playMode={playerStore.playMode}
+  bind:vol={playerStore.vol} onTogglePlay={togglePlay} onPrev={prev} onNext={next}
+  onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
+  onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
   onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}
 />
 
 <!-- 📜 播放列表统一抽屉 -->
 {#if showDrawer}
   <PlaylistDrawer
-    queue={playerStore.queue}
-    qIndex={playerStore.qIndex}
-    tasks={taskState.tasks}
-    {likedSet}
-    autoSkipTrial={playerStore.autoSkipTrial}
-    serverOnly={playerStore.serverOnly}
-    offlineOnly={playerStore.offlineOnly}
+    queue={playerStore.queue} qIndex={playerStore.qIndex} tasks={taskState.tasks} {likedSet}
+    autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly}
     downloadedSet={taskState.downloadedSet}
     onPlayIndex={(idx) => {
       playerStore.qIndex = idx;
@@ -460,9 +468,7 @@
     onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
     onToggleServerOnly={(val) => playerStore.toggleServerOnly(val)}
     onToggleOfflineOnly={(val) => playerStore.toggleOfflineOnly(val)}
-    onClearTasks={clearTasks}
-    onShuffle={handleShuffleAction}
-    {onReveal}
+    onClearTasks={clearTasks} onShuffle={handleShuffleAction} {onReveal}
     onClose={() => showDrawer = false}
   />
 {/if}
@@ -470,27 +476,18 @@
 <!-- 全屏黑胶歌词 -->
 {#if showLyric && playerStore.activeTrack}
   <LyricModal
-    track={playerStore.activeTrack}
-    currentTime={playerStore.curTime}
-    duration={playerStore.duration}
-    playing={playerStore.playing}
-    playMode={playerStore.playMode}
-    bind:vol={playerStore.vol}
+    track={playerStore.activeTrack} currentTime={playerStore.curTime} duration={playerStore.duration}
+    playing={playerStore.playing} playMode={playerStore.playMode} bind:vol={playerStore.vol}
     isLiked={likedSet.has(Number(playerStore.activeTrack.id))}
-    onTogglePlay={togglePlay}
-    onPrev={prev}
-    onNext={next}
-    onToggleMode={handleToggleMode}
-    onSeek={seek}
+    onTogglePlay={togglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek}
     onSeekTime={(t) => { if (audioEl) { audioEl.currentTime = t; playerStore.curTime = t; } }}
     onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
-    onTogglePeq={() => showPeq = !showPeq}
-    onToggleDrawer={() => showDrawer = !showDrawer}
+    onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer}
     onClose={() => showLyric = false}
   />
 {/if}
 
-<!-- iOS Web Audio API 熄屏会导致挂起中断音频，故在 iOS 设备上彻底不加载 PEQ -->
-{#if !isIOS() && showPeq}
+<!-- 🎛️ 5 段参量均衡器统一抽屉 -->
+{#if showPeq}
   <PeqDrawer onClose={() => showPeq = false} />
 {/if}

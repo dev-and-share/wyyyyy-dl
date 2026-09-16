@@ -4,7 +4,7 @@ import { cachedSongIdSet } from './pwaCache.svelte';
 import { markSongDownloaded, getTrackSourceStatus } from './trackStatus.svelte';
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
 import { recordPlaylistPlay } from './playlist.svelte';
-import { playerStore } from './playerStore.svelte';
+import { playerStore, type SetQueueOptions } from './playerStore.svelte';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -98,16 +98,36 @@ export function preloadNextTrack(queue: Track[], curIndex: number, playMode: str
 export async function playPlaylistTracks(
   playlistId: string,
   playlistName: string,
-  onPlayQueue: (tracks: Track[], idx?: number) => void,
+  onPlayQueue: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void,
   showToast: (m: string, t?: string, d?: number) => void
 ) {
+  // 🛡️ 同歌单防误触保护快速通道
+  if (
+    playerStore.playlistId &&
+    String(playerStore.playlistId) === String(playlistId) &&
+    playerStore.queue.length > 0
+  ) {
+    if (playerStore.playing) {
+      showToast(`正在播放《${playlistName}》`, 'info', 1500);
+      return;
+    } else {
+      showToast(`继续播放《${playlistName}》`, 'info', 1500);
+      playerStore.playing = true;
+      return;
+    }
+  }
+
   try {
     showToast(`正在载入《${playlistName}》...`, 'info', 1500);
     const res = await api.playlist(playlistId);
     const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
     if (tracks && tracks.length > 0) {
       recordPlaylistPlay(playlistId);
-      onPlayQueue(tracks.map((t: any) => toPlayerTrack(t)), 0);
+      onPlayQueue(tracks.map((t: any) => toPlayerTrack(t)), {
+        startIndex: 0,
+        playlistId,
+        isExplicitTrack: false
+      });
       showToast(`已开始播放《${playlistName}》(${tracks.length} 首)`, 'success', 2000);
     } else {
       showToast('歌单内暂无曲目', 'warning');

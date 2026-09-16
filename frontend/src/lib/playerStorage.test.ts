@@ -20,7 +20,8 @@ describe('playerStorage persistence contracts', () => {
       curTime: 92.5,
       autoSkipTrial: true,
       serverOnly: true,
-      offlineOnly: false
+      offlineOnly: false,
+      playlistId: '88888'
     });
 
     const state = loadPlayerStateFromStorage();
@@ -34,6 +35,7 @@ describe('playerStorage persistence contracts', () => {
     expect(state.autoSkipTrial).toBe(true);
     expect(state.serverOnly).toBe(true);
     expect(state.offlineOnly).toBe(false);
+    expect(state.playlistId).toBe('88888');
   });
 
   it('handles invalid or corrupted storage data gracefully', () => {

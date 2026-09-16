@@ -55,7 +55,7 @@
     likedSet: Set<number>;
     downloadedSet?: Set<number>;
     onToggleLike: (id: number, name: string) => void;
-    onPlayQueue: (tracks: any[], idx?: number) => void;
+    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
     onAlbum?: (albumId: string) => void;
     onReveal?: (item: any) => void;
     showToast: (m: string, t?: string) => void;
@@ -354,7 +354,11 @@
           class="btn-secondary"
           onclick={() => {
             if (playlist?.id) recordPlaylistPlay(playlist.id);
-            onPlayQueue && onPlayQueue(allTracks.map((t: any) => toPlayerTrack(t)));
+            onPlayQueue && onPlayQueue(allTracks.map((t: any) => toPlayerTrack(t)), {
+              startIndex: 0,
+              playlistId: playlist?.id,
+              isExplicitTrack: false
+            });
           }}
           title="播放歌单全部歌曲"
         >
