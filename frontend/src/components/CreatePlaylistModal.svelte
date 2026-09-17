@@ -1,8 +1,9 @@
 <script lang="ts">
   import { api } from '../lib/api';
+  import { addNewPlaylist } from '../lib/playlist.svelte';
   import Modal from './Modal.svelte';
 
-  let { onClose, onSuccess } = $props<{ onClose: () => void; onSuccess: (id?: string) => void }>();
+  let { onClose, onSuccess, zIndex = 'z-[100030]' } = $props<{ onClose: () => void; onSuccess: (id?: string) => void; zIndex?: string }>();
   let name = $state('');
   let isPrivate = $state(false);
   let loading = $state(false);
@@ -13,7 +14,18 @@
     try {
       const j = await api.playlistCreate(name.trim(), isPrivate);
       if (j.code === '000000') {
-        onSuccess(j.data?.id);
+        const plId = j.data?.id || j.data?.playlist?.id;
+        const newPl = j.data?.playlist || (plId ? {
+          id: plId,
+          name: name.trim(),
+          trackCount: 0,
+          subscribed: false,
+          coverImgUrl: ''
+        } : null);
+        if (newPl) {
+          addNewPlaylist(newPl);
+        }
+        onSuccess(plId ? String(plId) : undefined);
         onClose();
       } else {
         alert(j.msg);
@@ -25,7 +37,7 @@
   }
 </script>
 
-<Modal title="新建自建歌单" icon="➕" maxWidth="max-w-[500px]" {onClose}>
+<Modal title="新建自建歌单" icon="➕" maxWidth="max-w-[500px]" {zIndex} {onClose}>
   <div class="mb-4">
     <div class="text-xs text-[var(--text-secondary,#94a3b8)] mb-1.5 font-medium">歌单名称：</div>
     <input

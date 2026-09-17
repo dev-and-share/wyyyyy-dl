@@ -205,4 +205,40 @@ describe('Playlist Play Count & Sorting Contract', () => {
     expect(playlistState.playlist?.name).toBe('后台最新张宇');
     expect(playlistState.playlist?.id).toBe(222);
   });
+
+  it('optimistically updates trackCount and syncs cache via updatePlaylistTrackCount and renderPlaylist', async () => {
+    const { updatePlaylistTrackCount, addNewPlaylist, renderPlaylist } = await import('./playlist.svelte');
+    const { setApiCache, getApiCache } = await import('./utils');
+
+    // 初始化歌单列表和缓存
+    myPlaylists.push(
+      { id: 101, name: '喜欢的音乐', specialType: 5, subscribed: false, trackCount: 10 },
+      { id: 501, name: 'test', subscribed: false, trackCount: 0 }
+    );
+    setApiCache('my_playlists', {
+      playlists: [
+        { id: 101, name: '喜欢的音乐', specialType: 5, subscribed: false, trackCount: 10 },
+        { id: 501, name: 'test', subscribed: false, trackCount: 0 }
+      ]
+    });
+
+    // 1. 增量 +1
+    updatePlaylistTrackCount('501', 1);
+    expect(myPlaylists.find(p => p.id === 501)?.trackCount).toBe(1);
+    expect(getApiCache('my_playlists')?.data?.playlists?.find((p: any) => p.id === 501)?.trackCount).toBe(1);
+
+    // 2. 绝对值更新（例如歌单详情拉取到实际 32 首）
+    renderPlaylist({
+      id: 501,
+      name: 'test',
+      tracks: new Array(32).fill({ id: 1 })
+    });
+    expect(myPlaylists.find(p => p.id === 501)?.trackCount).toBe(32);
+    expect(getApiCache('my_playlists')?.data?.playlists?.find((p: any) => p.id === 501)?.trackCount).toBe(32);
+
+    // 3. 测试新建歌单 addNewPlaylist
+    addNewPlaylist({ id: 999, name: '新自建歌单', trackCount: 0, subscribed: false });
+    expect(myPlaylists.some(p => p.id === 999)).toBe(true);
+    expect(getApiCache('my_playlists')?.data?.playlists?.some((p: any) => p.id === 999)).toBe(true);
+  });
 });

@@ -1,17 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
-  import { myPlaylists, loadMyPlaylists } from '../lib/playlist.svelte';
+  import { myPlaylists, loadMyPlaylists, setLastBackupPlaylist, updatePlaylistTrackCount } from '../lib/playlist.svelte';
   import { deleteApiCache } from '../lib/utils';
   import Modal from './Modal.svelte';
   import CreatePlaylistModal from './CreatePlaylistModal.svelte';
 
   let {
     song,
+    zIndex = 'z-[100020]',
     onClose,
     showToast
   } = $props<{
     song: { id: string | number; name: string; artist?: string } | null;
+    zIndex?: string;
     onClose: () => void;
     showToast: (m: string, t?: string) => void;
   }>();
@@ -29,6 +31,8 @@
         await loadMyPlaylists('created');
       } catch {}
       loading = false;
+    } else {
+      loadMyPlaylists('created').catch(() => {});
     }
   });
 
@@ -38,9 +42,13 @@
     try {
       const j = await api.playlistAdd(String(pl.id), String(song.id));
       if (j.code === '000000') {
-        showToast(`已成功将《${song.name}》添加到歌单「${pl.name}」`, 'success');
+        const addedCount = typeof j.data?.addedCount === 'number' ? j.data.addedCount : 1;
+        if (addedCount > 0) {
+          updatePlaylistTrackCount(pl.id, addedCount);
+        }
+        setLastBackupPlaylist(pl.id, pl.name);
+        showToast(j.msg || `已成功将《${song.name}》添加到歌单「${pl.name}」`, 'success');
         deleteApiCache('playlist_' + pl.id);
-        deleteApiCache('my_playlists');
         onClose();
       } else {
         showToast(j.msg || '添加到歌单失败', 'warning');
@@ -54,7 +62,7 @@
 </script>
 
 {#if song}
-  <Modal title="添加歌曲到歌单" icon="📂" maxWidth="max-w-[480px]" {onClose}>
+  <Modal title="添加歌曲到歌单" icon="📂" maxWidth="max-w-[480px]" {zIndex} {onClose}>
     <!-- 目标曲目提示卡片 -->
     <div class="flex items-center gap-2 p-2.5 rounded-xl bg-black/5 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 mb-3">
       <span class="text-base">🎵</span>
@@ -79,15 +87,18 @@
     </div>
 
     <!-- 自建歌单列表 -->
-    <div class="max-h-[260px] overflow-y-auto space-y-1.5 pr-1">
+    <div class="max-h-[48vh] sm:max-h-[320px] overflow-y-auto space-y-1.5 pr-1">
       {#if loading}
         <div class="py-8 text-center text-xs text-[var(--text-muted)]">
           🔄 正在读取我的歌单...
         </div>
       {:else}
         {#each createdPlaylists as pl}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
-            class="flex justify-between items-center p-2.5 rounded-xl border border-black/5 dark:border-white/10 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group"
+            class="flex justify-between items-center p-2.5 rounded-xl border border-black/5 dark:border-white/10 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group cursor-pointer"
+            onclick={() => handleAddTo(pl)}
           >
             <div class="flex items-center gap-2 flex-1 min-w-0">
               <span class="text-sm">📁</span>
@@ -99,8 +110,8 @@
             <button
               type="button"
               disabled={addingId === String(pl.id)}
-              class="btn-primary text-xs px-3 py-1 rounded-lg font-medium shrink-0 cursor-pointer disabled:opacity-50"
-              onclick={() => handleAddTo(pl)}
+              class="btn-primary text-xs px-3 py-1 rounded-lg font-medium shrink-0 cursor-pointer disabled:opacity-50 pointer-events-auto"
+              onclick={(e) => { e.stopPropagation(); handleAddTo(pl); }}
             >
               {addingId === String(pl.id) ? '添加中...' : '➕ 添加'}
             </button>
@@ -113,20 +124,12 @@
       {/if}
     </div>
 
-    {#snippet footer()}
-      <button
-        type="button"
-        onclick={onClose}
-        class="px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer"
-      >
-        关闭
-      </button>
-    {/snippet}
   </Modal>
 {/if}
 
 {#if showCreate}
   <CreatePlaylistModal
+    zIndex="z-[100030]"
     onClose={() => showCreate = false}
     onSuccess={(newId) => {
       showToast('歌单创建成功', 'success');

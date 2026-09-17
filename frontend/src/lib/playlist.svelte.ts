@@ -37,10 +37,62 @@ export async function loadMyPlaylists(f:any=playlistState.filter){
     if(JSON.stringify(pls)!==JSON.stringify(cached?.data?.playlists||[])){ setApiCache('my_playlists', j.data); myPlaylists.length=0; myPlaylists.push(...pls); }
   }catch(e){ throw e; }
 }
+export function updatePlaylistTrackCount(playlistId: string | number, deltaOrCount: number, isAbsolute = false) {
+  if (!playlistId) return;
+  const pidStr = String(playlistId);
+  const target = myPlaylists.find(p => String(p.id) === pidStr);
+  if (target) {
+    if (isAbsolute) {
+      target.trackCount = deltaOrCount;
+    } else {
+      target.trackCount = Math.max(0, (target.trackCount || 0) + deltaOrCount);
+    }
+  }
+  const cached = getApiCache('my_playlists');
+  if (cached?.data?.playlists && Array.isArray(cached.data.playlists)) {
+    const cachedItem = cached.data.playlists.find((p: any) => String(p.id) === pidStr);
+    if (cachedItem) {
+      if (isAbsolute) {
+        cachedItem.trackCount = deltaOrCount;
+      } else {
+        cachedItem.trackCount = Math.max(0, (cachedItem.trackCount || 0) + deltaOrCount);
+      }
+      setApiCache('my_playlists', cached.data);
+    }
+  }
+}
+
+export function addNewPlaylist(pl: any) {
+  if (!pl || !pl.id) return;
+  const exists = myPlaylists.some(p => String(p.id) === String(pl.id));
+  if (!exists) {
+    const favIdx = myPlaylists.findIndex(p => isFavoritePlaylist(p));
+    if (favIdx !== -1) {
+      myPlaylists.splice(favIdx + 1, 0, pl);
+    } else {
+      myPlaylists.unshift(pl);
+    }
+    const cached = getApiCache('my_playlists') || { code: '000000', data: { playlists: [] } };
+    if (!cached.data) cached.data = { playlists: [] };
+    if (!Array.isArray(cached.data.playlists)) cached.data.playlists = [];
+    if (!cached.data.playlists.some((p: any) => String(p.id) === String(pl.id))) {
+      if (favIdx !== -1) {
+        cached.data.playlists.splice(favIdx + 1, 0, pl);
+      } else {
+        cached.data.playlists.unshift(pl);
+      }
+      setApiCache('my_playlists', cached.data);
+    }
+  }
+}
+
 export function renderPlaylist(pl:any){
   playlistState.playlist=pl;
   allTracks.length=0; allTracks.push(...(pl.tracks||[]));
   playlistState.curPage=1;
+  if (pl?.id && Array.isArray(pl.tracks)) {
+    updatePlaylistTrackCount(pl.id, pl.tracks.length, true);
+  }
 }
 let currentLoadRequestId = 0;
 let activeTargetPlaylistId = '';
@@ -172,4 +224,24 @@ export function sortPlaylistsByPlayCount(list: any[]): any[] {
       return a.originalIndex - b.originalIndex;
     })
     .map(wrapper => wrapper.item);
+}
+
+const STORAGE_KEY_LAST_BACKUP_PLAYLIST = 'wyyyy_last_backup_playlist';
+
+export function getLastBackupPlaylist(): { id: string; name: string } | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LAST_BACKUP_PLAYLIST);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastBackupPlaylist(id: string | number, name: string): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY_LAST_BACKUP_PLAYLIST, JSON.stringify({ id: String(id), name }));
+  } catch {}
 }
