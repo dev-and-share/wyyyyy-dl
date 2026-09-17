@@ -6,6 +6,7 @@
   import PlayerControls from '../PlayerControls.svelte';
   import PlayerIcon from '../PlayerIcon.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
+  import TrackLikeBtn from '../TrackLikeBtn.svelte';
 
   let {
     curTrack,
@@ -17,6 +18,7 @@
     vol = $bindable(0.8),
     progressRatio = 0,
     ringDashOffset = 0,
+    likedSet = new Set<number>(),
     onTogglePlay,
     onPrev,
     onNext,
@@ -25,6 +27,7 @@
     onLyric,
     onPeq,
     onQueue,
+    onToggleLike = () => {},
     onMinimize
   } = $props<{
     curTrack: Track | null;
@@ -36,6 +39,7 @@
     vol: number;
     progressRatio: number;
     ringDashOffset: number;
+    likedSet?: Set<number>;
     onTogglePlay: () => void;
     onPrev: () => void;
     onNext: () => void;
@@ -44,8 +48,11 @@
     onLyric: () => void;
     onPeq: () => void;
     onQueue: () => void;
+    onToggleLike?: () => void;
     onMinimize: () => void;
   }>();
+
+  let isLiked = $derived(curTrack ? likedSet.has(Number(curTrack.id)) : false);
 </script>
 
 <div class="fixed bottom-0 left-0 right-0 h-[74px] bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[-12px_48px_rgba(0,0,0,0.45)] z-[9998] px-6 flex items-center transition-colors duration-300">
@@ -53,26 +60,35 @@
     <!-- 1. 左侧：黑胶封面与歌曲元信息 -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="flex items-center gap-3 flex-1 min-w-[180px] max-w-[320px] cursor-pointer select-none" onclick={onLyric} title="点击展开全屏歌词与大黑胶">
-      <PlayerCoverRing
-        cover={curTrack?.cover || DEFAULT_VINYL_COVER}
-        {playing}
-        {ringDashOffset}
-        size="md"
-      />
-      <div class="flex flex-col overflow-hidden min-w-0 flex-1">
-        <div class="flex items-center gap-1.5 overflow-hidden">
-          <span class="text-sm font-semibold text-[var(--text-main,#0f172a)] truncate leading-tight">
-            {curTrack?.name || '未在播放'}
-          </span>
-          {#if curTrack}
-            <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
-          {/if}
-        </div>
-        <div class="text-xs text-[var(--text-secondary,#64748b)] truncate mt-0.5">
-          {formatArtist(curTrack?.artist) || '未知歌手'}
+    <div class="flex items-center gap-3 flex-1 min-w-[180px] max-w-[340px]">
+      <div class="cursor-pointer select-none flex items-center gap-3 flex-1 min-w-0" onclick={onLyric} title="点击展开全屏歌词与大黑胶">
+        <PlayerCoverRing
+          cover={curTrack?.cover || DEFAULT_VINYL_COVER}
+          {playing}
+          {ringDashOffset}
+          size="md"
+        />
+        <div class="flex flex-col overflow-hidden min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 overflow-hidden">
+            <span class="text-sm font-semibold text-[var(--text-main,#0f172a)] truncate leading-tight">
+              {curTrack?.name || '未在播放'}
+            </span>
+            {#if curTrack}
+              <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
+            {/if}
+          </div>
+          <div class="text-xs text-[var(--text-secondary,#64748b)] truncate mt-0.5">
+            {formatArtist(curTrack?.artist) || '未知歌手'}
+          </div>
         </div>
       </div>
+      <!-- ❤️ 红心按钮：紧贴歌曲信息右侧，独立于点击区 -->
+      {#if curTrack}
+        <TrackLikeBtn
+          liked={isLiked}
+          onclick={onToggleLike}
+        />
+      {/if}
     </div>
 
     <!-- 2. 中间：核心控制按键 + 全宽进度条 -->

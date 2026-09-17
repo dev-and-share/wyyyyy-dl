@@ -16,6 +16,7 @@
     vol = $bindable(0.8),
     progressRatio = 0,
     ringDashOffset = 0,
+    likedSet = new Set<number>(),
     onTogglePlay,
     onPrev,
     onNext,
@@ -24,6 +25,7 @@
     onLyric,
     onPeq,
     onQueue,
+    onToggleLike = () => {},
     onMinimize
   } = $props<{
     curTrack: Track | null;
@@ -35,6 +37,7 @@
     vol: number;
     progressRatio: number;
     ringDashOffset: number;
+    likedSet?: Set<number>;
     onTogglePlay: () => void;
     onPrev: () => void;
     onNext: () => void;
@@ -43,10 +46,12 @@
     onLyric: () => void;
     onPeq: () => void;
     onQueue: () => void;
+    onToggleLike?: () => void;
     onMinimize: () => void;
   }>();
 
   let showVolPopup = $state(false);
+  let isLiked = $derived(curTrack ? likedSet.has(Number(curTrack.id)) : false);
 </script>
 
 <div class="mobile-player-docked-bar fixed left-0 right-0 bg-[var(--card-bg-solid)] backdrop-blur-2xl border-t border-x-0 border-b-0 border-[var(--border-color)] z-[9995] px-3 pt-2 pb-2 flex flex-col gap-1.5 transition-colors duration-300">
@@ -160,7 +165,7 @@
     {onSeek}
   />
 
-  <!-- 2.3 第三排：5个控制按键 -->
+  <!-- 2.3 第三排：5个控制按键（shuffle | prev | play | next | ❤️） -->
   <div class="flex items-center justify-between w-full px-2">
     <button
       data-testid="btn-toggle-mode"
@@ -198,13 +203,27 @@
     >
       <PlayerIcon name="next" size={20} />
     </button>
+    <!-- ❤️ 红心按钮替换原来的 close（收起功能移到左上角小封面长按或通过 × 文字区域） -->
     <button
       type="button"
-      class="w-8.5 h-8.5 rounded-full flex items-center justify-center text-sm text-[var(--text-muted)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] hover:text-red-400 active:scale-95 transition-all cursor-pointer"
-      onclick={onMinimize}
-      title="收起为黑胶悬浮球"
+      class="w-8.5 h-8.5 rounded-full flex items-center justify-center bg-[var(--btn-slot-bg)] border active:scale-95 transition-all cursor-pointer
+        {isLiked
+          ? 'border-red-500/40 text-red-500'
+          : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400/30'}"
+      onclick={onToggleLike}
+      title={isLiked ? '取消红心' : '添加红心收藏'}
     >
-      <PlayerIcon name="close" size={14} />
+      <PlayerIcon name="heart" liked={isLiked} size={18} />
     </button>
   </div>
+
+  <!-- 收起悬浮球入口（移至右上角，不占用主控制行） -->
+  <button
+    type="button"
+    class="absolute top-1.5 right-2 w-5 h-5 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer opacity-50 hover:opacity-100"
+    onclick={onMinimize}
+    title="收起为黑胶悬浮球"
+  >
+    <PlayerIcon name="close" size={11} />
+  </button>
 </div>

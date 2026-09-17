@@ -448,6 +448,8 @@
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
   onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}
+  {likedSet}
+  onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
 />
 
 <!-- 📜 播放列表统一抽屉 -->
