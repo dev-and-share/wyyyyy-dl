@@ -3,8 +3,10 @@
   import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
   import { api } from '../lib/api';
   import { parseLrc, type LrcLine } from '../lib/lyricParser';
+  import { showToast } from '../lib/toast.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
+  import AddToPlaylistModal from './AddToPlaylistModal.svelte';
 
   type Lrc = LrcLine;
 
@@ -48,6 +50,7 @@
 
   let fetchedLyric = $state('');
   let showVolPopup = $state(false);
+  let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let rawLyricText = $derived(track?.lyric || fetchedLyric || '');
   // 用户手动点击歌词跳转后，暂停自动滚动 3s
   let userSeekedAt = $state(0);
@@ -71,7 +74,7 @@
       const now = Date.now();
       if (now - userSeekedAt < AUTO_SCROLL_PAUSE_MS) return;
       const el = document.getElementById(`sv-lrc-${activeIdx}`);
-      if (el) {
+      if (el && typeof el.scrollIntoView === 'function') {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
@@ -142,6 +145,18 @@
           {/if}
           <button type="button" class="p-1 hover:scale-110 active:scale-90 transition-transform cursor-pointer" onclick={onToggleLike} title="喜欢">
             <PlayerIcon name="heart" liked={isLiked} size={18} />
+          </button>
+          <button
+            type="button"
+            class="p-1 text-[var(--text-secondary)] hover:text-emerald-400 hover:scale-110 active:scale-90 transition-transform cursor-pointer"
+            onclick={() => {
+              if (track) {
+                addToPlaylistSong = { id: track.id, name: track.name, artist: formatArtist(track.artist) };
+              }
+            }}
+            title="收藏到歌单"
+          >
+            <PlayerIcon name="plus" size={18} />
           </button>
         </div>
         <div class="text-xs text-[var(--text-secondary)] truncate mt-0.5">{formatArtist(track?.artist) || '未知歌手'}</div>
@@ -234,6 +249,18 @@
       </button>
       <button
         type="button"
+        class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-emerald-400 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+        onclick={() => {
+          if (track) {
+            addToPlaylistSong = { id: track.id, name: track.name, artist: formatArtist(track.artist) };
+          }
+        }}
+        title="收藏当前歌曲到歌单"
+      >
+        <PlayerIcon name="plus" size={19} />
+      </button>
+      <button
+        type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onToggleDrawer}
         title="播放列表"
@@ -280,3 +307,11 @@
     </div>
   </div>
 </div>
+
+{#if addToPlaylistSong}
+  <AddToPlaylistModal
+    song={addToPlaylistSong}
+    onClose={() => addToPlaylistSong = null}
+    {showToast}
+  />
+{/if}

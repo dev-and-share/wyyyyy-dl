@@ -193,4 +193,44 @@ describe('PlaylistDrawer Collector Mode (Pending Download)', () => {
     expect(getByLabelText('拉伸左下角')).toBeInTheDocument();
     expect(getByLabelText('拉伸右下角')).toBeInTheDocument();
   });
+
+  it('renders add-to-playlist button and save-as-playlist header button', async () => {
+    const { getAllByTitle, getByTitle, getByText } = render(PlaylistDrawer, {
+      props: {
+        queue: mockQueue,
+        qIndex: 0,
+        tasks: [],
+        likedSet: new Set<number>(),
+        autoSkipTrial: true,
+        serverOnly: false,
+        offlineOnly: false,
+        downloadedSet: taskState.downloadedSet,
+        onPlayIndex: vi.fn(),
+        onClearQueue: vi.fn(),
+        onRemoveItem: vi.fn(),
+        onToggleLike: vi.fn(),
+        onToggleAutoSkip: vi.fn(),
+        onToggleServerOnly: vi.fn(),
+        onToggleOfflineOnly: vi.fn(),
+        onClearTasks: vi.fn(),
+        onReveal: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 顶部存为歌单按钮
+    const forkBtn = getByTitle('将当前播放队列全部歌曲存为新歌单');
+    expect(forkBtn).toBeInTheDocument();
+
+    // 列表中每首歌曲的“➕ 收藏到歌单”按钮
+    const addBtns = getAllByTitle('收藏到歌单');
+    expect(addBtns.length).toBe(3);
+
+    // 点击第一首歌曲的收藏按钮，呼出添加弹窗
+    await fireEvent.click(addBtns[0]);
+
+    await waitFor(() => {
+      expect(getByText('添加歌曲到歌单')).toBeInTheDocument();
+    });
+  });
 });

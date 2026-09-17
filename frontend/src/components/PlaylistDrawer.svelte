@@ -7,6 +7,8 @@
   import TaskQueueView from './TaskQueueView.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
+  import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { getTrackSourceStatus, markSongDownloaded } from '../lib/trackStatus.svelte';
 
   let {
@@ -55,6 +57,8 @@
   let filterText = $state('');
   let pendingOnly = $state(false);
   let downloadingIds = $state(new Set<string>());
+  let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
+  let showForkModal = $state(false);
 
   // 计算过滤后的队列
   let filteredQueueWithIndex = $derived.by(() => {
@@ -614,6 +618,16 @@
             🎲 洗牌
           </button>
         {/if}
+        {#if activeTab === 'queue' && queue.length > 0}
+          <button
+            type="button"
+            class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium"
+            onclick={() => showForkModal = true}
+            title="将当前播放队列全部歌曲存为新歌单"
+          >
+            💾 <span class="hidden sm:inline">存为</span>歌单
+          </button>
+        {/if}
         <button
           type="button"
           class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer"
@@ -784,6 +798,17 @@
                   />
                   <button
                     type="button"
+                    class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-95 transition-all cursor-pointer opacity-70 group-hover:opacity-100"
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      addToPlaylistSong = { id: t.id, name: t.name, artist: formatArtist(t.artist) };
+                    }}
+                    title="收藏到歌单"
+                  >
+                    ➕
+                  </button>
+                  <button
+                    type="button"
                     class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer opacity-70 group-hover:opacity-100"
                     onclick={(e) => { e.stopPropagation(); onRemoveItem(realIdx); }}
                     title="从列表中移除"
@@ -806,3 +831,24 @@
     {/if}
   </div>
 </div>
+
+{#if addToPlaylistSong}
+  <AddToPlaylistModal
+    song={addToPlaylistSong}
+    onClose={() => addToPlaylistSong = null}
+    {showToast}
+  />
+{/if}
+
+{#if showForkModal}
+  <ForkPlaylistModal
+    playlistName="当前播放队列"
+    trackCount={queue.length}
+    trackIds={queue.map((t: any) => t.id)}
+    onClose={() => showForkModal = false}
+    onSuccess={() => {
+      showToast('已成功将当前播放列表保存为新歌单', 'success');
+    }}
+    {showToast}
+  />
+{/if}
