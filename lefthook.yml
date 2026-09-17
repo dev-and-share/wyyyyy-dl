@@ -4,6 +4,14 @@
 pre-commit:
   parallel: true
   commands:
+    # 🔐 Secret scanning: 扫描本次提交的增量文件，拦截高熵密钥/Token
+    gitleaks-staged:
+      run: gitleaks protect --staged --config=.gitleaks.toml --no-git -v 2>/dev/null || gitleaks protect --staged --config=.gitleaks.toml -v
+      fail_text: |
+        ❌ Gitleaks 检测到疑似密钥/Token！提交已被阻断。
+           请检查暂存区中的高熵字符串、API Key 或 Cookie。
+           若为误报，可在 .gitleaks.toml [allowlist] 中添加白名单规则。
+
     check-lines:
       root: "frontend"
       glob: "src/**/*.{svelte,ts,js,css}"
@@ -23,3 +31,12 @@ pre-commit:
       root: "frontend"
       glob: "**/*.{svelte,ts,js,css,html,json}"
       run: npm run build
+
+# 🔐 pre-push: 推送前对整个仓库做全量历史扫描（更彻底的防线）
+pre-push:
+  commands:
+    gitleaks-full:
+      run: gitleaks detect --config=.gitleaks.toml --no-git -v 2>/dev/null || gitleaks detect --config=.gitleaks.toml -v
+      fail_text: |
+        ❌ Gitleaks 全量扫描在仓库历史中发现疑似密钥！推送已被阻断。
+           请使用 git-filter-repo 或 BFG 清除敏感历史后再推送。
