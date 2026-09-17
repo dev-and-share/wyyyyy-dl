@@ -77,6 +77,18 @@ public class AnalysisController {
         }
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
+
+    /**
+     * 获取用户专属每日推荐歌曲
+     */
+    @RequestMapping(value = "/recommend/songs", method = {RequestMethod.GET, RequestMethod.POST})
+    public RespEntity<?> recommendSongs() {
+        List<TrackDTO> tracks = analysisService.getDailyRecommendSongs();
+        if (tracks != null && !tracks.isEmpty()) {
+            downloadHistoryDAO.markLocalStatusBatch(tracks);
+        }
+        return RespEntity.apply(CommonRespInfo.SUCCESS, tracks);
+    }
     
     /**
      * 搜索音乐
@@ -343,42 +355,124 @@ public class AnalysisController {
                     return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
                 } else {
                     String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
-                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "操作失败");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), msg != null ? msg : "操作失败", obj);
                 }
             }
             return RespEntity.apply(CommonRespInfo.SUCCESS, null);
         } catch (Exception e) {
             log.error("收藏/取消收藏歌单失败, id={}, subscribe={}", id, subscribe, e);
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), e.getMessage(), null);
         }
     }
 
     /**
-     * 添加歌曲到歌单
+     * 添加歌曲到歌单 (具备智能去重过滤、容量上限 10000 首检测与友好提示)
      */
     @RequestMapping(value = "/playlist/tracks/add", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> addTracksToPlaylist(@RequestParam Long playlistId,
                                              @RequestParam String trackIds) {
         try {
+            if (playlistId == null || playlistId <= 0) {
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单 ID 不合法", null);
+            }
             List<Long> idList = parseTrackIds(trackIds);
-            String jsonResp = neteaseAPIService.addTracksToPlaylist(playlistId, idList);
-            if (jsonResp != null) {
-                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
-                if (obj.getIntValue("code") == 200 || obj.getIntValue("code") == 502) {
-                    if (obj.getIntValue("code") == 200) {
-                        return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+            if (idList.isEmpty()) {
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "待添加歌曲列表不能为空", null);
+            }
+
+            // 1. 查询目标歌单现存歌曲 ID 集合与总曲目数，用于容量检测与去重
+            Set<Long> existingTrackIds = new HashSet<>();
+            int currentTrackCount = 0;
+            try {
+                String detailJson = neteaseAPIService.getPlaylistDetail(playlistId);
+                if (detailJson != null) {
+                    com.alibaba.fastjson.JSONObject detailObj = com.alibaba.fastjson.JSON.parseObject(detailJson);
+                    com.alibaba.fastjson.JSONObject pl = detailObj.getJSONObject("playlist");
+                    if (pl != null) {
+                        currentTrackCount = pl.getIntValue("trackCount");
+                        com.alibaba.fastjson.JSONArray tids = pl.getJSONArray("trackIds");
+                        if (tids != null) {
+                            for (int i = 0; i < tids.size(); i++) {
+                                com.alibaba.fastjson.JSONObject item = tids.getJSONObject(i);
+                                if (item != null && item.getLong("id") != null) {
+                                    existingTrackIds.add(item.getLong("id"));
+                                }
+                            }
+                        }
                     }
-                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
-                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "添加异常或歌曲已存在");
-                } else {
-                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
-                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "添加失败");
+                }
+            } catch (Exception e) {
+                log.warn("获取歌单当前曲目列表失败，将跳过前置去重直接尝试添加, playlistId={}", playlistId, e);
+            }
+
+            // 2. 歌单容量上限检测（网易云官方单歌单上限为 10,000 首）
+            int MAX_PLAYLIST_CAPACITY = 10000;
+            if (currentTrackCount >= MAX_PLAYLIST_CAPACITY || existingTrackIds.size() >= MAX_PLAYLIST_CAPACITY) {
+                return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(),
+                        "歌单已达官方上限（最大 " + MAX_PLAYLIST_CAPACITY + " 首），无法继续添加", null);
+            }
+
+            // 3. 智能去重过滤：仅保留歌单中尚未存在的歌曲
+            List<Long> needToAdd = new ArrayList<>();
+            int duplicateCount = 0;
+            for (Long tid : idList) {
+                if (existingTrackIds.contains(tid)) {
+                    duplicateCount++;
+                } else if (!needToAdd.contains(tid)) {
+                    needToAdd.add(tid);
                 }
             }
-            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+
+            // 4.1 全量重复：所有待添加歌曲已存在
+            if (needToAdd.isEmpty()) {
+                com.alibaba.fastjson.JSONObject resData = new com.alibaba.fastjson.JSONObject();
+                resData.put("addedCount", 0);
+                resData.put("duplicateCount", duplicateCount);
+                resData.put("totalCount", idList.size());
+                resData.put("allExisted", true);
+                return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(),
+                        idList.size() == 1 ? "该歌曲已在歌单中，无需重复添加" : "所选歌曲已全部在歌单中，无需重复添加", resData);
+            }
+
+            // 4.2 检查加上新增后是否超出上限，如超出则做安全截断
+            if (currentTrackCount + needToAdd.size() > MAX_PLAYLIST_CAPACITY) {
+                int canAddCount = Math.max(0, MAX_PLAYLIST_CAPACITY - currentTrackCount);
+                if (canAddCount <= 0) {
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(),
+                            "歌单已接近官方上限（最大 " + MAX_PLAYLIST_CAPACITY + " 首），无法容纳全部新增歌曲", null);
+                }
+                needToAdd = needToAdd.subList(0, canAddCount);
+            }
+
+            // 5. 分批提交给网易云 Linux API 添加曲目（单批上限 500 首，防止大批量溢出）
+            int batchSize = 500;
+            for (int i = 0; i < needToAdd.size(); i += batchSize) {
+                List<Long> chunk = needToAdd.subList(i, Math.min(i + batchSize, needToAdd.size()));
+                String jsonResp = neteaseAPIService.addTracksToPlaylist(playlistId, chunk);
+                if (jsonResp != null) {
+                    com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                    int code = obj.getIntValue("code");
+                    if (code != 200) {
+                        String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                        if (msg == null || msg.isEmpty()) msg = "添加到歌单失败(code:" + code + ")";
+                        return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), msg, obj);
+                    }
+                }
+            }
+
+            // 6. 返回成功结果与详细统计
+            com.alibaba.fastjson.JSONObject resData = new com.alibaba.fastjson.JSONObject();
+            resData.put("addedCount", needToAdd.size());
+            resData.put("duplicateCount", duplicateCount);
+            resData.put("totalCount", idList.size());
+            String successMsg = duplicateCount > 0
+                    ? "已成功添加 " + needToAdd.size() + " 首（已自动跳过 " + duplicateCount + " 首重复歌曲）"
+                    : "已成功添加 " + needToAdd.size() + " 首歌曲到歌单";
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), successMsg, resData);
+
         } catch (Exception e) {
             log.error("添加歌曲到歌单失败, playlistId={}, trackIds={}", playlistId, trackIds, e);
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), e.getMessage() != null ? e.getMessage() : "添加歌曲异常", null);
         }
     }
 
@@ -387,7 +481,7 @@ public class AnalysisController {
      */
     @RequestMapping(value = "/playlist/tracks/remove", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
     public RespEntity<?> removeTracksFromPlaylist(@RequestParam Long playlistId,
-                                                @RequestParam String trackIds) {
+                                                 @RequestParam String trackIds) {
         try {
             List<Long> idList = parseTrackIds(trackIds);
             String jsonResp = neteaseAPIService.removeTracksFromPlaylist(playlistId, idList);
@@ -397,13 +491,13 @@ public class AnalysisController {
                     return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
                 } else {
                     String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
-                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, msg != null ? msg : "删除失败");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), msg != null ? msg : "删除失败", obj);
                 }
             }
             return RespEntity.apply(CommonRespInfo.SUCCESS, null);
         } catch (Exception e) {
             log.error("从歌单删除歌曲失败, playlistId={}, trackIds={}", playlistId, trackIds, e);
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR, e.getMessage());
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), e.getMessage(), null);
         }
     }
 

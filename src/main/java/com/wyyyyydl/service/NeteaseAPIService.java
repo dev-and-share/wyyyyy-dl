@@ -808,7 +808,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        headers.put("Referer", "https://music.163.com/");
 	        headers.put("Origin", "https://music.163.com");
 	        headers.put("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-	        headers.put("Cookie", this.cookie != null ? this.cookie : "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
 
 	        String resp = HttpClientUtil.postForm(url, headers, formParams);
 	        if (resp == null || resp.trim().isEmpty()) {
@@ -834,7 +834,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> headers = new LinkedHashMap<>();
 	        headers.put("Referer", "https://music.163.com/");
 	        headers.put("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36");
-	        headers.put("Cookie", this.cookie != null ? this.cookie : "");
+	        headers.put("Cookie", getCookieValue(this.cookie));
 
 	        Map<String, String> params = new LinkedHashMap<>();
 	        params.put("eparams", eparams);
@@ -930,6 +930,18 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, Object> innerParams = new LinkedHashMap<>();
 	        innerParams.put("pid", playlistId);
 
+	        return requestLinuxApi(innerUrl, innerParams);
+	    }
+
+	    /**
+	     * 获取用户专属每日推荐歌曲 (使用 Linux API 协议，免风控)
+	     * @return 响应 JSON
+	     * @throws Exception
+	     */
+	    public String getDailyRecommendSongs() throws Exception {
+	        String innerUrl = "http://music.163.com/api/v3/discovery/recommend/songs";
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("total", true);
 	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 

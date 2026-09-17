@@ -22,4 +22,7 @@ public class TrackDTO {
 	
 	//是否本地已下载/存在
 	private Boolean isLocal;
+
+	//推荐理由
+	private String reason;
 }

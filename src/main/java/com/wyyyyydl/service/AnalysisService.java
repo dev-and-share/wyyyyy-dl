@@ -634,5 +634,59 @@ public class AnalysisService {
     		throw new ServiceException(CommonRespInfo.NO_COOKIE_ERROR);
     	}
     }
+
+    /**
+     * 获取用户专属每日推荐歌曲列表
+     */
+    public List<TrackDTO> getDailyRecommendSongs() {
+        checkReady();
+        try {
+            String jsonStr = neteaseAPIService.getDailyRecommendSongs();
+            JSONObject json = JSON.parseObject(jsonStr);
+            if (json == null) {
+                return Collections.emptyList();
+            }
+            int code = json.getIntValue("code");
+            if (code != 200) {
+                String msg = json.getString("message") != null ? json.getString("message") : json.getString("msg");
+                log.warn("获取每日推荐失败: code={}, msg={}", code, msg);
+                throw new ServiceException(String.valueOf(code), msg != null ? msg : "获取每日推荐失败，请检查 Cookie 登录状态");
+            }
+            JSONObject dataObj = json.getJSONObject("data");
+            JSONArray dailySongs = dataObj != null ? dataObj.getJSONArray("dailySongs") : json.getJSONArray("recommend");
+            if (dailySongs == null) {
+                return Collections.emptyList();
+            }
+            List<TrackDTO> trackList = new ArrayList<>();
+            for (int i = 0; i < dailySongs.size(); i++) {
+                JSONObject song = dailySongs.getJSONObject(i);
+                TrackDTO dto = new TrackDTO();
+                dto.setId(song.getLong("id"));
+                dto.setName(song.getString("name"));
+                if (song.getJSONObject("al") != null) {
+                    dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
+                    dto.setAlbum(song.getJSONObject("al").getString("name"));
+                }
+                dto.setArtists(parseArtists(song.getJSONArray("ar")));
+                String reason = song.getString("reason");
+                if (reason == null || reason.trim().isEmpty()) {
+                    Object recReasonObj = song.get("recommendReason");
+                    if (recReasonObj instanceof String) {
+                        reason = (String) recReasonObj;
+                    } else if (recReasonObj instanceof JSONObject) {
+                        reason = ((JSONObject) recReasonObj).getString("reason");
+                    }
+                }
+                dto.setReason(reason);
+                trackList.add(dto);
+            }
+            return trackList;
+        } catch (ServiceException se) {
+            throw se;
+        } catch (Exception e) {
+            log.error("获取每日推荐异常", e);
+            throw new ServiceException(CommonRespInfo.SERVICE_EXECUTION_ERROR, e);
+        }
+    }
 	
 }
