@@ -5,6 +5,7 @@
   import SlotBtn from '../SlotBtn.svelte';
   import { api } from '../../lib/api';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
+  import { isSameTrack } from '../../lib/trackStatus.svelte';
   import type { Track } from '../../lib/types';
 
   let {
@@ -265,7 +266,7 @@
                   {@const idx = (histPage - 1) * 10 + i + 1}
                   {@const songTitle = item.songName || item.name || item.title || '未知歌曲'}
                   {@const artist = item.artist || item.artists || ''}
-                  {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(item.songId || item.id) || (curTrack.name && curTrack.name === songTitle)))}
+                  {@const isPlayingThis = isSameTrack(curTrack, item)}
                   {@const displayPath = item.hostFilePath || item.filePath || item.relativePath || item.path || '默认音乐目录'}
                   <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
                     <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">

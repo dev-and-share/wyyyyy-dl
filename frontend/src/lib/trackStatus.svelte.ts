@@ -83,3 +83,85 @@ export function getTrackPlayActionLabel(options: TrackPlayActionLabelOptions): s
   // full 模式（用于长按菜单或重要操作项）
   return isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲';
 }
+
+/**
+ * 🎯 统一判定当前播放曲目与目标条目是否为同一首歌 (Single Source of Truth)
+ * - 若两端均具备有效 ID (>0)，必须严格按 ID 比对，坚决杜绝同名不同曲目误判
+ * - 若曲目有有效 ID，而目标条目也有不同有效 ID，绝不判定为同一首歌
+ * - 仅当缺少有效 ID 时，才降级比对物理路径/URL 或 (歌名 + 歌手)
+ */
+export function isSameTrack(
+  curTrack: Track | null | undefined,
+  target: {
+    id?: number | string;
+    songId?: number | string;
+    name?: string;
+    songName?: string;
+    title?: string;
+    artist?: string;
+    artists?: any;
+    url?: string;
+    filePath?: string;
+    relativePath?: string;
+    hostFilePath?: string;
+    path?: string;
+  } | null | undefined
+): boolean {
+  if (!curTrack || !target) return false;
+
+  const curId = Number(curTrack.id);
+  const curHasValidId = !isNaN(curId) && curId > 0;
+
+  const targetSongId = Number(target.songId);
+  const targetId = Number(target.id);
+  const hasValidSongId = !isNaN(targetSongId) && targetSongId > 0;
+  const hasValidId = !isNaN(targetId) && targetId > 0;
+
+  // 1. 若当前播放曲目具有合法 ID：
+  if (curHasValidId) {
+    if (hasValidSongId && curId === targetSongId) return true;
+    if (hasValidId && curId === targetId) return true;
+
+    // 若 target 明确拥有不同合法 ID，则绝对不是同一首歌（杜绝搜索列表同名歌曲串联高亮）
+    if (hasValidSongId || hasValidId) return false;
+  }
+
+  // 2. 物理文件路径比对（针对本地扫描或下载文件）
+  const curPath = curTrack.filePath || curTrack.relativePath;
+  const targetPath = target.filePath || target.relativePath || target.hostFilePath || target.path;
+  if (curPath && targetPath) {
+    return curPath === targetPath;
+  }
+
+  // 3. URL 严格比对
+  if (curTrack.url && target.url) {
+    return curTrack.url === target.url;
+  }
+
+  // 4. 仅当两端均无有效合法 ID 且缺少路径/URL 时，才允许在歌名与歌手非空非占位符且一致时兜底
+  if (!curHasValidId && !hasValidSongId && !hasValidId) {
+    const targetName = target.name || target.songName || target.title;
+    if (
+      curTrack.name &&
+      targetName &&
+      curTrack.name !== '未知曲目' &&
+      curTrack.name !== '未知' &&
+      curTrack.name.trim() === targetName.trim()
+    ) {
+      const targetArtist = typeof target.artist === 'string' ? target.artist : '';
+      if (
+        curTrack.artist &&
+        targetArtist &&
+        curTrack.artist !== '未知歌手' &&
+        curTrack.artist !== '未知' &&
+        curTrack.artist.trim() === targetArtist.trim()
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+

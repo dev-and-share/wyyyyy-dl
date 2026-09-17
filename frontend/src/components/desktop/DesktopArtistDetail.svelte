@@ -7,7 +7,7 @@
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
-  import { getTrackSourceStatus } from '../../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, isSameTrack } from '../../lib/trackStatus.svelte';
 
   let {
     artistId,
@@ -307,7 +307,7 @@
             {#each songs as s, idx (s.id)}
               {@const artistName = formatArtist(s.artist || s.ar || s.artists || artistData.name || '')}
               {@const status = getTrackSourceStatus(s.id, s.isLocal, curTrack)}
-              {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
+              {@const isPlayingThis = isSameTrack(curTrack, s)}
               <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
                 <!-- 序号 -->
                 <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px] w-12">

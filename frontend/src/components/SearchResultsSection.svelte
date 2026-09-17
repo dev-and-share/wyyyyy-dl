@@ -5,8 +5,9 @@
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
+  import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import { openSheet } from '../lib/ui.svelte';
-  import { getTrackSourceStatus, getTrackPlayActionLabel } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
 
   let {
     sResults = [],
@@ -45,6 +46,8 @@
     handleDownloadPlaylist: (id: string, name: string) => Promise<void>;
     showToast: (m: string, t?: string) => void;
   }>();
+
+  let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
 
   async function copyText(text: string, label: string) {
     try {
@@ -88,6 +91,13 @@
               }
             ]
           : []),
+        {
+          label: '➕ 收藏到歌单',
+          style: 'default' as const,
+          onclick: () => {
+            addToPlaylistSong = { id: r.id, name: r.name, artist: artistName };
+          }
+        },
         ...(onToggleLike
           ? [
               {
@@ -186,7 +196,7 @@
       {#if sType === '1'}
         {@const artistName = formatArtist(r.artists || r.ar || r.artist)}
         {@const status = getTrackSourceStatus(r.id, r.isLocal, curTrack)}
-        {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(r.id) || (curTrack.name && curTrack.name === r.name)))}
+        {@const isPlayingThis = isSameTrack(curTrack, r)}
         {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
         {@const coverUrl = r.picUrl || r.al?.picUrl || r.album?.picUrl || ''}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
@@ -245,6 +255,7 @@
               {#if onSong}
                 <SlotBtn onclick={() => onSong(String(r.id))}>👉 详情</SlotBtn>
               {/if}
+              <SlotBtn onclick={() => addToPlaylistSong = { id: r.id, name: r.name, artist: artistName }}>➕ 歌单</SlotBtn>
             </div>
 
             <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
@@ -452,3 +463,11 @@
     {/each}
   {/if}
 </ul>
+
+{#if addToPlaylistSong}
+  <AddToPlaylistModal
+    song={addToPlaylistSong}
+    onClose={() => addToPlaylistSong = null}
+    {showToast}
+  />
+{/if}

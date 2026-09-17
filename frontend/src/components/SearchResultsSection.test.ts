@@ -135,4 +135,105 @@ describe('SearchResultsSection Component', () => {
     await fireEvent.click(artistName);
     expect(onViewArtist).toHaveBeenCalledWith('6452');
   });
+
+  it('renders track search results and includes add to playlist and view song detail in sheet', async () => {
+    const onSong = vi.fn();
+    const onPlayQueue = vi.fn();
+    const tracks = [
+      {
+        id: 186016,
+        name: '晴天',
+        artists: [{ name: '周杰伦' }],
+        picUrl: 'https://example.com/cover.jpg'
+      }
+    ];
+
+    const { getByText, getAllByRole } = render(SearchResultsSection, {
+      props: {
+        sResults: tracks,
+        sType: '1',
+        searchLoading: false,
+        hasSearched: true,
+        onPlaylist: vi.fn(),
+        onAlbum: vi.fn(),
+        onPlayQueue,
+        onSong,
+        onViewArtist: vi.fn(),
+        handlePlayPlaylist: vi.fn(),
+        handleDownloadPlaylist: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    const songTitleBtn = getByText(/晴天/i);
+    expect(songTitleBtn).toBeInTheDocument();
+    expect(getByText(/周杰伦/i)).toBeInTheDocument();
+
+    // 点击歌曲标题触发 onSong
+    await fireEvent.click(songTitleBtn);
+    expect(onSong).toHaveBeenCalledWith('186016');
+
+    // 移动端点击 ... 更多操作触发 openSheet
+    const moreActionsBtns = getAllByRole('button', { name: /更多操作/i });
+    expect(moreActionsBtns.length).toBeGreaterThan(0);
+    await fireEvent.click(moreActionsBtns[0]);
+
+    // 验证 sheet 参数中包含“➕ 收藏到歌单”与“🎧 查看单曲详情 / 下载”
+    expect(uiModule.openSheet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '晴天',
+        subtitle: '周杰伦',
+        actions: expect.arrayContaining([
+          expect.objectContaining({ label: '➕ 收藏到歌单' }),
+          expect.objectContaining({ label: '🎧 查看单曲详情 / 下载' })
+        ])
+      })
+    );
+  });
+
+  it('distinguishes songs with the same title strictly by ID, preventing duplicate playing states', async () => {
+    const tracks = [
+      { id: 2045007194, name: '幸福的滋味', artists: [{ name: '徐宝琪' }] },
+      { id: 1985096971, name: '幸福的滋味', artists: [{ name: '陈盈洁' }] },
+      { id: 190310, name: '幸福的滋味', artists: [{ name: '张宇' }] }
+    ];
+
+    const curTrack = {
+      id: 2045007194,
+      name: '幸福的滋味',
+      artist: '徐宝琪'
+    };
+
+    const { getAllByText, container } = render(SearchResultsSection, {
+      props: {
+        sResults: tracks,
+        sType: '1',
+        searchLoading: false,
+        hasSearched: true,
+        curTrack,
+        playing: true,
+        onPlaylist: vi.fn(),
+        onAlbum: vi.fn(),
+        onPlayQueue: vi.fn(),
+        onSong: vi.fn(),
+        onViewArtist: vi.fn(),
+        handlePlayPlaylist: vi.fn(),
+        handleDownloadPlaylist: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    // 只有 1 个条目（徐宝琪）应该具有 is-active-playing 高亮类，同名不同 ID 条目绝不高亮
+    const activeItems = container.querySelectorAll('.is-active-playing');
+    expect(activeItems.length).toBe(1);
+
+    // 只有 1 个曲目显示播放中按钮（PC + SP 响应式各 1 个，共 2 个）
+    const playingButtons = getAllByText(/播放中/);
+    expect(playingButtons.length).toBe(2);
+
+    // 其余 2 个未播放曲目各渲染 2 个试听按钮（PC + SP），共 4 个
+    const trialButtons = getAllByText(/试听/);
+    expect(trialButtons.length).toBe(4);
+  });
 });
+

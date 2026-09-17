@@ -18,7 +18,7 @@
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import ForkPlaylistModal from '../ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
-  import { getTrackSourceStatus, markSongDownloaded } from '../../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
 
   let {
     playlistId,
@@ -296,7 +296,7 @@
               {@const idx = (desktopCurPage - 1) * pageSize + i + 1}
               {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
               {@const artist = formatArtist(t)}
-              {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
+              {@const isPlayingThis = isSameTrack(curTrack, t)}
               <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
                 <!-- 序号 -->
                 <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">

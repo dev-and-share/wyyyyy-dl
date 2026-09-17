@@ -5,8 +5,10 @@
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
+  import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import { showToast } from '../lib/toast.svelte';
   import { openSheet } from '../lib/ui.svelte';
-  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, isSameTrack } from '../lib/trackStatus.svelte';
 
   let {
     album,
@@ -43,6 +45,8 @@
     onReveal?: (item: any) => void;
     onSong?: (id: string) => void;
   }>();
+
+  let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
 
   function openTrackSheet(s: any, isLocal: boolean, artistName: string, isPlayingThis: boolean) {
     openSheet({
@@ -91,6 +95,13 @@
               }
             ]
           : []),
+        {
+          label: '➕ 收藏到歌单',
+          style: 'default' as const,
+          onclick: () => {
+            addToPlaylistSong = { id: s.id, name: s.name, artist: artistName };
+          }
+        },
         ...(onToggleLike
           ? [
               {
@@ -142,7 +153,7 @@
       {#each (album.songs || []) as s, i}
         {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
         {@const status = getTrackSourceStatus(s.id, s.isLocal, curTrack)}
-        {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(s.id) || (curTrack.name && curTrack.name === s.name)))}
+        {@const isPlayingThis = isSameTrack(curTrack, s)}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
             <button
@@ -217,3 +228,11 @@
     </div>
   {/if}
 </AccordionCard>
+
+{#if addToPlaylistSong}
+  <AddToPlaylistModal
+    song={addToPlaylistSong}
+    onClose={() => addToPlaylistSong = null}
+    {showToast}
+  />
+{/if}

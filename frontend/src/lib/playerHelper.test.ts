@@ -201,4 +201,34 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: true, variant: 'full' })).toBe('▶️ 播放本地音频');
     expect(getTrackPlayActionLabel({ isPlaying: false, isLocal: false, variant: 'full' })).toBe('▶️ 试听在线歌曲');
   });
+
+  it('isSameTrack strictly matches by ID and prevents false positives for same title different artists', async () => {
+    const { isSameTrack } = await import('./trackStatus.svelte');
+
+    const curTrack = {
+      id: 2045007194,
+      name: '幸福的滋味',
+      artist: '徐宝琪'
+    };
+
+    // 1. 同一首歌（ID 完全一致）-> true
+    expect(isSameTrack(curTrack, { id: 2045007194, name: '幸福的滋味', artist: '徐宝琪' })).toBe(true);
+
+    // 2. 核心 Bug 场景验证：同名不同歌曲（不同歌手、不同 ID）绝对不能匹配！
+    expect(isSameTrack(curTrack, { id: 1985096971, name: '幸福的滋味', artist: '陈盈洁' })).toBe(false);
+    expect(isSameTrack(curTrack, { id: 190310, name: '幸福的滋味', artist: '张宇' })).toBe(false);
+    expect(isSameTrack(curTrack, { id: 240684, name: '幸福的滋味', artist: '黄妃' })).toBe(false);
+
+    // 3. 下载管理 / 历史记录对象含有 songId
+    expect(isSameTrack(curTrack, { id: 10, songId: 2045007194, songName: '幸福的滋味' })).toBe(true);
+    expect(isSameTrack(curTrack, { id: 11, songId: 240684, songName: '幸福的滋味' })).toBe(false);
+
+    // 4. 本地未刮削文件（双方均无有效 ID）通过物理路径比对
+    const localNoId1 = { id: 0, name: '未知', artist: '未知', filePath: '/music/test.flac' };
+    const localNoId2 = { id: 0, name: '未知', artist: '未知', filePath: '/music/test.flac' };
+    const localNoId3 = { id: 0, name: '未知', artist: '未知', filePath: '/music/other.flac' };
+    expect(isSameTrack(localNoId1, localNoId2)).toBe(true);
+    expect(isSameTrack(localNoId1, localNoId3)).toBe(false);
+  });
 });
+

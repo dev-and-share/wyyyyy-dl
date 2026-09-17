@@ -8,6 +8,7 @@
   import { openSheet } from '../lib/ui.svelte';
   import { api } from '../lib/api';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
+  import { isSameTrack } from '../lib/trackStatus.svelte';
   import type { Track } from '../lib/types';
 
   let {
@@ -369,7 +370,7 @@
     <ul class="data-list scrollable-list">
       {#each histList as h, idx}
         {@const artistName = formatArtist(h.artist)}
-        {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(h.songId || h.id) || (curTrack.name && (curTrack.name === h.songName || curTrack.name === h.name))))}
+        {@const isPlayingThis = isSameTrack(curTrack, h)}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
             <button

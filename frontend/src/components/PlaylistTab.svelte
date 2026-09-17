@@ -26,7 +26,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
-  import { getTrackSourceStatus, getTrackPlayActionLabel } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { layoutState } from '../lib/layout.svelte';
 
@@ -386,7 +386,7 @@
           {@const idx = (curPage - 1) * pageSize + i + 1}
           {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
           {@const artist = formatArtist(t)}
-          {@const isPlayingThis = !!(curTrack && (String(curTrack.id) === String(t.id) || (curTrack.name && curTrack.name === t.name)))}
+          {@const isPlayingThis = isSameTrack(curTrack, t)}
           {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
           <li class="track-item-card" class:is-active-playing={isPlayingThis}>
             <div class="track-title-row">
