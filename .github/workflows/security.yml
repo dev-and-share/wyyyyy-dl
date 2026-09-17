@@ -1,0 +1,25 @@
+name: Security Scan (Gitleaks)
+
+on:
+  push:
+    branches: [ main, master, 'feature/**', 'fix/**', 'refactor/**' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  gitleaks:
+    name: Scan for secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # 拉取完整历史，确保跨 commit 的密钥扫描不遗漏
+          fetch-depth: 0
+
+      - name: Run Gitleaks (official action)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 使用仓库自定义配置文件（包含项目白名单规则）
+          GITLEAKS_CONFIG: .gitleaks.toml

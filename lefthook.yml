@@ -5,8 +5,15 @@ pre-commit:
   parallel: true
   commands:
     # 🔐 Secret scanning: 扫描本次提交的增量文件，拦截高熵密钥/Token
+    # 若本机未安装 gitleaks，给出提示后跳过（不阻断）
+    # 安装: brew install gitleaks
     gitleaks-staged:
-      run: gitleaks protect --staged --config=.gitleaks.toml --no-git -v 2>/dev/null || gitleaks protect --staged --config=.gitleaks.toml -v
+      run: |
+        if ! command -v gitleaks >/dev/null 2>&1; then
+          echo "⚠️  [gitleaks] 未安装，跳过本地密钥扫描。建议: brew install gitleaks"
+          exit 0
+        fi
+        gitleaks protect --staged --config=.gitleaks.toml -v
       fail_text: |
         ❌ Gitleaks 检测到疑似密钥/Token！提交已被阻断。
            请检查暂存区中的高熵字符串、API Key 或 Cookie。
@@ -33,10 +40,16 @@ pre-commit:
       run: npm run build
 
 # 🔐 pre-push: 推送前对整个仓库做全量历史扫描（更彻底的防线）
+# 本地可选；CI 层面通过 gitleaks/gitleaks-action 做强制兜底
 pre-push:
   commands:
     gitleaks-full:
-      run: gitleaks detect --config=.gitleaks.toml --no-git -v 2>/dev/null || gitleaks detect --config=.gitleaks.toml -v
+      run: |
+        if ! command -v gitleaks >/dev/null 2>&1; then
+          echo "⚠️  [gitleaks] 未安装，跳过本地全量密钥扫描。建议: brew install gitleaks"
+          exit 0
+        fi
+        gitleaks detect --config=.gitleaks.toml -v
       fail_text: |
         ❌ Gitleaks 全量扫描在仓库历史中发现疑似密钥！推送已被阻断。
            请使用 git-filter-repo 或 BFG 清除敏感历史后再推送。
