@@ -31,6 +31,7 @@ export const api = {
   artist: (id: string) => get(`/v3/artist?id=${encodeURIComponent(id)}`),
   search: (keywords: string, type: string, limit: string) => postForm('/v3/search', { keywords, type, limit }),
   myPlaylist: () => postForm('/v3/my_playlists', {}),
+  recommendSongs: () => get('/v3/recommend/songs'),
 
   // ❤️ 红心与歌单操作
   likeList: () => get('/v3/like/list'),

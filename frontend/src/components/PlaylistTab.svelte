@@ -22,7 +22,7 @@
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import MyPlaylistsSection from './MyPlaylistsSection.svelte';
-  import SongDetailSection from './SongDetailSection.svelte';
+  import DailyRecommendSection from './DailyRecommendSection.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
@@ -46,6 +46,7 @@
     onPlayQueue,
     onAlbum,
     onReveal,
+    onSong,
     showToast
   } = $props<{
     playlistId: string;
@@ -58,6 +59,7 @@
     onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
     onAlbum?: (albumId: string) => void;
     onReveal?: (item: any) => void;
+    onSong?: (id: string) => void;
     showToast: (m: string, t?: string) => void;
   }>();
 
@@ -66,8 +68,7 @@
   const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
   const STORAGE_KEY_ACC_MY = 'wyyyy_pl_acc_my';
   const STORAGE_KEY_ACC_DETAIL = 'wyyyy_pl_acc_detail';
-  const STORAGE_KEY_ACC_SONG = 'wyyyy_pl_acc_song';
-  const STORAGE_KEY_SONG_ID = 'wyyyy_last_song_id';
+  const STORAGE_KEY_ACC_RECOMMEND = 'wyyyy_pl_acc_recommend';
 
   function getStored(key: string, def: string) {
     if (typeof localStorage === 'undefined') return def;
@@ -85,12 +86,7 @@
   let lastSeenTrigger = $state(-1);
   let accMy = $state(getStored(STORAGE_KEY_ACC_MY, 'true') === 'true');
   let accDetail = $state(getStored(STORAGE_KEY_ACC_DETAIL, 'true') === 'true');
-  let accSong = $state(getStored(STORAGE_KEY_ACC_SONG, 'false') === 'true');
-
-  // 单曲信息状态
-  let songId = $state(getStored(STORAGE_KEY_SONG_ID, ''));
-  let songLevel = $state('lossless');
-  let songInfo: any = $state(null);
+  let accRecommend = $state(getStored(STORAGE_KEY_ACC_RECOMMEND, 'false') === 'true');
 
   // 弹窗与交互状态
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
@@ -100,7 +96,7 @@
     try {
       localStorage.setItem(STORAGE_KEY_ACC_MY, String(accMy));
       localStorage.setItem(STORAGE_KEY_ACC_DETAIL, String(accDetail));
-      localStorage.setItem(STORAGE_KEY_ACC_SONG, String(accSong));
+      localStorage.setItem(STORAGE_KEY_ACC_RECOMMEND, String(accRecommend));
     } catch {}
   }
 
@@ -111,9 +107,6 @@
     if (targetPid) {
       pid = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});
-    }
-    if (accSong && songId) {
-      handleViewSong(songId, false).catch(() => {});
     }
     loadMyPlaylists('created').catch(() => {});
   });
@@ -147,40 +140,12 @@
     if (switchCards) {
       accMy = false;
       accDetail = true;
-      accSong = false;
       saveAccState();
     }
     try {
       await loadPlaylistDetail(pid);
     } catch (e: any) {
       if (switchCards) showToast(e.message || '获取歌单失败', 'warning');
-    }
-  }
-
-  // 查看单曲信息交互：瞬间收起其他卡片，展开卡片3
-  async function handleViewSong(id: string, switchCards = true) {
-    if (!id) {
-      showToast('请输入歌曲 ID', 'warning');
-      return;
-    }
-    songId = id;
-    try { localStorage.setItem(STORAGE_KEY_SONG_ID, id); } catch {}
-    if (switchCards) {
-      accMy = false;
-      accDetail = false;
-      accSong = true;
-      saveAccState();
-    }
-    try {
-      const j = await api.songV1(songId, songLevel);
-      if (j?.code && j.code !== '000000') {
-        if (switchCards) showToast(j.msg || '获取失败', 'warning');
-        return;
-      }
-      songInfo = j?.data || null;
-      if (!songInfo && switchCards) showToast('无歌曲数据', 'warning');
-    } catch (e: any) {
-      if (switchCards) showToast('获取单曲失败: ' + (e.message || e), 'error');
     }
   }
 
@@ -282,7 +247,15 @@
           onclick: () => handleCacheTrack(t)
         },
         { label: '➕ 添加到歌单', style: 'default', onclick: () => { addToPlaylistSong = { id: t.id, name: t.name, artist }; } },
-        { label: '🎧 查看歌曲详情 / 音质', style: 'default', onclick: () => handleViewSong(String(t.id)) },
+        ...(onSong
+          ? [
+              {
+                label: '🎧 查看歌曲详情 / 音质',
+                style: 'default' as const,
+                onclick: () => onSong(String(t.id))
+              }
+            ]
+          : []),
         { label: likedSet.has(Number(t.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢', style: 'default', onclick: () => onToggleLike(Number(t.id), t.name) }
       ]
     });
@@ -393,7 +366,7 @@
               <button
                 type="button"
                 class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-                onclick={() => handleViewSong(String(t.id))}
+                onclick={() => onSong ? onSong(String(t.id)) : (onPlayQueue && onPlayQueue([toPlayerTrack(t, { artist, isLocal: status.isLocal })]))}
               >
                 {idx}. {t.name}{artist ? ' - ' + artist : ''}
               </button>
@@ -416,6 +389,9 @@
                 {/if}
                 <SlotBtn onclick={() => handleCacheTrack(t)}>{status.isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
                 <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
+                {#if onSong}
+                  <SlotBtn onclick={() => onSong(String(t.id))}>👉 详情</SlotBtn>
+                {/if}
               </div>
 
               <!-- 📱 SP 移动端：外面仅保留核心常用功能 (▶️播放) + (··· 更多选项抽屉) -->
@@ -453,18 +429,20 @@
     {/if}
   </AccordionCard>
 
-<!-- Section 3: 查看歌曲信息 -->
-<SongDetailSection
-  bind:open={accSong}
-  onToggle={saveAccState}
-  bind:songId
-  bind:songLevel
-  {songInfo}
-  onViewSong={(sid) => handleViewSong(sid)}
-  onPlayQueue={(tracks) => onPlayQueue(tracks)}
-  onDownloadSingle={(sid, sname) => downloadSingleTrack(sid, sname)}
-  {onAlbum}
-/>
+  <!-- Section 3: 每日专属推荐 -->
+  <DailyRecommendSection
+    bind:open={accRecommend}
+    onToggle={saveAccState}
+    {curTrack}
+    {playing}
+    {likedSet}
+    {onToggleLike}
+    {onPlayQueue}
+    {onSong}
+    {onAlbum}
+    {onReveal}
+    {showToast}
+  />
 
 {#if addToPlaylistSong}
   <AddToPlaylistModal

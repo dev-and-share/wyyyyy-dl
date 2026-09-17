@@ -24,6 +24,7 @@
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
   import GlobalAudioPlayer from './components/GlobalAudioPlayer.svelte';
   import RevealModal from './components/RevealModal.svelte';
+  import SongDetailModal from './components/SongDetailModal.svelte';
   import PullToRefresh from './components/sp/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
@@ -33,6 +34,7 @@
   let repeat = $state(false);
   let themeMode: ThemeMode = $state(getInitialTheme());
   let revealData: { path: string; msg: string } | null = $state(null);
+  let viewingSongId: string | null = $state(null);
 
   // ---------- 播放器状态桥接 (供各 Tab 感知) ----------
   let curTrack: Track | null = $state(null);
@@ -158,6 +160,7 @@
           {curTrack} {playing}
           likedSet={likeState.likedSet} downloadedSet={taskState.downloadedSet}
           onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onReveal={handleReveal}
+          onSong={(sid: string) => { viewingSongId = sid; }}
           {showToast}
         />
       </div>
@@ -171,7 +174,7 @@
           {curTrack} {playing}
           downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
           onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
-          onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
+          onSong={(sid: string) => { viewingSongId = sid; }} onReveal={handleReveal}
           {showToast}
         />
       </div>
@@ -181,7 +184,7 @@
           albumId={routerState.albumId} {curTrack} {playing}
           downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
           onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
-          onSong={(sid: string) => { routerState.playlistId = sid; switchTab('playlist'); }} onReveal={handleReveal}
+          onSong={(sid: string) => { viewingSongId = sid; }} onReveal={handleReveal}
           {showToast}
         />
       </div>
@@ -226,6 +229,19 @@
 <!-- 📂 文件定位弹窗 -->
 {#if revealData}
   <RevealModal path={revealData.path} msg={revealData.msg} onClose={() => revealData = null} {showToast} />
+{/if}
+
+<!-- 🎧 单曲详情与音质弹窗 -->
+{#if viewingSongId}
+  <SongDetailModal
+    songId={viewingSongId}
+    likedSet={likeState.likedSet}
+    onToggleLike={toggleLike}
+    onPlayQueue={setQueue}
+    onAlbum={jumpToAlbum}
+    onClose={() => viewingSongId = null}
+    {showToast}
+  />
 {/if}
 
 <!-- 🔔 全局 Toast 浮动提示容器 -->
