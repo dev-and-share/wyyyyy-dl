@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, platform } from '../../lib/utils';
   import type { Track } from '../../lib/types';
   import PlayerCoverRing from '../PlayerCoverRing.svelte';
   import PlayerProgressBar from '../PlayerProgressBar.svelte';
@@ -100,14 +100,16 @@
           >
             <PlayerIcon name="mic" size={15} />
           </button>
-          <button
-            type="button"
-            class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-            onclick={onPeq}
-            title="5段参量均衡器 (PEQ)"
-          >
-            <PlayerIcon name="equalizer" size={15} />
-          </button>
+          {#if platform.canUseAudioProcessing}
+            <button
+              type="button"
+              class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+              onclick={onPeq}
+              title="5段参量均衡器 (PEQ)"
+            >
+              <PlayerIcon name="equalizer" size={15} />
+            </button>
+          {/if}
           <button
             data-testid="btn-toggle-drawer"
             type="button"
@@ -121,7 +123,7 @@
             </span>
           </button>
           <!-- iOS (Safari/PWA) HTML5 audio volume 为系统级只读，隐藏滑块避免误解 -->
-          {#if !isIOS()}
+          {#if platform.canAdjustVolume}
             <!-- 移动端音量竖立弹出滑块 -->
             <div class="relative">
               <button

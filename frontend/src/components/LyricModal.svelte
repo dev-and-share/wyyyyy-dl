@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
+  import { onMount, tick } from 'svelte';
+  import { formatArtist, DEFAULT_VINYL_COVER, platform } from '../lib/utils';
+  import type { Track } from '../lib/types';
   import { api } from '../lib/api';
   import { parseLrc, type LrcLine } from '../lib/lyricParser';
   import { showToast } from '../lib/toast.svelte';
@@ -239,14 +240,16 @@
       >
         <PlayerIcon name="next" size={20} />
       </button>
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={onTogglePeq}
-        title="打开均衡器"
-      >
-        <PlayerIcon name="equalizer" size={19} />
-      </button>
+      {#if platform.canUseAudioProcessing}
+        <button
+          type="button"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+          onclick={onTogglePeq}
+          title="打开均衡器"
+        >
+          <PlayerIcon name="equalizer" size={19} />
+        </button>
+      {/if}
       <button
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-emerald-400 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
@@ -269,7 +272,7 @@
       </button>
 
       <!-- iOS (Safari/PWA) HTML5 audio volume 属性为只读，系统强制由实体键控制，隐藏滑块避免误解 -->
-      {#if !isIOS()}
+      {#if platform.canAdjustVolume}
         <!-- 音量竖立弹出滑块 -->
         <div class="relative">
           <button
