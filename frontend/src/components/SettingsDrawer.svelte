@@ -1,15 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { platform } from '../lib/platform';
-  import { api } from '../lib/api';
-  import { formatBytes } from '../lib/utils';
-  import { autoCacheState, setAutoCacheEnabled } from '../lib/pwaCache.svelte';
-  import {
-    scanBrowserCache,
-    clearLowPlayCountCacheEntries,
-    clearAllBrowserAudioCache
-  } from '../lib/browserCacheHelper';
   import type { ThemeMode } from '../lib/theme';
+  import SettingsCacheSection from './settings/SettingsCacheSection.svelte';
+  import SettingsAccountSection from './settings/SettingsAccountSection.svelte';
+  import SettingsMaintenanceSection from './settings/SettingsMaintenanceSection.svelte';
 
   let {
     repeat,
@@ -34,23 +28,6 @@
   let dragOffset = $state(0);
   let isDragging = $state(false);
   let startY = 0;
-
-  // 账号与授权状态
-  let isCheckingLogin = $state(false);
-  let isLoggedIn = $state<boolean | null>(null);
-  let showCookieInput = $state(false);
-  let cookieText = $state('');
-  let isSavingCookie = $state(false);
-
-  // 离线缓存状态
-  let cacheBytes = $state(0);
-  let cacheCount = $state(0);
-  let isCacheLoading = $state(false);
-  let minPlayThreshold = $state(2);
-
-  // 磁盘维护加载状态
-  let maintenanceLoading = $state(false);
-  let maintenanceMsg = $state('');
 
   function handleClose() {
     if (closing) return;
@@ -98,118 +75,6 @@
       dragOffset = 0;
     }
   }
-
-  // 扫描手机缓存
-  async function refreshCache() {
-    if (!platform.supportsCache) return;
-    isCacheLoading = true;
-    try {
-      const res = await scanBrowserCache();
-      cacheBytes = res.totalBytes;
-      cacheCount = res.list.length;
-    } catch {
-      // 忽略离线扫描错误
-    } finally {
-      isCacheLoading = false;
-    }
-  }
-
-  // 清理低频缓存
-  async function handleClearLowPlayCount() {
-    if (!platform.supportsCache || cacheCount === 0) return;
-    const ok = confirm(`确定清除播放次数少于 ${minPlayThreshold} 次的离线歌曲？\n（服务器文件不受影响）`);
-    if (!ok) return;
-    isCacheLoading = true;
-    try {
-      const res = await scanBrowserCache();
-      const lowItems = res.list.filter(item => item.playCount < minPlayThreshold);
-      const removedCount = await clearLowPlayCountCacheEntries(lowItems);
-      await refreshCache();
-      showToast(`已清理 ${removedCount || lowItems.length} 首低频离线歌曲`, 'success');
-    } catch (e: any) {
-      showToast('清理离线缓存失败: ' + (e?.message || e), 'error');
-    } finally {
-      isCacheLoading = false;
-    }
-  }
-
-  // 清空全部离线缓存
-  async function handleClearAllCache() {
-    if (!platform.supportsCache || cacheCount === 0) return;
-    const ok = confirm('确定清空手机浏览器中保存的所有离线音乐？');
-    if (!ok) return;
-    isCacheLoading = true;
-    try {
-      await clearAllBrowserAudioCache();
-      await refreshCache();
-      showToast('已清空全部离线音乐缓存', 'success');
-    } catch (e: any) {
-      showToast('清空缓存失败: ' + (e?.message || e), 'error');
-    } finally {
-      isCacheLoading = false;
-    }
-  }
-
-  // 磁盘维护通用包装
-  async function runMaintenance(actionName: string, fn: () => Promise<any>) {
-    maintenanceLoading = true;
-    maintenanceMsg = `正在执行${actionName}...`;
-    try {
-      const res = await fn();
-      if (res?.code === '000000') {
-        showToast(`${actionName}成功！`, 'success');
-      } else {
-        showToast(res?.msg || `${actionName}完成`, 'info');
-      }
-    } catch (e: any) {
-      showToast(`${actionName}失败: ` + (e?.message || e), 'error');
-    } finally {
-      maintenanceLoading = false;
-      maintenanceMsg = '';
-    }
-  }
-
-  // 检查账号状态
-  async function checkLogin() {
-    isCheckingLogin = true;
-    try {
-      const res = await api.loginStatus();
-      isLoggedIn = res?.code === '000000' && res?.data === true;
-    } catch {
-      isLoggedIn = false;
-    } finally {
-      isCheckingLogin = false;
-    }
-  }
-
-  // 保存 Cookie
-  async function saveCookie() {
-    if (!cookieText.trim()) {
-      showToast('请输入有效 Cookie 内容', 'warning');
-      return;
-    }
-    isSavingCookie = true;
-    try {
-      const res = await api.setCookie(cookieText.trim());
-      if (res?.code === '000000') {
-        showToast('Cookie 保存成功！', 'success');
-        cookieText = '';
-        showCookieInput = false;
-        checkLogin();
-      } else {
-        showToast(res?.msg || '保存 Cookie 失败', 'warning');
-      }
-    } catch (e: any) {
-      showToast('保存异常: ' + (e?.message || e), 'error');
-    } finally {
-      isSavingCookie = false;
-    }
-  }
-
-  onMount(() => {
-    refreshCache();
-    checkLogin();
-  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -352,207 +217,14 @@
       </div>
     </section>
 
-    <!-- 板块 4: 离线与缓存管理 -->
-    <section class="flex flex-col gap-2.5">
-      <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <div class="flex items-center gap-1.5">
-          <span>📲</span>
-          <span>手机离线缓存</span>
-        </div>
-        {#if platform.supportsCache}
-          <button
-            type="button"
-            class="text-[11px] text-red-500 hover:underline cursor-pointer bg-transparent border-none p-0 flex items-center gap-0.5"
-            onclick={refreshCache}
-          >
-            {isCacheLoading ? '扫描中...' : '🔄 刷新'}
-          </button>
-        {/if}
-      </div>
+    <!-- 板块 4: 手机离线缓存模块 -->
+    <SettingsCacheSection {showToast} />
 
-      {#if platform.supportsCache}
-        <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-3">
-          <div class="flex items-center justify-between">
-            <div class="flex flex-col gap-0.5">
-              <span class="font-semibold text-sm text-[var(--text-main)]">自动离线缓存 (PWA)</span>
-              <span class="text-xs text-[var(--text-secondary)]">播放歌曲时在后台自动写入手机离线空间</span>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoCacheState.enabled}
-              aria-label="自动离线缓存开关"
-              class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {autoCacheState.enabled ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
-              onclick={() => setAutoCacheEnabled(!autoCacheState.enabled)}
-            >
-              <span
-                class="block w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform duration-200 {autoCacheState.enabled ? 'translate-x-5.5' : 'translate-x-0'}"
-              ></span>
-            </button>
-          </div>
+    <!-- 板块 5: 网易云账号与授权模块 -->
+    <SettingsAccountSection {showToast} />
 
-          <div class="pt-2 border-t border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-secondary)]">
-            <span>当前已用离线空间：</span>
-            <span class="font-mono font-bold text-[var(--text-main)]">
-              {formatBytes(cacheBytes)} ({cacheCount} 首)
-            </span>
-          </div>
-
-          {#if cacheCount > 0}
-            <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">
-              <button
-                type="button"
-                class="flex-1 py-1.5 px-2 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs text-[var(--text-main)] font-medium border border-[var(--border-color)] cursor-pointer transition-all"
-                onclick={handleClearLowPlayCount}
-              >
-                清理少于 {minPlayThreshold} 次播放
-              </button>
-              <button
-                type="button"
-                class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs text-red-500 font-medium border border-red-500/20 cursor-pointer transition-all shrink-0"
-                onclick={handleClearAllCache}
-              >
-                清空离线
-              </button>
-            </div>
-          {/if}
-        </div>
-      {:else}
-        <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
-          当前浏览器环境不支持 CacheStorage 离线存储（无痕模式或不支持的环境）。
-        </div>
-      {/if}
-    </section>
-
-    <!-- 板块 5: 网易云账号与授权 -->
-    <section class="flex flex-col gap-2.5">
-      <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <div class="flex items-center gap-1.5">
-          <span>👤</span>
-          <span>网易云账号与 Cookie</span>
-        </div>
-        <button
-          type="button"
-          class="text-[11px] text-red-500 hover:underline cursor-pointer bg-transparent border-none p-0"
-          onclick={checkLogin}
-        >
-          {isCheckingLogin ? '检测中...' : '检测状态'}
-        </button>
-      </div>
-
-      <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-[var(--text-secondary)]">授权状态：</span>
-          {#if isCheckingLogin}
-            <span class="text-xs text-[var(--text-muted)]">检测中...</span>
-          {:else if isLoggedIn}
-            <span class="text-xs font-semibold text-emerald-500 flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 已配置账号 / VIP 活跃
-            </span>
-          {:else}
-            <span class="text-xs font-semibold text-amber-500 flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-amber-500"></span> 游客模式 / Cookie 未登录
-            </span>
-          {/if}
-        </div>
-
-        <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">
-          <button
-            type="button"
-            class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all"
-            onclick={() => showCookieInput = !showCookieInput}
-          >
-            {showCookieInput ? '收起 Cookie 录入' : '配置 Cookie'}
-          </button>
-          <a
-            href="/login"
-            target="_blank"
-            rel="noreferrer"
-            class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all text-center no-underline shrink-0"
-          >
-            扫码登录
-          </a>
-        </div>
-
-        {#if showCookieInput}
-          <div class="pt-2 flex flex-col gap-2">
-            <textarea
-              bind:value={cookieText}
-              rows="3"
-              placeholder="在此粘贴 MUSIC_U 或完整 Cookie 字符串..."
-              class="w-full p-2 text-xs rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] text-[var(--text-main)] outline-none focus:border-red-500 resize-none font-mono"
-            ></textarea>
-            <div class="flex justify-end gap-2">
-              <button
-                type="button"
-                class="px-3 py-1 text-xs rounded-lg border border-[var(--border-color)] bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer"
-                onclick={() => { showCookieInput = false; cookieText = ''; }}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                disabled={isSavingCookie}
-                class="px-3 py-1 text-xs rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold cursor-pointer border-none disabled:opacity-50"
-                onclick={saveCookie}
-              >
-                {isSavingCookie ? '保存中...' : '保存'}
-              </button>
-            </div>
-          </div>
-        {/if}
-      </div>
-    </section>
-
-    <!-- 板块 6: 本地曲库与磁盘维护 -->
-    <section class="flex flex-col gap-2.5">
-      <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>💽</span>
-        <span>本地曲库与磁盘维护</span>
-      </div>
-      <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-2">
-        <span class="text-xs text-[var(--text-secondary)] leading-relaxed">
-          服务器端物理音频文件同步与 SQLite 数据库维护：
-        </span>
-        {#if maintenanceMsg}
-          <div class="text-xs text-amber-500 font-medium py-1">{maintenanceMsg}</div>
-        {/if}
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button
-            type="button"
-            disabled={maintenanceLoading}
-            class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
-            onclick={() => runMaintenance('磁盘对齐扫描', api.historyScan)}
-          >
-            🔍 对齐磁盘扫描
-          </button>
-          <button
-            type="button"
-            disabled={maintenanceLoading}
-            class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
-            onclick={() => runMaintenance('外部曲库扫描', api.historyScanExternal)}
-          >
-            📁 扫描外部曲库
-          </button>
-          <button
-            type="button"
-            disabled={maintenanceLoading}
-            class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
-            onclick={() => runMaintenance('导入未录入物理音频', api.historyImportUntracked)}
-          >
-            📥 导入物理音频
-          </button>
-          <button
-            type="button"
-            disabled={maintenanceLoading}
-            class="py-2 px-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all disabled:opacity-50"
-            onclick={() => runMaintenance('清理失效记录', api.historyCleanMissing)}
-          >
-            🧹 清理失效记录
-          </button>
-        </div>
-      </div>
-    </section>
+    <!-- 板块 6: 本地曲库与磁盘维护模块 -->
+    <SettingsMaintenanceSection {showToast} />
   </div>
 </div>
 

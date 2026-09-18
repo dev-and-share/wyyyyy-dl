@@ -13,7 +13,7 @@ pre-commit:
 
     check-lines:
       root: "frontend"
-      glob: "src/**/*.{svelte,ts,js,css}"
+      glob: "**/*.{svelte,ts,js,css}"
       run: npm run check:lines
 
     svelte-check:
