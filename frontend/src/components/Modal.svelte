@@ -5,6 +5,7 @@
     title = '',
     icon = '',
     maxWidth = 'max-w-[520px]',
+    height = '',
     zIndex = 'z-[100020]',
     onClose,
     children,
@@ -13,6 +14,7 @@
     title?: string;
     icon?: string;
     maxWidth?: string;
+    height?: string;
     zIndex?: string;
     onClose: () => void;
     children: Snippet;
@@ -84,6 +86,7 @@
     class="bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border-color)]
       w-full max-sm:rounded-t-[28px] max-sm:rounded-b-none max-sm:border-t max-sm:border-b-0 max-sm:max-h-[88vh]
       sm:rounded-2xl sm:{maxWidth} sm:max-h-[85vh] sm:border
+      {height}
       shadow-2xl overflow-hidden flex flex-col box-border
       {closing && dragOffset === 0
         ? 'max-sm:animate-[drawerSlideDownSP_0.2s_ease-in] sm:animate-[modalFadeIn_0.2s_ease-out_reverse]'

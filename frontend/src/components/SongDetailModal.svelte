@@ -101,41 +101,53 @@
   title="单曲详情与音质"
   icon="🎧"
   maxWidth="max-w-[580px]"
+  height="max-sm:h-[82vh] sm:h-[620px]"
   zIndex="z-[100020]"
   {onClose}
 >
-  <div class="min-h-[440px] flex flex-col justify-between">
+  <div>
     {#if loading && !songInfo}
-      <!-- 💀 1:1 结构对齐骨架屏：彻底消除弹窗打开时高度矮、加载完突然暴增的抖动突兀感 -->
-      <div class="flex flex-col gap-4 animate-pulse select-none" data-testid="song-detail-skeleton">
-        <!-- 主卡片骨架 -->
-        <div class="flex flex-col sm:flex-row gap-3.5 items-start sm:items-center bg-black/5 dark:bg-white/[0.03] p-3.5 sm:p-4 rounded-2xl border border-black/5 dark:border-white/10">
+      <!-- 💀 像素级 1:1 镜像骨架屏：与实际内容严格对齐，彻底消除切换时的任何颤抖与位移 -->
+      <div class="flex flex-col select-none" data-testid="song-detail-skeleton">
+        <!-- 1. 主卡片骨架 -->
+        <div class="flex flex-col sm:flex-row gap-3.5 items-start sm:items-center bg-black/5 dark:bg-white/[0.03] p-3 sm:p-4 rounded-2xl border border-black/5 dark:border-white/10 mb-4 animate-pulse">
           <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-black/10 dark:bg-white/10 mx-auto sm:mx-0 shrink-0 flex items-center justify-center">
             <span class="text-3xl opacity-20">🎵</span>
           </div>
-          <div class="flex-1 min-w-0 w-full flex flex-col gap-2.5 py-1">
-            <div class="h-5 bg-black/10 dark:bg-white/10 rounded-md w-3/4"></div>
-            <div class="h-3.5 bg-black/10 dark:bg-white/10 rounded-md w-1/2"></div>
-            <div class="h-3.5 bg-black/10 dark:bg-white/10 rounded-md w-2/3"></div>
-            <div class="h-4 bg-black/10 dark:bg-white/10 rounded-md w-1/3 mt-1"></div>
+          <div class="flex-1 min-w-0 w-full flex flex-col gap-2 py-0.5">
+            <div class="h-6 bg-black/10 dark:bg-white/10 rounded-md w-3/4 mb-0.5"></div>
+            <div class="h-4 bg-black/10 dark:bg-white/10 rounded-md w-1/2"></div>
+            <div class="h-4 bg-black/10 dark:bg-white/10 rounded-md w-2/3 mb-1"></div>
+            <div class="pt-2 border-t border-black/5 dark:border-white/5 flex items-center gap-2">
+              <div class="h-6 bg-black/10 dark:bg-white/10 rounded-lg w-28"></div>
+              <div class="h-4 bg-black/10 dark:bg-white/10 rounded-md w-24"></div>
+            </div>
           </div>
         </div>
 
-        <!-- 4 个操作按钮骨架 -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
-          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
-          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
-          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
+        <!-- 2. 交互操作按钮组骨架 (严格镜像 2x2 移动端 / 1x4 桌面端) -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 animate-pulse">
+          <div class="h-[38px] sm:h-[34px] rounded-xl bg-black/10 dark:bg-white/10"></div>
+          <div class="h-[38px] sm:h-[34px] rounded-xl bg-black/10 dark:bg-white/10"></div>
+          <div class="h-[38px] sm:h-[34px] rounded-xl bg-black/10 dark:bg-white/10"></div>
+          <div class="h-[38px] sm:h-[34px] rounded-xl bg-black/10 dark:bg-white/10"></div>
         </div>
 
-        <!-- 歌词预览骨架 -->
-        <div class="flex flex-col gap-2">
-          <div class="h-4 bg-black/10 dark:bg-white/10 rounded-md w-20"></div>
-          <div class="h-32 bg-black/5 dark:bg-black/20 rounded-xl border border-black/5 dark:border-white/5 p-4 flex flex-col gap-2.5 justify-center items-center text-xs text-[var(--text-secondary)]">
+        <!-- 3. 歌词预览骨架 -->
+        <div class="mb-3">
+          <div class="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1">
+            <span>📜</span>
+            <span>歌词内容</span>
+          </div>
+          <div class="h-[140px] bg-black/5 dark:bg-black/20 p-4 rounded-xl border border-black/5 dark:border-white/5 flex flex-col gap-2.5 justify-center items-center text-xs text-[var(--text-secondary)]">
             <div class="w-6 h-6 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin"></div>
-            <span>正在解析单曲信息与高规格音频...</span>
+            <span class="text-xs text-[var(--text-muted)] animate-pulse">正在解析单曲信息与高规格音频...</span>
           </div>
+        </div>
+
+        <!-- 4. Raw JSON 查看骨架占位 -->
+        <div class="border border-black/10 dark:border-white/10 rounded-xl p-2.5 bg-black/5 dark:bg-white/[0.02] flex items-center animate-pulse">
+          <div class="h-4 bg-black/10 dark:bg-white/10 rounded w-44"></div>
         </div>
       </div>
     {:else if songInfo}
