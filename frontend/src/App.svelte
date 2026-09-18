@@ -110,6 +110,7 @@
   <div class="hidden lg:contents">
     <DesktopSidebar
       tab={routerState.tab}
+      currentPlaylistId={routerState.playlistId}
       collapsed={routerState.sidebarCollapsed}
       downloadingCount={getActiveDownloadingCount()}
       onSwitchTab={switchTab}
@@ -147,6 +148,7 @@
           downloadedSet={taskState.downloadedSet}
           onToggleLike={toggleLike}
           onPlayQueue={setQueue}
+          onSong={(sid: string) => { viewingSongId = sid; }}
           onAlbum={jumpToAlbum}
           onReveal={handleReveal}
           {showToast}

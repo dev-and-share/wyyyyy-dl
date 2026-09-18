@@ -9,7 +9,7 @@ function getInitialTab(): ActiveTab {
 
 function getInitialPlaylistId(): string {
   if (typeof window === 'undefined') return '';
-  return location.hash.match(/id=([0-9]+)/)?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
+  return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
 }
 
 const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyyyy_sidebar_collapsed';
@@ -75,6 +75,10 @@ export function jumpToPlaylist(id: string): void {
   } catch {}
 }
 
+export function jumpToDailyRecommend(): void {
+  jumpToPlaylist('daily-recommend');
+}
+
 export function exitPlaylistToGallery(): void {
   routerState.playlistId = '';
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
@@ -87,7 +91,7 @@ export function exitPlaylistToGallery(): void {
 export function initRouter(): () => void {
   const syncRoute = () => {
     const raw = typeof location !== 'undefined' ? location.hash.replace('#', '') : '';
-    const m = raw.match(/id=([0-9]+)/);
+    const m = raw.match(/id=([0-9a-zA-Z_-]+)/);
     if (m?.[1]) {
       routerState.playlistId = m[1];
     } else if (raw.startsWith('playlist')) {
