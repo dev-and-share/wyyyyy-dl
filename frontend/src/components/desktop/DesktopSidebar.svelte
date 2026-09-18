@@ -6,6 +6,7 @@
     currentPlaylistId = '',
     collapsed = false,
     downloadingCount = 0,
+    hasPlayerBar = false,
     onSwitchTab,
     onViewPlaylist,
     onPlayPlaylist,
@@ -16,6 +17,7 @@
     currentPlaylistId?: string;
     collapsed: boolean;
     downloadingCount?: number;
+    hasPlayerBar?: boolean;
     onSwitchTab: (tab: 'playlist' | 'search' | 'download-mgr') => void;
     onViewPlaylist?: (id: string) => void;
     onPlayPlaylist?: (id: string, name: string) => void;
@@ -54,7 +56,8 @@
 <!-- 🖥️ PC 桌面级左侧常驻/折叠边栏 (仅在 >= 1024px 显示) -->
 <aside
   data-testid="desktop-sidebar"
-  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width] duration-200 ease-in-out self-start sticky top-0 h-[calc(100vh-74px)] max-h-[calc(100vh-74px)] overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
+  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width,height] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
+  style="height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'}; max-height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'};"
 >
   <!-- 1. 顶栏：Logo 与折叠切换按钮 (紧凑精致) -->
   <div class="h-12 flex items-center px-3 border-b border-[var(--border-color)] justify-between gap-1 overflow-hidden shrink-0">

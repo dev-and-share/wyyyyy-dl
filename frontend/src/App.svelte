@@ -28,6 +28,7 @@
   import PullToRefresh from './components/sp/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
+  import SettingsDrawer from './components/SettingsDrawer.svelte';
   import BottomTabBar from './components/sp/BottomTabBar.svelte';
 
   // ---------- 全局状态 ----------
@@ -35,6 +36,9 @@
   let themeMode: ThemeMode = $state(getInitialTheme());
   let revealData: { path: string; msg: string } | null = $state(null);
   let viewingSongId: string | null = $state(null);
+  let showSettings = $state(false);
+  let showPlayerPeq = $state(false);
+  let isPlayerMinimized = $state(false);
 
   // ---------- 播放器状态桥接 (供各 Tab 感知) ----------
   let curTrack: Track | null = $state(null);
@@ -42,7 +46,8 @@
   let setQueue: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void = $state(() => {});
   let isPlayerOverlayOpen = $state(false);
 
-  let isAnyOverlayOpen = $derived(isPlayerOverlayOpen || !!revealData || !!sheetState.data);
+  let hasActivePlayerBar = $derived(layoutState.isDesktop && !!curTrack && !isPlayerMinimized);
+  let isAnyOverlayOpen = $derived(isPlayerOverlayOpen || !!revealData || !!sheetState.data || showSettings);
 
   async function handleReveal(item: any) {
     try {
@@ -113,6 +118,7 @@
       currentPlaylistId={routerState.playlistId}
       collapsed={routerState.sidebarCollapsed}
       downloadingCount={getActiveDownloadingCount()}
+      hasPlayerBar={hasActivePlayerBar}
       onSwitchTab={switchTab}
       onViewPlaylist={jumpToPlaylist}
       onPlayPlaylist={(id: string, name: string) => playPlaylistTracks(id, name, setQueue, showToast)}
@@ -121,8 +127,11 @@
     />
   </div>
 
-  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 宽屏模式下为独立纵向滚动区) -->
-  <div class="flex-1 flex flex-col min-w-0 app-main-container max-w-[1400px] relative lg:h-[calc(100vh-74px)] lg:overflow-y-auto w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0">
+  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 宽屏模式下为独立纵向滚动区，播放栏最小化时撑满 100vh 可视面积最大化) -->
+  <div
+    class="flex-1 flex flex-col min-w-0 app-main-container max-w-[1400px] relative lg:overflow-y-auto w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0 transition-[height] duration-200"
+    style="height: {layoutState.isDesktop ? (hasActivePlayerBar ? 'calc(100vh - 74px)' : '100vh') : 'auto'};"
+  >
     <!-- 顶栏导航 -->
     <TopBar
       tab={routerState.tab} {themeMode} {repeat}
@@ -131,6 +140,7 @@
       onToggleTheme={toggleTheme}
       onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
       onRefresh={handleRefresh}
+      onOpenSettings={() => showSettings = true}
     />
 
   <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；PC 模式下减少冗余内边距) -->
@@ -223,6 +233,8 @@
   bind:playing
   bind:setQueue
   bind:isOverlayOpen={isPlayerOverlayOpen}
+  bind:showPeq={showPlayerPeq}
+  bind:isPlayerMinimized
   likedSet={likeState.likedSet}
   onToggleLike={toggleLike}
   onReveal={handleReveal}
@@ -242,6 +254,19 @@
     onPlayQueue={setQueue}
     onAlbum={jumpToAlbum}
     onClose={() => viewingSongId = null}
+    {showToast}
+  />
+{/if}
+
+<!-- ⚙️ 全局系统设置抽屉 -->
+{#if showSettings}
+  <SettingsDrawer
+    {repeat}
+    {themeMode}
+    onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
+    onSelectTheme={(mode) => { themeMode = mode; applyTheme(mode); }}
+    onOpenPeq={() => { showPlayerPeq = true; }}
+    onClose={() => showSettings = false}
     {showToast}
   />
 {/if}

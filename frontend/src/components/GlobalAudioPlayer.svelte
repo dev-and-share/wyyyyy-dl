@@ -23,7 +23,9 @@
     isOverlayOpen = $bindable(false),
     likedSet = new Set<number>(),
     onToggleLike = () => {},
-    onReveal = () => {}
+    onReveal = () => {},
+    showPeq = $bindable(false),
+    isPlayerMinimized = $bindable(false)
   } = $props<{
     curTrack?: Track | null;
     playing?: boolean;
@@ -32,12 +34,13 @@
     likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string) => void;
     onReveal?: (item: any) => void;
+    showPeq?: boolean;
+    isPlayerMinimized?: boolean;
   }>();
 
   // ---------- 视图与 DOM 状态 ----------
   let showDrawer = $state(false);
   let showLyric = $state(false);
-  let showPeq = $state(false);
   let pendingSeekTime = $state<number | null>(null);
   let audioEl: HTMLAudioElement | null = $state(null);
   let parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric));
@@ -444,7 +447,7 @@
 <PlayerBar
   curTrack={playerStore.activeTrack} queue={playerStore.queue} playing={playerStore.playing}
   curTime={playerStore.curTime} duration={playerStore.duration} playMode={playerStore.playMode}
-  bind:vol={playerStore.vol} onTogglePlay={togglePlay} onPrev={prev} onNext={next}
+  bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={togglePlay} onPrev={prev} onNext={next}
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
   onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}

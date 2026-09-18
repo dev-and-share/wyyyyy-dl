@@ -22,7 +22,8 @@
     onPeq,
     onQueue,
     onClearQueue,
-    onToggleLike = () => {}
+    onToggleLike = () => {},
+    minimized = $bindable(false)
   } = $props<{
     curTrack: Track | null;
     queue: Track[];
@@ -32,6 +33,7 @@
     playMode: 'list' | 'single' | 'shuffle';
     vol: number;
     likedSet?: Set<number>;
+    minimized?: boolean;
     onTogglePlay: () => void;
     onPrev: () => void;
     onNext: () => void;
@@ -43,8 +45,6 @@
     onClearQueue: () => void;
     onToggleLike?: () => void;
   }>();
-
-  let minimized = $state(false);
 
   // 环形进度计算 (半径 r=23, 周长 2*pi*23 ≈ 144.513)
   const RING_CIRCUMFERENCE = 144.513;
