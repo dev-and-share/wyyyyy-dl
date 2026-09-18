@@ -152,6 +152,15 @@
               {/if}
             </div>
           {/if}
+          <!-- 最右侧按键：收起为黑胶悬浮球 -->
+          <button
+            type="button"
+            class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-red-400 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+            onclick={onMinimize}
+            title="收起为黑胶悬浮球"
+          >
+            <PlayerIcon name="close" size={13} />
+          </button>
         </div>
       </div>
     </div>
@@ -216,14 +225,4 @@
       <PlayerIcon name="heart" liked={isLiked} size={18} />
     </button>
   </div>
-
-  <!-- 收起悬浮球入口（移至右上角，不占用主控制行） -->
-  <button
-    type="button"
-    class="absolute top-1.5 right-2 w-5 h-5 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer opacity-50 hover:opacity-100"
-    onclick={onMinimize}
-    title="收起为黑胶悬浮球"
-  >
-    <PlayerIcon name="close" size={11} />
-  </button>
 </div>
