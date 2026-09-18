@@ -115,4 +115,48 @@ describe('SongDetailModal Component', () => {
       expect(showToast).toHaveBeenCalledWith(expect.stringContaining('夜曲'), 'success');
     });
   });
+
+  it('renders 1:1 skeleton loader during loading to prevent layout jump', async () => {
+    // Return a pending promise that never resolves during this assertion
+    (api.songV1 as any).mockReturnValue(new Promise(() => {}));
+
+    const { getByTestId, getByText } = render(SongDetailModal, {
+      props: {
+        songId: '404',
+        onClose: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    expect(getByTestId('song-detail-skeleton')).toBeInTheDocument();
+    expect(getByText(/正在解析单曲信息与高规格音频/i)).toBeInTheDocument();
+  });
+
+  it('calls onTogglePlay when clicking play on already active track', async () => {
+    const { playerStore } = await import('../lib/playerStore.svelte');
+    playerStore.setQueue([{ id: 505, name: '稻香', artist: '周杰伦' }]);
+    playerStore.playing = false;
+
+    (api.songV1 as any).mockResolvedValue({
+      code: '000000',
+      data: { id: 505, name: '稻香', ar: [{ name: '周杰伦' }] }
+    });
+
+    const onTogglePlay = vi.fn();
+    const { getByRole } = render(SongDetailModal, {
+      props: {
+        songId: '505',
+        onTogglePlay,
+        onClose: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: /立即试听/i })).toBeInTheDocument();
+    });
+
+    await fireEvent.click(getByRole('button', { name: /立即试听/i }));
+    expect(onTogglePlay).toHaveBeenCalled();
+  });
 });

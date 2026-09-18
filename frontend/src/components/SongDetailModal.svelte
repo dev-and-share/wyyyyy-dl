@@ -3,8 +3,9 @@
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import { playerStore } from '../lib/playerStore.svelte';
-  import { getTrackSourceStatus, getTrackPlayActionLabel } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { toPlayerTrack } from '../lib/playerHelper';
+  import Modal from './Modal.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
 
   let {
@@ -12,6 +13,7 @@
     likedSet = new Set<number>(),
     onToggleLike,
     onPlayQueue,
+    onTogglePlay,
     onAlbum,
     onClose,
     showToast
@@ -20,9 +22,10 @@
     likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string, artist?: string) => void;
     onPlayQueue?: (tracks: any[], idx?: number) => void;
+    onTogglePlay?: () => void;
     onAlbum?: (albumId: string) => void;
     onClose: () => void;
-    showToast: (m: string, t?: string) => void;
+    showToast: (m: string, t?: string, dur?: number) => void;
   }>();
 
   let songLevel = $state('lossless');
@@ -30,54 +33,6 @@
   let loading = $state(true);
   let downloading = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
-
-  // 移动端底部滑动手势状态
-  let closing = $state(false);
-  let dragOffset = $state(0);
-  let isDragging = $state(false);
-  let startY = 0;
-
-  function handleClose() {
-    if (closing) return;
-    closing = true;
-    setTimeout(() => {
-      closing = false;
-      onClose();
-    }, 200);
-  }
-
-  function handleTouchStart(e: TouchEvent) {
-    if (e.touches.length === 1) {
-      startY = e.touches[0].clientY;
-      isDragging = true;
-    }
-  }
-
-  function handleTouchMove(e: TouchEvent) {
-    if (!isDragging || closing) return;
-    const diff = e.touches[0].clientY - startY;
-    if (diff > 0) {
-      dragOffset = diff;
-    } else {
-      dragOffset = 0;
-    }
-  }
-
-  function handleTouchEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    if (dragOffset > 70) {
-      dragOffset = 500;
-      closing = true;
-      setTimeout(() => {
-        closing = false;
-        dragOffset = 0;
-        onClose();
-      }, 200);
-    } else {
-      dragOffset = 0;
-    }
-  }
 
   async function loadDetail(id: string, level: string) {
     if (!id) return;
@@ -142,76 +97,61 @@
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && handleClose()} />
-
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-  class="fixed inset-0 w-screen h-screen bg-black/65 backdrop-blur-md z-[100000] flex items-end sm:items-center justify-center p-0 sm:p-4 box-border {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
-  onclick={(e) => e.target === e.currentTarget && handleClose()}
+<Modal
+  title="单曲详情与音质"
+  icon="🎧"
+  maxWidth="max-w-[580px]"
+  zIndex="z-[100020]"
+  {onClose}
 >
-  <div
-    class="bg-[var(--card-bg-solid,#0f172a)] border border-[var(--border-color,rgba(255,255,255,0.18))]
-      w-full max-sm:rounded-t-[22px] max-sm:rounded-b-none max-sm:border-b-0 max-sm:max-h-[88vh]
-      sm:rounded-2xl sm:max-w-[580px] sm:max-h-[85vh]
-      shadow-[0_20px_50px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col box-border
-      {closing && dragOffset === 0
-        ? 'max-sm:animate-[drawerSlideDownSP_0.2s_ease-in] sm:animate-[modalFadeIn_0.2s_ease-out_reverse]'
-        : 'max-sm:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] sm:animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
-    style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: ${isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'};` : ''}
-    onclick={(e) => e.stopPropagation()}
-  >
-    <!-- 📱 移动端下拉手柄 (Drag handle) -->
-    <div
-      class="w-full pt-2.5 pb-1 flex sm:hidden justify-center cursor-grab active:cursor-grabbing select-none touch-none"
-      ontouchstart={handleTouchStart}
-      ontouchmove={handleTouchMove}
-      ontouchend={handleTouchEnd}
-    >
-      <div class="w-10 h-1 rounded-full bg-white/30"></div>
-    </div>
-
-    <!-- Header 标题栏 -->
-    <div
-      class="px-5 py-3 border-b border-[var(--border-subtle,rgba(255,255,255,0.08))] flex justify-between items-center bg-black/5 dark:bg-white/[0.02] select-none"
-      ontouchstart={handleTouchStart}
-      ontouchmove={handleTouchMove}
-      ontouchend={handleTouchEnd}
-    >
-      <div class="flex items-center gap-2 font-bold text-[var(--text-main,#f8fafc)] text-[15px]">
-        <span>🎧</span>
-        <span>单曲详情与音质</span>
-      </div>
-      <button
-        type="button"
-        class="w-7 h-7 rounded-full flex items-center justify-center text-sm text-[var(--text-muted,#94a3b8)] hover:text-[var(--text-main,#ffffff)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={handleClose}
-        title="关闭"
-      >
-        ✕
-      </button>
-    </div>
-
-    <!-- Body 内容区 -->
-    <div class="p-4 sm:p-5 overflow-y-auto text-[var(--text-main,#cbd5e1)] text-[13.5px] leading-relaxed flex-1 overscroll-contain">
-      {#if loading && !songInfo}
-        <div class="py-12 text-center text-xs text-[var(--text-secondary)] flex flex-col items-center gap-3">
-          <div class="w-8 h-8 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin"></div>
-          <span>正在解析单曲信息与音频数据...</span>
+  <div class="min-h-[440px] flex flex-col justify-between">
+    {#if loading && !songInfo}
+      <!-- 💀 1:1 结构对齐骨架屏：彻底消除弹窗打开时高度矮、加载完突然暴增的抖动突兀感 -->
+      <div class="flex flex-col gap-4 animate-pulse select-none" data-testid="song-detail-skeleton">
+        <!-- 主卡片骨架 -->
+        <div class="flex flex-col sm:flex-row gap-3.5 items-start sm:items-center bg-black/5 dark:bg-white/[0.03] p-3.5 sm:p-4 rounded-2xl border border-black/5 dark:border-white/10">
+          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-black/10 dark:bg-white/10 mx-auto sm:mx-0 shrink-0 flex items-center justify-center">
+            <span class="text-3xl opacity-20">🎵</span>
+          </div>
+          <div class="flex-1 min-w-0 w-full flex flex-col gap-2.5 py-1">
+            <div class="h-5 bg-black/10 dark:bg-white/10 rounded-md w-3/4"></div>
+            <div class="h-3.5 bg-black/10 dark:bg-white/10 rounded-md w-1/2"></div>
+            <div class="h-3.5 bg-black/10 dark:bg-white/10 rounded-md w-2/3"></div>
+            <div class="h-4 bg-black/10 dark:bg-white/10 rounded-md w-1/3 mt-1"></div>
+          </div>
         </div>
-      {:else if songInfo}
-        {@const targetId = songInfo.id || songId}
-        {@const status = getTrackSourceStatus(targetId, songInfo.isLocal, playerStore.activeTrack)}
-        {@const isPlayingThis = playerStore.activeTrack && String(playerStore.activeTrack.id) === String(targetId)}
-        {@const isPlaying = Boolean(isPlayingThis && playerStore.playing)}
-        {@const arText = formatArtist(songInfo) || '群星 / 未知'}
-        {@const alText = songInfo.al_name || songInfo.album || '暂无专辑'}
-        {@const alId = songInfo.al_id || songInfo.albumId || songInfo.al?.id}
-        {@const sizeText = songInfo.size || '未知大小'}
-        {@const levelText = songInfo.level || songLevel}
-        {@const imgSrc = songInfo.pic || songInfo.picUrl || DEFAULT_VINYL_COVER}
-        {@const isLiked = likedSet.has(Number(targetId))}
 
+        <!-- 4 个操作按钮骨架 -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
+          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
+          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
+          <div class="h-9 rounded-xl bg-black/10 dark:bg-white/10"></div>
+        </div>
+
+        <!-- 歌词预览骨架 -->
+        <div class="flex flex-col gap-2">
+          <div class="h-4 bg-black/10 dark:bg-white/10 rounded-md w-20"></div>
+          <div class="h-32 bg-black/5 dark:bg-black/20 rounded-xl border border-black/5 dark:border-white/5 p-4 flex flex-col gap-2.5 justify-center items-center text-xs text-[var(--text-secondary)]">
+            <div class="w-6 h-6 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin"></div>
+            <span>正在解析单曲信息与高规格音频...</span>
+          </div>
+        </div>
+      </div>
+    {:else if songInfo}
+      {@const targetId = songInfo.id || songId}
+      {@const status = getTrackSourceStatus(targetId, songInfo.isLocal, playerStore.activeTrack)}
+      {@const isPlayingThis = playerStore.activeTrack && String(playerStore.activeTrack.id) === String(targetId)}
+      {@const isPlaying = Boolean(isPlayingThis && playerStore.playing)}
+      {@const arText = formatArtist(songInfo) || '群星 / 未知'}
+      {@const alText = songInfo.al_name || songInfo.album || '暂无专辑'}
+      {@const alId = songInfo.al_id || songInfo.albumId || songInfo.al?.id}
+      {@const sizeText = songInfo.size || '未知大小'}
+      {@const levelText = songInfo.level || songLevel}
+      {@const imgSrc = songInfo.pic || songInfo.picUrl || DEFAULT_VINYL_COVER}
+      {@const isLiked = likedSet.has(Number(targetId))}
+
+      <div>
         <!-- 主卡片：封面 + 标题 + 核心元数据 -->
         <div class="flex flex-col sm:flex-row gap-3.5 items-start sm:items-center bg-black/5 dark:bg-white/[0.03] p-3 sm:p-4 rounded-2xl border border-black/5 dark:border-white/10 mb-4">
           <div class="relative group mx-auto sm:mx-0 shrink-0">
@@ -253,7 +193,7 @@
                   class="text-blue-400 hover:text-blue-300 underline underline-offset-2 truncate bg-transparent border-none p-0 cursor-pointer text-left"
                   onclick={() => {
                     onAlbum(String(alId));
-                    handleClose();
+                    onClose();
                   }}
                 >
                   {alText}
@@ -287,13 +227,16 @@
 
         <!-- 交互操作按钮组 -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-          <!-- 播放/暂停 -->
+          <!-- 播放/暂停/试听 -->
           <button
             type="button"
             class="btn-primary flex items-center justify-center gap-1.5 py-2.5 sm:py-2 px-3 rounded-xl text-xs font-semibold cursor-pointer shadow-xs active:scale-95 transition-all"
             onclick={() => {
-              if (isPlayingThis) {
-                playerStore.togglePlay();
+              if (isPlayingThis && isPlaying) {
+                if (onTogglePlay) onTogglePlay();
+                else playerStore.togglePlay();
+              } else if (isPlayingThis && onTogglePlay) {
+                onTogglePlay();
               } else if (onPlayQueue) {
                 onPlayQueue([toPlayerTrack(songInfo, { id: targetId, artist: arText, isLocal: status.isLocal })]);
               }
@@ -359,15 +302,16 @@
             <pre class="bg-black/30 dark:bg-[#0b101b] text-sky-400 p-3 rounded-lg text-[11px] max-h-[180px] overflow-y-auto mt-2 font-mono border border-white/5 whitespace-pre-wrap select-all">{JSON.stringify(songInfo.rawData || songInfo, null, 2)}</pre>
           </details>
         </div>
-      {:else}
-        <div class="py-12 text-center text-xs text-[var(--text-muted)]">
-          未找到该歌曲详情信息
-        </div>
-      {/if}
-    </div>
+      </div>
+    {:else}
+      <div class="py-12 text-center text-xs text-[var(--text-muted)]">
+        未找到该歌曲详情信息
+      </div>
+    {/if}
+  </div>
 
-    <!-- Footer 底部栏 -->
-    <div class="px-5 py-2.5 border-t border-[var(--border-subtle,rgba(255,255,255,0.08))] flex justify-center sm:justify-start items-center bg-black/5 dark:bg-white/[0.02] pb-[calc(12px+env(safe-area-inset-bottom,0px))] sm:pb-2.5">
+  {#snippet footer()}
+    <div class="w-full flex justify-between items-center select-none">
       <button
         type="button"
         class="text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
@@ -375,9 +319,16 @@
       >
         📋 复制歌曲 ID: {songId}
       </button>
+      <button
+        type="button"
+        class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
+        onclick={onClose}
+      >
+        关闭
+      </button>
     </div>
-  </div>
-</div>
+  {/snippet}
+</Modal>
 
 {#if addToPlaylistSong}
   <AddToPlaylistModal
