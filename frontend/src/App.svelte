@@ -44,6 +44,7 @@
   let curTrack: Track | null = $state(null);
   let playing = $state(false);
   let setQueue: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void = $state(() => {});
+  let togglePlayerPlay: () => void = $state(() => {});
   let isPlayerOverlayOpen = $state(false);
 
   let hasActivePlayerBar = $derived(layoutState.isDesktop && !!curTrack && !isPlayerMinimized);
@@ -232,6 +233,7 @@
   bind:curTrack
   bind:playing
   bind:setQueue
+  bind:togglePlay={togglePlayerPlay}
   bind:isOverlayOpen={isPlayerOverlayOpen}
   bind:showPeq={showPlayerPeq}
   bind:isPlayerMinimized
@@ -252,6 +254,7 @@
     likedSet={likeState.likedSet}
     onToggleLike={toggleLike}
     onPlayQueue={setQueue}
+    onTogglePlay={togglePlayerPlay}
     onAlbum={jumpToAlbum}
     onClose={() => viewingSongId = null}
     {showToast}

@@ -20,6 +20,7 @@
     curTrack = $bindable(null),
     playing = $bindable(false),
     setQueue = $bindable(),
+    togglePlay = $bindable(() => {}),
     isOverlayOpen = $bindable(false),
     likedSet = new Set<number>(),
     onToggleLike = () => {},
@@ -27,15 +28,11 @@
     showPeq = $bindable(false),
     isPlayerMinimized = $bindable(false)
   } = $props<{
-    curTrack?: Track | null;
-    playing?: boolean;
+    curTrack?: Track | null; playing?: boolean;
     setQueue?: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void;
-    isOverlayOpen?: boolean;
-    likedSet?: Set<number>;
-    onToggleLike?: (id: number, name: string) => void;
-    onReveal?: (item: any) => void;
-    showPeq?: boolean;
-    isPlayerMinimized?: boolean;
+    togglePlay?: () => void; isOverlayOpen?: boolean; likedSet?: Set<number>;
+    onToggleLike?: (id: number, name: string) => void; onReveal?: (item: any) => void;
+    showPeq?: boolean; isPlayerMinimized?: boolean;
   }>();
 
   // ---------- 视图与 DOM 状态 ----------
@@ -199,7 +196,7 @@
     }
   }
 
-  function togglePlay() {
+  function handleTogglePlay() {
     if (!audioEl) return;
     if (audioEl.paused) {
       if (!audioEl.src || audioEl.src === window.location.href) {
@@ -290,7 +287,7 @@
     playerStore.setQueue(tracks, optionsOrIdx, maybePlaylistId);
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-    setTimeout(() => ensurePlay(true), 50);
+    ensurePlay(true);
 
     const targetTrack = playerStore.activeTrack;
     if (targetTrack?.id) {
@@ -306,6 +303,7 @@
   }
 
   setQueue = handleSetQueue;
+  togglePlay = handleTogglePlay;
 
   function handleToggleMode() {
     const nextMode = playerStore.togglePlayMode();
@@ -327,8 +325,8 @@
     if (t) prepareTrackInUI(t);
 
     setupMediaSession({
-      onPlay: () => { if (audioEl?.paused) togglePlay(); },
-      onPause: () => { if (!audioEl?.paused) togglePlay(); },
+      onPlay: () => { if (audioEl?.paused) handleTogglePlay(); },
+      onPause: () => { if (!audioEl?.paused) handleTogglePlay(); },
       onPrev: prev,
       onNext: next
     });
@@ -447,7 +445,7 @@
 <PlayerBar
   curTrack={playerStore.activeTrack} queue={playerStore.queue} playing={playerStore.playing}
   curTime={playerStore.curTime} duration={playerStore.duration} playMode={playerStore.playMode}
-  bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={togglePlay} onPrev={prev} onNext={next}
+  bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next}
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
   onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}
@@ -484,7 +482,7 @@
     track={playerStore.activeTrack} currentTime={playerStore.curTime} duration={playerStore.duration}
     playing={playerStore.playing} playMode={playerStore.playMode} bind:vol={playerStore.vol}
     isLiked={likedSet.has(Number(playerStore.activeTrack.id))}
-    onTogglePlay={togglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek}
+    onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek}
     onSeekTime={(t) => { if (audioEl) { audioEl.currentTime = t; playerStore.curTime = t; } }}
     onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
     onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer}
