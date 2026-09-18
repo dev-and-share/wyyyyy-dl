@@ -104,9 +104,14 @@
   onMount(() => {
     const isDesktopMode = layoutState.isDesktop;
     const targetPid = playlistId || (!isDesktopMode ? (pid || getStored(STORAGE_KEY_PLAYLIST_ID, '')) : '');
-    if (targetPid) {
+    if (targetPid && targetPid !== 'daily-recommend') {
       pid = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});
+    } else if (targetPid === 'daily-recommend') {
+      accMy = false;
+      accDetail = false;
+      accRecommend = true;
+      saveAccState();
     }
     loadMyPlaylists('created').catch(() => {});
   });
@@ -118,6 +123,13 @@
     if (curId && (curId !== lastSeenPlaylistId || curTrig !== lastSeenTrigger)) {
       lastSeenPlaylistId = curId;
       lastSeenTrigger = curTrig;
+      if (curId === 'daily-recommend') {
+        accMy = false;
+        accDetail = false;
+        accRecommend = true;
+        saveAccState();
+        return;
+      }
       pid = curId;
       pidInput = curId;
       handleViewPlaylist(curId, true);

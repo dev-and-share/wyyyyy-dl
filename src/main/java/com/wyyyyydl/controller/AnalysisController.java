@@ -61,11 +61,17 @@ public class AnalysisController {
     }
 
     @RequestMapping(value = "/playlist", method = {RequestMethod.GET, RequestMethod.POST})
-    public RespEntity<?> playlist(@RequestParam(required = true) Long id) {
-    	PlaylistAnalysisRespDTO result = analysisService.analyzePlaylist(id);
-    	if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
-			downloadHistoryDAO.markLocalStatusBatch(result.getPlaylist().getTracks());
-		}
+    public RespEntity<?> playlist(@RequestParam(required = true) String id) {
+        Long playlistId;
+        try {
+            playlistId = Long.parseLong(id.trim());
+        } catch (Exception e) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单 ID 无效或不合法", null);
+        }
+        PlaylistAnalysisRespDTO result = analysisService.analyzePlaylist(playlistId);
+        if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
+            downloadHistoryDAO.markLocalStatusBatch(result.getPlaylist().getTracks());
+        }
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 

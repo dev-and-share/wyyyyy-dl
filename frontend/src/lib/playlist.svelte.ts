@@ -108,6 +108,9 @@ export function resetActiveTargetPlaylist(): void {
 export async function loadPlaylistDetail(playlistId: string, force = false){
   if(!playlistId) throw new Error('请输入歌单 ID');
   const pidStr = String(playlistId).trim();
+  if (pidStr === 'daily-recommend') {
+    return null;
+  }
   const key = 'playlist_' + pidStr;
 
   activeTargetPlaylistId = pidStr;
