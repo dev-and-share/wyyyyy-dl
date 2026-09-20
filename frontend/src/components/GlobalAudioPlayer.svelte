@@ -17,16 +17,9 @@
   import PeqDrawer from './PeqDrawer.svelte';
 
   let {
-    curTrack = $bindable(null),
-    playing = $bindable(false),
-    setQueue = $bindable(),
-    togglePlay = $bindable(() => {}),
-    isOverlayOpen = $bindable(false),
-    likedSet = new Set<number>(),
-    onToggleLike = () => {},
-    onReveal = () => {},
-    showPeq = $bindable(false),
-    isPlayerMinimized = $bindable(false)
+    curTrack = $bindable(null), playing = $bindable(false), setQueue = $bindable(),
+    togglePlay = $bindable(() => {}), isOverlayOpen = $bindable(false), likedSet = new Set<number>(),
+    onToggleLike = () => {}, onReveal = () => {}, showPeq = $bindable(false), isPlayerMinimized = $bindable(false)
   } = $props<{
     curTrack?: Track | null; playing?: boolean;
     setQueue?: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void;
@@ -36,12 +29,9 @@
   }>();
 
   // ---------- 视图与 DOM 状态 ----------
-  let showDrawer = $state(false);
-  let showLyric = $state(false);
-  let pendingSeekTime = $state<number | null>(null);
-  let audioEl: HTMLAudioElement | null = $state(null);
-  let parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric));
-  let lastLyricIndex = $state(-2);
+  let showDrawer = $state(false), showLyric = $state(false), showPeqLocal = $state(false);
+  let pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
+  let parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2);
 
   // 状态同步
   $effect(() => {
@@ -100,19 +90,28 @@
     setTimeout(doSeek, 60);
   }
 
-  async function handleSkipTrial(trackName: string) {
+  async function handleSkipTrack(track: Track, reason: string, isTrial = false) {
+    if (audioEl) {
+      audioEl.pause();
+      try { audioEl.currentTime = 0; } catch {}
+      audioEl.src = '';
+    }
     const nextIdx = playerStore.getNextTrackIndex();
     if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
       playerStore.playing = false;
-      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
-      showToast(`🛡️ 《${trackName}》为试听片段，队列中暂无其他完整曲目`, 'warning', 2500);
+      const noMoreMsg = isTrial
+        ? `🛡️ 《${track.name}》为试听片段，队列中暂无其他完整曲目`
+        : `⚠️ 队列中已无其他可播曲目`;
+      showToast(noMoreMsg, 'warning', 2500);
       return;
     }
-    showToast(`🛡️ 已跳过试听曲目《${trackName}》`, 'info', 1500);
+    const toastMsg = isTrial
+      ? `🛡️ 已跳过试听曲目《${track.name}》`
+      : `⚠️ 《${track.name}》${reason}，自动播放下一首`;
+    showToast(toastMsg, isTrial ? 'info' : 'warning', 2000);
     playerStore.qIndex = nextIdx;
     playerStore.curTime = 0;
     playerStore.save();
-    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
   }
 
@@ -130,22 +129,16 @@
       }
     }
 
-    // 智能跳过已知试听曲目
+    // 智能跳过已知试听曲目与不可播曲目
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      return handleSkipTrial(track.name);
+      return handleSkipTrack(track, '为试听片段', true);
+    }
+    if (track.unplayable === true) {
+      return handleSkipTrack(track, track.unplayableReason || '因地区或版权限制暂无法播放', false);
     }
 
-    // ① 已有 URL：同步触发播放，保留 iOS 手势令牌
-    if (existingUrl) {
-      if (resetTime) {
-        playerStore.curTime = 0;
-        const onMeta = () => {
-          try { if (audioEl) audioEl.currentTime = 0; } catch {}
-          audioEl?.removeEventListener('loadedmetadata', onMeta);
-        };
-        audioEl.addEventListener('loadedmetadata', onMeta);
-      }
-      const p = audioEl.play();
+    const startAudio = () => {
+      const p = audioEl?.play();
       if (p !== undefined) {
         p.then(() => {
           if (resetTime && audioEl) {
@@ -157,6 +150,19 @@
           preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
         }).catch(() => { playerStore.playing = false; });
       }
+    };
+
+    // ① 已有 URL：同步触发播放，保留 iOS 手势令牌
+    if (existingUrl) {
+      if (resetTime) {
+        playerStore.curTime = 0;
+        const onMeta = () => {
+          try { if (audioEl) audioEl.currentTime = 0; } catch {}
+          audioEl?.removeEventListener('loadedmetadata', onMeta);
+        };
+        audioEl.addEventListener('loadedmetadata', onMeta);
+      }
+      startAudio();
       return;
     }
 
@@ -172,7 +178,17 @@
     audioEl.muted = prevMuted;
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      return handleSkipTrial(track.name);
+      return handleSkipTrack(track, '为试听片段', true);
+    }
+
+    if (!url || track.unplayable) {
+      track.unplayable = true;
+      if (audioEl) {
+        audioEl.pause();
+        try { audioEl.currentTime = 0; } catch {}
+        audioEl.src = '';
+      }
+      return handleSkipTrack(track, track.unplayableReason || '因地区或版权限制暂无法播放', false);
     }
 
     if (url && audioEl && playerStore.activeTrack === track) {
@@ -181,18 +197,7 @@
       if (resetTime) {
         try { audioEl.currentTime = 0; } catch {}
       }
-      const p = audioEl.play();
-      if (p !== undefined) {
-        p.then(() => {
-          if (resetTime && audioEl) {
-            try { audioEl.currentTime = 0; } catch {}
-            playerStore.curTime = 0;
-          } else {
-            applyPendingSeek();
-          }
-          preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-        }).catch(() => { playerStore.playing = false; });
-      }
+      startAudio();
     }
   }
 
@@ -335,17 +340,15 @@
 
     // 📱 iOS 熄屏返回前台：若音频流已断裂，原地续播
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible' || !audioEl) return;
-      if (!audioEl.paused && audioEl.readyState < 3) {
-        const time = audioEl.currentTime || 0;
-        const onMeta = () => {
-          try { if (audioEl && audioEl.duration && time < audioEl.duration) audioEl.currentTime = time; } catch {}
-          audioEl?.removeEventListener('loadedmetadata', onMeta);
-          audioEl?.play().catch(() => {});
-        };
-        audioEl.addEventListener('loadedmetadata', onMeta);
-        try { audioEl.load(); } catch {}
-      }
+      if (document.visibilityState !== 'visible' || !audioEl || audioEl.paused || audioEl.readyState >= 3) return;
+      const time = audioEl.currentTime || 0;
+      const onMeta = () => {
+        try { if (audioEl && audioEl.duration && time < audioEl.duration) audioEl.currentTime = time; } catch {}
+        audioEl?.removeEventListener('loadedmetadata', onMeta);
+        audioEl?.play().catch(() => {});
+      };
+      audioEl.addEventListener('loadedmetadata', onMeta);
+      try { audioEl.load(); } catch {}
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -354,11 +357,9 @@
       if (!tracks?.length) return showToast('该目录无可播文件', 'warning');
       const q = tracks.map((item: any, i: number) => ({
         id: item.songId || item.id || `local_${Date.now()}_${i}`,
-        name: item.songName || item.name || '未知',
-        artist: item.artist || '未知',
-        cover: item.cover || '/favicon.png',
-        url: item.url || (item.relativePath ? `/v3/history/stream?path=${encodeURIComponent(item.relativePath)}` : item.filePath ? `/v3/history/stream?path=${encodeURIComponent(item.filePath)}` : item.streamUrl || ''),
-        isLocal: true
+        name: item.songName || item.name || '未知', artist: item.artist || '未知',
+        cover: item.cover || '/favicon.png', isLocal: true,
+        url: item.url || (item.relativePath ? `/v3/history/stream?path=${encodeURIComponent(item.relativePath)}` : item.filePath ? `/v3/history/stream?path=${encodeURIComponent(item.filePath)}` : item.streamUrl || '')
       }));
       handleSetQueue(q, 0);
       showToast(`已连播 ${name} 共 ${q.length} 首`, 'success', 3000);
@@ -423,7 +424,17 @@
       updateMediaSessionMetadata(playerStore.activeTrack, activeLyric);
     }
   }}
-  onerror={() => { console.warn('[Player] 原生音频流加载失败:', audioEl?.error); playerStore.playing = false; }}
+  onerror={() => {
+    console.warn('[Player] 原生音频流加载失败:', audioEl?.error);
+    const cur = playerStore.activeTrack;
+    if (audioEl?.src && audioEl.src !== window.location.href && cur && playerStore.playing) {
+      cur.unplayable = true;
+      cur.unplayableReason = '音频流播放失败';
+      handleSkipTrack(cur, '音频流播放失败', false);
+    } else {
+      playerStore.playing = false;
+    }
+  }}
   onended={(e) => {
     resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
@@ -449,8 +460,7 @@
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
   onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}
-  {likedSet}
-  onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
+  {likedSet} onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
 />
 
 <!-- 📜 播放列表统一抽屉 -->
@@ -459,20 +469,12 @@
     queue={playerStore.queue} qIndex={playerStore.qIndex} tasks={taskState.tasks} {likedSet}
     autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly}
     downloadedSet={taskState.downloadedSet}
-    onPlayIndex={(idx) => {
-      playerStore.qIndex = idx;
-      playerStore.curTime = 0;
-      if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
-      ensurePlay(true);
-    }}
+    onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
     onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}
     onRemoveItem={(realIdx) => playerStore.removeItem(realIdx)}
-    onToggleLike={onToggleLike}
-    onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
-    onToggleServerOnly={(val) => playerStore.toggleServerOnly(val)}
-    onToggleOfflineOnly={(val) => playerStore.toggleOfflineOnly(val)}
-    onClearTasks={clearTasks} onShuffle={handleShuffleAction} {onReveal}
-    onClose={() => showDrawer = false}
+    onToggleLike={onToggleLike} onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
+    onToggleServerOnly={(val) => playerStore.toggleServerOnly(val)} onToggleOfflineOnly={(val) => playerStore.toggleOfflineOnly(val)}
+    onClearTasks={clearTasks} onShuffle={handleShuffleAction} {onReveal} onClose={() => showDrawer = false}
   />
 {/if}
 
@@ -485,8 +487,7 @@
     onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek}
     onSeekTime={(t) => { if (audioEl) { audioEl.currentTime = t; playerStore.curTime = t; } }}
     onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
-    onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer}
-    onClose={() => showLyric = false}
+    onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer} onClose={() => showLyric = false}
   />
 {/if}
 

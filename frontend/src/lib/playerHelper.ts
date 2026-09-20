@@ -40,7 +40,13 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     const j = await api.songV1(String(track.id), 'lossless');
     const song = j?.data;
     if (song) {
-      if (song.url) track.url = song.url;
+      if (song.url) {
+        track.url = song.url;
+        track.unplayable = false;
+      } else {
+        track.unplayable = true;
+        track.unplayableReason = song.unplayableReason || (song.status === 404 ? '因地区或版权限制暂无法播放' : '暂无可播音频源');
+      }
       const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v3/stream'));
       if (isServerLocal) {
         track.isLocal = true;
@@ -52,8 +58,14 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       if (newPic) track.cover = newPic;
       if (song.lyric && !track.lyric) track.lyric = song.lyric;
       return song.url || track.url || '';
+    } else {
+      track.unplayable = true;
+      track.unplayableReason = '获取歌曲信息失败';
     }
-  } catch {}
+  } catch {
+    track.unplayable = true;
+    track.unplayableReason = '网络请求失败';
+  }
   return track.url || '';
 }
 
@@ -70,7 +82,7 @@ export function preloadSurroundingTracks(queue: Track[], curIndex: number, playM
     const nextIdx = (curIndex + 1) % queue.length;
     nextTrack = queue[nextIdx];
   }
-  if (nextTrack && !nextTrack.url) {
+  if (nextTrack && !nextTrack.url && !nextTrack.unplayable) {
     resolveTrackUrl(nextTrack).catch(() => {});
   }
 
@@ -80,7 +92,7 @@ export function preloadSurroundingTracks(queue: Track[], curIndex: number, playM
     const prevIdx = (curIndex - 1 + queue.length) % queue.length;
     prevTrack = queue[prevIdx];
   }
-  if (prevTrack && prevTrack !== nextTrack && !prevTrack.url) {
+  if (prevTrack && prevTrack !== nextTrack && !prevTrack.url && !prevTrack.unplayable) {
     resolveTrackUrl(prevTrack).catch(() => {});
   }
 }

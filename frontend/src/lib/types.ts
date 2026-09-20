@@ -21,6 +21,8 @@ export interface Track {
   }>;
   freeTrial?: boolean;
   freeTrialDuration?: number;
+  unplayable?: boolean;
+  unplayableReason?: string;
 }
 
 export interface DownloadTask {
