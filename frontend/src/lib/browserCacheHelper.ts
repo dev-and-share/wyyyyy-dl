@@ -219,8 +219,9 @@ export async function clearAllBrowserAudioCache(): Promise<void> {
  * 将离线缓存曲目转换成标准 Track 对象供全局播放器调度
  */
 export function toBrowserTrack(item: BrowserCacheItem): Track {
+  const extractedId = item.id || (item.relUrl.match(/[?&]id=(\d+)/)?.[1]) || item.relUrl;
   return {
-    id: item.id || item.relUrl,
+    id: extractedId,
     name: item.name,
     artist: item.artist,
     cover: item.cover || DEFAULT_VINYL_COVER,

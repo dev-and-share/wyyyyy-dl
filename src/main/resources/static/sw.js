@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wyyyyy-dl-v5.0.7';
+const CACHE_NAME = 'wyyyyy-dl-v5.1.3';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const PRECACHE_URLS = [
   '/',
@@ -63,32 +63,79 @@ self.addEventListener('fetch', (event) => {
   const isAudioStream = requestUrl.pathname.includes('/v3/stream') || 
                         requestUrl.pathname.includes('/v3/history/stream');
 
-  // 🛡️ iOS 熄屏/后台会发出 Range 分片续传请求，SW 拦截会导致 fetch 在后台被挂起、音频流断裂。
-  // 带 Range 头的请求直接放行，交给浏览器原生网络栈直连，保障后台续传。
-  if (isAudioStream && event.request.headers.has('Range')) {
-    return;
-  }
-
   if (isAudioStream) {
-    // 音频流：网络优先，网络异常/断网时尝试使用 Cache API 兜底
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const responseToCache = response.clone();
-            caches.open(AUDIO_CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+    // 🎵 音频流处理：优先检查离线 Cache，命中则构造 Range 206 切片响应秒播；未命中回退网络
+    event.respondWith((async () => {
+      try {
+        const cache = await caches.open(AUDIO_CACHE_NAME);
+        const songId = requestUrl.searchParams.get('id');
+        const canonicalKey = songId ? `/v3/stream?id=${songId}` : null;
+
+        let cachedResponse = await cache.match(event.request);
+        if (!cachedResponse) {
+          cachedResponse = await cache.match(requestUrl.pathname + requestUrl.search);
+        }
+        if (!cachedResponse && canonicalKey) {
+          cachedResponse = await cache.match(canonicalKey);
+        }
+
+        // 🎯 本地缓存命中：支持完整的 Range 206 Partial Content 切片，保障 iOS/Safari 拖拽进度条与离线秒播
+        if (cachedResponse) {
+          const rangeHeader = event.request.headers.get('Range');
+          if (!rangeHeader) {
+            return cachedResponse;
           }
-          return response;
-        })
-        .catch(() => {
-          console.log('[SW] 断网降级：从 Cache 读取音频', event.request.url);
-          return caches.open(AUDIO_CACHE_NAME).then(c => c.match(event.request)).then(res => {
-            return res || caches.match(event.request);
+
+          const arrayBuffer = await cachedResponse.arrayBuffer();
+          const total = arrayBuffer.byteLength;
+          const parts = rangeHeader.replace(/bytes=/, '').split('-');
+          const startStr = parts[0];
+          const endStr = parts[1];
+
+          let start = parseInt(startStr, 10);
+          let end = endStr ? parseInt(endStr, 10) : total - 1;
+
+          if (isNaN(start)) {
+            start = total - parseInt(endStr, 10);
+            end = total - 1;
+          }
+          start = Math.max(0, Math.min(start, total - 1));
+          end = Math.max(start, Math.min(end, total - 1));
+
+          const chunk = arrayBuffer.slice(start, end + 1);
+          const headers = new Headers(cachedResponse.headers);
+          headers.set('Content-Range', `bytes ${start}-${end}/${total}`);
+          headers.set('Content-Length', String(chunk.byteLength));
+          headers.set('Accept-Ranges', 'bytes');
+          if (!headers.get('Content-Type')) {
+            headers.set('Content-Type', 'audio/mpeg');
+          }
+
+          return new Response(chunk, {
+            status: 206,
+            statusText: 'Partial Content',
+            headers
           });
-        })
-    );
+        }
+      } catch (cacheErr) {
+        console.warn('[SW] 读取离线音频缓存失败:', cacheErr);
+      }
+
+      // 未缓存的音频：请求服务端网络
+      try {
+        const networkResponse = await fetch(event.request);
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(AUDIO_CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      } catch (err) {
+        return new Response('Audio not available offline', { status: 404 });
+      }
+    })());
+    return;
   } else {
     // 静态资源与页面：网络优先，成功则更新 Cache，失败降级 Cache
     event.respondWith(
