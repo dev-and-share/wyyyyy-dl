@@ -215,7 +215,9 @@ public class AnalysisController {
                 String commentJson = neteaseAPIService.getSongComments(id, 0, 1);
                 if (commentJson != null) {
                     com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(commentJson);
-                    if (obj.getIntValue("code") == 200 && obj.containsKey("total")) {
+                    if (obj.containsKey("total")) {
+                        commentCount = obj.getLong("total");
+                    } else if (obj.getIntValue("code") == 200 && obj.containsKey("total")) {
                         commentCount = obj.getLong("total");
                     }
                 }
@@ -243,7 +245,7 @@ public class AnalysisController {
             String jsonResp = neteaseAPIService.getSongComments(id, offset, limit);
             if (jsonResp != null) {
                 com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
-                if (obj.getIntValue("code") == 200) {
+                if (obj.containsKey("total") || obj.getIntValue("code") == 200) {
                     return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
                 } else {
                     String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");

@@ -954,10 +954,10 @@ public class NeteaseAPIService implements InitializingBean{
 	        if (songId == null || songId <= 0) {
 	            throw new IllegalArgumentException("songId 不能为空");
 	        }
-	        String url = "https://interface.music.163.com/weapi/song/red/count";
-	        Map<String, Object> data = new HashMap<>();
-	        data.put("songId", String.valueOf(songId));
-	        return requestWeapi(url, data);
+	        String innerUrl = "http://music.163.com/api/song/red/count";
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("songId", String.valueOf(songId));
+	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 
 	    /**
@@ -971,13 +971,13 @@ public class NeteaseAPIService implements InitializingBean{
 	        if (songId == null || songId <= 0) {
 	            throw new IllegalArgumentException("songId 不能为空");
 	        }
-	        String url = "https://music.163.com/weapi/v1/resource/comments/R_SO_4_" + songId;
-	        Map<String, Object> data = new HashMap<>();
-	        data.put("rid", "R_SO_4_" + songId);
-	        data.put("offset", Math.max(0, offset));
-	        data.put("limit", Math.max(1, limit));
-	        data.put("beforeTime", 0);
-	        return requestWeapi(url, data);
+	        String innerUrl = "http://music.163.com/api/v1/resource/comments/R_SO_4_" + songId;
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("rid", "R_SO_4_" + songId);
+	        innerParams.put("offset", Math.max(0, offset));
+	        innerParams.put("limit", Math.max(1, limit));
+	        innerParams.put("beforeTime", 0);
+	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 
 
