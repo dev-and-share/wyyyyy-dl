@@ -1,6 +1,6 @@
 import { api } from './api';
 import type { Track } from './types';
-import { cachedSongIdSet, getCachedAudioBlobUrl } from './pwaCache.svelte';
+import { cachedSongIdSet } from './pwaCache.svelte';
 import { markSongDownloaded, getTrackSourceStatus } from './trackStatus.svelte';
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
 import { recordPlaylistPlay } from './playlist.svelte';
@@ -10,14 +10,13 @@ import { playerStore, type SetQueueOptions } from './playerStore.svelte';
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
  */
 export async function resolveTrackUrl(track: Track): Promise<string> {
-  // 1. 如果已在手机/浏览器离线缓存中，优先提取本地 Blob URL 秒播 (无需联网，零延迟)
+  // 0. 防御：如果传入的 url 是易失的 blob: URL，一律重置避免跨天失效
+  if (track.url && track.url.startsWith('blob:')) {
+    track.url = track.id ? `/v3/stream?id=${track.id}` : '';
+  }
+
+  // 1. 如果已在手机/浏览器离线缓存中，直接使用标准离线流地址 (由 SW 拦截 Cache 206 秒播，跨天永不失效)
   if (track.id && cachedSongIdSet.has(Number(track.id))) {
-    const blobUrl = await getCachedAudioBlobUrl(track.id);
-    if (blobUrl) {
-      track.url = blobUrl;
-      track.isLocal = true;
-      return track.url;
-    }
     track.url = `/v3/stream?id=${track.id}`;
     track.isLocal = true;
     return track.url;

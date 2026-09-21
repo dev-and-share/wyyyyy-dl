@@ -57,4 +57,25 @@ describe('playerStorage persistence contracts', () => {
     const state = loadPlayerStateFromStorage();
     expect(state.qIndex).toBe(0);
   });
+
+  it('sanitizes volatile blob: URLs on save and load to prevent cross-session invalidation', () => {
+    const dirtyQueue: Track[] = [
+      { id: 100, name: '测试曲目', artist: '歌手', url: 'blob:https://8080.typesafe.jp/abcd-1234' },
+      { id: '', name: '空ID曲目', artist: '歌手', url: 'blob:https://8080.typesafe.jp/efgh-5678' }
+    ];
+
+    savePlayerStateToStorage({
+      queue: dirtyQueue,
+      qIndex: 0,
+      playMode: 'list',
+      curTime: 0,
+      autoSkipTrial: true,
+      serverOnly: false,
+      offlineOnly: false
+    });
+
+    const state = loadPlayerStateFromStorage();
+    expect(state.queue?.[0].url).toBe('/v3/stream?id=100');
+    expect(state.queue?.[1].url).toBe('');
+  });
 });

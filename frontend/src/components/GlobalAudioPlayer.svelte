@@ -58,8 +58,9 @@
 
   async function prepareTrackInUI(track: Track) {
     if (track.isLocal && track.id) markSongDownloaded(track.id);
+    if (track.url && track.url.startsWith('blob:')) track.url = track.id ? `/v3/stream?id=${track.id}` : '';
     const url = track.url || (await resolveTrackUrl(track));
-    if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href)) {
+    if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:'))) {
       audioEl.src = url;
     }
   }
@@ -204,7 +205,7 @@
   function handleTogglePlay() {
     if (!audioEl) return;
     if (audioEl.paused) {
-      if (!audioEl.src || audioEl.src === window.location.href) {
+      if (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:') || !audioEl.duration) {
         ensurePlay(false);
       } else {
         const p = audioEl.play();
