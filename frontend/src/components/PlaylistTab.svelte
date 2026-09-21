@@ -1,20 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
-    allTracks,
-    getFilteredTracks,
-    pageSize,
-    getPaged,
-    getTotalPages,
-    getPlaylist,
-    getCurPage,
-    getPlaylistSearchKeyword,
-    setPlaylistSearchKeyword,
-    loadMyPlaylists,
-    loadPlaylistDetail,
-    isPlaylistLoading,
-    incPage,
-    recordPlaylistPlay
+    allTracks, getFilteredTracks, pageSize, getPaged, getTotalPages, getPlaylist, getCurPage,
+    getPlaylistSearchKeyword, setPlaylistSearchKeyword, loadMyPlaylists, loadPlaylistDetail,
+    isPlaylistLoading, incPage, recordPlaylistPlay
   } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
@@ -42,31 +31,13 @@
   let filteredTracks = $derived(getFilteredTracks());
 
   let {
-    playlistId,
-    playlistTrigger = 0,
-    curTrack = null,
-    playing = false,
-    likedSet,
-    downloadedSet = new Set<number>(),
-    onToggleLike,
-    onPlayQueue,
-    onAlbum,
-    onReveal,
-    onSong,
-    showToast
+    playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
+    downloadedSet = new Set<number>(), onToggleLike, onPlayQueue, onAlbum, onReveal, onSong, showToast
   } = $props<{
-    playlistId: string;
-    playlistTrigger?: number;
-    curTrack?: any;
-    playing?: boolean;
-    likedSet: Set<number>;
-    downloadedSet?: Set<number>;
-    onToggleLike: (id: number, name: string) => void;
-    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
-    onAlbum?: (albumId: string) => void;
-    onReveal?: (item: any) => void;
-    onSong?: (id: string) => void;
-    showToast: (m: string, t?: string) => void;
+    playlistId: string; playlistTrigger?: number; curTrack?: any; playing?: boolean; likedSet: Set<number>;
+    downloadedSet?: Set<number>; onToggleLike: (id: number, name: string) => void;
+    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void; onAlbum?: (albumId: string) => void;
+    onReveal?: (item: any) => void; onSong?: (id: string) => void; showToast: (m: string, t?: string) => void;
   }>();
 
   let showForkModal = $state(false);
@@ -107,12 +78,20 @@
     } catch {}
   }
 
+  function scrollToDetail() {
+    tick().then(() => {
+      const el = document.getElementById('section-playlist-detail');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   // 初始化自动拉取/读取 SWR 缓存
   onMount(() => {
     const isDesktopMode = layoutState.isDesktop;
     const targetPid = playlistId || (!isDesktopMode ? (pid || getStored(STORAGE_KEY_PLAYLIST_ID, '')) : '');
     if (targetPid && targetPid !== 'daily-recommend') {
       pid = targetPid;
+      pidInput = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});
     } else if (targetPid === 'daily-recommend') {
       pid = 'daily-recommend';
@@ -129,6 +108,9 @@
       lastSeenTrigger = curTrig;
       pid = curId;
       pidInput = curId;
+      accDetail = true;
+      saveAccState();
+      scrollToDetail();
       if (curId !== 'daily-recommend') {
         loadPlaylistDetail(curId, true).catch(() => {});
       }
@@ -142,9 +124,13 @@
     }
     const cleanId = targetId.trim();
     pid = cleanId;
+    pidInput = cleanId;
+    accDetail = true;
+    saveAccState();
     try {
       localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, cleanId);
     } catch {}
+    scrollToDetail();
     loadPlaylistDetail(cleanId, true).then(() => {
       showToast('歌单已刷新', 'success');
     }).catch(e => {
@@ -274,7 +260,8 @@
 />
 
 <!-- Section 2: 查看歌单详情 -->
-<AccordionCard title="🎼 2. 查看歌单详情" bind:open={accDetail} onToggle={saveAccState}>
+<div id="section-playlist-detail">
+  <AccordionCard title="🎼 2. 查看歌单详情" bind:open={accDetail} onToggle={saveAccState}>
     <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
       <input
         type="text"
@@ -445,6 +432,7 @@
       </div>
     {/if}
   </AccordionCard>
+</div>
 
   <!-- Section 3: 每日专属推荐 -->
   <DailyRecommendSection
