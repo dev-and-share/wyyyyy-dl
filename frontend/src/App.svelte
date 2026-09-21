@@ -79,6 +79,12 @@
     const onDownloadSubmit = () => startTaskPolling();
     window.addEventListener('wyyyy:download-submitted', onDownloadSubmit);
 
+    // 监听全局物理文件定位事件 (支持各种组件长按/双击快捷触发)
+    const onGlobalReveal = (e: any) => {
+      if (e?.detail) handleReveal(e.detail);
+    };
+    window.addEventListener('wyyyy:reveal', onGlobalReveal);
+
     // 监听 PWA 新版本就绪事件
     const onPwaUpdate = () => showToast('🎉 发现新版本！下拉即可更新', 'info', 6000);
     window.addEventListener('wyyyy:pwa-update-available', onPwaUpdate);
@@ -87,6 +93,7 @@
       stopRouter();
       stopLayout();
       window.removeEventListener('wyyyy:download-submitted', onDownloadSubmit);
+      window.removeEventListener('wyyyy:reveal', onGlobalReveal);
       window.removeEventListener('wyyyy:pwa-update-available', onPwaUpdate);
     };
   });
