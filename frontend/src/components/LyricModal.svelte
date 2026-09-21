@@ -8,6 +8,7 @@
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import SongCommentModal from './SongCommentModal.svelte';
 
   type Lrc = LrcLine;
 
@@ -53,6 +54,42 @@
   let showVolPopup = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let rawLyricText = $derived(track?.lyric || fetchedLyric || '');
+  let redCount = $state<number | null>(null);
+  let commentCount = $state<number | null>(null);
+  let showCommentModal = $state(false);
+  let lastStatsTrackId = -1;
+
+  function formatBadgeCount(cnt: number) {
+    if (cnt >= 100000) return (cnt / 10000).toFixed(0) + 'w';
+    if (cnt >= 10000) return (cnt / 10000).toFixed(1) + 'w';
+    if (cnt >= 1000) return (cnt / 1000).toFixed(1) + 'k';
+    return String(cnt);
+  }
+
+  // 沉浸模式异步拉取红心数与评论数（异常时静默忽略，出错不显示）
+  $effect(() => {
+    const tId = Number(track?.id);
+    if (tId && tId > 0 && tId !== lastStatsTrackId) {
+      lastStatsTrackId = tId;
+      redCount = null;
+      commentCount = null;
+      api.songStats(tId).then((res) => {
+        if (lastStatsTrackId === tId && res?.code === '000000' && res.data) {
+          if (typeof res.data.redCount === 'number' && res.data.redCount > 0) {
+            redCount = res.data.redCount;
+          }
+          if (typeof res.data.commentCount === 'number' && res.data.commentCount > 0) {
+            commentCount = res.data.commentCount;
+          }
+        }
+      }).catch(() => {});
+    } else if (!tId || tId <= 0) {
+      lastStatsTrackId = -1;
+      redCount = null;
+      commentCount = null;
+    }
+  });
+
   // 用户手动点击歌词跳转后，暂停自动滚动 3s
   let userSeekedAt = $state(0);
   const AUTO_SCROLL_PAUSE_MS = 3000;
@@ -144,9 +181,32 @@
           {#if track?.isLocal}
             <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地磁盘">🖥️</span>
           {/if}
-          <button type="button" class="p-1 hover:scale-110 active:scale-90 transition-transform cursor-pointer" onclick={onToggleLike} title="喜欢">
+          <button
+            type="button"
+            class="flex items-center gap-1 p-1 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+            onclick={onToggleLike}
+            title={redCount ? `喜欢（${redCount}人收藏）` : '喜欢'}
+          >
             <PlayerIcon name="heart" liked={isLiked} size={18} />
+            {#if redCount !== null && redCount > 0}
+              <span class="text-[11px] font-medium text-red-400/90 select-none">
+                {formatBadgeCount(redCount)}
+              </span>
+            {/if}
           </button>
+          {#if commentCount !== null && commentCount > 0}
+            <button
+              type="button"
+              class="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/5 hover:bg-white/10 text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              onclick={() => showCommentModal = true}
+              title={`查看评论（共 ${commentCount} 条）`}
+            >
+              <span class="text-xs">💬</span>
+              <span class="text-[11px] font-medium select-none">
+                {formatBadgeCount(commentCount)}
+              </span>
+            </button>
+          {/if}
           <button
             type="button"
             class="p-1 text-[var(--text-secondary)] hover:text-emerald-400 hover:scale-110 active:scale-90 transition-transform cursor-pointer"
@@ -318,3 +378,12 @@
     {showToast}
   />
 {/if}
+
+{#if showCommentModal && track?.id}
+  <SongCommentModal
+    songId={track.id}
+    songName={track.name}
+    onClose={() => showCommentModal = false}
+  />
+{/if}
+

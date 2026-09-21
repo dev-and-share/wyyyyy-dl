@@ -26,6 +26,8 @@ export const api = {
 
   // 🎵 核心解析
   songV1: (id: string, level: string) => postForm('/v3/song', { id, level, type: 'json' }),
+  songStats: (id: string | number) => get(`/v3/song/stats?id=${encodeURIComponent(id)}`),
+  songComments: (id: string | number, offset = 0, limit = 20) => get(`/v3/song/comments?id=${encodeURIComponent(id)}&offset=${offset}&limit=${limit}`),
   playlist: (id: string) => postForm('/v3/playlist', { id }),
   album: (id: string) => postForm('/v3/album', { id }),
   artist: (id: string) => get(`/v3/artist?id=${encodeURIComponent(id)}`),
