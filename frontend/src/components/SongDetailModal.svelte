@@ -23,7 +23,7 @@
     onToggleLike?: (id: number, name: string, artist?: string) => void;
     onPlayQueue?: (tracks: any[], idx?: number) => void;
     onTogglePlay?: () => void;
-    onAlbum?: (albumId: string) => void;
+    onAlbum?: (albumId: string, albumName?: string) => void;
     onClose: () => void;
     showToast: (m: string, t?: string, dur?: number) => void;
   }>();
@@ -33,6 +33,9 @@
   let loading = $state(true);
   let downloading = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
+
+  let alId = $derived(songInfo?.al_id || songInfo?.albumId || songInfo?.al?.id || '');
+  let alText = $derived(songInfo?.al_name || songInfo?.album || songInfo?.al?.name || '暂无专辑');
 
   async function loadDetail(id: string, level: string) {
     if (!id) return;
@@ -204,14 +207,18 @@
                   type="button"
                   class="text-blue-400 hover:text-blue-300 underline underline-offset-2 truncate bg-transparent border-none p-0 cursor-pointer text-left"
                   onclick={() => {
-                    onAlbum(String(alId));
+                    onAlbum(String(alId), alText);
                     onClose();
                   }}
                 >
                   {alText}
                 </button>
+                <span class="text-[var(--text-muted)] text-[11px] font-mono shrink-0">({alId})</span>
               {:else}
                 <span class="truncate">{alText}</span>
+                {#if alId}
+                  <span class="text-[var(--text-muted)] text-[11px] font-mono shrink-0">({alId})</span>
+                {/if}
               {/if}
             </div>
 
@@ -323,17 +330,28 @@
   </div>
 
   {#snippet footer()}
-    <div class="w-full flex justify-between items-center select-none">
+    <div class="w-full flex justify-between items-center select-none gap-2 flex-wrap">
+      <div class="flex items-center gap-3 flex-wrap">
+        <button
+          type="button"
+          class="text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
+          onclick={() => copyText(String(songId), '歌曲 ID')}
+        >
+          📋 复制歌曲 ID: {songId}
+        </button>
+        {#if alId}
+          <button
+            type="button"
+            class="text-xs text-[var(--text-muted)] hover:text-blue-400 bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
+            onclick={() => copyText(String(alId), '专辑 ID')}
+          >
+            📋 复制专辑 ID: {alId}
+          </button>
+        {/if}
+      </div>
       <button
         type="button"
-        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
-        onclick={() => copyText(String(songId), '歌曲 ID')}
-      >
-        📋 复制歌曲 ID: {songId}
-      </button>
-      <button
-        type="button"
-        class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
+        class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer ml-auto"
         onclick={onClose}
       >
         关闭

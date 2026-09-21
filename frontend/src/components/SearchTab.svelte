@@ -12,6 +12,7 @@
 
   let {
     albumId = '',
+    albumTrigger = 0,
     curTrack = null,
     playing = false,
     downloadedSet = new Set<number>(),
@@ -25,12 +26,13 @@
     showToast
   } = $props<{
     albumId?: string;
+    albumTrigger?: number;
     curTrack?: Track | null;
     playing?: boolean;
     downloadedSet?: Set<number>;
     likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string, artist?: string) => void;
-    onAlbum?: (id: string) => void;
+    onAlbum?: (id: string, name?: string) => void;
     onPlaylist: (id: string) => void;
     onPlayQueue?: (tracks: any[], idx?: number) => void;
     onSong?: (id: string) => void;
@@ -95,8 +97,31 @@
   let album: any = $state(null);
   let albumLoading = $state(false);
 
+  async function focusAlbumSection(id: string) {
+    if (!id) return;
+    currentAlbumId = id;
+    accSearch = false;
+    accArtist = false;
+    accAlbum = true;
+    loadAlbum(id);
+    await tick();
+    setTimeout(() => {
+      const el = document.getElementById('section-album-detail');
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+      }
+    }, 280);
+  }
+
+  let lastHandledTrigger = 0;
   $effect(() => {
-    if (albumId && albumId !== currentAlbumId) {
+    if (albumTrigger > 0 && albumTrigger !== lastHandledTrigger) {
+      lastHandledTrigger = albumTrigger;
+      if (albumId) {
+        focusAlbumSection(albumId);
+      }
+    } else if (albumId && albumId !== currentAlbumId) {
       currentAlbumId = albumId;
       loadAlbum(albumId);
     }
@@ -211,9 +236,8 @@
   }
 
   function handleAlbum(id: string) {
-    currentAlbumId = id;
+    focusAlbumSection(id);
     if (onAlbum) onAlbum(id);
-    else loadAlbum(id);
   }
 
   async function downloadFullAlbum() {
@@ -313,18 +337,20 @@
 </AccordionCard>
 
 <!-- Section 2: 专辑解析与整辑下载 (已拆分组件) -->
-<AlbumDetailCard
-  {album}
-  {albumLoading}
-  bind:open={accAlbum}
-  bind:currentAlbumId
-  {curTrack} {playing} {likedSet} {downloadedSet}
-  onLoadAlbum={loadAlbum}
-  onDownloadFullAlbum={downloadFullAlbum}
-  onPlayFullAlbum={playFullAlbum}
-  onDownloadSingleTrack={downloadSingleTrack}
-  {onToggleLike} {onPlayQueue} {onReveal} {onSong}
-/>
+<div id="section-album-detail">
+  <AlbumDetailCard
+    {album}
+    {albumLoading}
+    bind:open={accAlbum}
+    bind:currentAlbumId
+    {curTrack} {playing} {likedSet} {downloadedSet}
+    onLoadAlbum={loadAlbum}
+    onDownloadFullAlbum={downloadFullAlbum}
+    onPlayFullAlbum={playFullAlbum}
+    onDownloadSingleTrack={downloadSingleTrack}
+    {onToggleLike} {onPlayQueue} {onReveal} {onSong}
+  />
+</div>
 <!-- Section 3: 歌手热门曲目与收藏 -->
 <div id="section-artist-detail">
   <ArtistDetailCard

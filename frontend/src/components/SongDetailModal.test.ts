@@ -159,4 +159,47 @@ describe('SongDetailModal Component', () => {
     await fireEvent.click(getByRole('button', { name: /立即试听/i }));
     expect(onTogglePlay).toHaveBeenCalled();
   });
+
+  it('displays album id in parentheses, triggers onAlbum with name, and provides copy album ID', async () => {
+    (api.songV1 as any).mockResolvedValue({
+      code: '000000',
+      data: {
+        id: 707,
+        name: '七里香',
+        ar: [{ name: '周杰伦' }],
+        al_id: '9988',
+        al_name: '七里香专辑'
+      }
+    });
+
+    const onAlbum = vi.fn();
+    const onClose = vi.fn();
+    const showToast = vi.fn();
+
+    const { getByText, getByRole } = render(SongDetailModal, {
+      props: {
+        songId: '707',
+        onAlbum,
+        onClose,
+        showToast
+      }
+    });
+
+    await waitFor(() => {
+      expect(getByText('七里香专辑')).toBeInTheDocument();
+    });
+
+    // 验证括号内显示专辑 ID
+    expect(getByText('(9988)')).toBeInTheDocument();
+
+    // 点击专辑跳转
+    const albumBtn = getByRole('button', { name: '七里香专辑' });
+    await fireEvent.click(albumBtn);
+    expect(onAlbum).toHaveBeenCalledWith('9988', '七里香专辑');
+    expect(onClose).toHaveBeenCalled();
+
+    // 验证底部复制专辑 ID 按钮
+    expect(getByRole('button', { name: /复制歌曲 ID: 707/i })).toBeInTheDocument();
+    expect(getByRole('button', { name: /复制专辑 ID: 9988/i })).toBeInTheDocument();
+  });
 });

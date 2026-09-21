@@ -10,6 +10,7 @@
   import DesktopArtistDetail from './DesktopArtistDetail.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { routerState } from '../../lib/router.svelte';
 
   let {
     curTrack = null,
@@ -29,7 +30,7 @@
     downloadedSet?: Set<number>;
     likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string, artist?: string) => void;
-    onAlbum?: (id: string) => void;
+    onAlbum?: (id: string, name?: string) => void;
     onPlaylist: (id: string) => void;
     onPlayQueue?: (tracks: any[], idx?: number) => void;
     onSong?: (id: string) => void;
@@ -51,6 +52,20 @@
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
   let searchHistory = $state<string[]>([]);
   let activeArtistId = $state('');
+
+  let lastHandledAlbumTrigger = 0;
+  $effect(() => {
+    if (routerState.albumTrigger > 0 && routerState.albumTrigger !== lastHandledAlbumTrigger) {
+      lastHandledAlbumTrigger = routerState.albumTrigger;
+      activeArtistId = '';
+      sType = '10';
+      const searchWord = routerState.albumName || routerState.albumId;
+      if (searchWord) {
+        kw = searchWord;
+        executeSearch(searchWord);
+      }
+    }
+  });
 
   onMount(() => {
     if (typeof localStorage !== 'undefined') {
@@ -330,7 +345,7 @@
                       <button
                         type="button"
                         class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
-                        onclick={() => onAlbum(String(r.al.id))}
+                        onclick={() => onAlbum(String(r.al.id), r.al?.name)}
                       >
                         {r.al.name || '单曲'}
                       </button>
@@ -375,7 +390,7 @@
             <span class="text-[11px] text-[var(--text-secondary)] truncate">{formatArtist(al.artists || al.artist) || '群星'}</span>
             <div class="flex items-center gap-1.5 pt-1">
               {#if onAlbum}
-                <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onAlbum(String(al.id))}>💽 查看</button>
+                <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onAlbum(String(al.id), al.name)}>💽 查看</button>
               {/if}
               <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => handleDownloadAlbum(String(al.id), al.name)} title="整辑下载">📥</button>
             </div>
@@ -469,12 +484,6 @@
 </div>
 
 <style>
-  .custom-table-scroll::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .custom-table-scroll::-webkit-scrollbar-thumb {
-    background: var(--border-color, rgba(255, 255, 255, 0.15));
-    border-radius: 4px;
-  }
+  .custom-table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+  .custom-table-scroll::-webkit-scrollbar-thumb { background: var(--border-color, rgba(255, 255, 255, 0.15)); border-radius: 4px; }
 </style>

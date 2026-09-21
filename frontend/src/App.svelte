@@ -194,7 +194,9 @@
       <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
       <div class="block lg:hidden w-full">
         <SearchTab
-          albumId={routerState.albumId} {curTrack} {playing}
+          albumId={routerState.albumId}
+          albumTrigger={routerState.albumTrigger}
+          {curTrack} {playing}
           downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
           onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
           onSong={(sid: string) => { viewingSongId = sid; }} onReveal={handleReveal}

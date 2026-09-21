@@ -23,14 +23,18 @@ export const routerState = $state<{
   tab: ActiveTab;
   playlistId: string;
   albumId: string;
+  albumName: string;
   sidebarCollapsed: boolean;
   playlistTrigger: number;
+  albumTrigger: number;
 }>({
   tab: getInitialTab(),
   playlistId: getInitialPlaylistId(),
   albumId: '',
+  albumName: '',
   sidebarCollapsed: getInitialSidebarCollapsed(),
-  playlistTrigger: 0
+  playlistTrigger: 0,
+  albumTrigger: 0
 });
 
 export function toggleSidebarCollapse(): void {
@@ -52,8 +56,10 @@ export function switchTab(n: ActiveTab): void {
   } catch {}
 }
 
-export function jumpToAlbum(id: string): void {
-  routerState.albumId = id;
+export function jumpToAlbum(id: string, name?: string): void {
+  routerState.albumId = String(id || '').trim();
+  routerState.albumName = String(name || '').trim();
+  routerState.albumTrigger = (routerState.albumTrigger || 0) + 1;
   switchTab('search');
 }
 
