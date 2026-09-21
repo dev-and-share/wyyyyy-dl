@@ -48,6 +48,23 @@
 
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
 
+  let curAlbum = $derived(album?.album || album);
+  let songs = $derived(curAlbum?.songs || album?.songs || []);
+
+  function formatPublishTime(t: any): string {
+    if (!t) return '-';
+    if (typeof t === 'number' || (typeof t === 'string' && /^\d+$/.test(t))) {
+      const d = new Date(Number(t));
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+    }
+    return String(t);
+  }
+
   function openTrackSheet(s: any, isLocal: boolean, artistName: string, isPlayingThis: boolean) {
     openSheet({
       title: s.name,
@@ -64,7 +81,7 @@
                       id: s.id,
                       name: s.name,
                       artist: artistName,
-                      cover: album?.coverImgUrl || album?.picUrl || DEFAULT_VINYL_COVER,
+                      cover: curAlbum?.coverImgUrl || curAlbum?.picUrl || DEFAULT_VINYL_COVER,
                       isLocal
                     }
                   ])
@@ -134,24 +151,24 @@
     <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">
       🔄 正在解析专辑数据，请稍候...
     </div>
-  {:else if album}
-    {@const headerArtist = formatArtist(album.artist || album.artists) || '未知歌手'}
+  {:else if curAlbum && (curAlbum.name || curAlbum.id || songs.length > 0)}
+    {@const headerArtist = formatArtist(curAlbum.artist || curAlbum.artists) || '未知歌手'}
     <DetailHeaderCard
-      cover={album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER}
-      title={album.name || '未知专辑'}
-      subtitle={`歌手：${headerArtist} | 发行时间：${album.publishTime || '-'}`}
-      subDetail={`共包含 ${album.songs?.length || 0} 首曲目`}
+      cover={curAlbum.coverImgUrl || curAlbum.picUrl || DEFAULT_VINYL_COVER}
+      title={curAlbum.name || '未知专辑'}
+      subtitle={`歌手：${headerArtist} | 发行时间：${formatPublishTime(curAlbum.publishTime)}`}
+      subDetail={`共包含 ${songs.length} 首曲目`}
     >
       <button class="btn-primary" onclick={onDownloadFullAlbum}>🖥️ 下载到电脑</button>
       <button class="btn-secondary" onclick={onPlayFullAlbum}>▶️ 播放专辑</button>
     </DetailHeaderCard>
 
     <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">
-      专辑曲目列表 ({album.songs ? album.songs.length : 0} 首)：
+      专辑曲目列表 ({songs.length} 首)：
     </h4>
     <ul class="data-list scrollable-list">
-      {#each (album.songs || []) as s, i}
-        {@const artistName = formatArtist(s.artist || s.ar || s.artists || album.artist || '')}
+      {#each songs as s, i}
+        {@const artistName = formatArtist(s.artist || s.ar || s.artists || curAlbum.artist || '')}
         {@const status = getTrackSourceStatus(s.id, s.isLocal, curTrack)}
         {@const isPlayingThis = isSameTrack(curTrack, s)}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
@@ -159,7 +176,7 @@
             <button
               type="button"
               class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-              onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }]))}
+              onclick={() => onSong ? onSong(String(s.id)) : (onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: curAlbum.coverImgUrl || curAlbum.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }]))}
             >
               {i + 1}. {s.name}
             </button>
@@ -175,7 +192,7 @@
               {#if onPlayQueue}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: curAlbum.coverImgUrl || curAlbum.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
                   {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
                 </SlotBtn>
@@ -202,7 +219,7 @@
               {#if onPlayQueue}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: album.coverImgUrl || album.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                  onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: curAlbum.coverImgUrl || curAlbum.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
                   {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
                 </SlotBtn>

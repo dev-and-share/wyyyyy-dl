@@ -213,7 +213,12 @@
     accAlbum = true;
     const cachedAlbum = getApiCache('album_' + targetId);
     if (cachedAlbum?.data) {
-      album = cachedAlbum.data;
+      const rawCached = cachedAlbum.data;
+      const albumInfo = rawCached?.album || rawCached;
+      album = {
+        ...albumInfo,
+        songs: albumInfo?.songs || rawCached?.songs || []
+      };
     } else {
       albumLoading = true;
     }
@@ -227,7 +232,13 @@
         showToast(j.msg || '获取专辑失败', 'warning');
         return;
       }
-      album = j?.data || j;
+      const raw = j?.data || j;
+      const albumInfo = raw?.album || raw;
+      const songList = albumInfo?.songs || raw?.songs || [];
+      album = {
+        ...albumInfo,
+        songs: songList
+      };
       setApiCache('album_' + targetId, album);
     } catch (e: any) {
       albumLoading = false;
