@@ -183,7 +183,7 @@ public class AnalysisControllerTest {
                 .param("trackIds", "186016,326696"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
-                .andExpect(jsonPath("$.data.count").value(1));
+                .andExpect(jsonPath("$.data.addedCount").value(2));
 
         // 删除歌曲
         Mockito.when(neteaseAPIService.removeTracksFromPlaylist(eq(123456L), anyList()))

@@ -64,6 +64,13 @@ export const api = {
   historyNonMp3: () => get('/v3/history/non_mp3'),
   historyCleanNonMp3: () => req('/v3/history/cleanNonMp3', { method: 'POST' }),
   historyDelete: (id: number | string) => req(`/v3/history/delete?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  deleteSongFile: (id?: number | string, name?: string, artist?: string) => {
+    const q = new URLSearchParams();
+    if (id) q.set('id', String(id));
+    if (name) q.set('name', name);
+    if (artist) q.set('artist', artist);
+    return req(`/v3/history/file?${q.toString()}`, { method: 'DELETE' });
+  },
 
   // 📁 本地目录浏览器
   folderRoots: () => get('/v3/folder/roots'),

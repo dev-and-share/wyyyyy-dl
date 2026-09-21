@@ -25,8 +25,9 @@
   import DailyRecommendSection from './DailyRecommendSection.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
+  import RemoveFromPlaylistModal from './RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
-  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { layoutState } from '../lib/layout.svelte';
 
@@ -90,6 +91,7 @@
 
   // 弹窗与交互状态
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
+  let removingTrack = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let cachingTrackId = $state<string | number | null>(null);
 
   function saveAccState() {
@@ -108,85 +110,83 @@
       pid = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});
     } else if (targetPid === 'daily-recommend') {
-      accMy = false;
-      accDetail = false;
-      accRecommend = true;
-      saveAccState();
+      pid = 'daily-recommend';
     }
     loadMyPlaylists('created').catch(() => {});
   });
 
-  // 监听外部传入的歌单 ID 变动或 trigger 刷新动作
+  // 监听外部传入的歌单 ID 变更与强制刷新触发器
   $effect(() => {
     const curId = playlistId;
     const curTrig = playlistTrigger;
     if (curId && (curId !== lastSeenPlaylistId || curTrig !== lastSeenTrigger)) {
       lastSeenPlaylistId = curId;
       lastSeenTrigger = curTrig;
-      if (curId === 'daily-recommend') {
-        accMy = false;
-        accDetail = false;
-        accRecommend = true;
-        saveAccState();
-        return;
-      }
       pid = curId;
       pidInput = curId;
-      handleViewPlaylist(curId, true);
+      if (curId !== 'daily-recommend') {
+        loadPlaylistDetail(curId, true).catch(() => {});
+      }
     }
   });
 
-  // 查看歌单详情交互：瞬间收起卡片1，展开卡片2
-  async function handleViewPlaylist(id: string, switchCards = true) {
-    const trimmed = id.trim();
-    if (!trimmed) {
+  function handleViewPlaylist(targetId: string) {
+    if (!targetId || !targetId.trim()) {
       showToast('请输入歌单 ID', 'warning');
       return;
     }
-    pid = trimmed;
-    pidInput = trimmed;
+    const cleanId = targetId.trim();
+    pid = cleanId;
     try {
-      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, trimmed);
-      history.replaceState(null, '', `#/playlist?id=${trimmed}`);
+      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, cleanId);
     } catch {}
-    if (switchCards) {
-      accMy = false;
-      accDetail = true;
-      saveAccState();
-    }
-    try {
-      await loadPlaylistDetail(pid);
-    } catch (e: any) {
-      if (switchCards) showToast(e.message || '获取歌单失败', 'warning');
-    }
+    loadPlaylistDetail(cleanId, true).then(() => {
+      showToast('歌单已刷新', 'success');
+    }).catch(e => {
+      showToast('获取歌单失败: ' + (e.message || e), 'error');
+    });
   }
 
-  // 一键直接播放整张歌单
-  function playPlaylistDirect(id: string, name: string) {
-    if (!id || !onPlayQueue) return;
-    playPlaylistTracks(id, name, onPlayQueue, showToast);
+  function playPlaylistDirect(targetId: string, targetName?: string) {
+    if (!targetId) return;
+    showToast(`正在加载《${targetName || '歌单'}》曲目并准备播放...`, 'info', 1500);
+    recordPlaylistPlay(targetId);
+    loadPlaylistDetail(targetId).then(pl => {
+      if (pl?.tracks?.length) {
+        onPlayQueue && onPlayQueue(pl.tracks.map((t: any) => toPlayerTrack(t)), {
+          startIndex: 0,
+          playlistId: targetId,
+          isExplicitTrack: false
+        });
+        showToast(`已开始播放《${pl.name || targetName}》(${pl.tracks.length} 首)`, 'success');
+      } else {
+        showToast('歌单为空或无法读取曲目', 'warning');
+      }
+    }).catch(e => {
+      showToast('播放失败: ' + (e.message || e), 'error');
+    });
   }
 
   async function downloadSingleTrack(id: string, name?: string) {
     try {
       const res = await api.downloadSingle(id);
       const task = res?.data;
-      if (task && typeof task === 'object') {
-        if (task.status === 'SKIP') {
-          showToast(`已跳过《${task.name || name || '歌曲'}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 4000);
-        } else if (task.status === 'FAILED') {
-          showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
-        } else if (task.status === 'SUCCESS') {
-          showToast(`下载成功: 《${task.name || name || '歌曲'}》`, 'success', 2500);
+      if (task?.status === 'SKIP') {
+        const msg = task.errorMsg || '';
+        if (msg.includes('已存在') || msg.includes('磁盘中')) {
+          markSongDownloaded(id);
+          showToast(`《${task.name || name || '歌曲'}》已在本地磁盘中，已同步状态`, 'info', 3000);
         } else {
-          showToast(`已提交下载: 《${task.name || name || '歌曲'}》`, 'info', 2000);
+          showToast(`已跳过《${task.name || name || '歌曲'}》: ${msg || '试听片段或已存在'}`, 'warning', 4000);
         }
+      } else if (task?.status === 'FAILED') {
+        showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
       } else {
-        showToast('已提交下载', 'info', 1500);
+        showToast(`已提交单曲下载: 《${task?.name || name || '歌曲'}》`, 'info', 2000);
       }
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
-      showToast('下载请求异常: ' + (e.message || e), 'error');
+      showToast('下载请求失败: ' + (e.message || e), 'error');
     }
   }
 
@@ -259,6 +259,11 @@
           onclick: () => handleCacheTrack(t)
         },
         { label: '➕ 添加到歌单', style: 'default', onclick: () => { addToPlaylistSong = { id: t.id, name: t.name, artist }; } },
+        ...(playlist && (playlist.isCreator || !playlist.subscribed) ? [{
+          label: '🗑️ 从本歌单移除',
+          style: 'danger' as const,
+          onclick: () => { removingTrack = { id: t.id, name: t.name, artist }; }
+        }] : []),
         ...(onSong
           ? [
               {
@@ -401,6 +406,9 @@
                 {/if}
                 <SlotBtn onclick={() => handleCacheTrack(t)}>{status.isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
                 <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
+                {#if playlist && (playlist.isCreator || !playlist.subscribed)}
+                  <SlotBtn onclick={() => removingTrack = { id: t.id, name: t.name, artist }}>🗑️ 移除</SlotBtn>
+                {/if}
                 {#if onSong}
                   <SlotBtn onclick={() => onSong(String(t.id))}>👉 详情</SlotBtn>
                 {/if}
@@ -471,6 +479,16 @@
     trackIds={allTracks.map((t: any) => t.id)}
     onClose={() => showForkModal = false}
     onSuccess={(newId) => { if (newId) handleViewPlaylist(newId); }}
+    {showToast}
+  />
+{/if}
+
+{#if removingTrack && playlist}
+  <RemoveFromPlaylistModal
+    song={removingTrack}
+    playlistId={playlist.id}
+    playlistName={playlist.name}
+    onClose={() => removingTrack = null}
     {showToast}
   />
 {/if}

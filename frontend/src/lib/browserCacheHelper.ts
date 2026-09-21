@@ -163,6 +163,47 @@ export async function deleteBrowserCacheEntry(item: BrowserCacheItem): Promise<v
 }
 
 /**
+ * 按歌曲 ID 精准清除该单曲在浏览器 (PWA Cache & LocalStorage) 中的离线缓存
+ */
+export async function removeTrackBrowserCache(songId: string | number): Promise<boolean> {
+  if (!songId || typeof window === 'undefined' || !('caches' in window)) return false;
+  const idStr = String(songId);
+  try {
+    const metaMap = readCachedTrackMeta();
+    let deleted = false;
+
+    for (const cacheName of await caches.keys()) {
+      const cache = await caches.open(cacheName);
+      const requests = await cache.keys();
+      for (const req of requests) {
+        const url = req.url;
+        if (url.includes(`id=${idStr}`) || url.endsWith(`/${idStr}`)) {
+          await cache.delete(req).catch(() => {});
+          deleted = true;
+        }
+      }
+    }
+
+    for (const key of Object.keys(metaMap)) {
+      const item = metaMap[key];
+      if (item?.id === idStr || key.includes(`id=${idStr}`)) {
+        delete metaMap[key];
+        deleted = true;
+      }
+    }
+
+    localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
+    refreshCachedSongIds();
+    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
+    return deleted;
+  } catch (err) {
+    console.warn('清除单曲浏览器离线缓存异常:', err);
+    return false;
+  }
+}
+
+
+/**
  * 批量清除播放少于阈值的低频离线歌曲
  */
 export async function clearLowPlayCountCacheEntries(items: BrowserCacheItem[]): Promise<number> {

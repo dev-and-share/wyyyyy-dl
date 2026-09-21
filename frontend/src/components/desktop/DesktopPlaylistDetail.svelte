@@ -17,6 +17,7 @@
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import ForkPlaylistModal from '../ForkPlaylistModal.svelte';
+  import RemoveFromPlaylistModal from '../RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
 
@@ -66,6 +67,7 @@
   let showForkModal = $state(false);
   let cachingTrackId = $state<number | null>(null);
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
+  let removingTrack = $state<{ id: number | string; name: string; artist?: string } | null>(null);
   let lastSeenTrigger = -1;
   let lastSeenId = '';
 
@@ -365,6 +367,12 @@
                     <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>
                       ➕
                     </SlotBtn>
+
+                    {#if playlist && (playlist.isCreator || !playlist.subscribed)}
+                      <SlotBtn onclick={() => removingTrack = { id: t.id, name: t.name, artist }}>
+                        🗑️
+                      </SlotBtn>
+                    {/if}
                   </div>
                 </td>
               </tr>
@@ -440,6 +448,16 @@
       trackIds={allTracks.map((t: any) => t.id)}
       onClose={() => showForkModal = false}
       onSuccess={handleForkSuccess}
+      {showToast}
+    />
+  {/if}
+
+  {#if removingTrack && playlist}
+    <RemoveFromPlaylistModal
+      song={removingTrack}
+      playlistId={playlist.id}
+      playlistName={playlist.name}
+      onClose={() => removingTrack = null}
       {showToast}
     />
   {/if}

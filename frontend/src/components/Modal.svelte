@@ -27,6 +27,15 @@
   let isDragging = $state(false);
   let startY = 0;
 
+  // 💻 计算 PC 端最大宽度（精准提取 px/rem，彻底解决 Tailwind 动态拼接 sm:{maxWidth} 失效问题）
+  let computedMaxWidth = $derived.by(() => {
+    if (!maxWidth) return '480px';
+    const m = maxWidth.match(/\[(.*?)\]/);
+    if (m && m[1]) return m[1];
+    if (maxWidth.endsWith('px') || maxWidth.endsWith('rem') || maxWidth.endsWith('%')) return maxWidth;
+    return '480px';
+  });
+
   function handleClose() {
     if (closing) return;
     closing = true;
@@ -83,15 +92,15 @@
     tabindex="-1"
     aria-modal="true"
     aria-label={title || '弹出窗口'}
-    class="bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border-color)]
+    class="modal-dialog-box bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border-color)]
       w-full max-sm:rounded-t-[28px] max-sm:rounded-b-none max-sm:border-t max-sm:border-b-0 max-sm:max-h-[88vh]
-      sm:rounded-2xl sm:{maxWidth} sm:max-h-[85vh] sm:border
+      sm:rounded-2xl sm:max-h-[85vh] sm:border sm:mx-auto
       {height}
       shadow-2xl overflow-hidden flex flex-col box-border
       {closing && dragOffset === 0
         ? 'max-sm:animate-[drawerSlideDownSP_0.2s_ease-in] sm:animate-[modalFadeIn_0.2s_ease-out_reverse]'
         : 'max-sm:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] sm:animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
-    style={dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: ${isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'};` : ''}
+    style="--modal-max-width: {computedMaxWidth}; {dragOffset > 0 ? `transform: translateY(${dragOffset}px); transition: ${isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'};` : ''}"
     onclick={(e) => e.stopPropagation()}
   >
     <!-- 📱 移动端手势拖拽把手 (Drag handle: 自适应明暗模式，与系统设置抽屉完全统一) -->
@@ -139,3 +148,14 @@
     {/if}
   </div>
 </div>
+
+<style>
+  @media (min-width: 640px) {
+    .modal-dialog-box {
+      max-width: var(--modal-max-width, 480px) !important;
+      width: 100% !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+  }
+</style>
