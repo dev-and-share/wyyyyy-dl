@@ -14,7 +14,7 @@
   <div class="relative flex-1">
     <input
       type="search"
-      placeholder="过滤当前歌单歌曲 (匹配歌手、歌名)..."
+      placeholder="过滤歌曲、歌手 (支持拼音与首字母)..."
       class="w-full text-xs py-1.5 pl-8 pr-7 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border-color)] focus:border-red-500/60 focus:outline-none transition-all placeholder:text-[var(--text-muted)]"
       value={keyword}
       oninput={(e) => setPlaylistSearchKeyword((e.currentTarget as HTMLInputElement).value)}

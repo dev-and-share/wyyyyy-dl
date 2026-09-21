@@ -62,3 +62,30 @@ export const DEFAULT_VINYL_COVER = `data:image/svg+xml;utf8,${encodeURIComponent
   <circle cx="50" cy="50" r="2.5" fill="#ffffff"/>
 </svg>
 `)}`;
+
+import PinyinMatch from 'pinyin-match';
+
+/**
+ * 拼音与文本综合匹配工具：
+ * 1. 优先普通包含匹配（大小写不敏感，极速响应）；
+ * 2. 普通匹配未命中时，自动进行拼音（全拼、首字母缩写、多音字）匹配。
+ */
+export function matchesKeyword(target: string | null | undefined, keyword: string | null | undefined): boolean {
+  if (keyword === null || keyword === undefined) return false;
+  const kw = String(keyword).trim().toLowerCase();
+  if (!kw) return true;
+  if (!target) return false;
+  const str = String(target).toLowerCase();
+
+  // 1. 直匹配：包含完整关键词或子串
+  if (str.includes(kw)) return true;
+
+  // 2. 拼音匹配：支持全拼、简拼缩写、多音字
+  try {
+    const fn = (PinyinMatch as any)?.default?.match || (PinyinMatch as any)?.match || (typeof PinyinMatch === 'function' ? PinyinMatch : null);
+    if (fn) {
+      return Boolean(fn(str, kw));
+    }
+  } catch {}
+  return false;
+}

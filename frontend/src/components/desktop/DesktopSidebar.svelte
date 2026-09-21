@@ -1,5 +1,6 @@
 <script lang="ts">
   import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount } from '../../lib/playlist.svelte';
+  import { matchesKeyword } from '../../lib/utils';
 
   let {
     tab,
@@ -32,16 +33,16 @@
   const createdPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => !p.subscribed)));
   const subscribedPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => p.subscribed)));
 
-  // 侧栏歌单搜索过滤
+  // 侧栏歌单搜索过滤（支持全拼与简拼）
   let sidebarSearchKw = $state('');
   const filteredCreated = $derived(
     sidebarSearchKw.trim()
-      ? createdPlaylists.filter(p => p.name?.toLowerCase().includes(sidebarSearchKw.trim().toLowerCase()))
+      ? createdPlaylists.filter(p => matchesKeyword(p.name, sidebarSearchKw.trim()))
       : createdPlaylists
   );
   const filteredSubscribed = $derived(
     sidebarSearchKw.trim()
-      ? subscribedPlaylists.filter(p => p.name?.toLowerCase().includes(sidebarSearchKw.trim().toLowerCase()))
+      ? subscribedPlaylists.filter(p => matchesKeyword(p.name, sidebarSearchKw.trim()))
       : subscribedPlaylists
   );
 

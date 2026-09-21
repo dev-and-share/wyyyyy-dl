@@ -7,7 +7,7 @@
     sortPlaylistsByPlayCount,
     getPlaylistPlayCount
   } from '../../lib/playlist.svelte';
-  import { DEFAULT_VINYL_COVER } from '../../lib/utils';
+  import { DEFAULT_VINYL_COVER, matchesKeyword } from '../../lib/utils';
 
   let {
     onSelectPlaylist,
@@ -65,9 +65,9 @@
     if (filter === 'created') list = list.filter(p => !p.subscribed);
     if (filter === 'subscribed') list = list.filter(p => p.subscribed);
 
-    const kw = searchKeyword.trim().toLowerCase();
+    const kw = searchKeyword.trim();
     if (kw) {
-      list = list.filter(p => (p.name || '').toLowerCase().includes(kw));
+      list = list.filter(p => matchesKeyword(p.name, kw));
     }
     return sortPlaylistsByPlayCount(list);
   });

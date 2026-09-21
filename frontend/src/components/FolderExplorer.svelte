@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
   import FolderNode from './FolderNode.svelte';
-  import { DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { DEFAULT_VINYL_COVER, matchesKeyword } from '../lib/utils';
 
   let {
     onPlayQueue,
@@ -180,7 +180,7 @@
 
   <!-- 列表：递归子树，支持折叠与 … 抽屉 -->
   <div class="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)] min-w-0">
-    {#each tree.filter((t: any) => !filterKw || ((t.songName || t.name || '') + (t.artist || '') + t.path).toLowerCase().includes(filterKw.toLowerCase())) as item}
+    {#each tree.filter((t: any) => !filterKw || matchesKeyword((t.songName || t.name || '') + ' ' + (t.artist || '') + ' ' + t.path, filterKw)) as item}
       <FolderNode {item} level={0} {expandSignal} onPlayFolder={playFolder} onPlaySingle={playSingle} onReveal={revealItem} />
     {:else}
       <div class="py-6 px-4 text-center text-[var(--text-muted)] text-xs">暂无目录 · 试试切换根或刷新</div>

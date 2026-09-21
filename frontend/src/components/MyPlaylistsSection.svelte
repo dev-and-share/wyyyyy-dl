@@ -7,6 +7,7 @@
   import CreatePlaylistModal from './CreatePlaylistModal.svelte';
   import Modal from './Modal.svelte';
   import { openSheet } from '../lib/ui.svelte';
+  import { matchesKeyword } from '../lib/utils';
 
   let {
     open = $bindable(true),
@@ -81,9 +82,9 @@
       myPlaylists.filter((p: any) => {
         const matchType = playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed);
         if (!matchType) return false;
-        const kw = playlistSearchKw.trim().toLowerCase();
+        const kw = playlistSearchKw.trim();
         if (!kw) return true;
-        const nameMatch = (p.name || '').toLowerCase().includes(kw);
+        const nameMatch = matchesKeyword(p.name, kw);
         const idMatch = String(p.id || '').includes(kw);
         return nameMatch || idMatch;
       })

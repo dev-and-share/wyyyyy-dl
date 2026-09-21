@@ -1,4 +1,4 @@
-import { getApiCache, setApiCache } from './utils';
+import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 
 export const myPlaylists = $state<any[]>([]);
@@ -13,12 +13,12 @@ export const playlistState = $state({
 });
 
 const filteredTracks = $derived.by(() => {
-  const q = playlistState.searchKeyword.trim().toLowerCase();
+  const q = playlistState.searchKeyword.trim();
   if (!q) return allTracks;
   return allTracks.filter((t: any) => {
-    const nameMatch = t?.name && String(t.name).toLowerCase().includes(q);
-    const artistStr = (t?.ar?.map((a: any) => a.name).join(' ') || t?.artist || '').toLowerCase();
-    const artistMatch = artistStr.includes(q);
+    const nameMatch = matchesKeyword(t?.name, q);
+    const artistStr = t?.ar?.map((a: any) => a.name).join(' ') || t?.artist || '';
+    const artistMatch = matchesKeyword(artistStr, q);
     return nameMatch || artistMatch;
   });
 });

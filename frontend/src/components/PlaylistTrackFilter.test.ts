@@ -24,9 +24,9 @@ describe('PlaylistTrackFilter Component', () => {
     });
   });
 
-  it('filters tracks by song name and artist correctly', async () => {
+  it('filters tracks by song name and artist correctly including pinyin and initials', async () => {
     const { getByPlaceholderText, getByText, queryByText, getByTitle } = render(PlaylistTrackFilter);
-    const input = getByPlaceholderText('过滤当前歌单歌曲 (匹配歌手、歌名)...') as HTMLInputElement;
+    const input = getByPlaceholderText(/过滤歌曲、歌手/i) as HTMLInputElement;
 
     expect(input.type).toBe('search');
     expect(getFilteredTracks().length).toBe(4);
@@ -37,6 +37,21 @@ describe('PlaylistTrackFilter Component', () => {
     expect(getFilteredTracks().length).toBe(1);
     expect(getFilteredTracks()[0].name).toBe('晴天');
     expect(getByText((_, el) => el?.tagName.toLowerCase() === 'span' && (el?.textContent?.includes('匹配 1 / 4 首') ?? false))).toBeInTheDocument();
+
+    // 拼音全拼搜索 "qingtian" 命中《晴天》
+    await fireEvent.input(input, { target: { value: 'qingtian' } });
+    expect(getFilteredTracks().length).toBe(1);
+    expect(getFilteredTracks()[0].name).toBe('晴天');
+
+    // 拼音简拼搜索 "zjl" 命中《晴天》和《七里香》
+    await fireEvent.input(input, { target: { value: 'zjl' } });
+    expect(getFilteredTracks().length).toBe(2);
+    expect(getFilteredTracks().map(t => t.name)).toEqual(['晴天', '七里香']);
+
+    // 拼音简拼搜索 "wf" 命中王菲的《红豆》
+    await fireEvent.input(input, { target: { value: 'wf' } });
+    expect(getFilteredTracks().length).toBe(1);
+    expect(getFilteredTracks()[0].name).toBe('红豆');
 
     // 搜索歌手 "周杰伦"
     await fireEvent.input(input, { target: { value: '周杰伦' } });

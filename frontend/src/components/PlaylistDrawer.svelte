@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type { Track } from '../lib/types';
-  import { formatArtist } from '../lib/utils';
+  import { formatArtist, matchesKeyword } from '../lib/utils';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import TaskQueueView from './TaskQueueView.svelte';
@@ -72,9 +72,9 @@
       if (pendingOnly && status.isServer) return false;
 
       if (filterText.trim()) {
-        const kw = filterText.toLowerCase();
-        const nameMatch = (t.name || '').toLowerCase().includes(kw);
-        const artistMatch = (t.artist || '').toLowerCase().includes(kw);
+        const kw = filterText.trim();
+        const nameMatch = matchesKeyword(t.name, kw);
+        const artistMatch = matchesKeyword(t.artist, kw);
         if (!nameMatch && !artistMatch) return false;
       }
       return true;
