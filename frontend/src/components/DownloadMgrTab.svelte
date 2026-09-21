@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import AccordionCard from './AccordionCard.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
   import BrowserCacheSection from './BrowserCacheSection.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import Modal from './Modal.svelte';
@@ -336,32 +337,16 @@
       </div>
     {/if}
 
-    <!-- 搜索筛选行 (移动端单行内嵌搜索 + 软键盘 Search 触发，桌面端保留检索按钮) -->
+    <!-- 搜索筛选行 -->
     <div class="flex items-center gap-2 mb-2.5 w-full">
-      <div class="relative flex-1 min-w-0">
-        <input
-          type="search"
-          enterkeyhint="search"
-          placeholder="🔍 检索本地歌曲名 / 歌手 / 物理文件名 (按回车搜索)"
-          class="w-full text-xs md:text-sm py-2 px-3 pr-8 rounded-lg bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] focus:outline-none focus:border-red-500 transition-all"
+      <div class="flex-1 min-w-0">
+        <LocalSearchBox
           bind:value={histKw}
-          onkeydown={(e) => {
-            if (e.key === 'Enter') {
-              (e.currentTarget as HTMLInputElement).blur();
-              loadHistory(1);
-            }
-          }}
+          placeholder="🔍 检索本地歌曲名 / 歌手 / 物理文件名 (按回车检索)"
+          historyKey="wyyyy_history_search_history"
+          onSearch={() => loadHistory(1)}
+          onClear={() => loadHistory(1)}
         />
-        {#if histKw}
-          <button
-            type="button"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-red-400 cursor-pointer p-1 bg-transparent border-none"
-            onclick={() => { histKw = ''; loadHistory(1); }}
-            title="清空"
-          >
-            ✕
-          </button>
-        {/if}
       </div>
       <button class="btn-primary shrink-0 whitespace-nowrap hidden md:inline-flex" onclick={() => loadHistory(1)}>检索</button>
     </div>

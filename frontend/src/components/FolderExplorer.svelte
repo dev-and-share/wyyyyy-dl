@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
   import FolderNode from './FolderNode.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
   import { DEFAULT_VINYL_COVER, matchesKeyword } from '../lib/utils';
 
   let {
@@ -122,11 +123,10 @@
   <!-- 树形全局控制与搜索 Bar -->
   <div class="mb-2.5 flex flex-col gap-2">
     <div class="w-full">
-      <input
-        type="text"
-        class="w-full px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500 transition-all box-border"
-        placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..."
+      <LocalSearchBox
         bind:value={filterKw}
+        placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹 (支持拼音与首字母)..."
+        historyKey="wyyyy_folder_search_history"
       />
     </div>
     <div class="flex gap-1.5 flex-wrap">

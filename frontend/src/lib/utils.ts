@@ -65,10 +65,23 @@ export const DEFAULT_VINYL_COVER = `data:image/svg+xml;utf8,${encodeURIComponent
 
 import PinyinMatch from 'pinyin-match';
 
+function resolvePinyinMatchFn(): ((str: string, kw: string) => any) | null {
+  const pm: any = PinyinMatch;
+  if (!pm) return null;
+  if (typeof pm.match === 'function') return pm.match.bind(pm);
+  if (pm.default && typeof pm.default.match === 'function') return pm.default.match.bind(pm.default);
+  if (typeof pm === 'function') return pm;
+  if (typeof pm.default === 'function') return pm.default;
+  return null;
+}
+
+const pinyinMatchFn = resolvePinyinMatchFn();
+
 /**
  * 拼音与文本综合匹配工具：
  * 1. 优先普通包含匹配（大小写不敏感，极速响应）；
- * 2. 普通匹配未命中时，自动进行拼音（全拼、首字母缩写、多音字）匹配。
+ * 2. 普通匹配未命中时，自动进行拼音（全拼、首字母缩写、多音字）匹配；
+ * 3. 自动剥离常见书名号/引号干扰，支持空格分词多关键词全命中。
  */
 export function matchesKeyword(target: string | null | undefined, keyword: string | null | undefined): boolean {
   if (keyword === null || keyword === undefined) return false;
@@ -80,12 +93,24 @@ export function matchesKeyword(target: string | null | undefined, keyword: strin
   // 1. 直匹配：包含完整关键词或子串
   if (str.includes(kw)) return true;
 
-  // 2. 拼音匹配：支持全拼、简拼缩写、多音字
-  try {
-    const fn = (PinyinMatch as any)?.default?.match || (PinyinMatch as any)?.match || (typeof PinyinMatch === 'function' ? PinyinMatch : null);
-    if (fn) {
-      return Boolean(fn(str, kw));
+  // 2. 空格分词多条件匹配 (例如 "andy 音乐")
+  if (kw.includes(' ')) {
+    const parts = kw.split(/\s+/).filter(Boolean);
+    if (parts.length > 1 && parts.every(part => matchesKeyword(target, part))) {
+      return true;
     }
-  } catch {}
+  }
+
+  // 3. 拼音匹配：支持全拼、简拼缩写、多音字
+  if (pinyinMatchFn) {
+    try {
+      if (pinyinMatchFn(str, kw)) return true;
+      // 去除常见标点符号干扰（如《》"“'”【】）二次匹配
+      const cleanStr = str.replace(/[《》"“”'‘’【】「」『』\(\)\[\]（）]/g, '');
+      if (cleanStr !== str && pinyinMatchFn(cleanStr, kw)) return true;
+    } catch {}
+  }
+
   return false;
 }
+

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import FolderExplorer from '../FolderExplorer.svelte';
+  import LocalSearchBox from '../LocalSearchBox.svelte';
   import BrowserCacheSection from '../BrowserCacheSection.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import { api } from '../../lib/api';
@@ -210,13 +211,13 @@
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
         <!-- 搜索与刷新栏 -->
         <div class="p-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2.5">
-          <div class="flex items-center gap-2 flex-1 max-w-sm">
-            <input
-              type="search"
-              placeholder="搜索本地下载记录..."
-              class="w-full px-3 py-1.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500"
+          <div class="flex items-center gap-2 flex-1 max-w-md">
+            <LocalSearchBox
               bind:value={histKw}
-              onkeydown={(e) => e.key === 'Enter' && loadHistory(1)}
+              placeholder="搜索本地下载记录 (按回车检索)..."
+              historyKey="wyyyy_history_search_history"
+              onSearch={() => loadHistory(1)}
+              onClear={() => loadHistory(1)}
             />
             <button
               type="button"

@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { myPlaylists, getPlaylistFilter, loadMyPlaylists, sortPlaylistsByPlayCount, isFavoritePlaylist, getPlaylistPlayCount } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import CreatePlaylistModal from './CreatePlaylistModal.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
   import Modal from './Modal.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { matchesKeyword } from '../lib/utils';
@@ -25,10 +25,7 @@
 
   let playlistFilter = $derived(getPlaylistFilter());
 
-  const STORAGE_KEY_PLAYLIST_SEARCH_HISTORY = 'wyyyy_playlist_search_history';
-
   let playlistSearchKw = $state('');
-  let searchHistory = $state<string[]>([]);
   let showCreateModal = $state(false);
   let confirmAction = $state<{
     type: 'delete' | 'unsubscribe';
@@ -36,57 +33,18 @@
     playlistName: string;
   } | null>(null);
 
-  function loadSearchHistory() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_PLAYLIST_SEARCH_HISTORY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) searchHistory = parsed;
-      }
-    } catch {}
-  }
-
-  function addSearchHistory(kw: string) {
-    const trimmed = kw.trim();
-    if (!trimmed) return;
-    const next = [trimmed, ...searchHistory.filter(item => item !== trimmed)].slice(0, 10);
-    searchHistory = next;
-    try {
-      localStorage.setItem(STORAGE_KEY_PLAYLIST_SEARCH_HISTORY, JSON.stringify(next));
-    } catch {}
-  }
-
-  function removeSearchHistory(target: string) {
-    const next = searchHistory.filter(item => item !== target);
-    searchHistory = next;
-    try {
-      localStorage.setItem(STORAGE_KEY_PLAYLIST_SEARCH_HISTORY, JSON.stringify(next));
-    } catch {}
-  }
-
-  function clearSearchHistory() {
-    searchHistory = [];
-    try {
-      localStorage.removeItem(STORAGE_KEY_PLAYLIST_SEARCH_HISTORY);
-    } catch {}
-  }
-
-  function handleSearchSubmit() {
-    if (playlistSearchKw.trim()) {
-      addSearchHistory(playlistSearchKw.trim());
-    }
-  }
-
   let filteredPlaylists = $derived(
     sortPlaylistsByPlayCount(
       myPlaylists.filter((p: any) => {
-        const matchType = playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed);
-        if (!matchType) return false;
         const kw = playlistSearchKw.trim();
+        // 当用户输入关键词时跨分类全局搜索，关键词为空时恢复当前分类筛选
+        const matchType = !kw ? (playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed)) : true;
+        if (!matchType) return false;
         if (!kw) return true;
         const nameMatch = matchesKeyword(p.name, kw);
+        const creatorMatch = matchesKeyword(p.creator?.nickname || p.creator, kw);
         const idMatch = String(p.id || '').includes(kw);
-        return nameMatch || idMatch;
+        return nameMatch || creatorMatch || idMatch;
       })
     )
   );
@@ -117,10 +75,6 @@
       showToast('操作异常: ' + (e.message || e), 'error');
     }
   }
-
-  onMount(() => {
-    loadSearchHistory();
-  });
 
   function openPlaylistSheet(pl: any, idx: number) {
     openSheet({
@@ -201,70 +155,11 @@
 
   <!-- 🔍 歌单客户端搜索 / 过滤栏 -->
   <div class="mb-3">
-    <div class="relative w-full">
-      <input
-        type="text"
-        placeholder="搜索歌单名称..."
-        class="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] focus:outline-none focus:border-blue-500 transition-all"
-        bind:value={playlistSearchKw}
-        onkeydown={(e) => {
-          if (e.key === 'Enter') handleSearchSubmit();
-        }}
-        onblur={handleSearchSubmit}
-      />
-      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-50 pointer-events-none">🔍</span>
-      {#if playlistSearchKw}
-        <button
-          type="button"
-          class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 rounded cursor-pointer leading-none"
-          onclick={() => { playlistSearchKw = ''; }}
-          title="清除搜索"
-        >
-          ✕
-        </button>
-      {/if}
-    </div>
-
-    <!-- 🕒 搜索历史标签 -->
-    {#if searchHistory.length > 0}
-      <div class="flex items-center flex-wrap gap-1.5 mt-2 text-xs">
-        <span class="text-[var(--text-muted)] text-[11px] shrink-0">🕒 搜索历史:</span>
-        {#each searchHistory as item}
-          <div
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-black/5 dark:bg-white/10 text-[var(--text-secondary)] border border-black/5 dark:border-white/10 transition-all hover:bg-blue-500/15 hover:text-blue-400 group"
-          >
-            <button
-              type="button"
-              class="cursor-pointer bg-transparent border-none p-0 text-inherit hover:underline"
-              onclick={() => {
-                playlistSearchKw = item;
-                addSearchHistory(item);
-              }}
-            >
-              {item}
-            </button>
-            <button
-              type="button"
-              class="opacity-40 hover:opacity-100 group-hover:opacity-70 transition-opacity cursor-pointer p-0 bg-transparent border-none text-[10px] leading-none"
-              onclick={(e) => {
-                e.stopPropagation();
-                removeSearchHistory(item);
-              }}
-              title="删除此条历史"
-            >
-              ✕
-            </button>
-          </div>
-        {/each}
-        <button
-          type="button"
-          class="text-[11px] text-[var(--text-muted)] hover:text-red-400 ml-auto cursor-pointer p-0 bg-transparent border-none"
-          onclick={clearSearchHistory}
-        >
-          清空
-        </button>
-      </div>
-    {/if}
+    <LocalSearchBox
+      bind:value={playlistSearchKw}
+      placeholder="🔍 搜索歌单名称、ID (支持拼音全拼与首字母)..."
+      historyKey="wyyyy_playlist_search_history"
+    />
   </div>
 
   <ul class="data-list scrollable-list">

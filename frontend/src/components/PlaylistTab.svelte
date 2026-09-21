@@ -112,12 +112,12 @@
       saveAccState();
       scrollToDetail();
       if (curId !== 'daily-recommend') {
-        loadPlaylistDetail(curId, true).catch(() => {});
+        loadPlaylistDetail(curId, false).catch(() => {});
       }
     }
   });
 
-  function handleViewPlaylist(targetId: string) {
+  function handleViewPlaylist(targetId: string, force = false) {
     if (!targetId || !targetId.trim()) {
       showToast('请输入歌单 ID', 'warning');
       return;
@@ -131,8 +131,8 @@
       localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, cleanId);
     } catch {}
     scrollToDetail();
-    loadPlaylistDetail(cleanId, true).then(() => {
-      showToast('歌单已刷新', 'success');
+    loadPlaylistDetail(cleanId, force).then(() => {
+      if (force) showToast('歌单已刷新', 'success');
     }).catch(e => {
       showToast('获取歌单失败: ' + (e.message || e), 'error');
     });
