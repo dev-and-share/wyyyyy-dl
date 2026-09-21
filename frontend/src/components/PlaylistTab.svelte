@@ -2,11 +2,14 @@
   import { onMount } from 'svelte';
   import {
     allTracks,
+    getFilteredTracks,
     pageSize,
     getPaged,
     getTotalPages,
     getPlaylist,
     getCurPage,
+    getPlaylistSearchKeyword,
+    setPlaylistSearchKeyword,
     loadMyPlaylists,
     loadPlaylistDetail,
     isPlaylistLoading,
@@ -18,6 +21,7 @@
   import { playPlaylistTracks, toPlayerTrack } from '../lib/playerHelper';
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
+  import PlaylistTrackFilter from './PlaylistTrackFilter.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
@@ -35,6 +39,7 @@
   let totalPages = $derived(getTotalPages());
   let playlist = $derived(getPlaylist());
   let curPage = $derived(getCurPage());
+  let filteredTracks = $derived(getFilteredTracks());
 
   let {
     playlistId,
@@ -245,34 +250,14 @@
       title: t.name,
       subtitle: artist || '未知歌手',
       actions: [
-        {
-          label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }),
-          style: 'primary',
-          onclick: () => onPlayQueue([toPlayerTrack(t, { artist, isLocal })])
-        },
+        { label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }), style: 'primary', onclick: () => onPlayQueue([toPlayerTrack(t, { artist, isLocal })]) },
         isServer
           ? { label: '📂 在服务器磁盘中定位', style: 'default', onclick: () => onReveal && onReveal({ id: t.id, name: t.name, artist }) }
           : { label: '📥 下载到电脑服务器', style: 'default', onclick: () => downloadSingleTrack(String(t.id), t.name) },
-        {
-          label: cachingTrackId === t.id ? '⏳ 正在离线缓存...' : (isPhone ? '📲 重新离线缓存 (手机已存)' : '📲 离线缓存到本手机 (PWA)'),
-          style: 'default',
-          onclick: () => handleCacheTrack(t)
-        },
+        { label: cachingTrackId === t.id ? '⏳ 正在离线缓存...' : (isPhone ? '📲 重新离线缓存 (手机已存)' : '📲 离线缓存到本手机 (PWA)'), style: 'default', onclick: () => handleCacheTrack(t) },
         { label: '➕ 添加到歌单', style: 'default', onclick: () => { addToPlaylistSong = { id: t.id, name: t.name, artist }; } },
-        ...(playlist && (playlist.isCreator || !playlist.subscribed) ? [{
-          label: '🗑️ 从本歌单移除',
-          style: 'danger' as const,
-          onclick: () => { removingTrack = { id: t.id, name: t.name, artist }; }
-        }] : []),
-        ...(onSong
-          ? [
-              {
-                label: '🎧 查看歌曲详情 / 音质',
-                style: 'default' as const,
-                onclick: () => onSong(String(t.id))
-              }
-            ]
-          : []),
+        ...(playlist && (playlist.isCreator || !playlist.subscribed) ? [{ label: '🗑️ 从本歌单移除', style: 'danger' as const, onclick: () => { removingTrack = { id: t.id, name: t.name, artist }; } }] : []),
+        ...(onSong ? [{ label: '🎧 查看歌曲详情 / 音质', style: 'default' as const, onclick: () => onSong(String(t.id)) }] : []),
         { label: likedSet.has(Number(t.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢', style: 'default', onclick: () => onToggleLike(Number(t.id), t.name) }
       ]
     });
@@ -371,8 +356,17 @@
           </button>
         {/if}
       </DetailHeaderCard>
-      <ul class="data-list scrollable-list">
-        {#each paged as t, i}
+
+      <PlaylistTrackFilter />
+
+      {#if filteredTracks.length === 0}
+        <div class="py-12 text-center text-xs text-[var(--text-muted)] bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl p-6 my-2 border border-dashed border-[var(--border-color)]">
+          <span class="text-2xl block mb-1">🔍</span>
+          <span>未找到包含 "{getPlaylistSearchKeyword()}" 的歌曲或歌手</span>
+        </div>
+      {:else}
+        <ul class="data-list scrollable-list">
+          {#each paged as t, i}
           {@const idx = (curPage - 1) * pageSize + i + 1}
           {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
           {@const artist = formatArtist(t)}
@@ -438,9 +432,12 @@
       </ul>
       <div class="flex justify-between items-center gap-2.5 mt-3">
         <button class="btn-secondary" disabled={curPage <= 1} onclick={() => incPage(-1)}>上一页</button>
-        <span class="text-xs text-[var(--text-secondary)] whitespace-nowrap">第 {curPage} / {totalPages} 页 ({allTracks.length}首)</span>
+        <span class="text-xs text-[var(--text-secondary)] whitespace-nowrap">
+          第 {curPage} / {totalPages} 页 ({getPlaylistSearchKeyword() ? `${filteredTracks.length}首 / 匹配自${allTracks.length}首` : `${allTracks.length}首`})
+        </span>
         <button class="btn-secondary" disabled={curPage >= totalPages} onclick={() => incPage(1)}>下一页</button>
       </div>
+      {/if}
     {:else}
       <div class="empty-placeholder-card">
         <div class="empty-icon">🎼</div>

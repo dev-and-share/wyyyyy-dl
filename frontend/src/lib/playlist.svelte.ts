@@ -8,11 +8,23 @@ export const playlistState = $state({
   playlist: null as any,
   curPage: 1,
   loading: false,
-  loadingId: ''
+  loadingId: '',
+  searchKeyword: ''
+});
+
+const filteredTracks = $derived.by(() => {
+  const q = playlistState.searchKeyword.trim().toLowerCase();
+  if (!q) return allTracks;
+  return allTracks.filter((t: any) => {
+    const nameMatch = t?.name && String(t.name).toLowerCase().includes(q);
+    const artistStr = (t?.ar?.map((a: any) => a.name).join(' ') || t?.artist || '').toLowerCase();
+    const artistMatch = artistStr.includes(q);
+    return nameMatch || artistMatch;
+  });
 });
 export const pageSize = 20;
-const _paged = $derived(allTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
-const _totalPages = $derived(Math.max(1, Math.ceil(allTracks.length/pageSize)));
+const _paged = $derived(filteredTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
+const _totalPages = $derived(Math.max(1, Math.ceil(filteredTracks.length/pageSize)));
 const _playlist = $derived(playlistState.playlist);
 const _playlistFilter = $derived(playlistState.filter);
 const _curPage = $derived(playlistState.curPage);
@@ -21,6 +33,12 @@ export function getTotalPages(){ return _totalPages; }
 export function getPlaylist(){ return _playlist; }
 export function getPlaylistFilter(){ return _playlistFilter; }
 export function getCurPage(){ return _curPage; }
+export function getFilteredTracks(){ return filteredTracks; }
+export function getPlaylistSearchKeyword(){ return playlistState.searchKeyword; }
+export function setPlaylistSearchKeyword(v: string){
+  playlistState.searchKeyword = v;
+  playlistState.curPage = 1;
+}
 export function isPlaylistLoading(): boolean { return playlistState.loading; }
 export function getPlaylistLoadingId(): string { return playlistState.loadingId; }
 export function setCurPage(v:number){ playlistState.curPage=v; }
@@ -128,6 +146,7 @@ export function addNewPlaylist(pl: any) {
 export function renderPlaylist(pl:any){
   playlistState.playlist=pl;
   allTracks.length=0; allTracks.push(...(pl.tracks||[]));
+  playlistState.searchKeyword='';
   playlistState.curPage=1;
   if (pl?.id && Array.isArray(pl.tracks)) {
     updatePlaylistTrackCount(pl.id, pl.tracks.length, true);

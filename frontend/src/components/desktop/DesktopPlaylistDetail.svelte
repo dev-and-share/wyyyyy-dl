@@ -1,17 +1,20 @@
 <script lang="ts">
   import {
     allTracks,
+    getFilteredTracks,
     pageSize,
     getPaged,
     getTotalPages,
     getPlaylist,
     getCurPage,
+    getPlaylistSearchKeyword,
     loadPlaylistDetail,
     incPage,
     recordPlaylistPlay
   } from '../../lib/playlist.svelte';
   import { api } from '../../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../../lib/utils';
+  import PlaylistTrackFilter from '../PlaylistTrackFilter.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
@@ -50,8 +53,9 @@
   }>();
 
   let desktopCurPage = $state(1);
-  let totalPages = $derived(Math.max(1, Math.ceil(allTracks.length / pageSize)));
-  let paged = $derived(allTracks.slice((desktopCurPage - 1) * pageSize, desktopCurPage * pageSize));
+  let filteredTracks = $derived(getFilteredTracks());
+  let totalPages = $derived(Math.max(1, Math.ceil(filteredTracks.length / pageSize)));
+  let paged = $derived(filteredTracks.slice((desktopCurPage - 1) * pageSize, desktopCurPage * pageSize));
   let playlist = $derived(getPlaylist());
 
   let downloadedCount = $derived(
@@ -279,10 +283,19 @@
       </div>
     </div>
 
+    <!-- 歌单内歌曲过滤栏 -->
+    <PlaylistTrackFilter />
+
     <!-- 3. 宽屏歌曲大表格 (流式平滑展开，表头吸顶，与外层视口完美契合) -->
-    <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
-      <div class="overflow-x-auto custom-table-scroll">
-        <table class="w-full text-left border-collapse text-xs">
+    {#if filteredTracks.length === 0}
+      <div class="py-16 text-center text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-dashed border-[var(--border-color)] p-8">
+        <span class="text-3xl block mb-2">🔍</span>
+        <span>未找到包含 "{getPlaylistSearchKeyword()}" 的歌曲或歌手</span>
+      </div>
+    {:else}
+      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
+        <div class="overflow-x-auto custom-table-scroll">
+          <table class="w-full text-left border-collapse text-xs">
           <!-- 吸顶表头 -->
           <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
             <tr>
@@ -392,7 +405,7 @@
           上一页
         </button>
         <span class="text-xs text-[var(--text-secondary)]">
-          第 <strong class="text-[var(--text-main)]">{desktopCurPage}</strong> / {totalPages} 页 (共 {allTracks.length} 首)
+          第 <strong class="text-[var(--text-main)]">{desktopCurPage}</strong> / {totalPages} 页 ({getPlaylistSearchKeyword() ? `${filteredTracks.length}首 / 匹配自${allTracks.length}首` : `共 ${allTracks.length} 首`})
         </span>
         <button
           type="button"
@@ -404,6 +417,7 @@
         </button>
       </div>
     </div>
+    {/if}
   {:else if loadError}
     <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
       <span class="text-3xl">⚠️</span>
