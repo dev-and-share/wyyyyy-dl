@@ -2,7 +2,9 @@
   import { onMount } from 'svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import AccordionCard from './AccordionCard.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
   import BrowserCacheSection from './BrowserCacheSection.svelte';
+  import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import Modal from './Modal.svelte';
   import { openSheet } from '../lib/ui.svelte';
@@ -25,6 +27,10 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
+  const STORAGE_KEY_SUBTAB = 'wyyyy_download_mgr_subtab';
+  let activeSubtab: 'folder' | 'history' | 'cache' = $state(
+    (typeof localStorage !== 'undefined' ? (localStorage.getItem(STORAGE_KEY_SUBTAB) as any) : null) || 'folder'
+  );
   let accFolder = $state(true);
   let accHistory = $state(true);
 
@@ -231,17 +237,10 @@
               {
                 label: isPlayingThis && playing ? '⏸ 暂停当前播放' : '▶️ 播放本地音频',
                 style: 'primary' as const,
-                onclick: () =>
-                  onPlayQueue([
-                    {
-                      id: h.songId || h.id,
-                      name: h.songName || h.name,
-                      artist: artistName,
-                      cover: DEFAULT_VINYL_COVER,
-                      url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`,
-                      isLocal: true
-                    }
-                  ])
+                onclick: () => onPlayQueue([{
+                  id: h.songId || h.id, name: h.songName || h.name, artist: artistName,
+                  cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true
+                }])
               },
               {
                 label: '📂 在服务器磁盘中定位',
@@ -260,13 +259,30 @@
   }
 </script>
 
+<!-- 📱 SP 移动端顶部三段式分段切换器 -->
+<SegmentedTabs
+  items={[
+    { id: 'folder', label: '本地曲库', icon: '📁', accent: 'red' },
+    { id: 'history', label: '下载历史', icon: '📥', accent: 'blue' },
+    { id: 'cache', label: '离线缓存', icon: '📲', accent: 'emerald' }
+  ]}
+  activeId={activeSubtab}
+  onChange={(id) => {
+    activeSubtab = id as any;
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {}
+  }}
+/>
+
 <!-- Section 1: 本地曲库与文件夹树连播 -->
-<AccordionCard title="📁 1. 本地曲库与文件夹树连播" bind:open={accFolder}>
-  <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
-</AccordionCard>
+<div class:hidden={activeSubtab !== 'folder'}>
+  <AccordionCard title="📁 本地曲库与文件夹树连播" flat open={true} accent="red">
+    <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
+  </AccordionCard>
+</div>
 
 <!-- Section 2: 本地下载历史与文件管理 -->
-<AccordionCard title="📥 2. 本地下载历史与文件管理" bind:open={accHistory}>
+<div class:hidden={activeSubtab !== 'history'}>
+  <AccordionCard title="📥 本地下载历史与文件管理" flat open={true} accent="blue">
     <!-- 统计数据条 -->
     <div style="display:flex; flex-wrap:wrap; gap:8px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:8px; margin-bottom:10px; align-items:center; font-size:13px;">
       <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
@@ -336,32 +352,16 @@
       </div>
     {/if}
 
-    <!-- 搜索筛选行 (移动端单行内嵌搜索 + 软键盘 Search 触发，桌面端保留检索按钮) -->
+    <!-- 搜索筛选行 -->
     <div class="flex items-center gap-2 mb-2.5 w-full">
-      <div class="relative flex-1 min-w-0">
-        <input
-          type="search"
-          enterkeyhint="search"
-          placeholder="🔍 检索本地歌曲名 / 歌手 / 物理文件名 (按回车搜索)"
-          class="w-full text-xs md:text-sm py-2 px-3 pr-8 rounded-lg bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] focus:outline-none focus:border-red-500 transition-all"
+      <div class="flex-1 min-w-0">
+        <LocalSearchBox
           bind:value={histKw}
-          onkeydown={(e) => {
-            if (e.key === 'Enter') {
-              (e.currentTarget as HTMLInputElement).blur();
-              loadHistory(1);
-            }
-          }}
+          placeholder="🔍 检索本地歌曲名 / 歌手 / 物理文件名 (按回车检索)"
+          historyKey="wyyyy_history_search_history"
+          onSearch={() => loadHistory(1)}
+          onClear={() => loadHistory(1)}
         />
-        {#if histKw}
-          <button
-            type="button"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-red-400 cursor-pointer p-1 bg-transparent border-none"
-            onclick={() => { histKw = ''; loadHistory(1); }}
-            title="清空"
-          >
-            ✕
-          </button>
-        {/if}
       </div>
       <button class="btn-primary shrink-0 whitespace-nowrap hidden md:inline-flex" onclick={() => loadHistory(1)}>检索</button>
     </div>
@@ -438,10 +438,13 @@
       <span style="font-size:12px; color:var(--text-secondary);">第 {histPage} / {histTotalPages} 页 (共 {histTotal} 首)</span>
       <button class="btn-secondary" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>下一页</button>
     </div>
-</AccordionCard>
+  </AccordionCard>
+</div>
 
 <!-- Section 3: 手机/浏览器离线缓存管理 -->
-<BrowserCacheSection {onPlayQueue} {showToast} />
+<div class:hidden={activeSubtab !== 'cache'}>
+  <BrowserCacheSection flat open={true} {onPlayQueue} {showToast} />
+</div>
 
 <!-- 📋 缺失文件 / 非MP3 格式 清单弹窗 -->
 {#if modalType}

@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from '../lib/utils';
+  import { onMount, tick } from 'svelte';
+  import { formatArtist, DEFAULT_VINYL_COVER, platform } from '../lib/utils';
+  import type { Track } from '../lib/types';
   import { api } from '../lib/api';
   import { parseLrc, type LrcLine } from '../lib/lyricParser';
   import { showToast } from '../lib/toast.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import SongCommentModal from './SongCommentModal.svelte';
 
   type Lrc = LrcLine;
 
@@ -52,6 +54,52 @@
   let showVolPopup = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let rawLyricText = $derived(track?.lyric || fetchedLyric || '');
+  let redCount = $state<number | null>(null);
+  let commentCount = $state<number | null>(null);
+  let statsLoading = $state(false);
+  let showCommentModal = $state(false);
+  let lastStatsTrackId = -1;
+
+  let hasValidId = $derived(Boolean(track?.id && Number(track.id) > 0));
+
+  function formatBadgeCount(cnt: number) {
+    if (cnt >= 100000) return (cnt / 10000).toFixed(0) + 'w';
+    if (cnt >= 10000) return (cnt / 10000).toFixed(1) + 'w';
+    if (cnt >= 1000) return (cnt / 1000).toFixed(1) + 'k';
+    return String(cnt);
+  }
+
+  // 沉浸模式异步拉取红心数与评论数（只要拥有有效 ID，即便是本地磁盘下载的歌曲也拉取）
+  $effect(() => {
+    const tId = Number(track?.id);
+    if (tId && tId > 0 && tId !== lastStatsTrackId) {
+      lastStatsTrackId = tId;
+      statsLoading = true;
+      redCount = null;
+      commentCount = null;
+      api.songStats(tId).then((res) => {
+        if (lastStatsTrackId === tId) {
+          statsLoading = false;
+          if (res?.code === '000000' && res.data) {
+            if (typeof res.data.redCount === 'number' && res.data.redCount > 0) {
+              redCount = res.data.redCount;
+            }
+            if (typeof res.data.commentCount === 'number' && res.data.commentCount > 0) {
+              commentCount = res.data.commentCount;
+            }
+          }
+        }
+      }).catch(() => {
+        if (lastStatsTrackId === tId) statsLoading = false;
+      });
+    } else if (!tId || tId <= 0) {
+      lastStatsTrackId = -1;
+      statsLoading = false;
+      redCount = null;
+      commentCount = null;
+    }
+  });
+
   // 用户手动点击歌词跳转后，暂停自动滚动 3s
   let userSeekedAt = $state(0);
   const AUTO_SCROLL_PAUSE_MS = 3000;
@@ -122,8 +170,65 @@
     </button>
   </div>
 
-  <!-- 中间主体：左侧大黑胶唱片 + 右侧滚动歌词 -->
-  <div class="flex-1 flex flex-col md:flex-row overflow-hidden p-3 md:p-10 gap-3 md:gap-10 max-w-[1200px] w-full mx-auto items-center">
+  <!-- 中间主体：左侧大黑胶唱片 + 右侧滚动歌词 + 左下角快捷交互栏 -->
+  <div class="flex-1 relative flex flex-col md:flex-row overflow-hidden p-3 md:p-10 gap-3 md:gap-10 max-w-[1200px] w-full mx-auto items-center">
+    <!-- 移动端专属（md:hidden）：左下角快捷操作栏，大拇指舒适热区，竖立排列消除字宽违和感 -->
+    <div class="absolute left-3.5 bottom-3 z-30 flex flex-col items-center gap-2 select-none pointer-events-auto md:hidden">
+      {#if track?.isLocal}
+        <span class="audio-source-badge icon-only badge-server shadow-sm" title="🖥️ 本地磁盘">🖥️</span>
+      {/if}
+
+      <!-- 喜欢 -->
+      <button
+        type="button"
+        class="flex flex-col items-center justify-center min-w-[42px] h-[46px] px-1 rounded-2xl bg-transparent hover:bg-black/5 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:scale-105 active:scale-92 transition-all cursor-pointer"
+        onclick={onToggleLike}
+        title={redCount ? `喜欢（${redCount}人收藏）` : '喜欢'}
+      >
+        <PlayerIcon name="heart" liked={isLiked} size={18} />
+        {#if statsLoading}
+          <span class="inline-block w-4 h-1.5 rounded-full bg-black/10 dark:bg-white/20 animate-pulse mt-1"></span>
+        {:else if redCount !== null && redCount > 0}
+          <span class="text-[10px] font-medium {isLiked ? 'text-red-500' : 'text-red-400/90'} select-none tabular-nums mt-0.5 leading-none">
+            {formatBadgeCount(redCount)}
+          </span>
+        {/if}
+      </button>
+
+      <!-- 评论 -->
+      {#if hasValidId}
+        <button
+          type="button"
+          class="flex flex-col items-center justify-center min-w-[42px] h-[46px] px-1 rounded-2xl bg-transparent hover:bg-black/5 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:scale-105 active:scale-92 transition-all cursor-pointer"
+          onclick={() => showCommentModal = true}
+          title={commentCount ? `查看评论（共 ${commentCount} 条）` : '查看评论'}
+        >
+          <span class="text-sm leading-none">💬</span>
+          {#if statsLoading}
+            <span class="inline-block w-4 h-1.5 rounded-full bg-black/10 dark:bg-white/20 animate-pulse mt-1"></span>
+          {:else if commentCount !== null && commentCount > 0}
+            <span class="text-[10px] font-medium select-none tabular-nums mt-0.5 leading-none">
+              {formatBadgeCount(commentCount)}
+            </span>
+          {/if}
+        </button>
+      {/if}
+
+      <!-- 收藏到歌单 -->
+      <button
+        type="button"
+        class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-transparent hover:bg-black/5 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-emerald-400 hover:scale-105 active:scale-92 transition-all cursor-pointer"
+        onclick={() => {
+          if (track) {
+            addToPlaylistSong = { id: track.id, name: track.name, artist: formatArtist(track.artist) };
+          }
+        }}
+        title="收藏到歌单"
+      >
+        <PlayerIcon name="plus" size={17} />
+      </button>
+    </div>
+
     <!-- 左侧：大黑胶唱片与歌曲元信息 -->
     <div class="flex flex-col items-center justify-center gap-3 md:gap-4 max-w-[440px] w-full md:w-auto shrink-0">
       <div class="w-[140px] h-[140px] md:w-[220px] md:h-[220px] flex items-center justify-center">
@@ -137,18 +242,69 @@
           />
         </div>
       </div>
-      <div class="flex flex-col items-center text-center max-w-[280px]">
-        <div class="flex items-center justify-center gap-2 max-w-full">
-          <span class="text-sm md:text-base font-bold text-[var(--text-main)] truncate">{track?.name || '未在播放'}</span>
+      <div class="flex flex-col items-center text-center max-w-[340px] w-full">
+        <!-- 歌名 -->
+        <h4 class="text-base md:text-lg font-bold text-[var(--text-main)] truncate max-w-full px-2" title={track?.name}>
+          {track?.name || '未在播放'}
+        </h4>
+
+        <!-- 歌手名 -->
+        <div class="text-xs md:text-sm text-[var(--text-secondary)] truncate max-w-full mt-1 px-2" title={formatArtist(track?.artist)}>
+          {formatArtist(track?.artist) || '未知歌手'}
+        </div>
+
+        <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排，预留充足展位彻底杜绝突然撑大 -->
+        <div class="hidden md:flex items-center justify-center gap-2.5 max-w-full mt-3">
           {#if track?.isLocal}
-            <span class="audio-source-badge icon-only badge-server" title="🖥️ 本地磁盘">🖥️</span>
+            <span class="audio-source-badge icon-only badge-server shadow-none" title="🖥️ 本地磁盘">🖥️</span>
           {/if}
-          <button type="button" class="p-1 hover:scale-110 active:scale-90 transition-transform cursor-pointer" onclick={onToggleLike} title="喜欢">
-            <PlayerIcon name="heart" liked={isLiked} size={18} />
-          </button>
+
+          <!-- 喜欢 -->
           <button
             type="button"
-            class="p-1 text-[var(--text-secondary)] hover:text-emerald-400 hover:scale-110 active:scale-90 transition-transform cursor-pointer"
+            class="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all duration-300 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-main)] {hasValidId ? 'min-w-[72px]' : ''}"
+            onclick={onToggleLike}
+            title={redCount ? `喜欢（${redCount}人收藏）` : '喜欢'}
+          >
+            <PlayerIcon name="heart" liked={isLiked} size={17} />
+            {#if hasValidId}
+              <div class="min-w-[30px] flex items-center justify-center">
+                {#if statsLoading}
+                  <span class="inline-block w-5 h-2 rounded-full bg-black/10 dark:bg-white/20 animate-pulse"></span>
+                {:else if redCount !== null && redCount > 0}
+                  <span class="text-xs font-medium {isLiked ? 'text-red-500' : 'text-red-400/90'} select-none tabular-nums leading-none">
+                    {formatBadgeCount(redCount)}
+                  </span>
+                {/if}
+              </div>
+            {/if}
+          </button>
+
+          <!-- 评论 -->
+          {#if hasValidId}
+            <button
+              type="button"
+              class="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all duration-300 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-main)] min-w-[72px]"
+              onclick={() => showCommentModal = true}
+              title={commentCount ? `查看评论（共 ${commentCount} 条）` : '查看评论'}
+            >
+              <span class="text-xs leading-none">💬</span>
+              <div class="min-w-[30px] flex items-center justify-center">
+                {#if statsLoading}
+                  <span class="inline-block w-5 h-2 rounded-full bg-black/10 dark:bg-white/20 animate-pulse"></span>
+                {:else if commentCount !== null && commentCount > 0}
+                  <span class="text-xs font-medium select-none tabular-nums leading-none">
+                    {formatBadgeCount(commentCount)}
+                  </span>
+                {/if}
+              </div>
+            </button>
+          {/if}
+
+          <!-- 收藏到歌单 -->
+          <button
+            type="button"
+            class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-secondary)] hover:text-emerald-400 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             onclick={() => {
               if (track) {
                 addToPlaylistSong = { id: track.id, name: track.name, artist: formatArtist(track.artist) };
@@ -156,10 +312,9 @@
             }}
             title="收藏到歌单"
           >
-            <PlayerIcon name="plus" size={18} />
+            <PlayerIcon name="plus" size={17} />
           </button>
         </div>
-        <div class="text-xs text-[var(--text-secondary)] truncate mt-0.5">{formatArtist(track?.artist) || '未知歌手'}</div>
       </div>
     </div>
 
@@ -239,14 +394,16 @@
       >
         <PlayerIcon name="next" size={20} />
       </button>
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={onTogglePeq}
-        title="打开均衡器"
-      >
-        <PlayerIcon name="equalizer" size={19} />
-      </button>
+      {#if platform.canUseAudioProcessing}
+        <button
+          type="button"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+          onclick={onTogglePeq}
+          title="打开均衡器"
+        >
+          <PlayerIcon name="equalizer" size={19} />
+        </button>
+      {/if}
       <button
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-emerald-400 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
@@ -269,7 +426,7 @@
       </button>
 
       <!-- iOS (Safari/PWA) HTML5 audio volume 属性为只读，系统强制由实体键控制，隐藏滑块避免误解 -->
-      {#if !isIOS()}
+      {#if platform.canAdjustVolume}
         <!-- 音量竖立弹出滑块 -->
         <div class="relative">
           <button
@@ -315,3 +472,12 @@
     {showToast}
   />
 {/if}
+
+{#if showCommentModal && track?.id}
+  <SongCommentModal
+    songId={track.id}
+    songName={track.name}
+    onClose={() => showCommentModal = false}
+  />
+{/if}
+

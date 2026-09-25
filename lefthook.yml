@@ -4,9 +4,16 @@
 pre-commit:
   parallel: true
   commands:
+    # 🔐 密钥扫描: 用 secretlint（npm devDependency，无需额外安装）扫描暂存文件
+    # 覆盖范围: AWS/GCP/GitHub Token/npm Token/Slack/私钥 等 30+ 规则
+    secrets:
+      root: "frontend"
+      glob: "**/*.{ts,svelte,js,java,env,yml,yaml,toml,json}"
+      run: npm run check:secrets
+
     check-lines:
       root: "frontend"
-      glob: "src/**/*.{svelte,ts,js,css}"
+      glob: "**/*.{svelte,ts,js,css}"
       run: npm run check:lines
 
     svelte-check:

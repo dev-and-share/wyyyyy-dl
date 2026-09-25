@@ -28,6 +28,7 @@
   import PullToRefresh from './components/sp/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
+  import SettingsDrawer from './components/SettingsDrawer.svelte';
   import BottomTabBar from './components/sp/BottomTabBar.svelte';
 
   // ---------- 全局状态 ----------
@@ -35,14 +36,19 @@
   let themeMode: ThemeMode = $state(getInitialTheme());
   let revealData: { path: string; msg: string } | null = $state(null);
   let viewingSongId: string | null = $state(null);
+  let showSettings = $state(false);
+  let showPlayerPeq = $state(false);
+  let isPlayerMinimized = $state(false);
 
   // ---------- 播放器状态桥接 (供各 Tab 感知) ----------
   let curTrack: Track | null = $state(null);
   let playing = $state(false);
   let setQueue: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void = $state(() => {});
+  let togglePlayerPlay: () => void = $state(() => {});
   let isPlayerOverlayOpen = $state(false);
 
-  let isAnyOverlayOpen = $derived(isPlayerOverlayOpen || !!revealData || !!sheetState.data);
+  let hasActivePlayerBar = $derived(layoutState.isDesktop && !!curTrack && !isPlayerMinimized);
+  let isAnyOverlayOpen = $derived(isPlayerOverlayOpen || !!revealData || !!sheetState.data || showSettings);
 
   async function handleReveal(item: any) {
     try {
@@ -73,6 +79,12 @@
     const onDownloadSubmit = () => startTaskPolling();
     window.addEventListener('wyyyy:download-submitted', onDownloadSubmit);
 
+    // 监听全局物理文件定位事件 (支持各种组件长按/双击快捷触发)
+    const onGlobalReveal = (e: any) => {
+      if (e?.detail) handleReveal(e.detail);
+    };
+    window.addEventListener('wyyyy:reveal', onGlobalReveal);
+
     // 监听 PWA 新版本就绪事件
     const onPwaUpdate = () => showToast('🎉 发现新版本！下拉即可更新', 'info', 6000);
     window.addEventListener('wyyyy:pwa-update-available', onPwaUpdate);
@@ -81,6 +93,7 @@
       stopRouter();
       stopLayout();
       window.removeEventListener('wyyyy:download-submitted', onDownloadSubmit);
+      window.removeEventListener('wyyyy:reveal', onGlobalReveal);
       window.removeEventListener('wyyyy:pwa-update-available', onPwaUpdate);
     };
   });
@@ -110,8 +123,10 @@
   <div class="hidden lg:contents">
     <DesktopSidebar
       tab={routerState.tab}
+      currentPlaylistId={routerState.playlistId}
       collapsed={routerState.sidebarCollapsed}
       downloadingCount={getActiveDownloadingCount()}
+      hasPlayerBar={hasActivePlayerBar}
       onSwitchTab={switchTab}
       onViewPlaylist={jumpToPlaylist}
       onPlayPlaylist={(id: string, name: string) => playPlaylistTracks(id, name, setQueue, showToast)}
@@ -120,8 +135,11 @@
     />
   </div>
 
-  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 宽屏模式下为独立纵向滚动区) -->
-  <div class="flex-1 flex flex-col min-w-0 app-main-container max-w-[1400px] relative lg:h-[calc(100vh-74px)] lg:overflow-y-auto w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0">
+  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 宽屏模式下为独立纵向滚动区，播放栏最小化时撑满 100vh 可视面积最大化) -->
+  <div
+    class="flex-1 flex flex-col min-w-0 app-main-container max-w-[1400px] relative lg:overflow-y-auto w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0 transition-[height] duration-200"
+    style="height: {layoutState.isDesktop ? (hasActivePlayerBar ? 'calc(100vh - 74px)' : '100vh') : 'auto'};"
+  >
     <!-- 顶栏导航 -->
     <TopBar
       tab={routerState.tab} {themeMode} {repeat}
@@ -130,6 +148,7 @@
       onToggleTheme={toggleTheme}
       onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
       onRefresh={handleRefresh}
+      onOpenSettings={() => showSettings = true}
     />
 
   <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；PC 模式下减少冗余内边距) -->
@@ -147,6 +166,7 @@
           downloadedSet={taskState.downloadedSet}
           onToggleLike={toggleLike}
           onPlayQueue={setQueue}
+          onSong={(sid: string) => { viewingSongId = sid; }}
           onAlbum={jumpToAlbum}
           onReveal={handleReveal}
           {showToast}
@@ -181,7 +201,9 @@
       <!-- 📱 移动端 / 窄屏：保留原有折叠手风琴卡片 (< 1024px) -->
       <div class="block lg:hidden w-full">
         <SearchTab
-          albumId={routerState.albumId} {curTrack} {playing}
+          albumId={routerState.albumId}
+          albumTrigger={routerState.albumTrigger}
+          {curTrack} {playing}
           downloadedSet={taskState.downloadedSet} likedSet={likeState.likedSet}
           onToggleLike={toggleLike} onPlayQueue={setQueue} onAlbum={jumpToAlbum} onPlaylist={jumpToPlaylist}
           onSong={(sid: string) => { viewingSongId = sid; }} onReveal={handleReveal}
@@ -220,7 +242,10 @@
   bind:curTrack
   bind:playing
   bind:setQueue
+  bind:togglePlay={togglePlayerPlay}
   bind:isOverlayOpen={isPlayerOverlayOpen}
+  bind:showPeq={showPlayerPeq}
+  bind:isPlayerMinimized
   likedSet={likeState.likedSet}
   onToggleLike={toggleLike}
   onReveal={handleReveal}
@@ -238,8 +263,22 @@
     likedSet={likeState.likedSet}
     onToggleLike={toggleLike}
     onPlayQueue={setQueue}
+    onTogglePlay={togglePlayerPlay}
     onAlbum={jumpToAlbum}
     onClose={() => viewingSongId = null}
+    {showToast}
+  />
+{/if}
+
+<!-- ⚙️ 全局系统设置抽屉 -->
+{#if showSettings}
+  <SettingsDrawer
+    {repeat}
+    {themeMode}
+    onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
+    onSelectTheme={(mode) => { themeMode = mode; applyTheme(mode); }}
+    onOpenPeq={() => { showPlayerPeq = true; }}
+    onClose={() => showSettings = false}
     {showToast}
   />
 {/if}

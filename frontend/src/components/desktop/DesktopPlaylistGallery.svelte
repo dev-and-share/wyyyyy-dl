@@ -7,7 +7,7 @@
     sortPlaylistsByPlayCount,
     getPlaylistPlayCount
   } from '../../lib/playlist.svelte';
-  import { DEFAULT_VINYL_COVER } from '../../lib/utils';
+  import { DEFAULT_VINYL_COVER, matchesKeyword } from '../../lib/utils';
 
   let {
     onSelectPlaylist,
@@ -23,6 +23,10 @@
   let searchKeyword = $state('');
   let parseInput = $state('');
   let loading = $state(false);
+
+  const d = new Date();
+  const todayMonthText = `${String(d.getMonth() + 1).padStart(2, '0')}月`;
+  const todayDayNum = String(d.getDate()).padStart(2, '0');
 
   onMount(() => {
     if (myPlaylists.length === 0) {
@@ -61,9 +65,9 @@
     if (filter === 'created') list = list.filter(p => !p.subscribed);
     if (filter === 'subscribed') list = list.filter(p => p.subscribed);
 
-    const kw = searchKeyword.trim().toLowerCase();
+    const kw = searchKeyword.trim();
     if (kw) {
-      list = list.filter(p => (p.name || '').toLowerCase().includes(kw));
+      list = list.filter(p => matchesKeyword(p.name, kw));
     }
     return sortPlaylistsByPlayCount(list);
   });
@@ -141,6 +145,45 @@
   <!-- 3. 画廊封面自适应网格 -->
   {#if filteredPlaylists().length > 0}
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+      <!-- 📅 专属每日推荐置顶卡片 -->
+      {#if !searchKeyword.trim() && filter !== 'subscribed'}
+        <div
+          data-testid="gallery-card-daily-recommend"
+          class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-red-400/40 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-lg hover:-translate-y-1"
+          role="button"
+          tabindex="0"
+          onclick={() => onSelectPlaylist('daily-recommend')}
+          onkeydown={(e) => e.key === 'Enter' && onSelectPlaylist('daily-recommend')}
+        >
+          <!-- 封面图容器：拟物日历风格 -->
+          <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-red-500 to-rose-600 shadow-inner flex flex-col select-none group-hover:scale-105 transition-transform duration-300">
+            <div class="bg-red-700/80 text-white text-[10px] font-bold text-center py-1 tracking-wider uppercase">
+              {todayMonthText}
+            </div>
+            <div class="flex-1 bg-gradient-to-b from-white to-red-50 dark:from-neutral-900 dark:to-neutral-950 flex flex-col items-center justify-center">
+              <span class="text-3xl font-black text-red-600 dark:text-red-400 tracking-tighter leading-none">
+                {todayDayNum}
+              </span>
+              <span class="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">每日专属</span>
+            </div>
+            <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/90 text-white backdrop-blur-xs">
+              📅 今日推荐
+            </span>
+          </div>
+
+          <!-- 歌单信息 -->
+          <div class="flex flex-col gap-0.5 min-w-0">
+            <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors">
+              每日专属推荐
+            </span>
+            <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+              <span>每天 6:00 更新</span>
+              <span class="text-red-400 font-medium">私房歌</span>
+            </div>
+          </div>
+        </div>
+      {/if}
+
       {#each filteredPlaylists() as pl (pl.id)}
         {@const isFav = isFavoritePlaylist(pl)}
         {@const playCount = getPlaylistPlayCount(pl.id)}

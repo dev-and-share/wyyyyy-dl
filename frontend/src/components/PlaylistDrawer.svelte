@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type { Track } from '../lib/types';
-  import { formatArtist } from '../lib/utils';
+  import { formatArtist, matchesKeyword } from '../lib/utils';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import TaskQueueView from './TaskQueueView.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
@@ -72,9 +73,9 @@
       if (pendingOnly && status.isServer) return false;
 
       if (filterText.trim()) {
-        const kw = filterText.toLowerCase();
-        const nameMatch = (t.name || '').toLowerCase().includes(kw);
-        const artistMatch = (t.artist || '').toLowerCase().includes(kw);
+        const kw = filterText.trim();
+        const nameMatch = matchesKeyword(t.name, kw);
+        const artistMatch = matchesKeyword(t.artist, kw);
         if (!nameMatch && !artistMatch) return false;
       }
       return true;
@@ -657,24 +658,11 @@
         <!-- 队列专属工具栏 -->
         <div class="px-3.5 py-2 border-b border-[var(--border-subtle,rgba(255,255,255,0.08))] flex flex-col gap-1.5 shrink-0 bg-black/[0.02] dark:bg-white/[0.01]">
           <!-- 搜索过滤输入框 -->
-          <div class="relative flex items-center">
-            <span class="absolute left-2.5 text-xs text-[var(--text-muted)] pointer-events-none">🔍</span>
-            <input
-              type="text"
-              placeholder="搜索当前队列歌曲 / 歌手..."
-              bind:value={filterText}
-              class="w-full bg-black/5 dark:bg-white/5 border border-[var(--border-subtle,rgba(255,255,255,0.1))] rounded-lg pl-7 pr-7 py-1 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500/50 transition-colors"
-            />
-            {#if filterText}
-              <button
-                type="button"
-                class="absolute right-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
-                onclick={() => filterText = ''}
-              >
-                ✕
-              </button>
-            {/if}
-          </div>
+          <LocalSearchBox
+            bind:value={filterText}
+            placeholder="搜索当前队列歌曲 / 歌手 (支持拼音)..."
+            inputClassName="!py-1"
+          />
 
           <!-- 🏷️ 播放范围 Tab + 🛡️ 跳过试听策略 -->
           <div class="flex items-center justify-between gap-2 text-[11px] select-none pt-0.5">

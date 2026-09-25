@@ -1,4 +1,4 @@
-import { getApiCache, setApiCache } from './utils';
+import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 
 export const myPlaylists = $state<any[]>([]);
@@ -8,11 +8,23 @@ export const playlistState = $state({
   playlist: null as any,
   curPage: 1,
   loading: false,
-  loadingId: ''
+  loadingId: '',
+  searchKeyword: ''
+});
+
+const filteredTracks = $derived.by(() => {
+  const q = playlistState.searchKeyword.trim();
+  if (!q) return allTracks;
+  return allTracks.filter((t: any) => {
+    const nameMatch = matchesKeyword(t?.name, q);
+    const artistStr = t?.ar?.map((a: any) => a.name).join(' ') || t?.artist || '';
+    const artistMatch = matchesKeyword(artistStr, q);
+    return nameMatch || artistMatch;
+  });
 });
 export const pageSize = 20;
-const _paged = $derived(allTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
-const _totalPages = $derived(Math.max(1, Math.ceil(allTracks.length/pageSize)));
+const _paged = $derived(filteredTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
+const _totalPages = $derived(Math.max(1, Math.ceil(filteredTracks.length/pageSize)));
 const _playlist = $derived(playlistState.playlist);
 const _playlistFilter = $derived(playlistState.filter);
 const _curPage = $derived(playlistState.curPage);
@@ -21,6 +33,12 @@ export function getTotalPages(){ return _totalPages; }
 export function getPlaylist(){ return _playlist; }
 export function getPlaylistFilter(){ return _playlistFilter; }
 export function getCurPage(){ return _curPage; }
+export function getFilteredTracks(){ return filteredTracks; }
+export function getPlaylistSearchKeyword(){ return playlistState.searchKeyword; }
+export function setPlaylistSearchKeyword(v: string){
+  playlistState.searchKeyword = v;
+  playlistState.curPage = 1;
+}
 export function isPlaylistLoading(): boolean { return playlistState.loading; }
 export function getPlaylistLoadingId(): string { return playlistState.loadingId; }
 export function setCurPage(v:number){ playlistState.curPage=v; }
@@ -62,6 +80,45 @@ export function updatePlaylistTrackCount(playlistId: string | number, deltaOrCou
   }
 }
 
+export function removeTrackFromCurrentPlaylist(playlistId: string | number, trackId: string | number) {
+  if (!playlistId || !trackId) return;
+  const pIdStr = String(playlistId).trim();
+  const tIdStr = String(trackId).trim();
+
+  // 1. 从当前响应式曲目列表 allTracks 移除
+  const idx = allTracks.findIndex(t => String(t.id) === tIdStr);
+  if (idx !== -1) {
+    allTracks.splice(idx, 1);
+  }
+
+  // 2. 从当前状态的 playlistState.playlist 移除
+  if (playlistState.playlist && String(playlistState.playlist.id) === pIdStr) {
+    if (Array.isArray(playlistState.playlist.tracks)) {
+      playlistState.playlist.tracks = playlistState.playlist.tracks.filter((t: any) => String(t.id) !== tIdStr);
+    }
+  }
+
+  // 3. 同步递减该歌单的曲目计数（内存 + my_playlists 缓存）
+  updatePlaylistTrackCount(pIdStr, -1);
+
+  // 4. 同步更新本地持久化缓存 playlist_${pIdStr}
+  const cacheKey = 'playlist_' + pIdStr;
+  const cached = getApiCache(cacheKey);
+  if (cached?.data?.playlist?.tracks && Array.isArray(cached.data.playlist.tracks)) {
+    cached.data.playlist.tracks = cached.data.playlist.tracks.filter((t: any) => String(t.id) !== tIdStr);
+    if (typeof cached.data.playlist.trackCount === 'number') {
+      cached.data.playlist.trackCount = Math.max(0, cached.data.playlist.trackCount - 1);
+    }
+    setApiCache(cacheKey, cached.data);
+  }
+
+  // 5. 分页边界修正
+  const totalPages = Math.max(1, Math.ceil(allTracks.length / pageSize));
+  if (playlistState.curPage > totalPages) {
+    playlistState.curPage = totalPages;
+  }
+}
+
 export function addNewPlaylist(pl: any) {
   if (!pl || !pl.id) return;
   const exists = myPlaylists.some(p => String(p.id) === String(pl.id));
@@ -89,6 +146,7 @@ export function addNewPlaylist(pl: any) {
 export function renderPlaylist(pl:any){
   playlistState.playlist=pl;
   allTracks.length=0; allTracks.push(...(pl.tracks||[]));
+  playlistState.searchKeyword='';
   playlistState.curPage=1;
   if (pl?.id && Array.isArray(pl.tracks)) {
     updatePlaylistTrackCount(pl.id, pl.tracks.length, true);
@@ -108,6 +166,9 @@ export function resetActiveTargetPlaylist(): void {
 export async function loadPlaylistDetail(playlistId: string, force = false){
   if(!playlistId) throw new Error('请输入歌单 ID');
   const pidStr = String(playlistId).trim();
+  if (pidStr === 'daily-recommend') {
+    return null;
+  }
   const key = 'playlist_' + pidStr;
 
   activeTargetPlaylistId = pidStr;

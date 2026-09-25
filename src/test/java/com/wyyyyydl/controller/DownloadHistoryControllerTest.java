@@ -173,4 +173,18 @@ public class DownloadHistoryControllerTest {
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data").value(5));
     }
+
+    @Test
+    @DisplayName("测试 /v3/history/file: 物理删除已下载单曲文件及记录")
+    public void testDeleteSongFile() throws Exception {
+        Mockito.when(downloadHistoryDAO.deleteSongFileAndRecord(eq(18915L), eq("晴天"), eq("周杰伦"))).thenReturn(true);
+
+        mockMvc.perform(delete("/v3/history/file")
+                .param("id", "18915")
+                .param("name", "晴天")
+                .param("artist", "周杰伦"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data").value(true));
+    }
 }

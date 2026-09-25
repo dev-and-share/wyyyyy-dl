@@ -26,6 +26,8 @@ export const api = {
 
   // 🎵 核心解析
   songV1: (id: string, level: string) => postForm('/v3/song', { id, level, type: 'json' }),
+  songStats: (id: string | number) => get(`/v3/song/stats?id=${encodeURIComponent(id)}`),
+  songComments: (id: string | number, offset = 0, limit = 20) => get(`/v3/song/comments?id=${encodeURIComponent(id)}&offset=${offset}&limit=${limit}`),
   playlist: (id: string) => postForm('/v3/playlist', { id }),
   album: (id: string) => postForm('/v3/album', { id }),
   artist: (id: string) => get(`/v3/artist?id=${encodeURIComponent(id)}`),
@@ -64,6 +66,13 @@ export const api = {
   historyNonMp3: () => get('/v3/history/non_mp3'),
   historyCleanNonMp3: () => req('/v3/history/cleanNonMp3', { method: 'POST' }),
   historyDelete: (id: number | string) => req(`/v3/history/delete?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  deleteSongFile: (id?: number | string, name?: string, artist?: string) => {
+    const q = new URLSearchParams();
+    if (id) q.set('id', String(id));
+    if (name) q.set('name', name);
+    if (artist) q.set('artist', artist);
+    return req(`/v3/history/file?${q.toString()}`, { method: 'DELETE' });
+  },
 
   // 📁 本地目录浏览器
   folderRoots: () => get('/v3/folder/roots'),

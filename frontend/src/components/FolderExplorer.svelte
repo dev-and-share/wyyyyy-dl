@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
   import FolderNode from './FolderNode.svelte';
-  import { DEFAULT_VINYL_COVER } from '../lib/utils';
+  import LocalSearchBox from './LocalSearchBox.svelte';
+  import { DEFAULT_VINYL_COVER, matchesKeyword } from '../lib/utils';
 
   let {
     onPlayQueue,
@@ -122,11 +123,10 @@
   <!-- 树形全局控制与搜索 Bar -->
   <div class="mb-2.5 flex flex-col gap-2">
     <div class="w-full">
-      <input
-        type="text"
-        class="w-full px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500 transition-all box-border"
-        placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹..."
+      <LocalSearchBox
         bind:value={filterKw}
+        placeholder="🔍 搜索过滤曲目 / 歌手 / 文件夹 (支持拼音与首字母)..."
+        historyKey="wyyyy_folder_search_history"
       />
     </div>
     <div class="flex gap-1.5 flex-wrap">
@@ -180,7 +180,7 @@
 
   <!-- 列表：递归子树，支持折叠与 … 抽屉 -->
   <div class="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)] min-w-0">
-    {#each tree.filter((t: any) => !filterKw || ((t.songName || t.name || '') + (t.artist || '') + t.path).toLowerCase().includes(filterKw.toLowerCase())) as item}
+    {#each tree.filter((t: any) => !filterKw || matchesKeyword((t.songName || t.name || '') + ' ' + (t.artist || '') + ' ' + t.path, filterKw)) as item}
       <FolderNode {item} level={0} {expandSignal} onPlayFolder={playFolder} onPlaySingle={playSingle} onReveal={revealItem} />
     {:else}
       <div class="py-6 px-4 text-center text-[var(--text-muted)] text-xs">暂无目录 · 试试切换根或刷新</div>

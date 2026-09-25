@@ -183,7 +183,7 @@ public class AnalysisControllerTest {
                 .param("trackIds", "186016,326696"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
-                .andExpect(jsonPath("$.data.count").value(1));
+                .andExpect(jsonPath("$.data.addedCount").value(2));
 
         // 删除歌曲
         Mockito.when(neteaseAPIService.removeTracksFromPlaylist(eq(123456L), anyList()))
@@ -258,5 +258,34 @@ public class AnalysisControllerTest {
                 .andExpect(header().string("Access-Control-Allow-Origin", "*"))
                 .andExpect(header().string("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS"))
                 .andExpect(header().string("Access-Control-Allow-Headers", "Range, Accept, Origin, Content-Type"));
+    }
+
+    @Test
+    @DisplayName("测试 /v3/song/stats 与 comments: 沉浸模式红心数与评论接口")
+    public void testSongStatsAndCommentsEndpoints() throws Exception {
+        // 1. Mock 红心数与评论统计
+        Mockito.when(neteaseAPIService.getSongRedCount(eq(186016L)))
+                .thenReturn("{\"code\":200, \"data\":{\"count\":5201314}}");
+        Mockito.when(neteaseAPIService.getSongComments(eq(186016L), eq(0), eq(1)))
+                .thenReturn("{\"code\":200, \"total\":88888}");
+
+        mockMvc.perform(get("/v3/song/stats").param("id", "186016"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.redCount").value(5201314))
+                .andExpect(jsonPath("$.data.commentCount").value(88888));
+
+        // 2. Mock 评论列表详情
+        Mockito.when(neteaseAPIService.getSongComments(eq(186016L), eq(0), eq(20)))
+                .thenReturn("{\"code\":200, \"total\":88888, \"hotComments\":[{\"content\":\"这首歌陪伴了我的整个青春\", \"likedCount\":999, \"user\":{\"nickname\":\"杰迷\"}}]}");
+
+        mockMvc.perform(get("/v3/song/comments")
+                .param("id", "186016")
+                .param("offset", "0")
+                .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.total").value(88888))
+                .andExpect(jsonPath("$.data.hotComments[0].content").value("这首歌陪伴了我的整个青春"));
     }
 }

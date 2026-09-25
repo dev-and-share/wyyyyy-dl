@@ -52,3 +52,41 @@ describe('showToast anti-spam protection', () => {
     expect(toastState.toasts.length).toBeLessThanOrEqual(3);
   });
 });
+
+import { matchesKeyword } from './utils';
+
+describe('matchesKeyword with pinyin and text search', () => {
+  it('matches plain substring case-insensitively', () => {
+    expect(matchesKeyword('周杰伦', '周')).toBe(true);
+    expect(matchesKeyword('晴天', '晴天')).toBe(true);
+    expect(matchesKeyword('Shivers', 'shiv')).toBe(true);
+    expect(matchesKeyword('Shivers', 'SHIV')).toBe(true);
+  });
+
+  it('matches pinyin initials (简拼/首字母)', () => {
+    expect(matchesKeyword('周杰伦', 'zjl')).toBe(true);
+    expect(matchesKeyword('周杰伦', 'ZJL')).toBe(true);
+    expect(matchesKeyword('晴天', 'qt')).toBe(true);
+    expect(matchesKeyword('我喜欢的音乐', 'wxh')).toBe(true);
+    expect(matchesKeyword('我喜欢的音乐', 'wxhd')).toBe(true);
+  });
+
+  it('matches pinyin full spell (全拼)', () => {
+    expect(matchesKeyword('周杰伦', 'zhoujielun')).toBe(true);
+    expect(matchesKeyword('晴天', 'qingtian')).toBe(true);
+    expect(matchesKeyword('夜曲', 'yequ')).toBe(true);
+  });
+
+  it('returns false when no match', () => {
+    expect(matchesKeyword('周杰伦', 'cxk')).toBe(false);
+    expect(matchesKeyword('晴天', 'rain')).toBe(false);
+  });
+
+  it('handles null, undefined and empty gracefully', () => {
+    expect(matchesKeyword(null, 'zjl')).toBe(false);
+    expect(matchesKeyword('晴天', null)).toBe(false);
+    expect(matchesKeyword('晴天', '')).toBe(true);
+    expect(matchesKeyword('', 'zjl')).toBe(false);
+  });
+});
+

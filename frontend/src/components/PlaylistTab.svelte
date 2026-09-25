@@ -1,23 +1,16 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
-    allTracks,
-    pageSize,
-    getPaged,
-    getTotalPages,
-    getPlaylist,
-    getCurPage,
-    loadMyPlaylists,
-    loadPlaylistDetail,
-    isPlaylistLoading,
-    incPage,
-    recordPlaylistPlay
+    allTracks, getFilteredTracks, pageSize, getPaged, getTotalPages, getPlaylist, getCurPage,
+    getPlaylistSearchKeyword, setPlaylistSearchKeyword, loadMyPlaylists, loadPlaylistDetail,
+    isPlaylistLoading, incPage, recordPlaylistPlay
   } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
   import { playPlaylistTracks, toPlayerTrack } from '../lib/playerHelper';
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
+  import PlaylistTrackFilter from './PlaylistTrackFilter.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
@@ -25,8 +18,10 @@
   import DailyRecommendSection from './DailyRecommendSection.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
+  import RemoveFromPlaylistModal from './RemoveFromPlaylistModal.svelte';
+  import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
-  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { layoutState } from '../lib/layout.svelte';
 
@@ -34,84 +29,68 @@
   let totalPages = $derived(getTotalPages());
   let playlist = $derived(getPlaylist());
   let curPage = $derived(getCurPage());
+  let filteredTracks = $derived(getFilteredTracks());
 
   let {
-    playlistId,
-    playlistTrigger = 0,
-    curTrack = null,
-    playing = false,
-    likedSet,
-    downloadedSet = new Set<number>(),
-    onToggleLike,
-    onPlayQueue,
-    onAlbum,
-    onReveal,
-    onSong,
-    showToast
+    playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
+    downloadedSet = new Set<number>(), onToggleLike, onPlayQueue, onAlbum, onReveal, onSong, showToast
   } = $props<{
-    playlistId: string;
-    playlistTrigger?: number;
-    curTrack?: any;
-    playing?: boolean;
-    likedSet: Set<number>;
-    downloadedSet?: Set<number>;
-    onToggleLike: (id: number, name: string) => void;
-    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
-    onAlbum?: (albumId: string) => void;
-    onReveal?: (item: any) => void;
-    onSong?: (id: string) => void;
-    showToast: (m: string, t?: string) => void;
+    playlistId: string; playlistTrigger?: number; curTrack?: any; playing?: boolean; likedSet: Set<number>;
+    downloadedSet?: Set<number>; onToggleLike: (id: number, name: string) => void;
+    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void; onAlbum?: (albumId: string) => void;
+    onReveal?: (item: any) => void; onSong?: (id: string) => void; showToast: (m: string, t?: string) => void;
   }>();
 
   let showForkModal = $state(false);
 
   const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
-  const STORAGE_KEY_ACC_MY = 'wyyyy_pl_acc_my';
-  const STORAGE_KEY_ACC_DETAIL = 'wyyyy_pl_acc_detail';
-  const STORAGE_KEY_ACC_RECOMMEND = 'wyyyy_pl_acc_recommend';
-
-  function getStored(key: string, def: string) {
-    if (typeof localStorage === 'undefined') return def;
-    const v = localStorage.getItem(key);
-    return v !== null ? v : def;
-  }
-
-  function initPlaylistId() {
-    return playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
-  }
+  const STORAGE_KEY_SUBTAB = 'wyyyy_pl_subtab';
+  const getStored = (k: string, def: string) => typeof localStorage !== 'undefined' ? (localStorage.getItem(k) ?? def) : def;
+  const initPlaylistId = () => playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
 
   let pid = $state(initPlaylistId());
   let pidInput = $state(initPlaylistId());
   let lastSeenPlaylistId = $state('');
   let lastSeenTrigger = $state(-1);
-  let accMy = $state(getStored(STORAGE_KEY_ACC_MY, 'true') === 'true');
-  let accDetail = $state(getStored(STORAGE_KEY_ACC_DETAIL, 'true') === 'true');
-  let accRecommend = $state(getStored(STORAGE_KEY_ACC_RECOMMEND, 'false') === 'true');
+  function initSubtab() {
+    return playlistId ? 'detail' : ((getStored(STORAGE_KEY_SUBTAB, 'my') as any) || 'my');
+  }
+  let activeSubtab: 'my' | 'detail' | 'recommend' = $state(initSubtab());
+  let accMy = $state(true);
+  let accDetail = $state(true);
+  let accRecommend = $state(true);
 
   // 弹窗与交互状态
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
+  let removingTrack = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let cachingTrackId = $state<string | number | null>(null);
 
   function saveAccState() {
-    try {
-      localStorage.setItem(STORAGE_KEY_ACC_MY, String(accMy));
-      localStorage.setItem(STORAGE_KEY_ACC_DETAIL, String(accDetail));
-      localStorage.setItem(STORAGE_KEY_ACC_RECOMMEND, String(accRecommend));
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, activeSubtab); } catch {}
+  }
+
+  function scrollToDetail() {
+    tick().then(() => {
+      const el = document.getElementById('section-playlist-detail');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   // 初始化自动拉取/读取 SWR 缓存
   onMount(() => {
     const isDesktopMode = layoutState.isDesktop;
     const targetPid = playlistId || (!isDesktopMode ? (pid || getStored(STORAGE_KEY_PLAYLIST_ID, '')) : '');
-    if (targetPid) {
+    if (targetPid && targetPid !== 'daily-recommend') {
       pid = targetPid;
+      pidInput = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});
+    } else if (targetPid === 'daily-recommend') {
+      pid = 'daily-recommend';
     }
     loadMyPlaylists('created').catch(() => {});
   });
 
-  // 监听外部传入的歌单 ID 变动或 trigger 刷新动作
+  // 监听外部传入的歌单 ID 变更与强制刷新触发器
   $effect(() => {
     const curId = playlistId;
     const curTrig = playlistTrigger;
@@ -120,61 +99,79 @@
       lastSeenTrigger = curTrig;
       pid = curId;
       pidInput = curId;
-      handleViewPlaylist(curId, true);
+      activeSubtab = 'detail';
+      accDetail = true;
+      saveAccState();
+      scrollToDetail();
+      if (curId !== 'daily-recommend') {
+        loadPlaylistDetail(curId, false).catch(() => {});
+      }
     }
   });
 
-  // 查看歌单详情交互：瞬间收起卡片1，展开卡片2
-  async function handleViewPlaylist(id: string, switchCards = true) {
-    const trimmed = id.trim();
-    if (!trimmed) {
+  function handleViewPlaylist(targetId: string, force = false) {
+    if (!targetId || !targetId.trim()) {
       showToast('请输入歌单 ID', 'warning');
       return;
     }
-    pid = trimmed;
-    pidInput = trimmed;
+    const cleanId = targetId.trim();
+    pid = cleanId;
+    pidInput = cleanId;
+    activeSubtab = 'detail';
+    accDetail = true;
+    saveAccState();
     try {
-      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, trimmed);
-      history.replaceState(null, '', `#/playlist?id=${trimmed}`);
+      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, cleanId);
+      localStorage.setItem(STORAGE_KEY_SUBTAB, 'detail');
     } catch {}
-    if (switchCards) {
-      accMy = false;
-      accDetail = true;
-      saveAccState();
-    }
-    try {
-      await loadPlaylistDetail(pid);
-    } catch (e: any) {
-      if (switchCards) showToast(e.message || '获取歌单失败', 'warning');
-    }
+    scrollToDetail();
+    loadPlaylistDetail(cleanId, force).then(() => {
+      if (force) showToast('歌单已刷新', 'success');
+    }).catch(e => {
+      showToast('获取歌单失败: ' + (e.message || e), 'error');
+    });
   }
 
-  // 一键直接播放整张歌单
-  function playPlaylistDirect(id: string, name: string) {
-    if (!id || !onPlayQueue) return;
-    playPlaylistTracks(id, name, onPlayQueue, showToast);
+  function playPlaylistDirect(targetId: string, targetName?: string) {
+    if (!targetId) return;
+    showToast(`正在加载《${targetName || '歌单'}》曲目并准备播放...`, 'info', 1500);
+    recordPlaylistPlay(targetId);
+    loadPlaylistDetail(targetId).then(pl => {
+      if (pl?.tracks?.length) {
+        onPlayQueue && onPlayQueue(pl.tracks.map((t: any) => toPlayerTrack(t)), {
+          startIndex: 0,
+          playlistId: targetId,
+          isExplicitTrack: false
+        });
+        showToast(`已开始播放《${pl.name || targetName}》(${pl.tracks.length} 首)`, 'success');
+      } else {
+        showToast('歌单为空或无法读取曲目', 'warning');
+      }
+    }).catch(e => {
+      showToast('播放失败: ' + (e.message || e), 'error');
+    });
   }
 
   async function downloadSingleTrack(id: string, name?: string) {
     try {
       const res = await api.downloadSingle(id);
       const task = res?.data;
-      if (task && typeof task === 'object') {
-        if (task.status === 'SKIP') {
-          showToast(`已跳过《${task.name || name || '歌曲'}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 4000);
-        } else if (task.status === 'FAILED') {
-          showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
-        } else if (task.status === 'SUCCESS') {
-          showToast(`下载成功: 《${task.name || name || '歌曲'}》`, 'success', 2500);
+      if (task?.status === 'SKIP') {
+        const msg = task.errorMsg || '';
+        if (msg.includes('已存在') || msg.includes('磁盘中')) {
+          markSongDownloaded(id);
+          showToast(`《${task.name || name || '歌曲'}》已在本地磁盘中，已同步状态`, 'info', 3000);
         } else {
-          showToast(`已提交下载: 《${task.name || name || '歌曲'}》`, 'info', 2000);
+          showToast(`已跳过《${task.name || name || '歌曲'}》: ${msg || '试听片段或已存在'}`, 'warning', 4000);
         }
+      } else if (task?.status === 'FAILED') {
+        showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
       } else {
-        showToast('已提交下载', 'info', 1500);
+        showToast(`已提交单曲下载: 《${task?.name || name || '歌曲'}》`, 'info', 2000);
       }
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
-      showToast('下载请求异常: ' + (e.message || e), 'error');
+      showToast('下载请求失败: ' + (e.message || e), 'error');
     }
   }
 
@@ -233,46 +230,49 @@
       title: t.name,
       subtitle: artist || '未知歌手',
       actions: [
-        {
-          label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }),
-          style: 'primary',
-          onclick: () => onPlayQueue([toPlayerTrack(t, { artist, isLocal })])
-        },
+        { label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }), style: 'primary', onclick: () => onPlayQueue([toPlayerTrack(t, { artist, isLocal })]) },
         isServer
           ? { label: '📂 在服务器磁盘中定位', style: 'default', onclick: () => onReveal && onReveal({ id: t.id, name: t.name, artist }) }
           : { label: '📥 下载到电脑服务器', style: 'default', onclick: () => downloadSingleTrack(String(t.id), t.name) },
-        {
-          label: cachingTrackId === t.id ? '⏳ 正在离线缓存...' : (isPhone ? '📲 重新离线缓存 (手机已存)' : '📲 离线缓存到本手机 (PWA)'),
-          style: 'default',
-          onclick: () => handleCacheTrack(t)
-        },
+        { label: cachingTrackId === t.id ? '⏳ 正在离线缓存...' : (isPhone ? '📲 重新离线缓存 (手机已存)' : '📲 离线缓存到本手机 (PWA)'), style: 'default', onclick: () => handleCacheTrack(t) },
         { label: '➕ 添加到歌单', style: 'default', onclick: () => { addToPlaylistSong = { id: t.id, name: t.name, artist }; } },
-        ...(onSong
-          ? [
-              {
-                label: '🎧 查看歌曲详情 / 音质',
-                style: 'default' as const,
-                onclick: () => onSong(String(t.id))
-              }
-            ]
-          : []),
+        ...(playlist && (playlist.isCreator || !playlist.subscribed) ? [{ label: '🗑️ 从本歌单移除', style: 'danger' as const, onclick: () => { removingTrack = { id: t.id, name: t.name, artist }; } }] : []),
+        ...(onSong ? [{ label: '🎧 查看歌曲详情 / 音质', style: 'default' as const, onclick: () => onSong(String(t.id)) }] : []),
         { label: likedSet.has(Number(t.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢', style: 'default', onclick: () => onToggleLike(Number(t.id), t.name) }
       ]
     });
   }
 </script>
 
-<!-- Section 1: 我的歌单 -->
-<MyPlaylistsSection
-  bind:open={accMy}
-  onToggle={saveAccState}
-  onViewPlaylist={(id) => handleViewPlaylist(id)}
-  onPlayPlaylist={(id, name) => playPlaylistDirect(id, name)}
-  {showToast}
+<!-- 📱 SP 移动端顶部三段式分段切换器 -->
+<SegmentedTabs
+  items={[
+    { id: 'my', label: '我的歌单', icon: '📋', accent: 'red' },
+    { id: 'detail', label: '歌单详情', icon: '🎼', accent: 'blue' },
+    { id: 'recommend', label: '每日推荐', icon: '📅', accent: 'amber' }
+  ]}
+  activeId={activeSubtab}
+  onChange={(id) => {
+    activeSubtab = id as any;
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {}
+  }}
 />
 
+<!-- Section 1: 我的歌单 -->
+<div class:hidden={activeSubtab !== 'my'}>
+  <MyPlaylistsSection
+    flat
+    bind:open={accMy}
+    onToggle={saveAccState}
+    onViewPlaylist={(id) => handleViewPlaylist(id)}
+    onPlayPlaylist={(id, name) => playPlaylistDirect(id, name)}
+    {showToast}
+  />
+</div>
+
 <!-- Section 2: 查看歌单详情 -->
-<AccordionCard title="🎼 2. 查看歌单详情" bind:open={accDetail} onToggle={saveAccState}>
+<div id="section-playlist-detail" class:hidden={activeSubtab !== 'detail'}>
+  <AccordionCard title="🎼 歌单详情" bind:open={accDetail} flat accent="blue" onToggle={saveAccState}>
     <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
       <input
         type="text"
@@ -354,8 +354,17 @@
           </button>
         {/if}
       </DetailHeaderCard>
-      <ul class="data-list scrollable-list">
-        {#each paged as t, i}
+
+      <PlaylistTrackFilter />
+
+      {#if filteredTracks.length === 0}
+        <div class="py-12 text-center text-xs text-[var(--text-muted)] bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl p-6 my-2 border border-dashed border-[var(--border-color)]">
+          <span class="text-2xl block mb-1">🔍</span>
+          <span>未找到包含 "{getPlaylistSearchKeyword()}" 的歌曲或歌手</span>
+        </div>
+      {:else}
+        <ul class="data-list scrollable-list">
+          {#each paged as t, i}
           {@const idx = (curPage - 1) * pageSize + i + 1}
           {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
           {@const artist = formatArtist(t)}
@@ -389,6 +398,9 @@
                 {/if}
                 <SlotBtn onclick={() => handleCacheTrack(t)}>{status.isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}</SlotBtn>
                 <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕ 歌单</SlotBtn>
+                {#if playlist && (playlist.isCreator || !playlist.subscribed)}
+                  <SlotBtn onclick={() => removingTrack = { id: t.id, name: t.name, artist }}>🗑️ 移除</SlotBtn>
+                {/if}
                 {#if onSong}
                   <SlotBtn onclick={() => onSong(String(t.id))}>👉 详情</SlotBtn>
                 {/if}
@@ -418,9 +430,12 @@
       </ul>
       <div class="flex justify-between items-center gap-2.5 mt-3">
         <button class="btn-secondary" disabled={curPage <= 1} onclick={() => incPage(-1)}>上一页</button>
-        <span class="text-xs text-[var(--text-secondary)] whitespace-nowrap">第 {curPage} / {totalPages} 页 ({allTracks.length}首)</span>
+        <span class="text-xs text-[var(--text-secondary)] whitespace-nowrap">
+          第 {curPage} / {totalPages} 页 ({getPlaylistSearchKeyword() ? `${filteredTracks.length}首 / 匹配自${allTracks.length}首` : `${allTracks.length}首`})
+        </span>
         <button class="btn-secondary" disabled={curPage >= totalPages} onclick={() => incPage(1)}>下一页</button>
       </div>
+      {/if}
     {:else}
       <div class="empty-placeholder-card">
         <div class="empty-icon">🎼</div>
@@ -428,21 +443,25 @@
       </div>
     {/if}
   </AccordionCard>
+</div>
 
   <!-- Section 3: 每日专属推荐 -->
-  <DailyRecommendSection
-    bind:open={accRecommend}
-    onToggle={saveAccState}
-    {curTrack}
-    {playing}
-    {likedSet}
-    {onToggleLike}
-    {onPlayQueue}
-    {onSong}
-    {onAlbum}
-    {onReveal}
-    {showToast}
-  />
+  <div class:hidden={activeSubtab !== 'recommend'}>
+    <DailyRecommendSection
+      flat
+      bind:open={accRecommend}
+      onToggle={saveAccState}
+      {curTrack}
+      {playing}
+      {likedSet}
+      {onToggleLike}
+      {onPlayQueue}
+      {onSong}
+      {onAlbum}
+      {onReveal}
+      {showToast}
+    />
+  </div>
 
 {#if addToPlaylistSong}
   <AddToPlaylistModal
@@ -459,6 +478,16 @@
     trackIds={allTracks.map((t: any) => t.id)}
     onClose={() => showForkModal = false}
     onSuccess={(newId) => { if (newId) handleViewPlaylist(newId); }}
+    {showToast}
+  />
+{/if}
+
+{#if removingTrack && playlist}
+  <RemoveFromPlaylistModal
+    song={removingTrack}
+    playlistId={playlist.id}
+    playlistName={playlist.name}
+    onClose={() => removingTrack = null}
     {showToast}
   />
 {/if}

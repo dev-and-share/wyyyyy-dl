@@ -64,6 +64,7 @@ export class PlayerStore {
    */
   isValidTrack(track: Track | null | undefined): boolean {
     if (!track) return false;
+    if (track.unplayable === true) return false;
     const status = getTrackSourceStatus(track.id, track.isLocal);
     if (this.offlineOnly && !status.isPhone) return false;
     if (this.serverOnly && !status.isServer) return false;

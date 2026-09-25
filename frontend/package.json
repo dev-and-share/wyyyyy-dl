@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "5.1.0",
+  "version": "5.1.10",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "check:lines": "node scripts/check-file-lines.js",
+    "check:secrets": "secretlint --secretlintrc ../.secretlintrc.json '../src/**/*.java' '../.env' '../.env.example' 'src/**/*.{ts,svelte,js}'",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test --reporter=list",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@secretlint/secretlint-rule-preset-recommend": "^13.0.5",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
@@ -24,11 +26,15 @@
     "@types/node": "^24.13.3",
     "jsdom": "^29.1.1",
     "lefthook": "^2.1.12",
+    "secretlint": "^13.0.5",
     "svelte": "^5.56.10",
     "svelte-check": "^4.7.6",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "pinyin-match": "^1.2.10"
   }
 }
