@@ -16,6 +16,7 @@
 
   let {
     open = $bindable(false),
+    flat = false,
     onToggle,
     curTrack = null,
     playing = false,
@@ -27,8 +28,9 @@
     onReveal,
     showToast
   } = $props<{
-    open: boolean;
-    onToggle: () => void;
+    open?: boolean;
+    flat?: boolean;
+    onToggle?: () => void;
     curTrack?: any;
     playing?: boolean;
     likedSet?: Set<number>;
@@ -184,7 +186,7 @@
   }
 </script>
 
-<AccordionCard title="📅 3. 每日专属推荐" bind:open onToggle={onToggle}>
+<AccordionCard title="📅 3. 每日专属推荐" bind:open {flat} accent="amber" onToggle={onToggle}>
   <!-- 头部控制栏：日期 + 核心快捷动作组 -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 py-1 mb-3 border-b border-[var(--border-subtle)] pb-3">
     <div class="flex items-center gap-2 flex-wrap">

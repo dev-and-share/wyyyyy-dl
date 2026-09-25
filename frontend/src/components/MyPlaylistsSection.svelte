@@ -11,13 +11,15 @@
 
   let {
     open = $bindable(true),
+    flat = false,
     onToggle,
     onViewPlaylist,
     onPlayPlaylist,
     showToast
   } = $props<{
-    open: boolean;
-    onToggle: () => void;
+    open?: boolean;
+    flat?: boolean;
+    onToggle?: () => void;
     onViewPlaylist: (id: string) => void;
     onPlayPlaylist: (id: string, name: string) => void;
     showToast: (m: string, t?: string) => void;
@@ -114,7 +116,7 @@
 </script>
 
 <!-- Section 1: 我的歌单 -->
-<AccordionCard title="📋 1. 我的歌单" bind:open onToggle={onToggle}>
+<AccordionCard title="📋 1. 我的歌单" bind:open {flat} accent="red" onToggle={onToggle}>
   <!-- 快捷过滤按钮组与新建快捷入口 -->
   <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
     <span class="text-[13px] text-[var(--text-secondary)] font-medium">账号歌单快捷加载：</span>

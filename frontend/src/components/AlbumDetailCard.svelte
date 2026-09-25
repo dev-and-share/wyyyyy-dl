@@ -14,6 +14,7 @@
     album,
     albumLoading = false,
     open = $bindable(false),
+    flat = false,
     currentAlbumId = $bindable(''),
     curTrack = null,
     playing = false,
@@ -31,6 +32,7 @@
     album: any;
     albumLoading?: boolean;
     open?: boolean;
+    flat?: boolean;
     currentAlbumId: string;
     curTrack?: any;
     playing?: boolean;
@@ -133,7 +135,7 @@
   }
 </script>
 
-<AccordionCard title="💽 2. 专辑解析与整辑下载" bind:open>
+<AccordionCard title="💽 2. 专辑解析与整辑下载" bind:open {flat} accent="blue">
   <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
     <input
       type="text"

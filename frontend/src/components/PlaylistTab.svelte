@@ -19,6 +19,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import RemoveFromPlaylistModal from './RemoveFromPlaylistModal.svelte';
+  import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
@@ -43,27 +44,21 @@
   let showForkModal = $state(false);
 
   const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
-  const STORAGE_KEY_ACC_MY = 'wyyyy_pl_acc_my';
-  const STORAGE_KEY_ACC_DETAIL = 'wyyyy_pl_acc_detail';
-  const STORAGE_KEY_ACC_RECOMMEND = 'wyyyy_pl_acc_recommend';
-
-  function getStored(key: string, def: string) {
-    if (typeof localStorage === 'undefined') return def;
-    const v = localStorage.getItem(key);
-    return v !== null ? v : def;
-  }
-
-  function initPlaylistId() {
-    return playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
-  }
+  const STORAGE_KEY_SUBTAB = 'wyyyy_pl_subtab';
+  const getStored = (k: string, def: string) => typeof localStorage !== 'undefined' ? (localStorage.getItem(k) ?? def) : def;
+  const initPlaylistId = () => playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
 
   let pid = $state(initPlaylistId());
   let pidInput = $state(initPlaylistId());
   let lastSeenPlaylistId = $state('');
   let lastSeenTrigger = $state(-1);
-  let accMy = $state(getStored(STORAGE_KEY_ACC_MY, 'true') === 'true');
-  let accDetail = $state(getStored(STORAGE_KEY_ACC_DETAIL, 'true') === 'true');
-  let accRecommend = $state(getStored(STORAGE_KEY_ACC_RECOMMEND, 'false') === 'true');
+  function initSubtab() {
+    return playlistId ? 'detail' : ((getStored(STORAGE_KEY_SUBTAB, 'my') as any) || 'my');
+  }
+  let activeSubtab: 'my' | 'detail' | 'recommend' = $state(initSubtab());
+  let accMy = $state(true);
+  let accDetail = $state(true);
+  let accRecommend = $state(true);
 
   // 弹窗与交互状态
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
@@ -71,11 +66,7 @@
   let cachingTrackId = $state<string | number | null>(null);
 
   function saveAccState() {
-    try {
-      localStorage.setItem(STORAGE_KEY_ACC_MY, String(accMy));
-      localStorage.setItem(STORAGE_KEY_ACC_DETAIL, String(accDetail));
-      localStorage.setItem(STORAGE_KEY_ACC_RECOMMEND, String(accRecommend));
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, activeSubtab); } catch {}
   }
 
   function scrollToDetail() {
@@ -108,6 +99,7 @@
       lastSeenTrigger = curTrig;
       pid = curId;
       pidInput = curId;
+      activeSubtab = 'detail';
       accDetail = true;
       saveAccState();
       scrollToDetail();
@@ -125,10 +117,12 @@
     const cleanId = targetId.trim();
     pid = cleanId;
     pidInput = cleanId;
+    activeSubtab = 'detail';
     accDetail = true;
     saveAccState();
     try {
       localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, cleanId);
+      localStorage.setItem(STORAGE_KEY_SUBTAB, 'detail');
     } catch {}
     scrollToDetail();
     loadPlaylistDetail(cleanId, force).then(() => {
@@ -250,18 +244,35 @@
   }
 </script>
 
-<!-- Section 1: 我的歌单 -->
-<MyPlaylistsSection
-  bind:open={accMy}
-  onToggle={saveAccState}
-  onViewPlaylist={(id) => handleViewPlaylist(id)}
-  onPlayPlaylist={(id, name) => playPlaylistDirect(id, name)}
-  {showToast}
+<!-- 📱 SP 移动端顶部三段式分段切换器 -->
+<SegmentedTabs
+  items={[
+    { id: 'my', label: '我的歌单', icon: '📋', accent: 'red' },
+    { id: 'detail', label: '歌单详情', icon: '🎼', accent: 'blue' },
+    { id: 'recommend', label: '每日推荐', icon: '📅', accent: 'amber' }
+  ]}
+  activeId={activeSubtab}
+  onChange={(id) => {
+    activeSubtab = id as any;
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {}
+  }}
 />
 
+<!-- Section 1: 我的歌单 -->
+<div class:hidden={activeSubtab !== 'my'}>
+  <MyPlaylistsSection
+    flat
+    bind:open={accMy}
+    onToggle={saveAccState}
+    onViewPlaylist={(id) => handleViewPlaylist(id)}
+    onPlayPlaylist={(id, name) => playPlaylistDirect(id, name)}
+    {showToast}
+  />
+</div>
+
 <!-- Section 2: 查看歌单详情 -->
-<div id="section-playlist-detail">
-  <AccordionCard title="🎼 2. 查看歌单详情" bind:open={accDetail} onToggle={saveAccState}>
+<div id="section-playlist-detail" class:hidden={activeSubtab !== 'detail'}>
+  <AccordionCard title="🎼 歌单详情" bind:open={accDetail} flat accent="blue" onToggle={saveAccState}>
     <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
       <input
         type="text"
@@ -435,19 +446,22 @@
 </div>
 
   <!-- Section 3: 每日专属推荐 -->
-  <DailyRecommendSection
-    bind:open={accRecommend}
-    onToggle={saveAccState}
-    {curTrack}
-    {playing}
-    {likedSet}
-    {onToggleLike}
-    {onPlayQueue}
-    {onSong}
-    {onAlbum}
-    {onReveal}
-    {showToast}
-  />
+  <div class:hidden={activeSubtab !== 'recommend'}>
+    <DailyRecommendSection
+      flat
+      bind:open={accRecommend}
+      onToggle={saveAccState}
+      {curTrack}
+      {playing}
+      {likedSet}
+      {onToggleLike}
+      {onPlayQueue}
+      {onSong}
+      {onAlbum}
+      {onReveal}
+      {showToast}
+    />
+  </div>
 
 {#if addToPlaylistSong}
   <AddToPlaylistModal
