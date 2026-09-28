@@ -321,7 +321,7 @@
     <!-- 右侧：滚动歌词展示面板 -->
     <div class="flex-1 w-full h-full min-h-0 overflow-hidden flex flex-col justify-center">
       <div
-        class="w-full h-full max-h-[540px] overflow-y-auto px-4 py-8 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_93%,transparent_100%)]"
+        class="w-full h-full overflow-y-auto overflow-x-hidden px-4 py-8 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_93%,transparent_100%)]"
         id="lyricModalContent"
       >
         {#if lrcs.length > 0}
@@ -330,7 +330,7 @@
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               id="sv-lrc-{i}"
-              class="cursor-pointer transition-all duration-300 {i === activeIdx ? 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]' : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+              class="cursor-pointer transition-all duration-300 break-words w-full px-2 {i === activeIdx ? 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]' : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
               onclick={() => { userSeekedAt = Date.now(); onSeekTime(l.time); }}
             >
               {l.text}
@@ -339,7 +339,7 @@
         {:else if rawLyricText}
           {#each rawLyricText.split(/\r?\n/) as lineStr}
             {#if lineStr.trim()}
-              <p class="text-sm md:text-base text-[var(--text-muted)] my-1 leading-relaxed">{lineStr}</p>
+              <p class="text-sm md:text-base text-[var(--text-muted)] my-1 leading-relaxed break-words px-2">{lineStr}</p>
             {/if}
           {/each}
         {:else}
