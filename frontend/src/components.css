@@ -120,6 +120,7 @@
         cursor: pointer;
         transition: color 0.15s ease;
         color: var(--text-main);
+        @apply text-xs sm:text-sm leading-snug;
     }
 
     .clickable-track-title:hover {
