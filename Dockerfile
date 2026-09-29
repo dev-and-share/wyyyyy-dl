@@ -6,7 +6,7 @@ WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json* ./frontend/
 RUN --mount=type=cache,target=/root/.npm cd frontend && npm ci --ignore-scripts
 COPY frontend/ ./frontend/
-RUN cd frontend && npm run build
+RUN cd frontend && npm run check && npm run build
 
 # ==============================================================================
 # Stage 2: Build Spring Boot JAR (JDK21 + Gradle wrapper)
