@@ -90,3 +90,28 @@ describe('matchesKeyword with pinyin and text search', () => {
   });
 });
 
+import { formatCoverUrl, DEFAULT_VINYL_COVER } from './utils';
+
+describe('formatCoverUrl NetEase CDN optimizations', () => {
+  it('returns DEFAULT_VINYL_COVER for empty or invalid inputs', () => {
+    expect(formatCoverUrl(null)).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl(undefined)).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl('')).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl('null')).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl('undefined')).toBe(DEFAULT_VINYL_COVER);
+  });
+
+  it('preserves local paths and data URIs', () => {
+    expect(formatCoverUrl('/favicon.png')).toBe('/favicon.png');
+    expect(formatCoverUrl('data:image/svg+xml;utf8,test')).toBe('data:image/svg+xml;utf8,test');
+    expect(formatCoverUrl('blob:http://localhost/123')).toBe('blob:http://localhost/123');
+  });
+
+  it('upgrades http to https and appends param size for NetEase CDN URLs', () => {
+    expect(formatCoverUrl('http://p1.music.126.net/abc.jpg', 300)).toBe('https://p1.music.126.net/abc.jpg?param=300y300');
+    expect(formatCoverUrl('https://p2.music.126.net/xyz.jpg', 120)).toBe('https://p2.music.126.net/xyz.jpg?param=120y120');
+    expect(formatCoverUrl('http://p1.music.126.net/abc.jpg?param=100y100', 500)).toBe('https://p1.music.126.net/abc.jpg?param=500y500');
+  });
+});
+
+

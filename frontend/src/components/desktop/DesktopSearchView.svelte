@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, getApiCache, setApiCache } from '../../lib/utils';
   import type { Track } from '../../lib/types';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
@@ -384,7 +384,7 @@
         {#each sResults as al (al.id)}
           <div class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1">
             <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
-              <img src={al.picUrl || DEFAULT_VINYL_COVER} alt={al.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+              <img src={formatCoverUrl(al.picUrl, 250)} alt={al.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </div>
             <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={al.name}>{al.name}</span>
             <span class="text-[11px] text-[var(--text-secondary)] truncate">{formatArtist(al.artists || al.artist) || '群星'}</span>
@@ -403,7 +403,7 @@
         {#each sResults as pl (pl.id)}
           <div class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1">
             <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
-              <img src={pl.coverImgUrl || DEFAULT_VINYL_COVER} alt={pl.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+              <img src={formatCoverUrl(pl.coverImgUrl, 250)} alt={pl.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </div>
             <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={pl.name}>{pl.name}</span>
             <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
@@ -428,7 +428,7 @@
               onclick={() => activeArtistId = String(ar.id)}
               title="点击查看 {ar.name} 热门 50 首"
             >
-              <img src={ar.picUrl || ar.img1v1Url || DEFAULT_VINYL_COVER} alt={ar.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+              <img src={formatCoverUrl(ar.picUrl || ar.img1v1Url, 250)} alt={ar.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </button>
             <button
               type="button"

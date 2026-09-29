@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, getApiCache, setApiCache } from '../../lib/utils';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
@@ -223,7 +223,7 @@
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
       <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden shadow-md shrink-0 border border-[var(--border-subtle)] bg-black/20">
         <img
-          src={artistData.picUrl || artistData.img1v1Url || DEFAULT_VINYL_COVER}
+          src={formatCoverUrl(artistData.picUrl || artistData.img1v1Url, 300)}
           alt={artistData.name}
           class="w-full h-full object-cover"
         />

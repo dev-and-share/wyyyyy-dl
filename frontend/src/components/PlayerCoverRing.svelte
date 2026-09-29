@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { DEFAULT_VINYL_COVER, formatCoverUrl } from '../lib/utils';
 
   let {
     cover = DEFAULT_VINYL_COVER,
@@ -14,6 +14,8 @@
     size?: 'sm' | 'md';
     onclick?: () => void;
   }>();
+
+  let formattedCover = $derived(formatCoverUrl(cover, 120));
 
   const RING_CIRCUMFERENCE = 144.513;
 </script>
@@ -46,7 +48,7 @@
     </defs>
   </svg>
   <img
-    src={cover || DEFAULT_VINYL_COVER}
+    src={formattedCover}
     alt="封面"
     class="rounded-full object-cover shadow-sm transition-transform duration-300 {size === 'sm' ? 'w-9.5 h-9.5' : 'w-10 h-10'} {playing ? 'animate-[spin_16s_linear_infinite]' : ''}"
     referrerpolicy="no-referrer"

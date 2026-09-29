@@ -5,8 +5,10 @@
   import { autoCacheState, setAutoCacheEnabled } from '../../lib/pwaCache.svelte';
   import {
     scanBrowserCache,
+    scanImageCache,
     clearLowPlayCountCacheEntries,
-    clearAllBrowserAudioCache
+    clearAllBrowserAudioCache,
+    clearAllImageCache
   } from '../../lib/browserCacheHelper';
 
   let { showToast = () => {} } = $props<{
@@ -15,6 +17,8 @@
 
   let cacheBytes = $state(0);
   let cacheCount = $state(0);
+  let imageCacheCount = $state(0);
+  let imageCacheBytes = $state(0);
   let isCacheLoading = $state(false);
   let minPlayThreshold = $state(2);
 
@@ -22,9 +26,14 @@
     if (!platform.supportsCache) return;
     isCacheLoading = true;
     try {
-      const res = await scanBrowserCache();
-      cacheBytes = res.totalBytes;
-      cacheCount = res.list.length;
+      const [audioRes, imgRes] = await Promise.all([
+        scanBrowserCache(),
+        scanImageCache()
+      ]);
+      cacheBytes = audioRes.totalBytes;
+      cacheCount = audioRes.list.length;
+      imageCacheCount = imgRes.count;
+      imageCacheBytes = imgRes.totalBytes;
     } catch {
       // 忽略扫描异常
     } finally {
@@ -50,15 +59,34 @@
     }
   }
 
-  async function handleClearAllCache() {
-    if (!platform.supportsCache || cacheCount === 0) return;
-    const ok = confirm('确定清空手机浏览器中保存的所有离线音乐？');
+  async function handleClearImageCache() {
+    if (!platform.supportsCache || imageCacheCount === 0) return;
+    const ok = confirm('确定清空所有已缓存的专辑/歌单封面图片？\n（下次浏览时将重新联网下载）');
     if (!ok) return;
     isCacheLoading = true;
     try {
-      await clearAllBrowserAudioCache();
+      await clearAllImageCache();
       await refreshCache();
-      showToast('已清空全部离线音乐缓存', 'success');
+      showToast('已清空封面图片离线缓存', 'success');
+    } catch (e: any) {
+      showToast('清空图片缓存失败: ' + (e?.message || e), 'error');
+    } finally {
+      isCacheLoading = false;
+    }
+  }
+
+  async function handleClearAllCache() {
+    if (!platform.supportsCache || (cacheCount === 0 && imageCacheCount === 0)) return;
+    const ok = confirm('确定清空手机浏览器中保存的所有离线音乐及封面缓存？');
+    if (!ok) return;
+    isCacheLoading = true;
+    try {
+      await Promise.all([
+        clearAllBrowserAudioCache(),
+        clearAllImageCache()
+      ]);
+      await refreshCache();
+      showToast('已清空全部离线音乐与图片缓存', 'success');
     } catch (e: any) {
       showToast('清空缓存失败: ' + (e?.message || e), 'error');
     } finally {
@@ -109,22 +137,41 @@
         </button>
       </div>
 
-      <div class="pt-2 border-t border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-secondary)]">
-        <span>当前已用离线空间：</span>
-        <span class="font-mono font-bold text-[var(--text-main)]">
-          {formatBytes(cacheBytes)} ({cacheCount} 首)
-        </span>
+      <div class="pt-2 border-t border-[var(--border-color)] flex flex-col gap-1.5 text-xs text-[var(--text-secondary)]">
+        <div class="flex items-center justify-between">
+          <span>离线音乐音频：</span>
+          <span class="font-mono font-bold text-[var(--text-main)]">
+            {formatBytes(cacheBytes)} ({cacheCount} 首)
+          </span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>封面图片缓存 (SW)：</span>
+          <span class="font-mono font-bold text-[var(--text-main)]">
+            {imageCacheBytes > 0 ? formatBytes(imageCacheBytes) : ''} ({imageCacheCount} 张)
+          </span>
+        </div>
       </div>
 
-      {#if cacheCount > 0}
-        <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">
-          <button
-            type="button"
-            class="flex-1 py-1.5 px-2 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs text-[var(--text-main)] font-medium border border-[var(--border-color)] cursor-pointer transition-all"
-            onclick={handleClearLowPlayCount}
-          >
-            清理少于 {minPlayThreshold} 次播放
-          </button>
+      {#if cacheCount > 0 || imageCacheCount > 0}
+        <div class="pt-2 border-t border-[var(--border-color)] flex flex-wrap items-center gap-2">
+          {#if cacheCount > 0}
+            <button
+              type="button"
+              class="flex-1 py-1.5 px-2 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs text-[var(--text-main)] font-medium border border-[var(--border-color)] cursor-pointer transition-all"
+              onclick={handleClearLowPlayCount}
+            >
+              清理 &lt;{minPlayThreshold} 次音频
+            </button>
+          {/if}
+          {#if imageCacheCount > 0}
+            <button
+              type="button"
+              class="py-1.5 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs text-[var(--text-main)] font-medium border border-[var(--border-color)] cursor-pointer transition-all shrink-0"
+              onclick={handleClearImageCache}
+            >
+              清理封面图
+            </button>
+          {/if}
           <button
             type="button"
             class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs text-red-500 font-medium border border-red-500/20 cursor-pointer transition-all shrink-0"

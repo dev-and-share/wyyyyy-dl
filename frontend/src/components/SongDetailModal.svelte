@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
-  import { playerStore } from '../lib/playerStore.svelte';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../lib/utils';
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { toPlayerTrack } from '../lib/playerHelper';
+  import { playerStore } from '../lib/playerStore.svelte';
   import Modal from './Modal.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
 
@@ -163,7 +163,7 @@
       {@const alId = songInfo.al_id || songInfo.albumId || songInfo.al?.id}
       {@const sizeText = songInfo.size || '未知大小'}
       {@const levelText = songInfo.level || songLevel}
-      {@const imgSrc = songInfo.pic || songInfo.picUrl || DEFAULT_VINYL_COVER}
+      {@const imgSrc = formatCoverUrl(songInfo.pic || songInfo.picUrl, 300)}
       {@const isLiked = likedSet.has(Number(targetId))}
 
       <div>

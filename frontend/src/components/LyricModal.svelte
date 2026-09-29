@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { formatArtist, DEFAULT_VINYL_COVER, platform } from '../lib/utils';
-  import type { Track } from '../lib/types';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, platform } from '../lib/utils';
   import { api } from '../lib/api';
   import { parseLrc, type LrcLine } from '../lib/lyricParser';
   import { showToast } from '../lib/toast.svelte';
@@ -234,7 +233,7 @@
       <div class="w-[140px] h-[140px] md:w-[220px] md:h-[220px] flex items-center justify-center">
         <div class="w-full h-full rounded-full bg-[var(--immersive-ring-bg)] shadow-[var(--immersive-ring-shadow)] p-1.5 flex items-center justify-center transition-all duration-300">
           <img
-            src={track?.cover || DEFAULT_VINYL_COVER}
+            src={formatCoverUrl(track?.cover, 400)}
             class="w-full h-full rounded-full object-cover shadow-inner {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
             alt="大图封面"
             referrerpolicy="no-referrer"

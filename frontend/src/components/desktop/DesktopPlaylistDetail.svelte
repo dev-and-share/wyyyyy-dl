@@ -13,7 +13,7 @@
     recordPlaylistPlay
   } from '../../lib/playlist.svelte';
   import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
   import PlaylistTrackFilter from '../PlaylistTrackFilter.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
@@ -211,7 +211,7 @@
     <!-- 2. 精致紧凑 Hero 横幅区 -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
       <img
-        src={playlist.coverImgUrl || DEFAULT_VINYL_COVER}
+        src={formatCoverUrl(playlist.coverImgUrl, 300)}
         alt={playlist.name}
         class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shadow-md shrink-0 border border-[var(--border-subtle)]"
       />

@@ -279,3 +279,44 @@ export function filterCacheByMinPlayCount(list: BrowserCacheItem[], minCount: nu
   return list.filter((item) => item.playCount >= threshold);
 }
 
+export const IMAGE_CACHE_NAME = 'netease-music-image-v1';
+
+/**
+ * 扫描 Service Worker 封面图片离线缓存
+ */
+export async function scanImageCache(): Promise<{ count: number; totalBytes: number }> {
+  if (typeof window === 'undefined' || !('caches' in window)) {
+    return { count: 0, totalBytes: 0 };
+  }
+  try {
+    const hasImageCache = await caches.has(IMAGE_CACHE_NAME);
+    if (!hasImageCache) return { count: 0, totalBytes: 0 };
+    const cache = await caches.open(IMAGE_CACHE_NAME);
+    const requests = await cache.keys();
+    let totalBytes = 0;
+    for (const req of requests) {
+      const res = await cache.match(req);
+      const cl = Number(res?.headers.get('content-length') || 0);
+      totalBytes += cl;
+    }
+    return { count: requests.length, totalBytes };
+  } catch {
+    return { count: 0, totalBytes: 0 };
+  }
+}
+
+/**
+ * 清空所有封面图片离线缓存
+ */
+export async function clearAllImageCache(): Promise<void> {
+  if (typeof window === 'undefined' || !('caches' in window)) return;
+  try {
+    await caches.delete(IMAGE_CACHE_NAME);
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_IMAGE_CACHE' });
+    }
+  } catch (err) {
+    console.warn('清空图片缓存失败:', err);
+  }
+}
+

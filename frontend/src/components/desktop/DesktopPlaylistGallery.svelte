@@ -7,7 +7,7 @@
     sortPlaylistsByPlayCount,
     getPlaylistPlayCount
   } from '../../lib/playlist.svelte';
-  import { DEFAULT_VINYL_COVER, matchesKeyword } from '../../lib/utils';
+  import { DEFAULT_VINYL_COVER, formatCoverUrl, matchesKeyword } from '../../lib/utils';
 
   let {
     onSelectPlaylist,
@@ -198,7 +198,7 @@
           <!-- 封面图容器 -->
           <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
             <img
-              src={pl.coverImgUrl || DEFAULT_VINYL_COVER}
+              src={formatCoverUrl(pl.coverImgUrl, 250)}
               alt={pl.name}
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"

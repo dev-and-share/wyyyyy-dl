@@ -63,6 +63,29 @@ export const DEFAULT_VINYL_COVER = `data:image/svg+xml;utf8,${encodeURIComponent
 </svg>
 `)}`;
 
+/**
+ * 规范化封面图片地址并自动添加网易云 CDN 缩略裁剪参数：
+ * 1. 自动将 http:// 升级为 https:// 避免 Mixed Content 阻塞与不安全警告
+ * 2. 对网易云 CDN 图片追加 ?param={size}y{size}，将数 MB 原始大图压缩为 10~30KB 缩略图
+ * 3. 兜底默认黑胶唱片矢量封面
+ */
+export function formatCoverUrl(url: string | null | undefined, size = 300): string {
+  if (!url || url === DEFAULT_VINYL_COVER) return DEFAULT_VINYL_COVER;
+  const s = String(url).trim();
+  if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return DEFAULT_VINYL_COVER;
+  if (s.startsWith('data:') || s.startsWith('blob:') || s.startsWith('/')) return s;
+
+  let clean = s.replace(/^http:\/\//i, 'https://');
+  if (clean.includes('126.net') || clean.includes('music.163.com')) {
+    if (/param=\d+y\d+/i.test(clean)) {
+      clean = clean.replace(/param=\d+y\d+/i, `param=${size}y${size}`);
+    } else {
+      clean = clean.includes('?') ? `${clean}&param=${size}y${size}` : `${clean}?param=${size}y${size}`;
+    }
+  }
+  return clean;
+}
+
 import PinyinMatch from 'pinyin-match';
 
 function resolvePinyinMatchFn(): ((str: string, kw: string) => any) | null {
