@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wyyyyy-dl-v5.1.16';
+const CACHE_NAME = 'wyyyyy-dl-v5.1.17';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const IMAGE_CACHE_NAME = 'netease-music-image-v1';
 const MAX_IMAGE_CACHE_ITEMS = 2000;
@@ -6,7 +6,10 @@ const MAX_IMAGE_CACHE_ITEMS = 2000;
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
-  '/favicon.png'
+  '/favicon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png'
 ];
 
 let isTrimmingImages = false;
