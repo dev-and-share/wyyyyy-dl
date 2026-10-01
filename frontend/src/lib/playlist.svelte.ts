@@ -23,8 +23,8 @@ const filteredTracks = $derived.by(() => {
   });
 });
 export const pageSize = 20;
-const _paged = $derived(filteredTracks.slice((playlistState.curPage-1)*pageSize, playlistState.curPage*pageSize));
-const _totalPages = $derived(Math.max(1, Math.ceil(filteredTracks.length/pageSize)));
+const _paged = $derived(filteredTracks.slice(0, playlistState.curPage * pageSize));
+const _totalPages = $derived(Math.max(1, Math.ceil(filteredTracks.length / pageSize)));
 const _playlist = $derived(playlistState.playlist);
 const _playlistFilter = $derived(playlistState.filter);
 const _curPage = $derived(playlistState.curPage);
@@ -43,6 +43,16 @@ export function isPlaylistLoading(): boolean { return playlistState.loading; }
 export function getPlaylistLoadingId(): string { return playlistState.loadingId; }
 export function setCurPage(v:number){ playlistState.curPage=v; }
 export function incPage(d:number){ playlistState.curPage=Math.max(1, Math.min(_totalPages, playlistState.curPage+d)); }
+export function loadMoreTracks(): boolean {
+  if (playlistState.curPage < _totalPages) {
+    playlistState.curPage += 1;
+    return true;
+  }
+  return false;
+}
+export function hasMoreTracks(): boolean {
+  return playlistState.curPage < _totalPages;
+}
 
 export async function loadMyPlaylists(f:any=playlistState.filter){
   playlistState.filter=f;

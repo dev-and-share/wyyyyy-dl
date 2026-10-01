@@ -11,14 +11,10 @@
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
   import PlaylistTrackFilter from './PlaylistTrackFilter.svelte';
-  import SlotBtn from './SlotBtn.svelte';
-  import TrackLikeBtn from './TrackLikeBtn.svelte';
-  import TrackSourceBadge from './TrackSourceBadge.svelte';
+  import SlotBtn from './SlotBtn.svelte'; import TrackLikeBtn from './TrackLikeBtn.svelte'; import TrackSourceBadge from './TrackSourceBadge.svelte';
   import MyPlaylistsSection from './MyPlaylistsSection.svelte';
   import DailyRecommendSection from './DailyRecommendSection.svelte';
-  import AddToPlaylistModal from './AddToPlaylistModal.svelte';
-  import ForkPlaylistModal from './ForkPlaylistModal.svelte';
-  import RemoveFromPlaylistModal from './RemoveFromPlaylistModal.svelte';
+  import AddToPlaylistModal from './AddToPlaylistModal.svelte'; import ForkPlaylistModal from './ForkPlaylistModal.svelte'; import RemoveFromPlaylistModal from './RemoveFromPlaylistModal.svelte';
   import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
@@ -30,6 +26,63 @@
   let playlist = $derived(getPlaylist());
   let curPage = $derived(getCurPage());
   let filteredTracks = $derived(getFilteredTracks());
+  let hasMore = $derived(curPage < totalPages);
+
+  let listContainerEl = $state<HTMLElement | null>(null);
+  let sentinelEl = $state<HTMLElement | null>(null);
+  let isLoadingNext = $state(false);
+
+  function loadNextPage() {
+    if (!hasMore || isLoadingNext) return;
+    isLoadingNext = true;
+    incPage(1);
+    tick().then(() => {
+      isLoadingNext = false;
+      checkSentinel();
+    });
+  }
+
+  function checkSentinel() {
+    if (!hasMore || isLoadingNext) return;
+    if (listContainerEl) {
+      const { scrollTop, scrollHeight, clientHeight } = listContainerEl;
+      if (scrollTop + clientHeight >= scrollHeight - 120) {
+        loadNextPage();
+        return;
+      }
+    }
+    if (sentinelEl) {
+      const rect = sentinelEl.getBoundingClientRect();
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      if (rect.top <= vh + 150) {
+        loadNextPage();
+      }
+    }
+  }
+
+  function handleListScroll() {
+    checkSentinel();
+  }
+
+  $effect(() => {
+    if (!sentinelEl || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting) {
+        loadNextPage();
+      }
+    }, {
+      root: listContainerEl,
+      rootMargin: '120px'
+    });
+    observer.observe(sentinelEl);
+    window.addEventListener('scroll', checkSentinel, { passive: true });
+    checkSentinel();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', checkSentinel);
+    };
+  });
 
   let {
     playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
@@ -56,11 +109,7 @@
     return playlistId ? 'detail' : ((getStored(STORAGE_KEY_SUBTAB, 'my') as any) || 'my');
   }
   let activeSubtab: 'my' | 'detail' | 'recommend' = $state(initSubtab());
-  let accMy = $state(true);
-  let accDetail = $state(true);
-  let accRecommend = $state(true);
-
-  // 弹窗与交互状态
+  let accMy = $state(true), accDetail = $state(true), accRecommend = $state(true);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let removingTrack = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let cachingTrackId = $state<string | number | null>(null);
@@ -252,18 +301,13 @@
     { id: 'recommend', label: '每日推荐', icon: '📅', accent: 'amber' }
   ]}
   activeId={activeSubtab}
-  onChange={(id) => {
-    activeSubtab = id as any;
-    try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {}
-  }}
+  onChange={(id) => { activeSubtab = id as any; try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {} }}
 />
 
 <!-- Section 1: 我的歌单 -->
 <div class:hidden={activeSubtab !== 'my'}>
   <MyPlaylistsSection
-    flat
-    bind:open={accMy}
-    onToggle={saveAccState}
+    flat bind:open={accMy} onToggle={saveAccState}
     onViewPlaylist={(id) => handleViewPlaylist(id)}
     onPlayPlaylist={(id, name) => playPlaylistDirect(id, name)}
     {showToast}
@@ -275,21 +319,16 @@
   <AccordionCard title="🎼 歌单详情" bind:open={accDetail} flat accent="blue" onToggle={saveAccState}>
     <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
       <input
-        type="text"
-        placeholder="输入歌单 ID (如 123456，按回车查看)"
-        class="flex-1 min-w-0"
-        bind:value={pidInput}
-        disabled={isPlaylistLoading()}
+        type="text" placeholder="输入歌单 ID (如 123456，按回车查看)" class="flex-1 min-w-0"
+        bind:value={pidInput} disabled={isPlaylistLoading()}
         onkeydown={(e) => e.key === 'Enter' && !isPlaylistLoading() && handleViewPlaylist(pidInput)}
       />
       <button
         class="btn-primary shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[84px] md:min-w-[100px]"
-        disabled={isPlaylistLoading()}
-        onclick={() => handleViewPlaylist(pidInput)}
+        disabled={isPlaylistLoading()} onclick={() => handleViewPlaylist(pidInput)}
       >
         {#if isPlaylistLoading()}
-          <span class="inline-block animate-spin text-xs">⏳</span>
-          <span>加载中...</span>
+          <span class="inline-block animate-spin text-xs">⏳</span><span>加载中...</span>
         {:else}
           <span>查看<span class="hidden sm:inline">歌单详情</span></span>
         {/if}
@@ -297,7 +336,6 @@
     </div>
 
     {#if isPlaylistLoading() && (!playlist || String(playlist.id) !== pid)}
-      <!-- 优雅加载骨架屏与提示 -->
       <div class="py-8 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm">
         <div class="text-3xl animate-spin text-red-500">⏳</div>
         <div class="text-sm font-semibold text-[var(--text-main)]">正在拉取歌单 #{pid} 数据...</div>
@@ -311,45 +349,25 @@
         </div>
       </div>
     {:else if playlist}
-      <DetailHeaderCard
-        cover={playlist.coverImgUrl || '/favicon.png'}
-        title={playlist.name}
-        subtitle={`${playlist.creator || '未知'} | 共 ${allTracks.length} 首`}
-      >
-        <button
-          class="btn-primary"
-          onclick={() => downloadPlaylistById(String(playlist.id))}
-          title="下载全部歌曲到电脑"
-        >
+      <DetailHeaderCard cover={playlist.coverImgUrl || '/favicon.png'} title={playlist.name} subtitle={`${playlist.creator || '未知'} | 共 ${allTracks.length} 首`}>
+        <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))} title="下载全部歌曲到电脑">
           <span>🖥️</span><span>下载<span class="hidden sm:inline">到电脑</span></span>
         </button>
         <button
           class="btn-secondary"
           onclick={() => {
             if (playlist?.id) recordPlaylistPlay(playlist.id);
-            onPlayQueue && onPlayQueue(allTracks.map((t: any) => toPlayerTrack(t)), {
-              startIndex: 0,
-              playlistId: playlist?.id,
-              isExplicitTrack: false
-            });
+            onPlayQueue && onPlayQueue(allTracks.map((t: any) => toPlayerTrack(t)), { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false });
           }}
           title="播放歌单全部歌曲"
         >
           <span>▶️</span><span>播放<span class="hidden sm:inline">歌单</span></span>
         </button>
         {#if playlist && !playlist.isCreator}
-          <button
-            class="btn-secondary !text-purple-400 !border-purple-500/30"
-            onclick={() => showForkModal = true}
-            title="转存为自建歌单，绕过官方风控"
-          >
+          <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title="转存为自建歌单，绕过官方风控">
             <span>📦</span><span>转存<span class="hidden sm:inline">自建</span></span>
           </button>
-          <button
-            class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}"
-            onclick={handleToggleSubscribe}
-            title={playlist.subscribed ? '取消收藏' : '收藏歌单'}
-          >
+          <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? '取消收藏' : '收藏歌单'}>
             <span>{playlist.subscribed ? '💔' : '⭐'}</span><span>{playlist.subscribed ? '取消' : '收藏'}<span class="hidden sm:inline">{playlist.subscribed ? '收藏' : '歌单'}</span></span>
           </button>
         {/if}
@@ -363,9 +381,9 @@
           <span>未找到包含 "{getPlaylistSearchKeyword()}" 的歌曲或歌手</span>
         </div>
       {:else}
-        <ul class="data-list scrollable-list">
+        <ul bind:this={listContainerEl} class="data-list scrollable-list" onscroll={handleListScroll}>
           {#each paged as t, i}
-          {@const idx = (curPage - 1) * pageSize + i + 1}
+          {@const idx = i + 1}
           {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
           {@const artist = formatArtist(t)}
           {@const isPlayingThis = isSameTrack(curTrack, t)}
@@ -427,14 +445,25 @@
             </div>
           </li>
         {/each}
+
+        <!-- 触底自动刷下一页哨兵与状态提示 -->
+        <li
+          bind:this={sentinelEl}
+          data-testid="playlist-tab-infinite-sentinel"
+          class="infinite-scroll-sentinel py-3 text-center text-xs text-[var(--text-secondary)] border-t border-dashed border-[var(--border-subtle)] mt-2 list-none select-none"
+        >
+          {#if hasMore}
+            <div class="flex items-center justify-center gap-2 text-[var(--text-secondary)] py-1">
+              <span class="inline-block animate-spin text-red-500 text-sm">⏳</span>
+              <span>正在载入更多歌曲 (已展示 {paged.length} / {filteredTracks.length} 首)...</span>
+            </div>
+          {:else}
+            <div class="flex items-center justify-center gap-2 text-[var(--text-muted)] text-[11px] py-1">
+              <span>✨ 已加载全部 {filteredTracks.length} 首歌曲</span>
+            </div>
+          {/if}
+        </li>
       </ul>
-      <div class="flex justify-between items-center gap-2.5 mt-3">
-        <button class="btn-secondary" disabled={curPage <= 1} onclick={() => incPage(-1)}>上一页</button>
-        <span class="text-xs text-[var(--text-secondary)] whitespace-nowrap">
-          第 {curPage} / {totalPages} 页 ({getPlaylistSearchKeyword() ? `${filteredTracks.length}首 / 匹配自${allTracks.length}首` : `${allTracks.length}首`})
-        </span>
-        <button class="btn-secondary" disabled={curPage >= totalPages} onclick={() => incPage(1)}>下一页</button>
-      </div>
       {/if}
     {:else}
       <div class="empty-placeholder-card">
@@ -448,46 +477,22 @@
   <!-- Section 3: 每日专属推荐 -->
   <div class:hidden={activeSubtab !== 'recommend'}>
     <DailyRecommendSection
-      flat
-      bind:open={accRecommend}
-      onToggle={saveAccState}
-      {curTrack}
-      {playing}
-      {likedSet}
-      {onToggleLike}
-      {onPlayQueue}
-      {onSong}
-      {onAlbum}
-      {onReveal}
-      {showToast}
+      flat bind:open={accRecommend} onToggle={saveAccState} {curTrack} {playing} {likedSet}
+      {onToggleLike} {onPlayQueue} {onSong} {onAlbum} {onReveal} {showToast}
     />
   </div>
 
 {#if addToPlaylistSong}
-  <AddToPlaylistModal
-    song={addToPlaylistSong}
-    onClose={() => addToPlaylistSong = null}
-    {showToast}
-  />
+  <AddToPlaylistModal song={addToPlaylistSong} onClose={() => addToPlaylistSong = null} {showToast} />
 {/if}
 
 {#if showForkModal && playlist}
   <ForkPlaylistModal
-    playlistName={playlist.name}
-    trackCount={allTracks.length}
-    trackIds={allTracks.map((t: any) => t.id)}
-    onClose={() => showForkModal = false}
-    onSuccess={(newId) => { if (newId) handleViewPlaylist(newId); }}
-    {showToast}
+    playlistName={playlist.name} trackCount={allTracks.length} trackIds={allTracks.map((t: any) => t.id)}
+    onClose={() => showForkModal = false} onSuccess={(newId) => { if (newId) handleViewPlaylist(newId); }} {showToast}
   />
 {/if}
 
 {#if removingTrack && playlist}
-  <RemoveFromPlaylistModal
-    song={removingTrack}
-    playlistId={playlist.id}
-    playlistName={playlist.name}
-    onClose={() => removingTrack = null}
-    {showToast}
-  />
+  <RemoveFromPlaylistModal song={removingTrack} playlistId={playlist.id} playlistName={playlist.name} onClose={() => removingTrack = null} {showToast} />
 {/if}

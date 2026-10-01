@@ -24,12 +24,12 @@
 
 <!-- 顶栏 (TopBar) -->
 {#if isDesktopLayout}
-  <!-- 💻 PC 桌面侧边栏模式：右上角极简控制胶囊 (与主区首行平齐并排，不占垂直高度) -->
+  <!-- 💻 PC 桌面侧边栏模式：右上角极简控制图标 (只有 icon，hover 悬停时才有反馈) -->
   <header class="hidden lg:flex absolute right-4 top-4 z-20 items-center justify-end select-none pointer-events-auto" data-testid="desktop-top-bar">
-    <div class="flex items-center gap-1.5 p-1 bg-[var(--topbar-bg)] backdrop-blur-md rounded-2xl border border-[var(--topbar-border)] shadow-sm">
+    <div class="flex items-center gap-1">
       <button
         data-testid="btn-toggle-theme"
-        class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] w-7 h-7 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all select-none shrink-0 active:scale-95"
+        class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"
         onclick={onToggleTheme}
         title="切换主题"
       >
@@ -39,7 +39,7 @@
       {#if onOpenSettings}
         <button
           data-testid="btn-open-settings"
-          class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] w-7 h-7 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all select-none shrink-0 active:scale-95"
+          class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"
           onclick={onOpenSettings}
           title="系统偏好设置"
         >
@@ -71,10 +71,10 @@
         class="flex-1 bg-transparent border-none py-1.5 px-1.5 sm:px-2 md:px-3 rounded-[16px] text-xs sm:text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer whitespace-nowrap transition-all duration-200 text-center select-none {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]' : ''}"
         onclick={() => onSwitchTab('download-mgr')}>📥 本地</button>
     </div>
-    <div class="shrink-0 flex items-center gap-1.5 pr-0.5 ml-auto">
+    <div class="shrink-0 flex items-center gap-1 pr-0.5 ml-auto">
       <button
         data-testid="btn-toggle-theme"
-        class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0 active:scale-95"
+        class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"
         onclick={onToggleTheme}
         title="切换主题"
       >
@@ -84,7 +84,7 @@
       {#if onOpenSettings}
         <button
           data-testid="btn-open-settings"
-          class="bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--btn-secondary-color)] hover:text-[var(--btn-secondary-hover-color)] border border-[var(--btn-secondary-border)] w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-semibold cursor-pointer inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 select-none shrink-0 active:scale-95"
+          class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"
           onclick={onOpenSettings}
           title="系统偏好设置"
         >
