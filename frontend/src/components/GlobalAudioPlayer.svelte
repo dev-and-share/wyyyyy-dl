@@ -11,6 +11,8 @@
   import { handleTrackPlayback, resetTrackPlayback } from '../lib/pwaCache.svelte';
   import type { Track } from '../lib/types';
 
+  import { platform } from '../lib/platform';
+
   import PlayerBar from './PlayerBar.svelte';
   import PlaylistDrawer from './PlaylistDrawer.svelte';
   import LyricModal from './LyricModal.svelte';
@@ -167,16 +169,15 @@
       return;
     }
 
-    // ② URL 尚未解析：使用 muted=true 静音占位保住 iOS 手势令牌，严禁旧音频漏音！
+    // ② URL 尚未解析：仅在 iOS Safari/PWA 下使用静音占位保住手势令牌；桌面端严禁空转 play/mute 防 CoreAudio 竞争假死
     if (resetTime) playerStore.curTime = 0;
     const prevMuted = audioEl.muted;
-    try {
-      audioEl.muted = true;
-      audioEl.play().catch(() => {});
-    } catch {}
+    if (platform.isIOS) {
+      try { audioEl.muted = true; audioEl.play().catch(() => {}); } catch {}
+    }
 
     const url = await resolveTrackUrl(track);
-    audioEl.muted = prevMuted;
+    if (platform.isIOS) { audioEl.muted = prevMuted; }
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
       return handleSkipTrack(track, '为试听片段', true);
