@@ -9,7 +9,7 @@ function getInitialTab(): ActiveTab {
 
 function getInitialPlaylistId(): string {
   if (typeof window === 'undefined') return '';
-  return location.hash.match(/id=([0-9]+)/)?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
+  return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
 }
 
 const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyyyy_sidebar_collapsed';
@@ -23,14 +23,18 @@ export const routerState = $state<{
   tab: ActiveTab;
   playlistId: string;
   albumId: string;
+  albumName: string;
   sidebarCollapsed: boolean;
   playlistTrigger: number;
+  albumTrigger: number;
 }>({
   tab: getInitialTab(),
   playlistId: getInitialPlaylistId(),
   albumId: '',
+  albumName: '',
   sidebarCollapsed: getInitialSidebarCollapsed(),
-  playlistTrigger: 0
+  playlistTrigger: 0,
+  albumTrigger: 0
 });
 
 export function toggleSidebarCollapse(): void {
@@ -52,8 +56,10 @@ export function switchTab(n: ActiveTab): void {
   } catch {}
 }
 
-export function jumpToAlbum(id: string): void {
-  routerState.albumId = id;
+export function jumpToAlbum(id: string, name?: string): void {
+  routerState.albumId = String(id || '').trim();
+  routerState.albumName = String(name || '').trim();
+  routerState.albumTrigger = (routerState.albumTrigger || 0) + 1;
   switchTab('search');
 }
 
@@ -75,6 +81,10 @@ export function jumpToPlaylist(id: string): void {
   } catch {}
 }
 
+export function jumpToDailyRecommend(): void {
+  jumpToPlaylist('daily-recommend');
+}
+
 export function exitPlaylistToGallery(): void {
   routerState.playlistId = '';
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
@@ -87,7 +97,7 @@ export function exitPlaylistToGallery(): void {
 export function initRouter(): () => void {
   const syncRoute = () => {
     const raw = typeof location !== 'undefined' ? location.hash.replace('#', '') : '';
-    const m = raw.match(/id=([0-9]+)/);
+    const m = raw.match(/id=([0-9a-zA-Z_-]+)/);
     if (m?.[1]) {
       routerState.playlistId = m[1];
     } else if (raw.startsWith('playlist')) {

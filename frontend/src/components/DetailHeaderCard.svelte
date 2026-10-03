@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { formatCoverUrl } from '../lib/utils';
 
   let {
     cover,
@@ -14,11 +15,13 @@
     subDetail?: string;
     children?: Snippet;
   }>();
+
+  let formattedCover = $derived(formatCoverUrl(cover, 300));
 </script>
 
 <div class="flex gap-3 md:gap-4 my-2.5 items-center bg-white/[0.02] dark:bg-white/[0.02] p-3 rounded-[10px] border border-[var(--border-subtle)]">
   <img
-    src={cover}
+    src={formattedCover}
     alt=""
     class="w-20 h-20 md:w-[110px] md:h-[110px] rounded-[10px] object-cover shadow-[0_4px_14px_rgba(0,0,0,0.3)] shrink-0 border border-[var(--border-color)]"
     referrerpolicy="no-referrer"

@@ -163,6 +163,47 @@ export async function deleteBrowserCacheEntry(item: BrowserCacheItem): Promise<v
 }
 
 /**
+ * 按歌曲 ID 精准清除该单曲在浏览器 (PWA Cache & LocalStorage) 中的离线缓存
+ */
+export async function removeTrackBrowserCache(songId: string | number): Promise<boolean> {
+  if (!songId || typeof window === 'undefined' || !('caches' in window)) return false;
+  const idStr = String(songId);
+  try {
+    const metaMap = readCachedTrackMeta();
+    let deleted = false;
+
+    for (const cacheName of await caches.keys()) {
+      const cache = await caches.open(cacheName);
+      const requests = await cache.keys();
+      for (const req of requests) {
+        const url = req.url;
+        if (url.includes(`id=${idStr}`) || url.endsWith(`/${idStr}`)) {
+          await cache.delete(req).catch(() => {});
+          deleted = true;
+        }
+      }
+    }
+
+    for (const key of Object.keys(metaMap)) {
+      const item = metaMap[key];
+      if (item?.id === idStr || key.includes(`id=${idStr}`)) {
+        delete metaMap[key];
+        deleted = true;
+      }
+    }
+
+    localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
+    refreshCachedSongIds();
+    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
+    return deleted;
+  } catch (err) {
+    console.warn('清除单曲浏览器离线缓存异常:', err);
+    return false;
+  }
+}
+
+
+/**
  * 批量清除播放少于阈值的低频离线歌曲
  */
 export async function clearLowPlayCountCacheEntries(items: BrowserCacheItem[]): Promise<number> {
@@ -219,8 +260,9 @@ export async function clearAllBrowserAudioCache(): Promise<void> {
  * 将离线缓存曲目转换成标准 Track 对象供全局播放器调度
  */
 export function toBrowserTrack(item: BrowserCacheItem): Track {
+  const extractedId = item.id || (item.relUrl.match(/[?&]id=(\d+)/)?.[1]) || item.relUrl;
   return {
-    id: item.id || item.relUrl,
+    id: extractedId,
     name: item.name,
     artist: item.artist,
     cover: item.cover || DEFAULT_VINYL_COVER,
@@ -235,5 +277,46 @@ export function toBrowserTrack(item: BrowserCacheItem): Track {
 export function filterCacheByMinPlayCount(list: BrowserCacheItem[], minCount: number): BrowserCacheItem[] {
   const threshold = Math.max(0, Number(minCount) || 0);
   return list.filter((item) => item.playCount >= threshold);
+}
+
+export const IMAGE_CACHE_NAME = 'netease-music-image-v1';
+
+/**
+ * 扫描 Service Worker 封面图片离线缓存
+ */
+export async function scanImageCache(): Promise<{ count: number; totalBytes: number }> {
+  if (typeof window === 'undefined' || !('caches' in window)) {
+    return { count: 0, totalBytes: 0 };
+  }
+  try {
+    const hasImageCache = await caches.has(IMAGE_CACHE_NAME);
+    if (!hasImageCache) return { count: 0, totalBytes: 0 };
+    const cache = await caches.open(IMAGE_CACHE_NAME);
+    const requests = await cache.keys();
+    let totalBytes = 0;
+    for (const req of requests) {
+      const res = await cache.match(req);
+      const cl = Number(res?.headers.get('content-length') || 0);
+      totalBytes += cl;
+    }
+    return { count: requests.length, totalBytes };
+  } catch {
+    return { count: 0, totalBytes: 0 };
+  }
+}
+
+/**
+ * 清空所有封面图片离线缓存
+ */
+export async function clearAllImageCache(): Promise<void> {
+  if (typeof window === 'undefined' || !('caches' in window)) return;
+  try {
+    await caches.delete(IMAGE_CACHE_NAME);
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_IMAGE_CACHE' });
+    }
+  } catch (err) {
+    console.warn('清空图片缓存失败:', err);
+  }
 }
 

@@ -266,4 +266,16 @@ public class DownloadHistoryController {
         boolean ok = downloadHistoryDAO.deleteRecord(id);
         return RespEntity.apply(CommonRespInfo.SUCCESS, ok);
     }
+
+    /**
+     * 物理删除已下载的单曲本地文件及其历史记录
+     */
+    @DeleteMapping("/history/file")
+    public RespEntity<Boolean> deleteSongFile(
+            @RequestParam(value = "id", required = false) Long songId,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "artist", required = false) String artist) {
+        boolean ok = downloadHistoryDAO.deleteSongFileAndRecord(songId, name, artist);
+        return RespEntity.apply(CommonRespInfo.SUCCESS, ok);
+    }
 }

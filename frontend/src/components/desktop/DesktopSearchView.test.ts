@@ -1,6 +1,7 @@
-import { render, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import { describe, it, expect, vi } from 'vitest';
 import DesktopSearchView from './DesktopSearchView.svelte';
+import { api } from '../../lib/api';
 
 vi.mock('../../lib/api', () => ({
   api: {
@@ -126,5 +127,31 @@ describe('DesktopSearchView', () => {
 
     const topSong = await findByText('晴天');
     expect(topSong).toBeInTheDocument();
+  });
+
+  it('automatically switches to album search and executes search when jumpToAlbum is triggered', async () => {
+    const { routerState, jumpToAlbum } = await import('../../lib/router.svelte');
+
+    const { getByTestId, getByPlaceholderText } = render(DesktopSearchView, {
+      props: {
+        onPlaylist: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    jumpToAlbum('12345', '范特西');
+
+    // 等待响应式 $effect 触发更新 DOM
+    await waitFor(() => {
+      const albumTypeBtn = getByTestId('search-type-10');
+      expect(albumTypeBtn.className).toContain('bg-red-500');
+    });
+
+    // 验证搜索框填入专辑名称
+    const input = getByPlaceholderText(/搜索歌曲、歌手/i) as HTMLInputElement;
+    expect(input.value).toBe('范特西');
+
+    // 验证触发了 search 请求，参数为 '范特西', '10'
+    expect(api.search).toHaveBeenCalledWith('范特西', '10', expect.any(String));
   });
 });

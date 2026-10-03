@@ -60,4 +60,41 @@ describe('DesktopSidebar', () => {
     const versionInfo = getByTestId('sidebar-version-info');
     expect(versionInfo).toBeDefined();
   });
+
+  it('handles daily recommend navigation click and active states', async () => {
+    const onViewPlaylist = vi.fn();
+    const onSwitchTab = vi.fn();
+
+    const { getByTestId, rerender } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        currentPlaylistId: '',
+        collapsed: false,
+        onSwitchTab,
+        onViewPlaylist,
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const recommendBtn = getByTestId('sidebar-tab-recommend');
+    expect(recommendBtn).toBeDefined();
+    await fireEvent.click(recommendBtn);
+    expect(onViewPlaylist).toHaveBeenCalledWith('daily-recommend');
+
+    // 重新传入 currentPlaylistId: 'daily-recommend'
+    await rerender({
+      tab: 'playlist',
+      currentPlaylistId: 'daily-recommend',
+      collapsed: false,
+      onSwitchTab,
+      onViewPlaylist,
+      onToggleCollapse: vi.fn()
+    });
+
+    const playlistBtn = getByTestId('sidebar-tab-playlist');
+    const updatedRecommendBtn = getByTestId('sidebar-tab-recommend');
+
+    expect(updatedRecommendBtn.className).toContain('bg-[var(--nav-tab-active-bg)]');
+    expect(playlistBtn.className).not.toContain('bg-[var(--nav-tab-active-bg)]');
+  });
 });

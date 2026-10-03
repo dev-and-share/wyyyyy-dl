@@ -5,13 +5,15 @@ export function getApiCache(key:string){ try{ const r=localStorage.getItem('pwa_
 export function setApiCache(key:string, data:any){ try{ localStorage.setItem('pwa_api_cache_'+key, JSON.stringify({data, timestamp:Date.now()}))}catch{}}
 export function deleteApiCache(key:string){ try{ localStorage.removeItem('pwa_api_cache_'+key)}catch{}}
 
+import { checkIsIOS, platform } from './platform';
+export { platform };
+
 /**
  * 检测是否为 iOS / iPadOS 设备环境
  * 注意：iOS Safari/Webview 对 HTML5 <audio> 的 volume 属性强制只读，无法通过 JS 调节，需由物理硬件按键控制。
  */
 export function isIOS(): boolean {
-  if (typeof window === 'undefined' || !window.navigator) return false;
-  return /iPad|iPhone|iPod/.test(window.navigator.userAgent) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+  return checkIsIOS();
 }
 
 export function formatArtist(trackOrArtist: any): string {
@@ -60,3 +62,78 @@ export const DEFAULT_VINYL_COVER = `data:image/svg+xml;utf8,${encodeURIComponent
   <circle cx="50" cy="50" r="2.5" fill="#ffffff"/>
 </svg>
 `)}`;
+
+/**
+ * 规范化封面图片地址并自动添加网易云 CDN 缩略裁剪参数：
+ * 1. 自动将 http:// 升级为 https:// 避免 Mixed Content 阻塞与不安全警告
+ * 2. 对网易云 CDN 图片追加 ?param={size}y{size}，将数 MB 原始大图压缩为 10~30KB 缩略图
+ * 3. 兜底默认黑胶唱片矢量封面
+ */
+export function formatCoverUrl(url: string | null | undefined, size = 300): string {
+  if (!url || url === DEFAULT_VINYL_COVER) return DEFAULT_VINYL_COVER;
+  const s = String(url).trim();
+  if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return DEFAULT_VINYL_COVER;
+  if (s.startsWith('data:') || s.startsWith('blob:') || s.startsWith('/')) return s;
+
+  let clean = s.replace(/^http:\/\//i, 'https://');
+  if (clean.includes('126.net') || clean.includes('music.163.com')) {
+    if (/param=\d+y\d+/i.test(clean)) {
+      clean = clean.replace(/param=\d+y\d+/i, `param=${size}y${size}`);
+    } else {
+      clean = clean.includes('?') ? `${clean}&param=${size}y${size}` : `${clean}?param=${size}y${size}`;
+    }
+  }
+  return clean;
+}
+
+import PinyinMatch from 'pinyin-match';
+
+function resolvePinyinMatchFn(): ((str: string, kw: string) => any) | null {
+  const pm: any = PinyinMatch;
+  if (!pm) return null;
+  if (typeof pm.match === 'function') return pm.match.bind(pm);
+  if (pm.default && typeof pm.default.match === 'function') return pm.default.match.bind(pm.default);
+  if (typeof pm === 'function') return pm;
+  if (typeof pm.default === 'function') return pm.default;
+  return null;
+}
+
+const pinyinMatchFn = resolvePinyinMatchFn();
+
+/**
+ * 拼音与文本综合匹配工具：
+ * 1. 优先普通包含匹配（大小写不敏感，极速响应）；
+ * 2. 普通匹配未命中时，自动进行拼音（全拼、首字母缩写、多音字）匹配；
+ * 3. 自动剥离常见书名号/引号干扰，支持空格分词多关键词全命中。
+ */
+export function matchesKeyword(target: string | null | undefined, keyword: string | null | undefined): boolean {
+  if (keyword === null || keyword === undefined) return false;
+  const kw = String(keyword).trim().toLowerCase();
+  if (!kw) return true;
+  if (!target) return false;
+  const str = String(target).toLowerCase();
+
+  // 1. 直匹配：包含完整关键词或子串
+  if (str.includes(kw)) return true;
+
+  // 2. 空格分词多条件匹配 (例如 "andy 音乐")
+  if (kw.includes(' ')) {
+    const parts = kw.split(/\s+/).filter(Boolean);
+    if (parts.length > 1 && parts.every(part => matchesKeyword(target, part))) {
+      return true;
+    }
+  }
+
+  // 3. 拼音匹配：支持全拼、简拼缩写、多音字
+  if (pinyinMatchFn) {
+    try {
+      if (pinyinMatchFn(str, kw)) return true;
+      // 去除常见标点符号干扰（如《》"“'”【】）二次匹配
+      const cleanStr = str.replace(/[《》"“”'‘’【】「」『』\(\)\[\]（）]/g, '');
+      if (cleanStr !== str && pinyinMatchFn(cleanStr, kw)) return true;
+    } catch {}
+  }
+
+  return false;
+}
+

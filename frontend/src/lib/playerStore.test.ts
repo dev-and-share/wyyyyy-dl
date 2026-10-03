@@ -205,4 +205,30 @@ describe('PlayerStore WYSIWYG shuffle & deterministic queue navigation', () => {
     expect(store.queue).toHaveLength(0);
     expect(store.qIndex).toBe(0);
   });
+
+  it('automatically skips unplayable tracks to next valid track', () => {
+    const tracksWithUnplayable: Track[] = [
+      { id: 1, name: '晴天', artist: '周杰伦' },
+      { id: 2, name: '晚风', artist: '浪哥', unplayable: true },
+      { id: 3, name: '夜曲', artist: '周杰伦' }
+    ];
+    store.setQueue(tracksWithUnplayable, 0);
+
+    expect(store.isValidTrack(tracksWithUnplayable[1])).toBe(false);
+    expect(store.getNextTrackIndex()).toBe(2); // 跳过不可播的第 1 项，直接返回第 2 项
+
+    store.stepNext();
+    expect(store.qIndex).toBe(2);
+    expect(store.activeTrack?.name).toBe('夜曲');
+  });
+
+  it('returns -1 when all subsequent tracks are unplayable', () => {
+    const allUnplayable: Track[] = [
+      { id: 1, name: '晚风1', artist: '浪哥', unplayable: true },
+      { id: 2, name: '晚风2', artist: '浪哥', unplayable: true }
+    ];
+    store.setQueue(allUnplayable, 0);
+
+    expect(store.getNextTrackIndex()).toBe(-1);
+  });
 });

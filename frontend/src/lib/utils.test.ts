@@ -52,3 +52,66 @@ describe('showToast anti-spam protection', () => {
     expect(toastState.toasts.length).toBeLessThanOrEqual(3);
   });
 });
+
+import { matchesKeyword } from './utils';
+
+describe('matchesKeyword with pinyin and text search', () => {
+  it('matches plain substring case-insensitively', () => {
+    expect(matchesKeyword('周杰伦', '周')).toBe(true);
+    expect(matchesKeyword('晴天', '晴天')).toBe(true);
+    expect(matchesKeyword('Shivers', 'shiv')).toBe(true);
+    expect(matchesKeyword('Shivers', 'SHIV')).toBe(true);
+  });
+
+  it('matches pinyin initials (简拼/首字母)', () => {
+    expect(matchesKeyword('周杰伦', 'zjl')).toBe(true);
+    expect(matchesKeyword('周杰伦', 'ZJL')).toBe(true);
+    expect(matchesKeyword('晴天', 'qt')).toBe(true);
+    expect(matchesKeyword('我喜欢的音乐', 'wxh')).toBe(true);
+    expect(matchesKeyword('我喜欢的音乐', 'wxhd')).toBe(true);
+  });
+
+  it('matches pinyin full spell (全拼)', () => {
+    expect(matchesKeyword('周杰伦', 'zhoujielun')).toBe(true);
+    expect(matchesKeyword('晴天', 'qingtian')).toBe(true);
+    expect(matchesKeyword('夜曲', 'yequ')).toBe(true);
+  });
+
+  it('returns false when no match', () => {
+    expect(matchesKeyword('周杰伦', 'cxk')).toBe(false);
+    expect(matchesKeyword('晴天', 'rain')).toBe(false);
+  });
+
+  it('handles null, undefined and empty gracefully', () => {
+    expect(matchesKeyword(null, 'zjl')).toBe(false);
+    expect(matchesKeyword('晴天', null)).toBe(false);
+    expect(matchesKeyword('晴天', '')).toBe(true);
+    expect(matchesKeyword('', 'zjl')).toBe(false);
+  });
+});
+
+import { formatCoverUrl, DEFAULT_VINYL_COVER } from './utils';
+
+describe('formatCoverUrl NetEase CDN optimizations', () => {
+  it('returns DEFAULT_VINYL_COVER for empty or invalid inputs', () => {
+    expect(formatCoverUrl(null)).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl(undefined)).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl('')).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl('null')).toBe(DEFAULT_VINYL_COVER);
+    expect(formatCoverUrl('undefined')).toBe(DEFAULT_VINYL_COVER);
+  });
+
+  it('preserves local paths and data URIs', () => {
+    expect(formatCoverUrl('/favicon.png')).toBe('/favicon.png');
+    expect(formatCoverUrl('data:image/svg+xml;utf8,test')).toBe('data:image/svg+xml;utf8,test');
+    expect(formatCoverUrl('blob:http://localhost/123')).toBe('blob:http://localhost/123');
+  });
+
+  it('upgrades http to https and appends param size for NetEase CDN URLs', () => {
+    expect(formatCoverUrl('http://p1.music.126.net/abc.jpg', 300)).toBe('https://p1.music.126.net/abc.jpg?param=300y300');
+    expect(formatCoverUrl('https://p2.music.126.net/xyz.jpg', 120)).toBe('https://p2.music.126.net/xyz.jpg?param=120y120');
+    expect(formatCoverUrl('http://p1.music.126.net/abc.jpg?param=100y100', 500)).toBe('https://p1.music.126.net/abc.jpg?param=500y500');
+  });
+});
+
+

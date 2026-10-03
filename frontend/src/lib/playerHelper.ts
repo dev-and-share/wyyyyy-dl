@@ -10,7 +10,19 @@ import { playerStore, type SetQueueOptions } from './playerStore.svelte';
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
  */
 export async function resolveTrackUrl(track: Track): Promise<string> {
-  // 1. 如果已有本地/历史流地址，仅在缺失封面/歌词时静默后台补齐
+  // 0. 防御：如果传入的 url 是易失的 blob: URL，一律重置避免跨天失效
+  if (track.url && track.url.startsWith('blob:')) {
+    track.url = track.id ? `/v3/stream?id=${track.id}` : '';
+  }
+
+  // 1. 如果已在手机/浏览器离线缓存中，直接使用标准离线流地址 (由 SW 拦截 Cache 206 秒播，跨天永不失效)
+  if (track.id && cachedSongIdSet.has(Number(track.id))) {
+    track.url = `/v3/stream?id=${track.id}`;
+    track.isLocal = true;
+    return track.url;
+  }
+
+  // 2. 如果已有本地/历史流地址，仅在缺失封面/歌词时静默后台补齐
   if (track.url && track.url.includes('/stream')) {
     track.isLocal = true;
     if (track.id) markSongDownloaded(track.id);
@@ -40,7 +52,13 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     const j = await api.songV1(String(track.id), 'lossless');
     const song = j?.data;
     if (song) {
-      if (song.url) track.url = song.url;
+      if (song.url) {
+        track.url = song.url;
+        track.unplayable = false;
+      } else {
+        track.unplayable = true;
+        track.unplayableReason = song.unplayableReason || (song.status === 404 ? '因地区或版权限制暂无法播放' : '暂无可播音频源');
+      }
       const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v3/stream'));
       if (isServerLocal) {
         track.isLocal = true;
@@ -52,8 +70,14 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       if (newPic) track.cover = newPic;
       if (song.lyric && !track.lyric) track.lyric = song.lyric;
       return song.url || track.url || '';
+    } else {
+      track.unplayable = true;
+      track.unplayableReason = '获取歌曲信息失败';
     }
-  } catch {}
+  } catch {
+    track.unplayable = true;
+    track.unplayableReason = '网络请求失败';
+  }
   return track.url || '';
 }
 
@@ -70,7 +94,7 @@ export function preloadSurroundingTracks(queue: Track[], curIndex: number, playM
     const nextIdx = (curIndex + 1) % queue.length;
     nextTrack = queue[nextIdx];
   }
-  if (nextTrack && !nextTrack.url) {
+  if (nextTrack && !nextTrack.url && !nextTrack.unplayable) {
     resolveTrackUrl(nextTrack).catch(() => {});
   }
 
@@ -80,7 +104,7 @@ export function preloadSurroundingTracks(queue: Track[], curIndex: number, playM
     const prevIdx = (curIndex - 1 + queue.length) % queue.length;
     prevTrack = queue[prevIdx];
   }
-  if (prevTrack && prevTrack !== nextTrack && !prevTrack.url) {
+  if (prevTrack && prevTrack !== nextTrack && !prevTrack.url && !prevTrack.unplayable) {
     resolveTrackUrl(prevTrack).catch(() => {});
   }
 }

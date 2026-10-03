@@ -850,6 +850,63 @@ public class DownloadHistoryDAO {
         }
     }
 
+    /**
+     * 物理删除已下载的单曲本地文件及其历史记录
+     */
+    public boolean deleteSongFileAndRecord(Long songId, String name, String artist) {
+        if ((songId == null || songId <= 0) && (name == null || name.trim().isEmpty())) {
+            return false;
+        }
+
+        List<DownloadHistoryItem> matchedItems = new ArrayList<>();
+        if (songId != null && songId > 0) {
+            String sql = "SELECT * FROM download_history WHERE song_id = ?";
+            try (Connection conn = getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setLong(1, songId);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        matchedItems.add(mapItemFromRs(rs));
+                    }
+                }
+            } catch (Exception e) {
+                log.error("按 songId 查询待删除歌曲记录失败, songId={}", songId, e);
+            }
+        }
+
+        if (matchedItems.isEmpty() && name != null && !name.trim().isEmpty()) {
+            DownloadHistoryItem item = findLocalFileBySongOrName(songId, name, artist);
+            if (item != null) {
+                matchedItems.add(item);
+            }
+        }
+
+        if (matchedItems.isEmpty()) {
+            log.info("未找到需删除的本地歌曲记录: songId={}, name={}", songId, name);
+            return false;
+        }
+
+        boolean anyDeleted = false;
+        for (DownloadHistoryItem item : matchedItems) {
+            if (item.getFilePath() != null && !item.getFilePath().isEmpty()) {
+                File f = resolveFile(item.getFilePath());
+                if (f != null && f.exists() && f.isFile()) {
+                    String abs = f.getAbsolutePath();
+                    if (!abs.equals("/") && !abs.equals("/media") && (downloadPath == null || !abs.equals(new File(downloadPath).getAbsolutePath()))) {
+                        boolean ok = f.delete();
+                        if (ok) {
+                            anyDeleted = true;
+                            log.info("🗑️ 成功物理删除服务器歌曲文件: {}", abs);
+                        }
+                    }
+                }
+            }
+            deleteRecord(item.getId());
+        }
+        return anyDeleted || !matchedItems.isEmpty();
+    }
+
+
     public Map<String, Object> getStats() {
         Map<String, Object> stats = new HashMap<>();
         String sql = "SELECT COUNT(*) as total_count, COALESCE(SUM(file_size), 0) as total_size FROM download_history";

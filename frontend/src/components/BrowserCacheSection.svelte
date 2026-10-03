@@ -18,14 +18,18 @@
   } from '../lib/browserCacheHelper';
 
   let {
+    open = $bindable(true),
+    flat = false,
     onPlayQueue,
     showToast = () => {}
   } = $props<{
+    open?: boolean;
+    flat?: boolean;
     onPlayQueue: (tracks: any[], idx?: number) => void;
     showToast?: (msg: string, type?: 'info'|'success'|'warning'|'error', dur?: number) => void;
   }>();
 
-  let accBrowserCache = $state(true);
+  let accBrowserCache = $derived(open);
   let browserCacheList: BrowserCacheItem[] = $state([]);
   let browserCacheBytes = $state(0);
   let browserCacheLoading = $state(false);
@@ -171,7 +175,7 @@
   });
 </script>
 
-<AccordionCard title="📲 3. 手机离线缓存管理" bind:open={accBrowserCache}>
+<AccordionCard title="📲 3. 手机离线缓存管理" bind:open {flat} accent="emerald">
   <!-- 统计与操作控制条 -->
   <div class="cache-stat-bar">
     <div class="stat-top-row">

@@ -31,6 +31,8 @@ jobs:
         run: |
           cd frontend
           npm ci
+          npm run check
+          npm test
           npm run build
 
       - name: Set up JDK 21

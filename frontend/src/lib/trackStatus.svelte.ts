@@ -16,6 +16,21 @@ export function markSongDownloaded(songId: number | string | undefined | null): 
   }
 }
 
+/**
+ * 🗑️ 将歌曲 ID 从服务器已下载集合中移除（触发全站所有曲目列表响应式更新）
+ */
+export function unmarkSongDownloaded(songId: number | string | undefined | null): void {
+  if (!songId) return;
+  const numId = Number(songId);
+  if (isNaN(numId) || numId <= 0) return;
+  if (taskState.downloadedSet.has(numId)) {
+    const nextSet = new Set(taskState.downloadedSet);
+    nextSet.delete(numId);
+    taskState.downloadedSet = nextSet;
+  }
+}
+
+
 export interface TrackSourceStatus {
   isServer: boolean;
   isPhone: boolean;

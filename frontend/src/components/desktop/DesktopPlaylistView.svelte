@@ -1,6 +1,7 @@
 <script lang="ts">
   import DesktopPlaylistGallery from './DesktopPlaylistGallery.svelte';
   import DesktopPlaylistDetail from './DesktopPlaylistDetail.svelte';
+  import DesktopDailyRecommendDetail from './DesktopDailyRecommendDetail.svelte';
   import { playPlaylistTracks } from '../../lib/playerHelper';
   import { resetActiveTargetPlaylist } from '../../lib/playlist.svelte';
   import { exitPlaylistToGallery, jumpToPlaylist } from '../../lib/router.svelte';
@@ -14,6 +15,7 @@
     downloadedSet = new Set<number>(),
     onToggleLike,
     onPlayQueue,
+    onSong,
     onAlbum,
     onReveal,
     showToast
@@ -26,6 +28,7 @@
     downloadedSet?: Set<number>;
     onToggleLike: (id: number, name: string) => void;
     onPlayQueue: (tracks: any[], idx?: number) => void;
+    onSong?: (id: string) => void;
     onAlbum?: (albumId: string) => void;
     onReveal?: (item: any) => void;
     showToast: (m: string, t?: string) => void;
@@ -75,7 +78,21 @@
 </script>
 
 <div class="w-full flex flex-col gap-4 animate-fade-in" data-testid="desktop-playlist-view">
-  {#if activePlaylistId}
+  {#if activePlaylistId === 'daily-recommend'}
+    <DesktopDailyRecommendDetail
+      {curTrack}
+      {playing}
+      {likedSet}
+      {downloadedSet}
+      onBackToGallery={handleBackToGallery}
+      {onToggleLike}
+      {onPlayQueue}
+      {onSong}
+      {onAlbum}
+      {onReveal}
+      {showToast}
+    />
+  {:else if activePlaylistId}
     <DesktopPlaylistDetail
       playlistId={activePlaylistId}
       {playlistTrigger}

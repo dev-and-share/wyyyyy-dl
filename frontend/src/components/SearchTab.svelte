@@ -8,10 +8,12 @@
   import AlbumDetailCard from './AlbumDetailCard.svelte';
   import ArtistDetailCard from './ArtistDetailCard.svelte';
   import SearchResultsSection from './SearchResultsSection.svelte';
+  import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
 
   let {
     albumId = '',
+    albumTrigger = 0,
     curTrack = null,
     playing = false,
     downloadedSet = new Set<number>(),
@@ -25,12 +27,13 @@
     showToast
   } = $props<{
     albumId?: string;
+    albumTrigger?: number;
     curTrack?: Track | null;
     playing?: boolean;
     downloadedSet?: Set<number>;
     likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string, artist?: string) => void;
-    onAlbum?: (id: string) => void;
+    onAlbum?: (id: string, name?: string) => void;
     onPlaylist: (id: string) => void;
     onPlayQueue?: (tracks: any[], idx?: number) => void;
     onSong?: (id: string) => void;
@@ -41,6 +44,7 @@
   const STORAGE_KEY_SEARCH_KW = 'wyyyy_search_kw';
   const STORAGE_KEY_SEARCH_TYPE = 'wyyyy_search_type';
   const STORAGE_KEY_ALBUM_ID = 'wyyyy_search_album_id';
+  const STORAGE_KEY_SUBTAB = 'wyyyy_search_subtab';
   const STORAGE_KEY_ACC_SEARCH = 'wyyyy_search_acc_search';
   const STORAGE_KEY_ACC_ALBUM = 'wyyyy_search_acc_album';
 
@@ -57,17 +61,19 @@
   let searchLoading = $state(false);
   let hasSearched = $state(false);
 
-  // 展开状态持久化
-  let accSearch = $state(getStored(STORAGE_KEY_ACC_SEARCH, 'true') === 'true');
-  let accAlbum = $state(getStored(STORAGE_KEY_ACC_ALBUM, 'true') === 'true');
-  let accArtist = $state(false);
+  function initSubtab() {
+    return albumId ? 'album' : ((getStored(STORAGE_KEY_SUBTAB, 'search') as any) || 'search');
+  }
+  let activeSubtab: 'search' | 'album' | 'artist' = $state(initSubtab());
+  let accSearch = $state(true);
+  let accAlbum = $state(true);
+  let accArtist = $state(true);
   let currentArtistId = $state('');
 
   async function handleViewArtist(id: string) {
     currentArtistId = id;
-    accSearch = false;
-    accAlbum = false;
-    accArtist = true;
+    activeSubtab = 'artist';
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, 'artist'); } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
     await tick();
     setTimeout(() => {
@@ -95,8 +101,30 @@
   let album: any = $state(null);
   let albumLoading = $state(false);
 
+  async function focusAlbumSection(id: string) {
+    if (!id) return;
+    currentAlbumId = id;
+    activeSubtab = 'album';
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, 'album'); } catch {}
+    loadAlbum(id);
+    await tick();
+    setTimeout(() => {
+      const el = document.getElementById('section-album-detail');
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+      }
+    }, 280);
+  }
+
+  let lastHandledTrigger = 0;
   $effect(() => {
-    if (albumId && albumId !== currentAlbumId) {
+    if (albumTrigger > 0 && albumTrigger !== lastHandledTrigger) {
+      lastHandledTrigger = albumTrigger;
+      if (albumId) {
+        focusAlbumSection(albumId);
+      }
+    } else if (albumId && albumId !== currentAlbumId) {
       currentAlbumId = albumId;
       loadAlbum(albumId);
     }
@@ -188,7 +216,12 @@
     accAlbum = true;
     const cachedAlbum = getApiCache('album_' + targetId);
     if (cachedAlbum?.data) {
-      album = cachedAlbum.data;
+      const rawCached = cachedAlbum.data;
+      const albumInfo = rawCached?.album || rawCached;
+      album = {
+        ...albumInfo,
+        songs: albumInfo?.songs || rawCached?.songs || []
+      };
     } else {
       albumLoading = true;
     }
@@ -202,7 +235,13 @@
         showToast(j.msg || '获取专辑失败', 'warning');
         return;
       }
-      album = j?.data || j;
+      const raw = j?.data || j;
+      const albumInfo = raw?.album || raw;
+      const songList = albumInfo?.songs || raw?.songs || [];
+      album = {
+        ...albumInfo,
+        songs: songList
+      };
       setApiCache('album_' + targetId, album);
     } catch (e: any) {
       albumLoading = false;
@@ -211,9 +250,8 @@
   }
 
   function handleAlbum(id: string) {
-    currentAlbumId = id;
+    focusAlbumSection(id);
     if (onAlbum) onAlbum(id);
-    else loadAlbum(id);
   }
 
   async function downloadFullAlbum() {
@@ -263,72 +301,93 @@
   }
 </script>
 
+<!-- 📱 SP 移动端顶部三段式分段切换器 -->
+<SegmentedTabs
+  items={[
+    { id: 'search', label: '全网搜索', icon: '🔍', accent: 'red' },
+    { id: 'album', label: '专辑解析', icon: '💽', accent: 'blue' },
+    { id: 'artist', label: '歌手专区', icon: '🎤', accent: 'purple' }
+  ]}
+  activeId={activeSubtab}
+  onChange={(id) => {
+    activeSubtab = id as any;
+    try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {}
+  }}
+/>
+
 <!-- Section 1: 在线搜索 -->
-<AccordionCard title="🔍 1. 全网搜索" bind:open={accSearch}>
-  <div class="flex gap-1.5 flex-nowrap w-auto max-sm:w-full max-sm:grid max-sm:grid-cols-4 max-sm:gap-1.5">
-    <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1')}>🎵 单曲</button>
-    <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '10' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('10')}>💽 专辑</button>
-    <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1000' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1000')}>📋 歌单</button>
-    <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '100' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('100')}>🎤 歌手</button>
-  </div>
-  <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
-    <input
-      type="search"
-      enterkeyhint="search"
-      placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)"
-      class="flex-1 min-w-0"
-      bind:value={kw}
-      onkeydown={(e) => {
-        if (e.key === 'Enter') {
-          (e.currentTarget as HTMLInputElement).blur();
-          doSearch().catch((err: any) => showToast(err.message, 'warning'));
-        }
-      }}
+<div class:hidden={activeSubtab !== 'search'}>
+  <AccordionCard title="🔍 全网搜索" flat open={true} accent="red">
+    <div class="flex gap-1.5 flex-nowrap w-auto max-sm:w-full max-sm:grid max-sm:grid-cols-4 max-sm:gap-1.5">
+      <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1')}>🎵 单曲</button>
+      <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '10' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('10')}>💽 专辑</button>
+      <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1000' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1000')}>📋 歌单</button>
+      <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '100' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('100')}>🎤 歌手</button>
+    </div>
+    <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
+      <input
+        type="search"
+        enterkeyhint="search"
+        placeholder="🔍 搜索歌曲 / 歌手 / 专辑 / 歌单 (按回车搜索)"
+        class="flex-1 min-w-0"
+        bind:value={kw}
+        onkeydown={(e) => {
+          if (e.key === 'Enter') {
+            (e.currentTarget as HTMLInputElement).blur();
+            doSearch().catch((err: any) => showToast(err.message, 'warning'));
+          }
+        }}
+      />
+      <input type="number" bind:value={sLimit} min="1" max="100" class="w-[50px] md:w-[60px] text-center shrink-0" title="单页条数" />
+      <button type="button" class="btn-primary shrink-0 whitespace-nowrap hidden sm:inline-flex" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
+    </div>
+    <SearchResultsSection
+      {sResults}
+      {sType}
+      {searchLoading}
+      {hasSearched}
+      {curTrack}
+      {playing}
+      {likedSet}
+      {onToggleLike}
+      {onPlaylist}
+      onAlbum={handleAlbum}
+      {onPlayQueue}
+      {onSong}
+      {onReveal}
+      onViewArtist={handleViewArtist}
+      {handlePlayPlaylist}
+      {handleDownloadPlaylist}
+      {showToast}
     />
-    <input type="number" bind:value={sLimit} min="1" max="100" class="w-[50px] md:w-[60px] text-center shrink-0" title="单页条数" />
-    <button type="button" class="btn-primary shrink-0 whitespace-nowrap hidden sm:inline-flex" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>搜索</button>
-  </div>
-  <SearchResultsSection
-    {sResults}
-    {sType}
-    {searchLoading}
-    {hasSearched}
-    {curTrack}
-    {playing}
-    {likedSet}
-    {onToggleLike}
-    {onPlaylist}
-    onAlbum={handleAlbum}
-    {onPlayQueue}
-    {onSong}
-    {onReveal}
-    onViewArtist={handleViewArtist}
-    {handlePlayPlaylist}
-    {handleDownloadPlaylist}
-    {showToast}
-  />
-  {#if hasSearched && sResults.length > 0}
-    <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
-  {/if}
-</AccordionCard>
+    {#if hasSearched && sResults.length > 0}
+      <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">共搜索到 {sResults.length} 条数据</div>
+    {/if}
+  </AccordionCard>
+</div>
 
 <!-- Section 2: 专辑解析与整辑下载 (已拆分组件) -->
-<AlbumDetailCard
-  {album}
-  {albumLoading}
-  bind:open={accAlbum}
-  bind:currentAlbumId
-  {curTrack} {playing} {likedSet} {downloadedSet}
-  onLoadAlbum={loadAlbum}
-  onDownloadFullAlbum={downloadFullAlbum}
-  onPlayFullAlbum={playFullAlbum}
-  onDownloadSingleTrack={downloadSingleTrack}
-  {onToggleLike} {onPlayQueue} {onReveal} {onSong}
-/>
+<div id="section-album-detail" class:hidden={activeSubtab !== 'album'}>
+  <AlbumDetailCard
+    flat
+    open={true}
+    {album}
+    {albumLoading}
+    bind:currentAlbumId
+    {curTrack} {playing} {likedSet} {downloadedSet}
+    onLoadAlbum={loadAlbum}
+    onDownloadFullAlbum={downloadFullAlbum}
+    onPlayFullAlbum={playFullAlbum}
+    onDownloadSingleTrack={downloadSingleTrack}
+    {onToggleLike} {onPlayQueue} {onReveal} {onSong}
+  />
+</div>
+
 <!-- Section 3: 歌手热门曲目与收藏 -->
-<div id="section-artist-detail">
+<div id="section-artist-detail" class:hidden={activeSubtab !== 'artist'}>
   <ArtistDetailCard
-    bind:open={accArtist}
+    flat
+    open={true}
     bind:currentArtistId
     {curTrack} {playing} {likedSet} {downloadedSet}
     {onToggleLike} {onPlayQueue} {onReveal} {onSong} {showToast}

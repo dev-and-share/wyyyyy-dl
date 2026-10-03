@@ -11,6 +11,20 @@ export interface PlayerPersistedState {
   playlistId?: string | null;
 }
 
+/**
+ * 🛡️ 清洗曲目对象中的易失性临时 URL (如 blob: URL 仅单次页面会话有效，跨天或刷新即失效，严禁持久化)
+ */
+export function sanitizeTrackForStorage(track: Track): Track {
+  if (!track) return track;
+  if (track.url && track.url.startsWith('blob:')) {
+    return {
+      ...track,
+      url: track.id ? `/v3/stream?id=${track.id}` : ''
+    };
+  }
+  return track;
+}
+
 export function savePlayerStateToStorage(state: {
   queue: Track[];
   qIndex: number;
@@ -23,7 +37,8 @@ export function savePlayerStateToStorage(state: {
 }) {
   if (typeof localStorage === 'undefined') return;
   try {
-    localStorage.setItem('wyyyy_player_queue', JSON.stringify(state.queue));
+    const cleanQueue = (state.queue || []).map(sanitizeTrackForStorage);
+    localStorage.setItem('wyyyy_player_queue', JSON.stringify(cleanQueue));
     localStorage.setItem('wyyyy_player_index', String(state.qIndex));
     localStorage.setItem(
       'wyyyy_player_mode',
@@ -58,7 +73,7 @@ export function loadPlayerStateFromStorage(): Partial<PlayerPersistedState> {
     if (qStr) {
       const parsedQueue = JSON.parse(qStr);
       if (Array.isArray(parsedQueue) && parsedQueue.length > 0) {
-        result.queue = parsedQueue;
+        result.queue = parsedQueue.map(sanitizeTrackForStorage);
         let idx = parseInt(idxStr || '0', 10);
         if (isNaN(idx) || idx < 0 || idx >= parsedQueue.length) idx = 0;
         result.qIndex = idx;
