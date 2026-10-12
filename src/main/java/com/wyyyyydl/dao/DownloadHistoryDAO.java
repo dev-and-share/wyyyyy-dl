@@ -44,6 +44,12 @@ public class DownloadHistoryDAO {
 
     private String dbUrl;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private javax.sql.DataSource dataSource;
+
+    private boolean isPostgres = false;
+    private boolean isMySql = false;
+
     @Data
     public static class DownloadHistoryItem {
         private Long id;
@@ -77,32 +83,59 @@ public class DownloadHistoryDAO {
     @PostConstruct
     public void init() {
         try {
-            Class.forName("org.sqlite.JDBC");
-            File dir = new File(downloadPath);
-            if (!dir.exists()) {
-                dir.mkdirs();
+            if (dataSource != null) {
+                try (Connection conn = dataSource.getConnection()) {
+                    String productName = conn.getMetaData().getDatabaseProductName();
+                    log.info("💾 检测到外部数据源 (RDS/外部数据库): {}", productName);
+                    if (productName != null) {
+                        String lower = productName.toLowerCase();
+                        if (lower.contains("postgresql")) {
+                            isPostgres = true;
+                        } else if (lower.contains("mysql") || lower.contains("mariadb")) {
+                            isMySql = true;
+                        }
+                    }
+                }
+            } else {
+                Class.forName("org.sqlite.JDBC");
+                File dir = new File(downloadPath);
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                File dbFile = new File(dir, "downloads.db");
+                this.dbUrl = "jdbc:sqlite:" + dbFile.getAbsolutePath();
+                log.info("💾 未配置外部 DataSource，启用本地 SQLite: {}", dbFile.getAbsolutePath());
             }
-            File dbFile = new File(dir, "downloads.db");
-            this.dbUrl = "jdbc:sqlite:" + dbFile.getAbsolutePath();
 
-            try (Connection conn = DriverManager.getConnection(dbUrl);
+            try (Connection conn = getConnection();
                  Statement stmt = conn.createStatement()) {
+
+                String autoIncCol = "id INTEGER PRIMARY KEY AUTOINCREMENT";
+                String ignoredAutoInc = "id INTEGER PRIMARY KEY AUTOINCREMENT";
+                if (isPostgres) {
+                    autoIncCol = "id BIGSERIAL PRIMARY KEY";
+                    ignoredAutoInc = "id BIGSERIAL PRIMARY KEY";
+                } else if (isMySql) {
+                    autoIncCol = "id BIGINT AUTO_INCREMENT PRIMARY KEY";
+                    ignoredAutoInc = "id BIGINT AUTO_INCREMENT PRIMARY KEY";
+                }
+
                 String sql = "CREATE TABLE IF NOT EXISTS download_history (" +
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        autoIncCol + ", " +
                         "song_id BIGINT, " +
                         "song_name TEXT, " +
                         "artist TEXT, " +
                         "album TEXT, " +
                         "file_path TEXT, " +
                         "file_size BIGINT, " +
-                        "quality TEXT, " +
-                        "status TEXT, " +
+                        "quality VARCHAR(64), " +
+                        "status VARCHAR(64), " +
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ")";
                 stmt.execute(sql);
 
                 String rawSql = "CREATE TABLE IF NOT EXISTS download_history_raw (" +
-                        "history_id INTEGER PRIMARY KEY, " +
+                        "history_id BIGINT PRIMARY KEY, " +
                         "raw_json TEXT, " +
                         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                         "FOREIGN KEY(history_id) REFERENCES download_history(id) ON DELETE CASCADE" +
@@ -110,8 +143,8 @@ public class DownloadHistoryDAO {
                 stmt.execute(rawSql);
 
                 String ignoredSql = "CREATE TABLE IF NOT EXISTS ignored_folders (" +
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "folder_path TEXT UNIQUE, " +
+                        ignoredAutoInc + ", " +
+                        "folder_path VARCHAR(512) UNIQUE, " +
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ")";
                 stmt.execute(ignoredSql);
@@ -132,9 +165,9 @@ public class DownloadHistoryDAO {
             }
 
             loadIgnoredFolders();
-            log.info("SQLite 数据库、Raw JSON 子表及 ignored_folders 表初始化完毕: {}", dbFile.getAbsolutePath());
+            log.info("数据库初始化及数据表校验完毕。");
         } catch (Exception e) {
-            log.error("初始化 SQLite 数据库失败!", e);
+            log.error("初始化数据库失败!", e);
         }
     }
 
@@ -155,6 +188,9 @@ public class DownloadHistoryDAO {
     }
 
     private Connection getConnection() throws SQLException {
+        if (dataSource != null) {
+            return dataSource.getConnection();
+        }
         return DriverManager.getConnection(dbUrl);
     }
 

@@ -135,6 +135,17 @@ wyyyyy-dl/
 
 ---
 
+## ☁️ 云端部署 (可选)
+
+本项目默认支持本地 Docker / 离线运行。如果你希望以全托管、0 运维、按需计费的 Serverless 模式运行，我们提供了开箱即用的 AWS 部署模块：
+
+- **技术栈**：AWS Lambda (SnapStart 毫秒级冷启动) + S3 音频存储 + CloudFront CDN + RDS PostgreSQL。
+- **IaC 工具**：Terraform 模块化编排。
+- **操作指南**：完整步骤请参阅 [AWS Lambda SnapStart 部署手册](./DEPLOY_AWS_SNAPSTART.md) 或 [terraform/README.md](./terraform/README.md)。
+
+---
+
 ## 📜 开源协议
 
 本项目基于 [MIT License](LICENSE) 开源。仅供个人学习、离线音乐备份与交流使用，请支持正版音乐。
+
