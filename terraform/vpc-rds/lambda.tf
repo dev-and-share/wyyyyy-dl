@@ -84,6 +84,9 @@ resource "aws_lambda_function" "spring_app" {
   # 必须设为 true：每次代码变动均生成数字版本号
   publish = true
 
+  # 免费防打爆机制：限制最大并发实例数，彻底防止数据库连接被挤爆
+  reserved_concurrent_executions = var.lambda_reserved_concurrency > 0 ? var.lambda_reserved_concurrency : null
+
   # 开启 SnapStart 快照加速
   snap_start {
     apply_on = "PublishedVersions"

@@ -47,6 +47,9 @@ public class DownloadHistoryDAO {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private javax.sql.DataSource dataSource;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.wyyyyydl.service.storage.DynamoDbStorageService dynamoDbStorageService;
+
     private boolean isPostgres = false;
     private boolean isMySql = false;
 
@@ -83,6 +86,12 @@ public class DownloadHistoryDAO {
     @PostConstruct
     public void init() {
         try {
+            // ⚡ 若开启 DynamoDB，直接跳过关系型数据库建表逻辑
+            if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
+                log.info("⚡ [DynamoDB] 检测到启用 DynamoDB 模式，跳过关系型表初始化。");
+                return;
+            }
+
             if (dataSource != null) {
                 try (Connection conn = dataSource.getConnection()) {
                     String productName = conn.getMetaData().getDatabaseProductName();
@@ -301,9 +310,17 @@ public class DownloadHistoryDAO {
     }
 
     public synchronized long addRecord(Long songId, String songName, String artist, String album, String filePath, Long fileSize, String quality, String status) {
-        String sql = "INSERT INTO download_history (song_id, song_name, artist, album, file_path, file_size, quality, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         String relPath = toRelativePath(filePath);
         String savedPath = (relPath != null && !relPath.isEmpty()) ? relPath : (filePath != null ? filePath : "");
+
+        // ⚡ DynamoDB 优先
+        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
+            long newId = System.currentTimeMillis();
+            dynamoDbStorageService.saveHistoryItem(newId, songId, songName, artist, album, savedPath, fileSize, quality, status);
+            return newId;
+        }
+
+        String sql = "INSERT INTO download_history (song_id, song_name, artist, album, file_path, file_size, quality, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setObject(1, songId);
@@ -321,13 +338,20 @@ public class DownloadHistoryDAO {
                 }
             }
         } catch (Exception e) {
-            log.error("保存下载历史记录到 SQLite 失败!", e);
+            log.error("保存下载历史记录到关系型数据库失败!", e);
         }
         return -1L;
     }
 
     public void saveRawJson(Long historyId, String rawJson) {
         if (historyId == null || historyId <= 0 || rawJson == null || rawJson.trim().isEmpty()) return;
+
+        // ⚡ DynamoDB 优先
+        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
+            dynamoDbStorageService.saveRawJson(historyId, rawJson);
+            return;
+        }
+
         String sql = "INSERT INTO download_history_raw (history_id, raw_json) VALUES (?, ?) " +
                      "ON CONFLICT(history_id) DO UPDATE SET raw_json=excluded.raw_json, updated_at=CURRENT_TIMESTAMP";
         try (Connection conn = getConnection();
@@ -342,6 +366,12 @@ public class DownloadHistoryDAO {
 
     public String getRawJson(Long historyId) {
         if (historyId == null || historyId <= 0) return null;
+
+        // ⚡ DynamoDB 优先
+        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
+            return dynamoDbStorageService.getRawJson(historyId);
+        }
+
         String sql = "SELECT raw_json FROM download_history_raw WHERE history_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -753,6 +783,11 @@ public class DownloadHistoryDAO {
     }
 
     public List<DownloadHistoryItem> getRecords(String keyword, int page, int pageSize) {
+        // ⚡ DynamoDB 优先
+        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
+            return dynamoDbStorageService.scanHistoryItems(pageSize);
+        }
+
         List<DownloadHistoryItem> list = new ArrayList<>();
         int offset = (page - 1) * pageSize;
         boolean hasSearch = keyword != null && !keyword.trim().isEmpty();
@@ -850,6 +885,11 @@ public class DownloadHistoryDAO {
     }
 
     public int countRecords(String keyword) {
+        // ⚡ DynamoDB 优先
+        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
+            return dynamoDbStorageService.scanHistoryItems(100).size();
+        }
+
         boolean hasSearch = keyword != null && !keyword.trim().isEmpty();
         String sql = "SELECT COUNT(*) FROM download_history " +
                 (hasSearch ? "WHERE song_name LIKE ? OR artist LIKE ? OR album LIKE ? OR file_path LIKE ?" : "");
@@ -875,6 +915,11 @@ public class DownloadHistoryDAO {
     }
 
     public boolean deleteRecord(Long id) {
+        // ⚡ DynamoDB 优先
+        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
+            return dynamoDbStorageService.deleteHistoryItem(id);
+        }
+
         String sql = "DELETE FROM download_history WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

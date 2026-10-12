@@ -1,92 +1,86 @@
 # wyyyyy-dl AWS Terraform 基础设施即代码 (IaC)
 
-> 💡 **注意**：本项目默认采用轻量级的 **Docker / 本地 SQLite** 运行方式。  
-> 本目录为**进阶云原生选配方案**，面向希望在 **AWS Serverless (Lambda SnapStart + S3 + RDS + CloudFront)** 体系下以按需计费、0 服务器常驻成本运行本系统的开发者。
+> 💡 **项目定位**：  
+> 本项目默认运行方式仍为极简的 **Docker / 本地 SQLite**。  
+> 本目录提供针对 AWS 云原生的进阶 Serverless 部署方案。为了满足不同开发者的成本与架构诉求，我们在同个分支下提供了**两种可选风味 (Flavors)**，按需取用：
 
 ---
 
-## 架构拓扑
+## 两种方案横向对比与选型指引
+
+| 方案 | 目录路径 | 数据库 | 网络架构 | 待机固定月费 | 核心优势 | 适用场景 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **方案 1：极致省钱版 (推荐)** | [`terraform/serverless-dynamodb/`](./serverless-dynamodb/) | **Amazon DynamoDB** (NoSQL) | **纯无 VPC** (Lambda 原生自带免费公网出口) | **$0.00 / 月** (永久免费额度内) | 0 网络底噪费、免 NAT 网关、天然无连接池上限、零打爆风险 | 个人学习、低频/个人离线音乐库、预算敏感 |
+| **方案 2：企业内网版** | [`terraform/vpc-rds/`](./vpc-rds/) | **Amazon RDS PostgreSQL** (SQL) | **VPC 私有子网 + NAT Gateway** (带免费 S3 Gateway Endpoint) | **约 $45 ~ $60 / 月** (NAT $32 + RDS $13) | 标准关系型 SQL、支持复杂联表与外部数据库集成、内置预留并发防打爆 | 企业内网安全隔离、已有关系型数据库基础设施 |
+
+---
+
+## 目录结构说明
 
 ```
-[ 客户端浏览器 / 移动端 ]
-            │
-            ▼
-   AWS CloudFront (CDN)
-   ├── 动态接口 /* (透传)  ────────► API Gateway HTTP API v2
-   │                                        │
-   │                                        ▼
-   │                              Lambda Alias (prod)
-   │                              [Spring Boot 3 + SnapStart]
-   │                                   (VPC 私有子网)
-   │                                    │           │
-   │                           (NAT)    ▼           ▼
-   │                        外网 API 访问     RDS PostgreSQL
-   │
-   └── 静态音频 /media/* (缓存加速) ──► AWS S3 私有音频桶 (OAC 鉴权)
+terraform/
+├── README.md                     # 本文档 (两套方案全景对比)
+│
+├── serverless-dynamodb/          # 🌟 方案 1：极致省钱版 ($0/月)
+│   ├── versions.tf
+│   ├── variables.tf
+│   ├── dynamodb.tf               # 3 张按需随量 DynamoDB 表 (PAY_PER_REQUEST)
+│   ├── s3.tf                     # S3 音频持久化桶 + CloudFront OAC 鉴权
+│   ├── lambda.tf                 # Lambda (Java 21 + SnapStart，无 VPC 原生上网)
+│   ├── api_gateway.tf            # HTTP API v2 路由
+│   ├── cloudfront.tf             # CDN 边缘加速 (/media/* 缓存，API 动态透传)
+│   ├── outputs.tf
+│   └── terraform.tfvars.example
+│
+└── vpc-rds/                      # 🏢 方案 2：企业内网版 (VPC + RDS)
+    ├── versions.tf
+    ├── variables.tf
+    ├── vpc.tf                    # VPC、双 AZ 公私子网、NAT Gateway、免费 S3 Gateway Endpoint
+    ├── rds.tf                    # RDS PostgreSQL (静态加密、无公网暴露、自动备份)
+    ├── s3.tf                     # S3 音乐桶
+    ├── lambda.tf                 # Lambda (置于 VPC 私网，带预留并发防打爆)
+    ├── api_gateway.tf
+    ├── cloudfront.tf
+    ├── outputs.tf
+    └── terraform.tfvars.example
 ```
 
 ---
 
-## 模块清单
+## 快速上手
 
-| 文件 | 资源说明 | 安全与架构亮点 |
-| :--- | :--- | :--- |
-| `versions.tf` | Terraform & AWS Provider 声明 | 统一全局 `default_tags` (Project, Environment, ManagedBy) |
-| `variables.tf` | 部署参数与变量定义 | 支持规格配置与 `enable_rds` 灵活开关 |
-| `vpc.tf` | VPC、双 AZ 公私子网、NAT Gateway、安全组 | Lambda 置于私网，严格限制安全组互通 |
-| `lambda.tf` | AWS Lambda (Java 21 + SnapStart) | 启用 `publish = true`、SnapStart 快照、绑定 `prod` 别名 |
-| `api_gateway.tf` | HTTP API v2 与路由集成 | 精确授权调用 Lambda Alias，开启 CloudWatch 访问审计日志 |
-| `s3.tf` | 音乐与歌词持久化存储桶 | 彻底阻断公网访问，启用 SSE-S3 加密、版本控制与 CloudFront OAC |
-| `cloudfront.tf` | CDN 边缘分发与行为路由 | 音频 Range 缓存优化、S3 内部回源免流量费、HTTP/2&3 支持 |
-| `rds.tf` | RDS PostgreSQL 数据库 (可选) | 开启静态加密 (`storage_encrypted`)、无公网 IP、自动备份 |
-| `outputs.tf` | 部署后关键端点输出 | 统一 CloudFront 访问地址与快速验证命令 |
+详细实战教程请参考根目录：[DEPLOY_AWS_SNAPSTART.md](../DEPLOY_AWS_SNAPSTART.md)。
 
----
-
-## 安全设计习惯
-
-本模块参考了生产级安全加固实践：
-1. **网络隔离**：数据库与 Lambda 均部署在私有子网（Private Subnet），不暴露任何公网 IP。
-2. **数据加密**：S3 启用默认 `AES256` 服务端加密，RDS 启用 `storage_encrypted = true`。
-3. **访问收敛**：S3 桶使用 **Origin Access Control (OAC)** 搭配条件策略限制仅指定 CloudFront 分发可读；API Gateway 仅授权调用具体的 Lambda 别名。
-4. **日志治理**：所有 CloudWatch 日志组均显式声明并设置 `retention_in_days = 7`，避免存储无上限计费。
-5. **统一打 Tag**：所有资源均打上 `Project`、`Environment`、`Component` 与 `ManagedBy` 标签。
-
----
-
-## 快速部署流程
-
-详细的手把手端到端实战请查阅根目录：[DEPLOY_AWS_SNAPSTART.md](../DEPLOY_AWS_SNAPSTART.md)。
-
-简明命令速查：
-
+### 选项 A：部署方案 1（极力推荐：$0 待机月费）
 ```bash
-# 1. 回到项目根目录打包 Lambda ZIP
-cd ..
+# 1. 打包
 ./gradlew buildAwsZip
 
-# 2. 进入 terraform 目录初始化
-cd terraform
+# 2. 进入 DynamoDB 目录一键部署
+cd terraform/serverless-dynamodb
 cp terraform.tfvars.example terraform.tfvars
-# 根据需要编辑 terraform.tfvars 中的数据库密码与区域
-
-# 3. 初始化并查看执行计划
 terraform init
-terraform plan
-
-# 4. 执行部署 (创建 VPC、RDS、S3、Lambda SnapStart 与 CloudFront)
 terraform apply
+```
 
-# 5. 查看输出并在完成后测试
-terraform output cloudfront_url
+### 选项 B：部署方案 2（VPC + RDS PostgreSQL）
+```bash
+# 1. 打包
+./gradlew buildAwsZip
+
+# 2. 进入 VPC-RDS 目录一键部署
+cd terraform/vpc-rds
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform apply
 ```
 
 ---
 
 ## 资源销毁与回收
 
-不再使用时，可一键清理所有 AWS 云端资源以避免扣费：
-
+不再使用时，进入对应目录执行：
 ```bash
 terraform destroy
 ```
+即可将云端所有关联资源全部安全回收。

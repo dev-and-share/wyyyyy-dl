@@ -61,9 +61,11 @@ dependencies {
     implementation 'com.amazonaws.serverless:aws-serverless-java-container-springboot3:2.1.4'
     implementation 'org.crac:crac:1.5.0'
 
-    // AWS SDK S3 支持（用于云上音乐持久化到 S3）
+    // AWS SDK S3 & DynamoDB 支持
     implementation platform('software.amazon.awssdk:bom:2.25.40')
     implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'software.amazon.awssdk:dynamodb-enhanced'
 
     // RDS 数据库驱动（PostgreSQL）
     implementation 'org.postgresql:postgresql:42.7.3'
