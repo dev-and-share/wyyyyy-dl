@@ -182,3 +182,19 @@ resource "aws_security_group" "rds_sg" {
     Name = "${var.project_name}-rds-sg"
   }
 }
+
+# ==========================================
+# 免费 S3 Gateway Endpoint (消除音频上传流经 NAT Gateway 的流量费)
+# ==========================================
+resource "aws_vpc_endpoint" "s3_gateway" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+
+  tags = {
+    Name      = "${var.project_name}-s3-gateway-endpoint"
+    Component = "Network"
+  }
+}
+

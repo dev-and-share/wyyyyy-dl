@@ -23,6 +23,10 @@ aws:
     bucket: ${S3_BUCKET_NAME:}
   cloudfront:
     domain: ${CLOUDFRONT_DOMAIN:}
+  dynamodb:
+    table: ${DYNAMODB_TABLE_NAME:}
+    likes-table: ${DYNAMODB_LIKES_TABLE:}
+    raw-table: ${DYNAMODB_RAW_TABLE:}
   region: ${AWS_REGION:us-east-1}
 
 reveal:
