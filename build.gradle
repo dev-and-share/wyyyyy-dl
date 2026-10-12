@@ -29,6 +29,7 @@ configurations.all {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation "com.google.guava:guava:$guavaVersion"
     implementation "com.alibaba:fastjson:$fastjsonVersion"
@@ -55,6 +56,17 @@ dependencies {
     implementation("org.xerial:sqlite-jdbc:3.45.3.0")
     // Jakarta annotation API 替代 javax.annotation
     implementation "jakarta.annotation:jakarta.annotation-api:2.1.1"
+
+    // AWS Lambda & SnapStart 支持
+    implementation 'com.amazonaws.serverless:aws-serverless-java-container-springboot3:2.1.4'
+    implementation 'org.crac:crac:1.5.0'
+
+    // AWS SDK S3 支持（用于云上音乐持久化到 S3）
+    implementation platform('software.amazon.awssdk:bom:2.25.40')
+    implementation 'software.amazon.awssdk:s3'
+
+    // RDS 数据库驱动（PostgreSQL）
+    implementation 'org.postgresql:postgresql:42.7.3'
 }
 
 tasks.named('test') {
@@ -101,3 +113,15 @@ tasks.named("bootBuildImage") {
         host = "unix:///var/run/docker.sock"
     }
 }
+
+// AWS Lambda Serverless ZIP 打包任务 (符合 AWS Lambda Java 21 标准 Classpath 规范)
+tasks.register('buildAwsZip', Zip) {
+    archiveBaseName.set('wyyyyy-dl-aws')
+    archiveVersion.set('')
+    from compileJava
+    from processResources
+    into('lib') {
+        from configurations.runtimeClasspath
+    }
+}
+

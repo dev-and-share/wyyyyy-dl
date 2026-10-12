@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: wyyyyy-dl
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/musicdb}
+    username: ${DB_USER:dbadmin}
+    password: ${DB_PASS:password}
+    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
+    hikari:
+      minimum-idle: 0
+      maximum-pool-size: 5
+      idle-timeout: 30000
+      max-lifetime: 60000
+      connection-timeout: 10000
+      connection-test-query: SELECT 1
+
+# AWS Lambda 环境专属存储目录（仅 /tmp 具备写入权限）
+download:
+  path: ${LAMBDA_TMP_DIR:/tmp/music/}
+
+aws:
+  s3:
+    bucket: ${S3_BUCKET_NAME:}
+  cloudfront:
+    domain: ${CLOUDFRONT_DOMAIN:}
+  region: ${AWS_REGION:us-east-1}
+
+reveal:
+  auto-open:
+    enabled: false

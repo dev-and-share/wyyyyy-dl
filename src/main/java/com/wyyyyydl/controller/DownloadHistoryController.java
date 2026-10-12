@@ -28,6 +28,9 @@ public class DownloadHistoryController {
     @Resource
     private MusicDownloadService musicDownloadService;
 
+    @Resource
+    private com.wyyyyydl.service.storage.StorageService storageService;
+
     @org.springframework.beans.factory.annotation.Value("${reveal.auto-open.enabled:true}")
     private boolean autoOpenEnabled = true;
 
@@ -236,6 +239,20 @@ public class DownloadHistoryController {
             response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
             return;
         }
+
+        // ☁️ 云上优先：若开启 S3 存储或路径存在于云端，302 重定向至 CloudFront CDN / S3 直连播放
+        if (storageService != null && storageService.isS3Enabled()) {
+            String accessUrl = storageService.getAccessUrl(path);
+            if (StringUtils.isNotBlank(accessUrl)) {
+                try {
+                    response.sendRedirect(accessUrl);
+                    return;
+                } catch (Exception e) {
+                    log.error("重定向到 CDN 播放地址异常: {}", accessUrl, e);
+                }
+            }
+        }
+
         File file = downloadHistoryDAO.resolveFile(path);
         if (!file.exists() || !file.isFile()) {
             response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
