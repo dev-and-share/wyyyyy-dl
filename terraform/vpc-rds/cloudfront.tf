@@ -75,7 +75,7 @@ resource "aws_cloudfront_distribution" "cdn" {
 
     # 使用 AWS 托管的 DisableCache 策略
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
-    origin_request_policy_id = "b684b08a-5e13-41b7-b7ea-d1b00472c493" # AllViewerExceptHostHeader
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader
   }
 
   # ----------------------------------------

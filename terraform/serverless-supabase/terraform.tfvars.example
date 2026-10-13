@@ -20,3 +20,6 @@ supabase_db_user     = "postgres"
 lambda_memory_size     = 2048
 lambda_timeout         = 30
 cloudfront_price_class = "PriceClass_All"
+
+# 网易云登录 Cookie (可选，注入后启动即为已登录状态，推荐通过 export TF_VAR_netease_cookie 注入)
+# netease_cookie = "MUSIC_U=..."

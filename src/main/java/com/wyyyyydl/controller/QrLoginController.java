@@ -33,20 +33,17 @@ public class QrLoginController {
 	@Autowired
     private NeteaseAPIService neteaseAPIService;
 	
-	@GetMapping("/")
-    public String all() {
-        return "forward:/svelte/index.html";
-    }
-	
-	@GetMapping("/favicon.ico")
-	public String favicon() {
-		return "forward:/favicon.png";
+	@GetMapping(value = {"/", "/index.html", "/home"}, produces = "text/html;charset=UTF-8")
+	@ResponseBody
+	public org.springframework.core.io.Resource all() {
+		return new org.springframework.core.io.ClassPathResource("static/svelte/index.html");
 	}
 	
-	@GetMapping("/home")
-    public String home() {
-        return "forward:/svelte/index.html";
-    }
+	@GetMapping("/favicon.ico")
+	@ResponseBody
+	public org.springframework.core.io.Resource favicon() {
+		return new org.springframework.core.io.ClassPathResource("static/favicon.png");
+	}
 	
 
     /**
