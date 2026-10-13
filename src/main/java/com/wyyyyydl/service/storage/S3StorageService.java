@@ -114,13 +114,13 @@ public class S3StorageService implements StorageService {
             if (domain.endsWith("/")) {
                 domain = domain.substring(0, domain.length() - 1);
             }
-            // 匹配 CloudFront 缓存行为中的 /media/* 路径规则
-            return domain + "/media/" + cleanKey;
+            // cleanKey 已含 media/ 前缀，对各段路径进行 URL 编码保证中文与特殊符号安全
+            return domain + "/" + encodeUriPath(cleanKey);
         }
 
         // 若无 CloudFront 域名且开启了 S3，则返回直连 S3 HTTPS 链接
         if (s3Enabled) {
-            return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, awsRegion, cleanKey);
+            return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, awsRegion, encodeUriPath(cleanKey));
         }
 
         return null;
@@ -151,7 +151,26 @@ public class S3StorageService implements StorageService {
         while (k.startsWith("/")) {
             k = k.substring(1);
         }
+        // 统一媒体文件归集到 media/ 目录下，精准对齐 CloudFront /media/* 路由规则
+        if (!k.startsWith("media/") && !k.startsWith("deployments/") && !k.startsWith("svelte/")) {
+            k = "media/" + k;
+        }
         return k;
+    }
+
+    private String encodeUriPath(String path) {
+        if (StringUtils.isBlank(path)) return "";
+        String[] segments = path.split("/");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < segments.length; i++) {
+            if (i > 0) sb.append("/");
+            try {
+                sb.append(java.net.URLEncoder.encode(segments[i], "UTF-8").replace("+", "%20"));
+            } catch (Exception e) {
+                sb.append(segments[i]);
+            }
+        }
+        return sb.toString();
     }
 
     private String resolveContentType(String key, String fallback) {
