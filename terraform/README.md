@@ -10,8 +10,8 @@
 
 | 方案 | 目录路径 | 数据库 | 网络架构 | 待机固定月费 | 核心优势 | 适用场景 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **方案 A：Supabase 极速版** | [`terraform/serverless-supabase/`](./serverless-supabase/) | **Supabase (PostgreSQL 东京区)** | **纯无 VPC** (直连公网与 Supabase) | **$0.00 / 月** (永久免费额度内) | **物理同在东京 (延迟 1~2ms)**、标准 PostgreSQL、自带 Web Studio、免 NAT 网关 | 偏好标准关系型 SQL、喜欢可视化管理后台、同城超低延迟 |
-| **方案 B：DynamoDB 纯血 Serverless (首推 ⭐⭐⭐⭐⭐)** | [`terraform/serverless-dynamodb/`](./serverless-dynamodb/) | **Amazon DynamoDB** (NoSQL) | **纯无 VPC** (Lambda 原生自带免费公网出口) | **$0.00 / 月** (永久免费额度内) | 纯 AWS 原生闭环、零第三方账号依赖、永久免休眠、天然无连接池上限与打爆风险 | **最推荐！真正的纯血 Serverless，零维护、开箱即用、永久 $0 待机** |
+| **方案 A：DynamoDB 纯血 Serverless (首推 ⭐⭐⭐⭐⭐)** | [`terraform/serverless-dynamodb/`](./serverless-dynamodb/) | **Amazon DynamoDB** (NoSQL) | **纯无 VPC** (Lambda 原生自带免费公网出口) | **$0.00 / 月** (永久免费额度内) | 纯 AWS 原生闭环、零第三方账号依赖、永久免休眠、天然无连接池上限与打爆风险 | **最推荐！真正的纯血 Serverless，零维护、开箱即用、永久 $0 待机** |
+| **方案 B：Supabase 极速版** | [`terraform/serverless-supabase/`](./serverless-supabase/) | **Supabase (PostgreSQL 东京区)** | **纯无 VPC** (直连公网与 Supabase) | **$0.00 / 月** (永久免费额度内) | **物理同在东京 (延迟 1~2ms)**、标准 PostgreSQL、自带 Web Studio、免 NAT 网关 | 偏好标准关系型 SQL、喜欢可视化管理后台、同城超低延迟 |
 | **方案 C：土豪重装版** | [`terraform/vpc-rds/`](./vpc-rds/) | **Amazon RDS PostgreSQL** (SQL) | **VPC 私有子网 + NAT Gateway** | **约 $45 ~ $60 / 月** (NAT $32 + RDS $13) | 独享 RDS 实例、全私网隔离、经典云架构全家桶 | 不差钱的架构强迫症、手头已有现成闲置 RDS/VPC 资源顺带复用 (非必要勿建 😂) |
 
 ---
@@ -22,7 +22,12 @@
 terraform/
 ├── README.md                     # 本文档 (三套方案全景对比)
 │
-├── serverless-supabase/          # 🌟 方案 A：Supabase 东京同城版 ($0/月，SQL 推荐)
+├── serverless-dynamodb/          # 🏆 方案 A：DynamoDB 极致省钱版 ($0/月，首推 ⭐⭐⭐⭐⭐)
+│   ├── dynamodb.tf               # 3 张按需随量 DynamoDB 表 (PAY_PER_REQUEST)
+│   ├── s3.tf / lambda.tf / api_gateway.tf / cloudfront.tf
+│   └── terraform.tfvars.example
+│
+├── serverless-supabase/          # 🌟 方案 B：Supabase 东京同城版 ($0/月，SQL 推荐)
 │   ├── versions.tf               # AWS Provider (Region: ap-northeast-1 东京)
 │   ├── variables.tf
 │   ├── s3.tf                     # S3 音频桶 (带 CloudFront OAC 鉴权)
@@ -31,11 +36,6 @@ terraform/
 │   ├── cloudfront.tf             # CDN 边缘加速 (/media/* 缓存，API 动态透传)
 │   ├── outputs.tf                # 输出 CloudFront URL 与 Uptime Kuma 监控目标
 │   └── terraform.tfvars          # 👈 在此填写 Supabase 密码即可
-│
-├── serverless-dynamodb/          # 🏆 方案 B：DynamoDB 极致省钱版 ($0/月，首推 ⭐⭐⭐⭐⭐)
-│   ├── dynamodb.tf               # 3 张按需随量 DynamoDB 表 (PAY_PER_REQUEST)
-│   ├── s3.tf / lambda.tf / api_gateway.tf / cloudfront.tf
-│   └── terraform.tfvars.example
 │
 └── vpc-rds/                      # 💸 方案 C：土豪重装版 (VPC + RDS，约 $50/月)
     ├── vpc.tf / rds.tf / s3.tf / lambda.tf / api_gateway.tf / cloudfront.tf
@@ -48,7 +48,7 @@ terraform/
 
 详细实战教程请参考根目录：[DEPLOY_AWS_SNAPSTART.md](../DEPLOY_AWS_SNAPSTART.md)。
 
-### 🏆 快速上手方案 B (DynamoDB 纯血版，首推)
+### 🏆 快速上手方案 A (DynamoDB 纯血版，首推)
 
 无需配置任何外部数据库账号与密码，全 AWS 原生闭环，开箱即用：
 
@@ -64,7 +64,7 @@ terraform init
 terraform apply
 ```
 
-### 🌟 快速上手方案 A (Supabase 东京版)
+### 🌟 快速上手方案 B (Supabase 东京版)
 
 适合需要标准关系型 SQL 与 Supabase Studio 可视化界面的用户：
 

@@ -1745,7 +1745,9 @@ public class DownloadHistoryDAO {
      */
     public void syncLikedSongIds(List<Long> onlineIds) {
         if (onlineIds == null || onlineIds.isEmpty()) return;
-        String sql = "INSERT OR IGNORE INTO liked_songs (song_id, created_at) VALUES (?, CURRENT_TIMESTAMP)";
+        String sql = isPostgres 
+                ? "INSERT INTO liked_songs (song_id, created_at) VALUES (?, CURRENT_TIMESTAMP) ON CONFLICT (song_id) DO NOTHING"
+                : "INSERT OR IGNORE INTO liked_songs (song_id, created_at) VALUES (?, CURRENT_TIMESTAMP)";
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
