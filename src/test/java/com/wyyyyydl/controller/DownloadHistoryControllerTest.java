@@ -13,7 +13,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.wyyyyydl.dao.DownloadHistoryDAO;
+import com.wyyyyydl.dao.IHistoryStorageRepository;
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -32,7 +33,7 @@ public class DownloadHistoryControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private DownloadHistoryDAO downloadHistoryDAO;
+    private IHistoryStorageRepository downloadHistoryDAO;
 
     @MockBean
     private com.wyyyyydl.service.MusicDownloadService downloadService;
@@ -82,7 +83,7 @@ public class DownloadHistoryControllerTest {
     @Test
     @DisplayName("测试 /v3/history/detail: 单条详情获取")
     public void testGetHistoryDetail() throws Exception {
-        DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
+        DownloadHistoryItem item = new DownloadHistoryItem();
         item.setId(10L);
         item.setSongName("用心良苦");
         item.setArtist("张宇");
@@ -114,7 +115,7 @@ public class DownloadHistoryControllerTest {
         java.io.File mockFile = java.io.File.createTempFile("mock_track", ".mp3");
         mockFile.deleteOnExit();
 
-        DownloadHistoryDAO.DownloadHistoryItem mockItem = new DownloadHistoryDAO.DownloadHistoryItem();
+        DownloadHistoryItem mockItem = new DownloadHistoryItem();
         mockItem.setFilePath(mockFile.getAbsolutePath());
 
         Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(18915L), any(), any())).thenReturn(mockItem);
@@ -132,8 +133,8 @@ public class DownloadHistoryControllerTest {
     @Test
     @DisplayName("测试 /v3/history/missing: 获取缺失文件清单")
     public void testGetMissingRecords() throws Exception {
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> list = new ArrayList<>();
-        DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
+        java.util.List<DownloadHistoryItem> list = new ArrayList<>();
+        DownloadHistoryItem item = new DownloadHistoryItem();
         item.setId(501L);
         item.setSongName("缺失歌曲");
         item.setArtist("测试歌手");
@@ -151,8 +152,8 @@ public class DownloadHistoryControllerTest {
     @Test
     @DisplayName("测试 /v3/history/non_mp3: 获取非 MP3 格式清单")
     public void testGetNonMp3Records() throws Exception {
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> list = new ArrayList<>();
-        DownloadHistoryDAO.DownloadHistoryItem item = new DownloadHistoryDAO.DownloadHistoryItem();
+        java.util.List<DownloadHistoryItem> list = new ArrayList<>();
+        DownloadHistoryItem item = new DownloadHistoryItem();
         item.setId(601L);
         item.setSongName("FLAC歌曲");
         item.setFilePath("test.flac");

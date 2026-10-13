@@ -1,6 +1,6 @@
 package com.wyyyyydl.dao.impl;
 
-import com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem;
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
 import com.wyyyyydl.dao.IHistoryStorageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
