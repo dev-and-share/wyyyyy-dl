@@ -1,9 +1,13 @@
 package com.wyyyyydl.service.storage;
 
+import com.wyyyyydl.service.storage.IStorageService;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -12,11 +16,16 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 
-@Service
+/**
+ * 云原生 AWS S3 对象存储与 CloudFront CDN 加速服务实现
+ */
+@Service("s3StorageService")
+@ConditionalOnExpression("T(org.apache.commons.lang3.StringUtils).isNotBlank('${aws.s3.bucket:${S3_BUCKET_NAME:}}')")
 @Slf4j
-public class S3StorageService implements StorageService {
+public class S3StorageService implements IStorageService {
 
     @Value("${aws.s3.bucket:${S3_BUCKET_NAME:}}")
     private String bucketName;
@@ -50,7 +59,7 @@ public class S3StorageService implements StorageService {
     }
 
     @Override
-    public boolean isS3Enabled() {
+    public boolean isCloudStorage() {
         return s3Enabled;
     }
 
@@ -124,6 +133,36 @@ public class S3StorageService implements StorageService {
         }
 
         return null;
+    }
+
+    @Override
+    public String resolveOnlineStreamUrl(Long songId, String rawUrl, String playlistName, String albumName, String songName, Boolean isTrial) {
+        // 云原生架构：直连网易云原生 CDN 直链播放 (自带 CORS 与 Range，避免 Lambda 6MB payload 限制)
+        return rawUrl;
+    }
+
+    @Override
+    public void serveMedia(String path, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String accessUrl = getAccessUrl(path);
+        if (StringUtils.isNotBlank(accessUrl)) {
+            response.sendRedirect(accessUrl);
+        } else {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        }
+    }
+
+    @Override
+    public void serveOnlineStream(Long songId, String rawUrl, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        if (StringUtils.isNotBlank(rawUrl)) {
+            response.sendRedirect(rawUrl);
+        } else {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        }
+    }
+
+    @Override
+    public boolean checkFileExists(File localFile, String status) {
+        return "SUCCESS".equalsIgnoreCase(status);
     }
 
     @Override

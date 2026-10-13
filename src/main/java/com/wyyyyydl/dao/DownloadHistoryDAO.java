@@ -52,7 +52,7 @@ public class DownloadHistoryDAO implements IHistoryStorageRepository {
     private com.wyyyyydl.dao.impl.DynamoDbHistoryRepository dynamoDbHistoryRepository;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.wyyyyydl.service.storage.StorageService storageService;
+    private com.wyyyyydl.service.storage.IStorageService storageService;
 
     private IHistoryStorageRepository activeRepo = this;
 
@@ -585,10 +585,15 @@ public class DownloadHistoryDAO implements IHistoryStorageRepository {
         item.setQuality(rs.getString("quality"));
         item.setStatus(rs.getString("status"));
         item.setCreatedAt(rs.getString("created_at"));
-        boolean existsLocally = resolved.exists() && resolved.isFile() && resolved.length() > 0;
-        boolean isCloudStorage = (storageService != null && storageService.isS3Enabled())
-                || (activeRepo != this && activeRepo != null);
-        item.setFileExists(existsLocally || (isCloudStorage && "SUCCESS".equalsIgnoreCase(item.getStatus())));
+        boolean fileExists;
+        if (storageService != null) {
+            fileExists = storageService.checkFileExists(resolved, item.getStatus());
+        } else {
+            boolean existsLocally = resolved.exists() && resolved.isFile() && resolved.length() > 0;
+            boolean isCloud = (activeRepo != this && activeRepo != null);
+            fileExists = existsLocally || (isCloud && "SUCCESS".equalsIgnoreCase(item.getStatus()));
+        }
+        item.setFileExists(fileExists);
         return item;
     }
 

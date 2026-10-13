@@ -44,6 +44,9 @@ public class AnalysisControllerTest {
     @MockBean
     private com.wyyyyydl.service.MusicDownloadService musicDownloadService;
 
+    @MockBean
+    private com.wyyyyydl.service.storage.IStorageService storageService;
+
     @Test
     @DisplayName("测试 /v3/song: 当本地存在文件时，自动返回 /v3/stream 本地播放地址")
     public void testSongV1ReturnsLocalStreamUrlWhenFileExists() throws Exception {
