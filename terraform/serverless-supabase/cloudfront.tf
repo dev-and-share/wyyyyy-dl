@@ -71,6 +71,7 @@ resource "aws_cloudfront_distribution" "cdn" {
   comment             = "CloudFront Distribution for ${var.project_name} Supabase Flavor"
   price_class         = var.cloudfront_price_class
   http_version        = "http2and3"
+  default_root_object = "index.html"
 
   origin {
     domain_name              = aws_s3_bucket.music_bucket.bucket_regional_domain_name
@@ -90,7 +91,31 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
 
+  # ------------------------------------------
+  # 默认行为：S3 静态前端直出 (全球 CDN 边缘极速缓存，0 报错，0 Lambda 消耗)
+  # ------------------------------------------
   default_cache_behavior {
+    target_origin_id       = local.s3_origin_id
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
+
+    dynamic "function_association" {
+      for_each = var.auth_password != "" ? [aws_cloudfront_function.basic_auth[0].arn] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  # ------------------------------------------
+  # 业务 API 动态路由 (/v3/* -> API Gateway -> Spring Boot Lambda)
+  # ------------------------------------------
+  ordered_cache_behavior {
+    path_pattern           = "/v3/*"
     target_origin_id       = local.apigw_origin_id
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
@@ -108,6 +133,9 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
 
+  # ------------------------------------------
+  # 音频媒体路由 (/media/* -> S3 音频存储，支持 HTTP Range 流式播放)
+  # ------------------------------------------
   ordered_cache_behavior {
     path_pattern           = "/media/*"
     target_origin_id       = local.s3_origin_id
