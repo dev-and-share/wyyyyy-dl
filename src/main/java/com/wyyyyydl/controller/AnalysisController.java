@@ -141,7 +141,7 @@ public class AnalysisController {
         String searchArtist = (artist != null && !artist.trim().isEmpty()) ? artist : (songInfo != null ? songInfo.getAr_name() : null);
 
         // 🚀 智能双重比对：优先匹配 song_id，未匹配上则比对 (歌名 + 歌手名) 本地已下载音轨！
-        com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongOrName(id, searchName, searchArtist);
+        com.wyyyyydl.models.dtos.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongOrName(id, searchName, searchArtist);
         if (localItem != null && Boolean.TRUE.equals(localItem.getFileExists())) {
             analysisService.applyLocalTrackOverride(songInfo, localItem);
             // 云原生模式：若文件归档至对象存储，播放 URL 优先指向 CDN 直链
@@ -297,7 +297,7 @@ public class AnalysisController {
 
         // 存储层统一流媒体服务：若已归档则直接播放已有媒体，否则播放当前在线音频流
         if (id != null && id > 0) {
-            com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem item = downloadHistoryDAO.findLocalFileBySongId(id);
+            com.wyyyyydl.models.dtos.DownloadHistoryItem item = downloadHistoryDAO.findLocalFileBySongId(id);
             if (item != null && org.apache.commons.lang3.StringUtils.isNotBlank(item.getRelativePath())) {
                 try {
                     storageService.serveMedia(item.getRelativePath(), request, response);
@@ -322,7 +322,7 @@ public class AnalysisController {
                             @RequestParam(required = false) Long historyId,
                             jakarta.servlet.http.HttpServletRequest request,
                             jakarta.servlet.http.HttpServletResponse response) {
-        com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = null;
+        com.wyyyyydl.models.dtos.DownloadHistoryItem localItem = null;
         if (historyId != null && historyId > 0) {
             localItem = downloadHistoryDAO.getRecordById(historyId);
         }

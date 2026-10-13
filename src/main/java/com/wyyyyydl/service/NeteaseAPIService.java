@@ -49,7 +49,7 @@ public class NeteaseAPIService implements InitializingBean{
 	private String envCookie;
 
 	@org.springframework.beans.factory.annotation.Autowired(required = false)
-	private com.wyyyyydl.dao.DownloadHistoryDAO downloadHistoryDAO;
+	private com.wyyyyydl.dao.IHistoryStorageRepository downloadHistoryDAO;
 	 
 	private final String cookieFile = "cookie.txt";
 	 

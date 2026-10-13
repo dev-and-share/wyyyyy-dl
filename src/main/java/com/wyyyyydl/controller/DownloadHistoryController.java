@@ -9,7 +9,8 @@ import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import com.wyyyyydl.dao.DownloadHistoryDAO;
+import com.wyyyyydl.dao.IHistoryStorageRepository;
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
 import com.wyyyyydl.enums.CommonRespInfo;
 import com.wyyyyydl.models.common.DownloadTaskStatus;
 import com.wyyyyydl.models.common.RespEntity;
@@ -23,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DownloadHistoryController {
 
     @Resource
-    private DownloadHistoryDAO downloadHistoryDAO;
+    private IHistoryStorageRepository downloadHistoryDAO;
 
     @Resource
     private MusicDownloadService musicDownloadService;
@@ -57,7 +58,7 @@ public class DownloadHistoryController {
         if (StringUtils.isNotBlank(targetPath)) {
             file = downloadHistoryDAO.resolveFile(targetPath);
         } else if ((songId != null && songId > 0) || StringUtils.isNotBlank(name)) {
-            DownloadHistoryDAO.DownloadHistoryItem found = downloadHistoryDAO.findLocalFileBySongOrName(songId, name, artist);
+            DownloadHistoryItem found = downloadHistoryDAO.findLocalFileBySongOrName(songId, name, artist);
             if (found != null && StringUtils.isNotBlank(found.getFilePath())) {
                 file = downloadHistoryDAO.resolveFile(found.getFilePath());
             }
@@ -102,7 +103,7 @@ public class DownloadHistoryController {
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "pageSize", defaultValue = "15") int pageSize) {
         
-        List<DownloadHistoryDAO.DownloadHistoryItem> list = downloadHistoryDAO.getRecords(keyword, page, pageSize);
+        List<DownloadHistoryItem> list = downloadHistoryDAO.getRecords(keyword, page, pageSize);
         int total = downloadHistoryDAO.countRecords(keyword);
         
         Map<String, Object> data = new HashMap<>();
@@ -126,10 +127,10 @@ public class DownloadHistoryController {
      * 根据 historyId 或 songId 获取单条历史记录详情 (用于匹配离线缓存元数据)
      */
     @GetMapping("/history/detail")
-    public RespEntity<DownloadHistoryDAO.DownloadHistoryItem> getHistoryDetail(
+    public RespEntity<DownloadHistoryItem> getHistoryDetail(
             @RequestParam(value = "historyId", required = false) Long historyId,
             @RequestParam(value = "songId", required = false) Long songId) {
-        DownloadHistoryDAO.DownloadHistoryItem item = null;
+        DownloadHistoryItem item = null;
         if (historyId != null && historyId > 0) {
             item = downloadHistoryDAO.getRecordById(historyId);
         }
@@ -177,8 +178,8 @@ public class DownloadHistoryController {
      * 查询所有物理文件已缺失的历史记录清单
      */
     @GetMapping("/history/missing")
-    public RespEntity<List<DownloadHistoryDAO.DownloadHistoryItem>> getMissingRecords() {
-        List<DownloadHistoryDAO.DownloadHistoryItem> missing = downloadHistoryDAO.getMissingRecords();
+    public RespEntity<List<DownloadHistoryItem>> getMissingRecords() {
+        List<DownloadHistoryItem> missing = downloadHistoryDAO.getMissingRecords();
         return RespEntity.apply(CommonRespInfo.SUCCESS, missing);
     }
 
@@ -186,8 +187,8 @@ public class DownloadHistoryController {
      * 查询所有非 .mp3 格式的历史记录清单
      */
     @GetMapping("/history/non_mp3")
-    public RespEntity<List<DownloadHistoryDAO.DownloadHistoryItem>> getNonMp3Records() {
-        List<DownloadHistoryDAO.DownloadHistoryItem> nonMp3 = downloadHistoryDAO.getNonMp3Records();
+    public RespEntity<List<DownloadHistoryItem>> getNonMp3Records() {
+        List<DownloadHistoryItem> nonMp3 = downloadHistoryDAO.getNonMp3Records();
         return RespEntity.apply(CommonRespInfo.SUCCESS, nonMp3);
     }
 

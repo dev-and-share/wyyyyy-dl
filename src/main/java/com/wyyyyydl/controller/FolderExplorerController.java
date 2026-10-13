@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.wyyyyydl.dao.DownloadHistoryDAO;
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
+import com.wyyyyydl.models.dtos.FolderCheckDTO;
+import com.wyyyyydl.models.dtos.FolderItemDTO;
 import com.wyyyyydl.enums.CommonRespInfo;
 import com.wyyyyydl.models.common.RespEntity;
 
@@ -25,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FolderExplorerController {
 
     @Resource
-    private DownloadHistoryDAO downloadHistoryDAO;
+    private com.wyyyyydl.dao.IHistoryStorageRepository downloadHistoryDAO;
 
     /**
      * 获取所有可浏览的本地根目录（下载主目录、外部曲库目录等）
@@ -39,9 +41,9 @@ public class FolderExplorerController {
      * 浏览指定文件夹内容（返回子目录与 MP3 文件）
      */
     @GetMapping("/browse")
-    public RespEntity<List<DownloadHistoryDAO.FolderItemDTO>> listFolderContents(
+    public RespEntity<List<FolderItemDTO>> listFolderContents(
             @RequestParam(value = "path", required = false) String path) {
-        List<DownloadHistoryDAO.FolderItemDTO> contents = downloadHistoryDAO.listFolderContents(path);
+        List<FolderItemDTO> contents = downloadHistoryDAO.listFolderContents(path);
         return RespEntity.apply(CommonRespInfo.SUCCESS, contents);
     }
 
@@ -49,10 +51,10 @@ public class FolderExplorerController {
      * 一键抓取指定文件夹（或含子目录）的全部 MP3 音轨元数据，供前端构建本地临时歌单连播
      */
     @GetMapping("/tracks")
-    public RespEntity<List<DownloadHistoryDAO.DownloadHistoryItem>> getFolderTracks(
+    public RespEntity<List<DownloadHistoryItem>> getFolderTracks(
             @RequestParam(value = "path") String path,
             @RequestParam(value = "recursive", defaultValue = "true") boolean recursive) {
-        List<DownloadHistoryDAO.DownloadHistoryItem> tracks = downloadHistoryDAO.getFolderTracks(path, recursive);
+        List<DownloadHistoryItem> tracks = downloadHistoryDAO.getFolderTracks(path, recursive);
         return RespEntity.apply(CommonRespInfo.SUCCESS, tracks);
     }
 
@@ -73,8 +75,8 @@ public class FolderExplorerController {
      * 删除前预检：获取文件夹下的实际物理文件总数、子目录数、最多5个文件列表及宿主机路径
      */
     @GetMapping("/check")
-    public RespEntity<DownloadHistoryDAO.FolderCheckDTO> checkFolder(@RequestParam("path") String path) {
-        DownloadHistoryDAO.FolderCheckDTO check = downloadHistoryDAO.checkFolder(path);
+    public RespEntity<FolderCheckDTO> checkFolder(@RequestParam("path") String path) {
+        FolderCheckDTO check = downloadHistoryDAO.checkFolder(path);
         if (check != null) {
             return RespEntity.apply(CommonRespInfo.SUCCESS, check);
         } else {

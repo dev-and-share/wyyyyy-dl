@@ -1,8 +1,8 @@
 package com.wyyyyydl.dao.impl;
 
-import com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem;
-import com.wyyyyydl.dao.DownloadHistoryDAO.FolderCheckDTO;
-import com.wyyyyydl.dao.DownloadHistoryDAO.FolderItemDTO;
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
+import com.wyyyyydl.models.dtos.FolderCheckDTO;
+import com.wyyyyydl.models.dtos.FolderItemDTO;
 import com.wyyyyydl.dao.IHistoryStorageRepository;
 import com.wyyyyydl.models.dtos.TrackDTO;
 import jakarta.annotation.PostConstruct;
@@ -530,5 +530,72 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
         if (item.containsKey("created_at")) dto.setCreatedAt(item.get("created_at").s());
         dto.setFileExists("SUCCESS".equalsIgnoreCase(dto.getStatus()));
         return dto;
+    }
+
+    @Override
+    public List<Map<String, String>> getFolderRoots() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public boolean ignoreFolder(String folderPath) {
+        return false;
+    }
+
+    @Override
+    public boolean deleteFolder(String folderPath) {
+        return false;
+    }
+
+    @Override
+    public Map<String, Object> scanFiles() {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public int importUntrackedFiles() {
+        return 0;
+    }
+
+    @Override
+    public String toHostPath(File file) {
+        return file != null ? file.getPath() : "";
+    }
+
+    @Override
+    public String toRelativePath(String fullPath) {
+        return fullPath != null ? fullPath : "";
+    }
+
+    @Override
+    public List<DownloadHistoryItem> getRecordsBySongIds(List<Long> songIds) {
+        if (songIds == null || songIds.isEmpty()) return Collections.emptyList();
+        List<DownloadHistoryItem> list = new ArrayList<>();
+        for (Long sid : songIds) {
+            DownloadHistoryItem item = findLocalFileBySongId(sid);
+            if (item != null) list.add(item);
+        }
+        return list;
+    }
+
+    @Override
+    public Set<Long> getAllDownloadedSongIds() {
+        Set<Long> ids = new HashSet<>();
+        List<DownloadHistoryItem> all = getRecords(null, 1, 10000);
+        for (DownloadHistoryItem item : all) {
+            if (item != null && item.getSongId() != null) {
+                ids.add(item.getSongId());
+            }
+        }
+        return ids;
+    }
+
+    @Override
+    public boolean isSongDownloaded(Long songId) {
+        return findLocalFileBySongId(songId) != null;
+    }
+
+    @Override
+    public void migrateLegacyIdsFileIfPresent(String basePath) {
     }
 }
