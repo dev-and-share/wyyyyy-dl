@@ -47,8 +47,12 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   retention_in_days = 7
 
   tags = {
-    Name      = "${var.project_name}-lambda-supa-logs"
-    Component = "Observability"
+    Name        = "${var.project_name}-lambda-supa-logs"
+    Component   = "Observability"
+    Environment = var.environment
+    Flavor      = "supabase"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 }
 
@@ -62,12 +66,12 @@ resource "aws_s3_object" "lambda_package" {
 
 # 3. Lambda 函数定义 (无 VPC 挂载，直接享受原生公网外呼与同城 Supabase 直连)
 resource "aws_lambda_function" "spring_app" {
-  function_name    = "${var.project_name}-backend-supa-${var.environment}"
-  role             = aws_iam_role.lambda_exec_role.arn
-  handler          = "com.wyyyyydl.StreamLambdaHandler::handleRequest"
-  runtime          = "java21"
-  memory_size      = var.lambda_memory_size
-  timeout          = var.lambda_timeout
+  function_name = "${var.project_name}-backend-supa-${var.environment}"
+  role          = aws_iam_role.lambda_exec_role.arn
+  handler       = "com.wyyyyydl.StreamLambdaHandler::handleRequest"
+  runtime       = "java21"
+  memory_size   = var.lambda_memory_size
+  timeout       = var.lambda_timeout
 
   s3_bucket        = aws_s3_bucket.music_bucket.id
   s3_key           = aws_s3_object.lambda_package.key
@@ -91,6 +95,15 @@ resource "aws_lambda_function" "spring_app" {
       CLOUDFRONT_DOMAIN      = aws_cloudfront_distribution.cdn.domain_name
       NETEASE_COOKIE         = var.netease_cookie
     }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-backend-supa"
+    Component   = "Backend"
+    Environment = var.environment
+    Flavor      = "supabase"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 
   depends_on = [

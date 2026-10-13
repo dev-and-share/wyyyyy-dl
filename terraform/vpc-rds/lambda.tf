@@ -37,13 +37,13 @@ resource "aws_iam_policy" "lambda_s3_access" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = [
+        Action = [
           "s3:GetObject",
           "s3:PutObject",
           "s3:DeleteObject",
           "s3:ListBucket"
         ]
-        Effect   = "Allow"
+        Effect = "Allow"
         Resource = [
           aws_s3_bucket.music_bucket.arn,
           "${aws_s3_bucket.music_bucket.arn}/*"
@@ -60,12 +60,16 @@ resource "aws_iam_role_policy_attachment" "lambda_s3_attach" {
 
 # CloudWatch 日志组（显式声明与生命周期回收，避免无上限存储开销）
 resource "aws_cloudwatch_log_group" "lambda_logs" {
-  name              = "/aws/lambda/${var.project_name}-backend-${var.environment}"
+  name              = "/aws/lambda/${var.project_name}-backend-rds-${var.environment}"
   retention_in_days = 7
 
   tags = {
-    Name      = "${var.project_name}-lambda-logs"
-    Component = "Observability"
+    Name        = "${var.project_name}-lambda-rds-logs"
+    Component   = "Observability"
+    Environment = var.environment
+    Flavor      = "vpc-rds"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 }
 
@@ -79,12 +83,12 @@ resource "aws_s3_object" "lambda_package" {
 
 # 3. Lambda 函数定义
 resource "aws_lambda_function" "spring_app" {
-  function_name    = "${var.project_name}-backend-${var.environment}"
-  role             = aws_iam_role.lambda_exec_role.arn
-  handler          = "com.wyyyyydl.StreamLambdaHandler::handleRequest"
-  runtime          = "java21"
-  memory_size      = var.lambda_memory_size
-  timeout          = var.lambda_timeout
+  function_name = "${var.project_name}-backend-rds-${var.environment}"
+  role          = aws_iam_role.lambda_exec_role.arn
+  handler       = "com.wyyyyydl.StreamLambdaHandler::handleRequest"
+  runtime       = "java21"
+  memory_size   = var.lambda_memory_size
+  timeout       = var.lambda_timeout
 
   s3_bucket        = aws_s3_bucket.music_bucket.id
   s3_key           = aws_s3_object.lambda_package.key
@@ -116,6 +120,15 @@ resource "aws_lambda_function" "spring_app" {
       DB_USER                = var.enable_rds ? var.rds_username : ""
       DB_PASS                = var.enable_rds ? var.rds_password : ""
     }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-backend-rds"
+    Component   = "Backend"
+    Environment = var.environment
+    Flavor      = "vpc-rds"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 
   depends_on = [

@@ -6,12 +6,16 @@ resource "random_id" "bucket_suffix" {
 }
 
 resource "aws_s3_bucket" "music_bucket" {
-  bucket        = "${var.project_name}-music-${var.environment}-${random_id.bucket_suffix.hex}"
-  force_destroy = false
+  bucket        = "${var.project_name}-music-rds-${var.environment}-${random_id.bucket_suffix.hex}"
+  force_destroy = true
 
   tags = {
-    Name      = "${var.project_name}-music-storage"
-    Component = "Storage"
+    Name        = "${var.project_name}-music-rds-storage"
+    Component   = "Storage"
+    Environment = var.environment
+    Flavor      = "vpc-rds"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 }
 
@@ -73,8 +77,8 @@ resource "aws_s3_bucket_policy" "allow_cloudfront_oac" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "AllowCloudFrontOACReadOnly"
-        Effect    = "Allow"
+        Sid    = "AllowCloudFrontOACReadOnly"
+        Effect = "Allow"
         Principal = {
           Service = "cloudfront.amazonaws.com"
         }

@@ -3,6 +3,7 @@ package com.wyyyyydl.dao;
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-public class DownloadHistoryDAO {
+public class DownloadHistoryDAO implements IHistoryStorageRepository {
 
     @Value("${download.path}")
     private String downloadPath;
@@ -48,7 +49,12 @@ public class DownloadHistoryDAO {
     private javax.sql.DataSource dataSource;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.wyyyyydl.service.storage.DynamoDbStorageService dynamoDbStorageService;
+    private com.wyyyyydl.dao.impl.DynamoDbHistoryRepository dynamoDbHistoryRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.wyyyyydl.service.storage.StorageService storageService;
+
+    private IHistoryStorageRepository activeRepo = this;
 
     private boolean isPostgres = false;
     private boolean isMySql = false;
@@ -86,11 +92,13 @@ public class DownloadHistoryDAO {
     @PostConstruct
     public void init() {
         try {
-            // ⚡ 若开启 DynamoDB，直接跳过关系型数据库建表逻辑
-            if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
-                log.info("⚡ [DynamoDB] 检测到启用 DynamoDB 模式，跳过关系型表初始化。");
+            // ⚡ 若开启 DynamoDB，面向接口绑定 DynamoDbHistoryRepository 并跳过关系型建表
+            if (dynamoDbHistoryRepository != null && dynamoDbHistoryRepository.isDynamoDbEnabled()) {
+                this.activeRepo = dynamoDbHistoryRepository;
+                log.info("⚡ [仓储接口路由] 面向接口激活: DynamoDbHistoryRepository，跳过关系型表初始化。");
                 return;
             }
+            this.activeRepo = this;
 
             if (dataSource != null) {
                 try (Connection conn = dataSource.getConnection()) {
@@ -192,6 +200,10 @@ public class DownloadHistoryDAO {
      */
     public void saveConfig(String key, String value) {
         if (key == null || key.trim().isEmpty()) return;
+        if (activeRepo != this && activeRepo != null) {
+            activeRepo.saveConfig(key, value);
+            return;
+        }
         try (Connection conn = getConnection()) {
             boolean exists = false;
             try (PreparedStatement check = conn.prepareStatement("SELECT 1 FROM system_config WHERE config_key = ?")) {
@@ -224,6 +236,9 @@ public class DownloadHistoryDAO {
      */
     public String getConfig(String key) {
         if (key == null || key.trim().isEmpty()) return null;
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getConfig(key);
+        }
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT config_value FROM system_config WHERE config_key = ?")) {
             stmt.setString(1, key);
@@ -375,11 +390,8 @@ public class DownloadHistoryDAO {
         String relPath = toRelativePath(filePath);
         String savedPath = (relPath != null && !relPath.isEmpty()) ? relPath : (filePath != null ? filePath : "");
 
-        // ⚡ DynamoDB 优先
-        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
-            long newId = System.currentTimeMillis();
-            dynamoDbStorageService.saveHistoryItem(newId, songId, songName, artist, album, savedPath, fileSize, quality, status);
-            return newId;
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.addRecord(songId, songName, artist, album, savedPath, fileSize, quality, status);
         }
 
         String sql = "INSERT INTO download_history (song_id, song_name, artist, album, file_path, file_size, quality, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -408,9 +420,8 @@ public class DownloadHistoryDAO {
     public void saveRawJson(Long historyId, String rawJson) {
         if (historyId == null || historyId <= 0 || rawJson == null || rawJson.trim().isEmpty()) return;
 
-        // ⚡ DynamoDB 优先
-        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
-            dynamoDbStorageService.saveRawJson(historyId, rawJson);
+        if (activeRepo != this && activeRepo != null) {
+            activeRepo.saveRawJson(historyId, rawJson);
             return;
         }
 
@@ -429,9 +440,8 @@ public class DownloadHistoryDAO {
     public String getRawJson(Long historyId) {
         if (historyId == null || historyId <= 0) return null;
 
-        // ⚡ DynamoDB 优先
-        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
-            return dynamoDbStorageService.getRawJson(historyId);
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getRawJson(historyId);
         }
 
         String sql = "SELECT raw_json FROM download_history_raw WHERE history_id = ?";
@@ -487,6 +497,10 @@ public class DownloadHistoryDAO {
     }
 
     public DownloadHistoryItem findLocalFileBySongOrName(Long songId, String name, String artist) {
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.findLocalFileBySongOrName(songId, name, artist);
+        }
+
         // 1. 优先根据 song_id 精确匹配
         if (songId != null && songId > 0) {
             String sql = "SELECT * FROM download_history WHERE song_id = ? ORDER BY id DESC LIMIT 1";
@@ -572,12 +586,17 @@ public class DownloadHistoryDAO {
         item.setStatus(rs.getString("status"));
         item.setCreatedAt(rs.getString("created_at"));
         boolean existsLocally = resolved.exists() && resolved.isFile() && resolved.length() > 0;
-        item.setFileExists(existsLocally || "SUCCESS".equalsIgnoreCase(item.getStatus()));
+        boolean isCloudStorage = (storageService != null && storageService.isS3Enabled())
+                || (activeRepo != this && activeRepo != null);
+        item.setFileExists(existsLocally || (isCloudStorage && "SUCCESS".equalsIgnoreCase(item.getStatus())));
         return item;
     }
 
     public DownloadHistoryItem getRecordById(Long historyId) {
         if (historyId == null || historyId <= 0) return null;
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getRecordById(historyId);
+        }
         String sql = "SELECT * FROM download_history WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -594,8 +613,11 @@ public class DownloadHistoryDAO {
     }
 
     public List<DownloadHistoryItem> getRecordsByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return new ArrayList<>();
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getRecordsByIds(ids);
+        }
         List<DownloadHistoryItem> result = new ArrayList<>();
-        if (ids == null || ids.isEmpty()) return result;
         StringBuilder sql = new StringBuilder("SELECT * FROM download_history WHERE id IN (");
         for (int i = 0; i < ids.size(); i++) {
             if (i > 0) sql.append(",");
@@ -846,9 +868,8 @@ public class DownloadHistoryDAO {
     }
 
     public List<DownloadHistoryItem> getRecords(String keyword, int page, int pageSize) {
-        // ⚡ DynamoDB 优先
-        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
-            return dynamoDbStorageService.scanHistoryItems(pageSize);
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getRecords(keyword, page, pageSize);
         }
 
         List<DownloadHistoryItem> list = new ArrayList<>();
@@ -886,6 +907,9 @@ public class DownloadHistoryDAO {
      * 查询所有物理文件已缺失的历史记录
      */
     public List<DownloadHistoryItem> getMissingRecords() {
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getMissingRecords();
+        }
         List<DownloadHistoryItem> missing = new ArrayList<>();
         String sql = "SELECT * FROM download_history ORDER BY id DESC";
         try (Connection conn = getConnection();
@@ -907,6 +931,9 @@ public class DownloadHistoryDAO {
      * 查询所有非 .mp3 格式的历史记录
      */
     public List<DownloadHistoryItem> getNonMp3Records() {
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getNonMp3Records();
+        }
         List<DownloadHistoryItem> nonMp3List = new ArrayList<>();
         String sql = "SELECT * FROM download_history ORDER BY id DESC";
         try (Connection conn = getConnection();
@@ -929,6 +956,9 @@ public class DownloadHistoryDAO {
      * 批量清理所有非 .mp3 格式的历史记录
      */
     public int cleanNonMp3Records() {
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.cleanNonMp3Records();
+        }
         List<DownloadHistoryItem> nonMp3 = getNonMp3Records();
         if (nonMp3.isEmpty()) return 0;
 
@@ -948,9 +978,8 @@ public class DownloadHistoryDAO {
     }
 
     public int countRecords(String keyword) {
-        // ⚡ DynamoDB 优先
-        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
-            return dynamoDbStorageService.scanHistoryItems(100).size();
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.countRecords(keyword);
         }
 
         boolean hasSearch = keyword != null && !keyword.trim().isEmpty();
@@ -978,9 +1007,8 @@ public class DownloadHistoryDAO {
     }
 
     public boolean deleteRecord(Long id) {
-        // ⚡ DynamoDB 优先
-        if (dynamoDbStorageService != null && dynamoDbStorageService.isDynamoDbEnabled()) {
-            return dynamoDbStorageService.deleteHistoryItem(id);
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.deleteRecord(id);
         }
 
         String sql = "DELETE FROM download_history WHERE id = ?";
@@ -998,6 +1026,9 @@ public class DownloadHistoryDAO {
      * 物理删除已下载的单曲本地文件及其历史记录
      */
     public boolean deleteSongFileAndRecord(Long songId, String name, String artist) {
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.deleteSongFileAndRecord(songId, name, artist);
+        }
         if ((songId == null || songId <= 0) && (name == null || name.trim().isEmpty())) {
             return false;
         }
@@ -1052,6 +1083,9 @@ public class DownloadHistoryDAO {
 
 
     public Map<String, Object> getStats() {
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getStats();
+        }
         Map<String, Object> stats = new HashMap<>();
         String sql = "SELECT COUNT(*) as total_count, COALESCE(SUM(file_size), 0) as total_size FROM download_history";
         try (Connection conn = getConnection();
@@ -1697,6 +1731,9 @@ public class DownloadHistoryDAO {
      */
     public boolean addLikedSong(Long songId, String songName, String artist) {
         if (songId == null || songId <= 0) return false;
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.addLikedSong(songId, songName, artist);
+        }
         String sql = "INSERT OR REPLACE INTO liked_songs (song_id, song_name, artist, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -1715,6 +1752,9 @@ public class DownloadHistoryDAO {
      */
     public boolean removeLikedSong(Long songId) {
         if (songId == null || songId <= 0) return false;
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.removeLikedSong(songId);
+        }
         String sql = "DELETE FROM liked_songs WHERE song_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -1727,9 +1767,24 @@ public class DownloadHistoryDAO {
     }
 
     /**
+     * 判断单曲是否已红心
+     */
+    @Override
+    public boolean isLiked(Long songId) {
+        if (songId == null || songId <= 0) return false;
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.isLiked(songId);
+        }
+        return getLikedSongIds().contains(songId);
+    }
+
+    /**
      * 获取本地数据库中所有红心歌曲 ID 集合
      */
     public Set<Long> getLikedSongIds() {
+        if (activeRepo != this && activeRepo != null) {
+            return activeRepo.getLikedSongIds();
+        }
         Set<Long> set = new HashSet<>();
         String sql = "SELECT song_id FROM liked_songs";
         try (Connection conn = getConnection();
@@ -1750,6 +1805,10 @@ public class DownloadHistoryDAO {
      */
     public void syncLikedSongIds(List<Long> onlineIds) {
         if (onlineIds == null || onlineIds.isEmpty()) return;
+        if (activeRepo != this && activeRepo != null) {
+            activeRepo.syncLikedSongIds(onlineIds);
+            return;
+        }
         String sql = isPostgres 
                 ? "INSERT INTO liked_songs (song_id, created_at) VALUES (?, CURRENT_TIMESTAMP) ON CONFLICT (song_id) DO NOTHING"
                 : "INSERT OR IGNORE INTO liked_songs (song_id, created_at) VALUES (?, CURRENT_TIMESTAMP)";

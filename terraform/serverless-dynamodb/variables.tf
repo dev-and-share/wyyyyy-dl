@@ -39,3 +39,9 @@ variable "cloudfront_price_class" {
   type        = string
   default     = "PriceClass_100"
 }
+
+variable "netease_cookie" {
+  description = "网易云登录 Cookie (可选，启动即处于登录/VIP状态)"
+  type        = string
+  default     = ""
+}
