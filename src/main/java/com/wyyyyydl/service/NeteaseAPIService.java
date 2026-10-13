@@ -49,7 +49,7 @@ public class NeteaseAPIService implements InitializingBean{
 	private String envCookie;
 
 	@org.springframework.beans.factory.annotation.Autowired(required = false)
-	private com.wyyyyydl.dao.IHistoryStorageRepository downloadHistoryDAO;
+	private com.wyyyyydl.dao.IConfigRepository configRepository;
 	 
 	private final String cookieFile = "cookie.txt";
 	 
@@ -81,9 +81,9 @@ public class NeteaseAPIService implements InitializingBean{
 		}
 
 		// 2. 自动持久化保存到数据库 (Supabase / RDS / SQLite)
-		if (downloadHistoryDAO != null) {
+		if (configRepository != null) {
 			try {
-				downloadHistoryDAO.saveConfig("NETEASE_COOKIE", this.cookie);
+				configRepository.saveConfig("NETEASE_COOKIE", this.cookie);
 				log.info("💾 [Cookie] 已自动同步持久化至数据库 system_config 表！");
 			} catch (Exception e) {
 				log.error("❌ [Cookie] 持久化到数据库失败: {}", e.getMessage());
@@ -113,8 +113,8 @@ public class NeteaseAPIService implements InitializingBean{
 		}
 
 		// 2. 其次读取数据库持久化的 Cookie (适用于 Supabase / RDS / SQLite 云端多实例共享)
-		if (org.apache.commons.lang3.StringUtils.isBlank(this.cookie) && downloadHistoryDAO != null) {
-			String dbCookie = downloadHistoryDAO.getConfig("NETEASE_COOKIE");
+		if (org.apache.commons.lang3.StringUtils.isBlank(this.cookie) && configRepository != null) {
+			String dbCookie = configRepository.getConfig("NETEASE_COOKIE");
 			if (org.apache.commons.lang3.StringUtils.isNotBlank(dbCookie)) {
 				log.info("🍪 [Cookie] 从数据库 system_config 成功载入持久化 Cookie");
 				this.cookie = dbCookie.trim();
@@ -142,8 +142,8 @@ public class NeteaseAPIService implements InitializingBean{
 				ready = true;
 				log.info("✅ [Cookie] 账号信息校验成功! UID: {}", this.uid);
 				// 若数据库中尚未保存，自动同步至数据库备份
-				if (downloadHistoryDAO != null) {
-					downloadHistoryDAO.saveConfig("NETEASE_COOKIE", this.cookie);
+				if (configRepository != null) {
+					configRepository.saveConfig("NETEASE_COOKIE", this.cookie);
 				}
 			} catch (Exception e) {
 				ready = false;
