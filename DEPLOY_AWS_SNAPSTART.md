@@ -3,9 +3,9 @@
 > 📖 **方案概述**：  
 > 本指南支持将 `wyyyyy-dl` 部署为全托管 AWS 云原生应用。  
 > 我们在同个代码库中提供了**三套开箱即用的部署方案**，代码已完成三模自适应（本地 SQLite / RDS PostgreSQL / DynamoDB），按需挑选即可：
-> - 🌟 **方案 A：Supabase 极速版 (首推 ⭐⭐⭐⭐⭐)** — `AWS 东京 Lambda SnapStart + S3 + CloudFront + Supabase (东京区)`（**物理同在东京，延迟仅 1~2ms，待机月费 $0.00**，免 VPC、免 NAT 网关）
-> - 🌟 **方案 B：DynamoDB 纯血版** — `AWS Lambda SnapStart + S3 + CloudFront + DynamoDB`（全 AWS 原生无状态，$0.00 / 月）
-> - 🏢 **方案 C：企业内网版** — `AWS Lambda SnapStart + S3 + CloudFront + VPC + RDS PostgreSQL`（企业私网隔离规范）
+> - 🌟 **方案 A：Supabase 极速版** — `AWS 东京 Lambda SnapStart + S3 + CloudFront + Supabase (东京区)`（**物理同在东京，延迟仅 1~2ms，待机月费 $0.00**，免 VPC、免 NAT 网关，标准 SQL）
+> - 🏆 **方案 B：DynamoDB 纯血版 (首推 ⭐⭐⭐⭐⭐)** — `AWS Lambda SnapStart + S3 + CloudFront + DynamoDB`（全 AWS 原生无状态，零第三方依赖，永久免休眠，$0.00 / 月）
+> - 💸 **方案 C：土豪重装版** — `AWS Lambda SnapStart + S3 + CloudFront + VPC + RDS PostgreSQL`（独享 RDS 与私网全家桶，待机约 $45~$60/月，非必要勿建 😂）
 
 ---
 
