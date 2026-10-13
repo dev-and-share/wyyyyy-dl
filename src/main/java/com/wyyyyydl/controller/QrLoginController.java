@@ -33,7 +33,7 @@ public class QrLoginController {
 	@Autowired
     private NeteaseAPIService neteaseAPIService;
 	
-	@GetMapping(value = {"/", "/index.html", "/home"}, produces = "text/html;charset=UTF-8")
+	@GetMapping(value = {"/", "/index.html", "/home", "/svelte/index.html"}, produces = "text/html;charset=UTF-8")
 	@ResponseBody
 	public org.springframework.core.io.Resource all() {
 		return new org.springframework.core.io.ClassPathResource("static/svelte/index.html");

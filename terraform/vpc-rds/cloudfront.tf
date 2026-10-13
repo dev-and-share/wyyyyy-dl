@@ -34,11 +34,11 @@ resource "aws_cloudfront_cache_policy" "media_cache_policy" {
 }
 
 resource "aws_cloudfront_distribution" "cdn" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "CloudFront Distribution for ${var.project_name} (${var.environment})"
-  price_class         = var.cloudfront_price_class
-  http_version        = "http2and3"
+  enabled         = true
+  is_ipv6_enabled = true
+  comment         = "CloudFront Distribution for ${var.project_name} (${var.environment})"
+  price_class     = var.cloudfront_price_class
+  http_version    = "http2and3"
 
   # ----------------------------------------
   # 1. 媒体音频源 (S3 with OAC)

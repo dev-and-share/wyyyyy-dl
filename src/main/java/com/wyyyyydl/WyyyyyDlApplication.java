@@ -7,7 +7,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.wyyyyydl.config.NativeRuntimeHints;
 
-@SpringBootApplication
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
+
+@SpringBootApplication(exclude = {
+		DataSourceAutoConfiguration.class,
+		DataSourceTransactionManagerAutoConfiguration.class
+})
 @EnableScheduling
 @ImportRuntimeHints(NativeRuntimeHints.class)
 public class WyyyyyDlApplication {

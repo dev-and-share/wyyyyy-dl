@@ -40,6 +40,9 @@ public class DownloadHistoryControllerTest {
     @MockBean
     private com.wyyyyydl.service.NeteaseAPIService neteaseAPIService;
 
+    @MockBean
+    private com.wyyyyydl.service.storage.StorageService storageService;
+
     @Test
     @DisplayName("测试 /v3/history/list: 分页查询与列表数据包装")
     public void testGetHistoryList() throws Exception {

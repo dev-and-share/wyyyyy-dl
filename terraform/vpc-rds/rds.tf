@@ -30,9 +30,9 @@ resource "aws_db_instance" "postgres" {
   publicly_accessible    = false
 
   # 安全最佳实践：启用静态数据加密与自动化日常备份
-  storage_encrypted           = true
-  backup_retention_period     = 7
-  auto_minor_version_upgrade  = true
+  storage_encrypted          = true
+  backup_retention_period    = 7
+  auto_minor_version_upgrade = true
 
   tags = {
     Name      = "${var.project_name}-postgres-db"

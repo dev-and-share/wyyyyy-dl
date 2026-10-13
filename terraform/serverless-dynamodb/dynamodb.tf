@@ -4,7 +4,7 @@
 
 # 1. 下载历史记录表
 resource "aws_dynamodb_table" "music_history" {
-  name         = "${var.project_name}-history-${var.environment}"
+  name         = "${var.project_name}-ddb-history-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
@@ -33,14 +33,18 @@ resource "aws_dynamodb_table" "music_history" {
   }
 
   tags = {
-    Name      = "${var.project_name}-dynamodb-history"
-    Component = "Database"
+    Name        = "${var.project_name}-dynamodb-history"
+    Component   = "Database"
+    Environment = var.environment
+    Flavor      = "dynamodb"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 }
 
 # 2. 红心单曲表
 resource "aws_dynamodb_table" "music_likes" {
-  name         = "${var.project_name}-likes-${var.environment}"
+  name         = "${var.project_name}-ddb-likes-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "song_id"
 
@@ -54,14 +58,18 @@ resource "aws_dynamodb_table" "music_likes" {
   }
 
   tags = {
-    Name      = "${var.project_name}-dynamodb-likes"
-    Component = "Database"
+    Name        = "${var.project_name}-dynamodb-likes"
+    Component   = "Database"
+    Environment = var.environment
+    Flavor      = "dynamodb"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 }
 
 # 3. 原始 Raw JSON 扩展数据表
 resource "aws_dynamodb_table" "music_raw_json" {
-  name         = "${var.project_name}-raw-json-${var.environment}"
+  name         = "${var.project_name}-ddb-raw-json-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "history_id"
 
@@ -75,7 +83,36 @@ resource "aws_dynamodb_table" "music_raw_json" {
   }
 
   tags = {
-    Name      = "${var.project_name}-dynamodb-raw-json"
-    Component = "Database"
+    Name        = "${var.project_name}-dynamodb-raw-json"
+    Component   = "Database"
+    Environment = var.environment
+    Flavor      = "dynamodb"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
+  }
+}
+
+# 4. 系统配置与网易云 Cookie 持久化表
+resource "aws_dynamodb_table" "music_config" {
+  name         = "${var.project_name}-ddb-config-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "config_key"
+
+  attribute {
+    name = "config_key"
+    type = "S"
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = {
+    Name        = "${var.project_name}-dynamodb-config"
+    Component   = "Database"
+    Environment = var.environment
+    Flavor      = "dynamodb"
+    ManagedBy   = "Terraform"
+    Project     = var.project_name
   }
 }
