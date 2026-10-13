@@ -88,7 +88,15 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   }
 }
 
-# 2. Lambda 函数定义 (无 VPC 挂载，直接享受原生公网外呼网易云 API)
+# 2. 上传部署包至 S3 (绕过 Lambda API 50MB 直接上传限制)
+resource "aws_s3_object" "lambda_package" {
+  bucket = aws_s3_bucket.music_bucket.id
+  key    = "deployments/${var.project_name}-backend-${filemd5(var.lambda_zip_path)}.zip"
+  source = var.lambda_zip_path
+  etag   = filemd5(var.lambda_zip_path)
+}
+
+# 3. Lambda 函数定义 (无 VPC 挂载，直接享受原生公网外呼网易云 API)
 resource "aws_lambda_function" "spring_app" {
   function_name    = "${var.project_name}-backend-ddb-${var.environment}"
   role             = aws_iam_role.lambda_exec_role.arn
@@ -97,7 +105,8 @@ resource "aws_lambda_function" "spring_app" {
   memory_size      = var.lambda_memory_size
   timeout          = var.lambda_timeout
 
-  filename         = var.lambda_zip_path
+  s3_bucket        = aws_s3_bucket.music_bucket.id
+  s3_key           = aws_s3_object.lambda_package.key
   source_code_hash = fileexists(var.lambda_zip_path) ? filebase64sha256(var.lambda_zip_path) : null
 
   # 必须设为 true：每次代码变动均生成数字版本号
@@ -117,7 +126,6 @@ resource "aws_lambda_function" "spring_app" {
       DYNAMODB_RAW_TABLE     = aws_dynamodb_table.music_raw_json.name
       S3_BUCKET_NAME         = aws_s3_bucket.music_bucket.id
       CLOUDFRONT_DOMAIN      = aws_cloudfront_distribution.cdn.domain_name
-      AWS_REGION             = var.aws_region
     }
   }
 

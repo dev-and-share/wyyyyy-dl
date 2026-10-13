@@ -32,6 +32,39 @@ resource "aws_cloudfront_cache_policy" "media_cache_policy" {
   }
 }
 
+# ------------------------------------------
+# 边缘 HTTP Basic Auth 安全防护函数 (0 待机费，边缘拦截)
+# ------------------------------------------
+resource "aws_cloudfront_function" "basic_auth" {
+  count   = var.auth_password != "" ? 1 : 0
+  name    = "${var.project_name}-basic-auth-supa-${var.environment}"
+  runtime = "cloudfront-js-2.0"
+  comment = "Edge HTTP Basic Auth for Wyyyyy-DL security"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+        var request = event.request;
+        var headers = request.headers;
+
+        var expectedAuth = "Basic ${base64encode("${var.auth_username}:${var.auth_password}")}";
+
+        if (headers.authorization && headers.authorization.value === expectedAuth) {
+            return request;
+        }
+
+        return {
+            statusCode: 401,
+            statusDescription: "Unauthorized",
+            headers: {
+                "www-authenticate": { value: 'Basic realm="Wyyyyy-DL Private Cloud", charset="UTF-8"' },
+                "content-type": { value: "text/plain; charset=utf-8" }
+            },
+            body: "401 Unauthorized: Access Denied. Please provide valid credentials."
+        };
+    }
+  EOT
+}
+
 resource "aws_cloudfront_distribution" "cdn" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -64,7 +97,15 @@ resource "aws_cloudfront_distribution" "cdn" {
     cached_methods         = ["GET", "HEAD"]
 
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
-    origin_request_policy_id = "b684b08a-5e13-41b7-b7ea-d1b00472c493" # AllViewerExceptHostHeader
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader
+
+    dynamic "function_association" {
+      for_each = var.auth_password != "" ? [aws_cloudfront_function.basic_auth[0].arn] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
   }
 
   ordered_cache_behavior {
@@ -75,6 +116,14 @@ resource "aws_cloudfront_distribution" "cdn" {
     cached_methods         = ["GET", "HEAD"]
 
     cache_policy_id = aws_cloudfront_cache_policy.media_cache_policy.id
+
+    dynamic "function_association" {
+      for_each = var.auth_password != "" ? [aws_cloudfront_function.basic_auth[0].arn] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
   }
 
   restrictions {

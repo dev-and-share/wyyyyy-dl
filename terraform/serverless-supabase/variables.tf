@@ -75,3 +75,23 @@ variable "cloudfront_price_class" {
   type        = string
   default     = "PriceClass_All"
 }
+
+variable "netease_cookie" {
+  description = "网易云音乐 Cookie (可选，优先从本地文件或此变量注入)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "auth_username" {
+  description = "CloudFront 边缘访问控制用户名 (默认 admin)"
+  type        = string
+  default     = "admin"
+}
+
+variable "auth_password" {
+  description = "CloudFront 边缘访问控制密码 (留空则不开启鉴权)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

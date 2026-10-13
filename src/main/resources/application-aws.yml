@@ -1,6 +1,11 @@
 spring:
   application:
     name: wyyyyy-dl
+  mvc:
+    publish-request-handled-event: false
+  web:
+    resources:
+      static-locations: classpath:/static/,classpath:/static/svelte/
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/musicdb}
     username: ${DB_USER:dbadmin}

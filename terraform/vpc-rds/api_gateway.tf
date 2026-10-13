@@ -60,13 +60,13 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
   api_id                 = aws_apigatewayv2_api.http_api.id
   integration_type       = "AWS_PROXY"
   integration_uri        = aws_lambda_alias.prod_alias.invoke_arn
-  payload_format_version = "2.0"
+  payload_format_version = "1.0"
   description            = "Proxy integration to SnapStart published alias"
 }
 
 resource "aws_apigatewayv2_route" "catch_all" {
   api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "ANY /{proxy+}"
+  route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 

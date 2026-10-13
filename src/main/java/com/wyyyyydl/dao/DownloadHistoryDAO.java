@@ -171,6 +171,13 @@ public class DownloadHistoryDAO {
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ")";
                 stmt.execute(legacyIdsSql);
+
+                String configSql = "CREATE TABLE IF NOT EXISTS system_config (" +
+                        "config_key VARCHAR(128) PRIMARY KEY, " +
+                        "config_value TEXT, " +
+                        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        ")";
+                stmt.execute(configSql);
             }
 
             loadIgnoredFolders();
@@ -178,6 +185,57 @@ public class DownloadHistoryDAO {
         } catch (Exception e) {
             log.error("初始化数据库失败!", e);
         }
+    }
+
+    /**
+     * 保存系统配置 (自动自适应 SQLite / PostgreSQL / MySQL)
+     */
+    public void saveConfig(String key, String value) {
+        if (key == null || key.trim().isEmpty()) return;
+        try (Connection conn = getConnection()) {
+            boolean exists = false;
+            try (PreparedStatement check = conn.prepareStatement("SELECT 1 FROM system_config WHERE config_key = ?")) {
+                check.setString(1, key);
+                try (ResultSet rs = check.executeQuery()) {
+                    exists = rs.next();
+                }
+            }
+            if (exists) {
+                try (PreparedStatement update = conn.prepareStatement("UPDATE system_config SET config_value = ?, updated_at = CURRENT_TIMESTAMP WHERE config_key = ?")) {
+                    update.setString(1, value);
+                    update.setString(2, key);
+                    update.executeUpdate();
+                }
+            } else {
+                try (PreparedStatement insert = conn.prepareStatement("INSERT INTO system_config (config_key, config_value) VALUES (?, ?)")) {
+                    insert.setString(1, key);
+                    insert.setString(2, value);
+                    insert.executeUpdate();
+                }
+            }
+            log.info("⚙️ [系统配置] 已成功保存配置: {}", key);
+        } catch (Exception e) {
+            log.error("保存系统配置失败: key={}", key, e);
+        }
+    }
+
+    /**
+     * 读取系统配置
+     */
+    public String getConfig(String key) {
+        if (key == null || key.trim().isEmpty()) return null;
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT config_value FROM system_config WHERE config_key = ?")) {
+            stmt.setString(1, key);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("config_value");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("读取系统配置失败: key={}, 异常: {}", key, e.getMessage());
+        }
+        return null;
     }
 
     private void loadIgnoredFolders() {

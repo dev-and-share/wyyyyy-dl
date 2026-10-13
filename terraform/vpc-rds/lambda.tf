@@ -69,7 +69,15 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   }
 }
 
-# 2. Lambda 函数定义
+# 2. 上传部署包至 S3 (绕过 Lambda API 50MB 直接上传限制)
+resource "aws_s3_object" "lambda_package" {
+  bucket = aws_s3_bucket.music_bucket.id
+  key    = "deployments/${var.project_name}-backend-${filemd5(var.lambda_zip_path)}.zip"
+  source = var.lambda_zip_path
+  etag   = filemd5(var.lambda_zip_path)
+}
+
+# 3. Lambda 函数定义
 resource "aws_lambda_function" "spring_app" {
   function_name    = "${var.project_name}-backend-${var.environment}"
   role             = aws_iam_role.lambda_exec_role.arn
@@ -78,7 +86,8 @@ resource "aws_lambda_function" "spring_app" {
   memory_size      = var.lambda_memory_size
   timeout          = var.lambda_timeout
 
-  filename         = var.lambda_zip_path
+  s3_bucket        = aws_s3_bucket.music_bucket.id
+  s3_key           = aws_s3_object.lambda_package.key
   source_code_hash = fileexists(var.lambda_zip_path) ? filebase64sha256(var.lambda_zip_path) : null
 
   # 必须设为 true：每次代码变动均生成数字版本号
@@ -103,7 +112,6 @@ resource "aws_lambda_function" "spring_app" {
       JAVA_TOOL_OPTIONS      = "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
       S3_BUCKET_NAME         = aws_s3_bucket.music_bucket.id
       CLOUDFRONT_DOMAIN      = aws_cloudfront_distribution.cdn.domain_name
-      AWS_REGION             = var.aws_region
       DB_URL                 = var.enable_rds ? "jdbc:postgresql://${aws_db_instance.postgres[0].endpoint}/${var.rds_db_name}" : ""
       DB_USER                = var.enable_rds ? var.rds_username : ""
       DB_PASS                = var.enable_rds ? var.rds_password : ""

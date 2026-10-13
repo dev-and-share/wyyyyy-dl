@@ -18,9 +18,14 @@ output "supabase_host" {
   value       = var.supabase_db_host
 }
 
+output "auth_protection" {
+  description = "CloudFront 边缘访问保护状态"
+  value       = nonsensitive(var.auth_password != "") ? "Enabled (Username: ${var.auth_username})" : "Disabled (Public)"
+}
+
 output "quick_test_command" {
   description = "一键测试 API 连通性命令"
-  value       = "curl -I https://${aws_cloudfront_distribution.cdn.domain_name}/v3/history/list"
+  value       = nonsensitive(var.auth_password != "") ? "curl -u ${var.auth_username}:**** -I https://${aws_cloudfront_distribution.cdn.domain_name}/v3/history/list" : "curl -I https://${aws_cloudfront_distribution.cdn.domain_name}/v3/history/list"
 }
 
 output "uptime_kuma_monitor_target" {
