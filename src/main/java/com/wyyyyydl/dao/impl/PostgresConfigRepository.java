@@ -14,6 +14,7 @@ import java.sql.SQLException;
  * 当显式配置 spring.datasource.url (且非 DynamoDB 模式) 时激活。
  */
 @Repository("postgresConfigRepository")
+@org.springframework.context.annotation.Primary
 @ConditionalOnExpression("T(org.apache.commons.lang3.StringUtils).isNotBlank('${spring.datasource.url:}') && !'dynamodb'.equalsIgnoreCase('${storage.type:}')")
 @Slf4j
 public class PostgresConfigRepository extends AbstractJdbcConfigRepository {

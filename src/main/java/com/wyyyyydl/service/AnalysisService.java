@@ -28,7 +28,6 @@ import com.wyyyyydl.models.dtos.SingleMusicAnalysisRespDTO;
 import com.wyyyyydl.models.dtos.TrackDTO;
 import com.wyyyyydl.models.dtos.UserPlaylistListRespDTO;
 import com.wyyyyydl.models.dtos.UserPlaylistSummaryDTO;
-import com.wyyyyydl.dao.DownloadHistoryDAO;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
