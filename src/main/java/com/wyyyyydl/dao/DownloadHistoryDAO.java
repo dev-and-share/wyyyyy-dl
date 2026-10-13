@@ -263,6 +263,10 @@ public class DownloadHistoryDAO {
 
     private String toRelativePath(String fullPath) {
         if (fullPath == null || fullPath.isEmpty()) return "";
+        // 若本身就是相对路径（非绝对路径），直接清理开头斜杠后返回
+        if (!fullPath.startsWith("/") && !fullPath.startsWith("\\") && !fullPath.contains(":")) {
+            return fullPath;
+        }
         try {
             File root = new File(downloadPath).getCanonicalFile();
             File file = new File(fullPath).getCanonicalFile();
@@ -276,7 +280,7 @@ public class DownloadHistoryDAO {
                 return rel;
             }
         } catch (Exception ignored) {}
-        return "";
+        return fullPath;
     }
 
     public String toHostPath(File file) {
@@ -567,7 +571,8 @@ public class DownloadHistoryDAO {
         item.setQuality(rs.getString("quality"));
         item.setStatus(rs.getString("status"));
         item.setCreatedAt(rs.getString("created_at"));
-        item.setFileExists(resolved.exists() && resolved.isFile() && resolved.length() > 0);
+        boolean existsLocally = resolved.exists() && resolved.isFile() && resolved.length() > 0;
+        item.setFileExists(existsLocally || "SUCCESS".equalsIgnoreCase(item.getStatus()));
         return item;
     }
 
