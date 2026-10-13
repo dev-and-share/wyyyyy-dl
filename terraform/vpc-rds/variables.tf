@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS 部署区域"
   type        = string
-  default     = "us-east-1"
+  default     = "ap-northeast-1"
 }
 
 variable "project_name" {
@@ -40,7 +40,7 @@ variable "lambda_zip_path" {
 variable "lambda_reserved_concurrency" {
   description = "Lambda 最大预留并发上限 (免费防打爆 RDS 机制，0 为不限制)"
   type        = number
-  default     = 20
+  default     = 0
 }
 
 # ==========================================

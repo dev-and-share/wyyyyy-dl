@@ -173,7 +173,7 @@ if [ "$INCLUDE_WRITE" = true ]; then
     if [ -n "$AUTH_USER_PASS" ]; then
       auth_args+=("-u" "$AUTH_USER_PASS")
     fi
-    curl -s "${auth_args[@]}" -X POST "${TARGET_URL}/v3/like?id=${TEST_SONG_ID}&like=false" >/dev/null || true
+    curl -s ${auth_args[@]+"${auth_args[@]}"} -X POST "${TARGET_URL}/v3/like?id=${TEST_SONG_ID}&like=false" >/dev/null || true
   }
   trap cleanup_write_test EXIT
 

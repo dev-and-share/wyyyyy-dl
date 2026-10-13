@@ -15,7 +15,7 @@ resource "aws_db_instance" "postgres" {
   count                  = var.enable_rds ? 1 : 0
   identifier             = "${var.project_name}-postgres-${var.environment}"
   engine                 = "postgres"
-  engine_version         = "16.1"
+  engine_version         = "16.9"
   instance_class         = var.rds_instance_class
   allocated_storage      = var.rds_allocated_storage
   max_allocated_storage  = 100

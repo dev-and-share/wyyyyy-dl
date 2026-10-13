@@ -32,7 +32,7 @@ import com.wyyyyydl.models.dtos.TrackDTO;
 import com.wyyyyydl.utils.FileUtils;
 import com.wyyyyydl.utils.HttpClientUtil;
 import com.wyyyyydl.utils.TagUtils;
-import com.wyyyyydl.dao.DownloadHistoryDAO;
+import com.wyyyyydl.dao.IHistoryStorageRepository;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -130,7 +130,7 @@ public class MusicDownloadService implements InitializingBean {
 	}
 
 	@Resource
-	private DownloadHistoryDAO downloadHistoryDAO;
+	private IHistoryStorageRepository downloadHistoryDAO;
 
 	@Resource
 	private com.wyyyyydl.service.storage.IStorageService storageService;

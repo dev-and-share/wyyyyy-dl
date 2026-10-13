@@ -23,6 +23,7 @@ import java.util.*;
  * 严格契约实现 IHistoryStorageRepository 接口，由 Java 编译器强校验所有接口方法。
  */
 @Repository("dynamoDbHistoryRepository")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "storage.type", havingValue = "dynamodb")
 @Slf4j
 public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
 
