@@ -46,6 +46,9 @@ public class AnalysisController {
 
 	@Autowired
     private com.wyyyyydl.service.MusicDownloadService musicDownloadService;
+
+	@Autowired(required = false)
+	private com.wyyyyydl.service.storage.StorageService storageService;
 	
 	@RequestMapping(value = "/cookie", method = {RequestMethod.GET, RequestMethod.POST})
 	public RespEntity<?> refreshCookie(@RequestParam(value = "cookie", required = true) String cookie) {
@@ -141,6 +144,13 @@ public class AnalysisController {
         com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem localItem = downloadHistoryDAO.findLocalFileBySongOrName(id, searchName, searchArtist);
         if (localItem != null && Boolean.TRUE.equals(localItem.getFileExists())) {
             analysisService.applyLocalTrackOverride(songInfo, localItem);
+            // ☁️ 云上模式：如果文件已存至 S3，将播放 URL 指向 CloudFront CDN 直连地址
+            if (storageService != null && storageService.isS3Enabled() && org.apache.commons.lang3.StringUtils.isNotBlank(localItem.getRelativePath())) {
+                String cdnUrl = storageService.getAccessUrl(localItem.getRelativePath());
+                if (org.apache.commons.lang3.StringUtils.isNotBlank(cdnUrl)) {
+                    songInfo.setUrl(cdnUrl);
+                }
+            }
         } else {
             if (songInfo != null) {
                 songInfo.setIsLocal(false);
@@ -148,32 +158,37 @@ public class AnalysisController {
                     String rawUrl = songInfo.getUrl();
                     boolean isTrial = Boolean.TRUE.equals(songInfo.getFreeTrial());
 
-                    // 构造带 CORS 头与分片支持的在线代理播放地址
-                    StringBuilder sb = new StringBuilder("/v3/stream/online?id=").append(id);
-                    try {
-                        sb.append("&url=").append(java.net.URLEncoder.encode(rawUrl, "UTF-8"));
-                    } catch (Exception e) {
-                        sb.append("&url=").append(rawUrl);
-                    }
-                    if (playlistName != null && !playlistName.trim().isEmpty()) {
+                    // ☁️ 云上模式优先：若开启 S3 存储，直接使用网易云原生 CDN 直链播放 (自带 CORS 与 Range，避免 Lambda 6MB payload 限制)
+                    if (storageService != null && storageService.isS3Enabled()) {
+                        songInfo.setUrl(rawUrl);
+                    } else {
+                        // 本地模式：构造带 CORS 头与分片支持的在线代理播放地址
+                        StringBuilder sb = new StringBuilder("/v3/stream/online?id=").append(id);
                         try {
-                            sb.append("&playlistName=").append(java.net.URLEncoder.encode(playlistName, "UTF-8"));
-                        } catch (Exception ignored) {}
+                            sb.append("&url=").append(java.net.URLEncoder.encode(rawUrl, "UTF-8"));
+                        } catch (Exception e) {
+                            sb.append("&url=").append(rawUrl);
+                        }
+                        if (playlistName != null && !playlistName.trim().isEmpty()) {
+                            try {
+                                sb.append("&playlistName=").append(java.net.URLEncoder.encode(playlistName, "UTF-8"));
+                            } catch (Exception ignored) {}
+                        }
+                        if (albumName != null && !albumName.trim().isEmpty()) {
+                            try {
+                                sb.append("&albumName=").append(java.net.URLEncoder.encode(albumName, "UTF-8"));
+                            } catch (Exception ignored) {}
+                        }
+                        if (searchName != null && !searchName.trim().isEmpty()) {
+                            try {
+                                sb.append("&name=").append(java.net.URLEncoder.encode(searchName, "UTF-8"));
+                            } catch (Exception ignored) {}
+                        }
+                        if (isTrial) {
+                            sb.append("&freeTrial=true");
+                        }
+                        songInfo.setUrl(sb.toString());
                     }
-                    if (albumName != null && !albumName.trim().isEmpty()) {
-                        try {
-                            sb.append("&albumName=").append(java.net.URLEncoder.encode(albumName, "UTF-8"));
-                        } catch (Exception ignored) {}
-                    }
-                    if (searchName != null && !searchName.trim().isEmpty()) {
-                        try {
-                            sb.append("&name=").append(java.net.URLEncoder.encode(searchName, "UTF-8"));
-                        } catch (Exception ignored) {}
-                    }
-                    if (isTrial) {
-                        sb.append("&freeTrial=true");
-                    }
-                    songInfo.setUrl(sb.toString());
 
                     // 🚀 智能边播边存触发：非试听歌曲且本地不存在，后台自动开启异步静默落盘
                     if (!isTrial && musicDownloadService != null) {
@@ -309,7 +324,29 @@ public class AnalysisController {
             musicDownloadService.asyncDownloadOnPlay(id, playlistName, albumName, name);
         }
 
-        // 统一在线代理流（DRY：复用 AudioStreamUtil）
+        // ☁️ 云上模式兜底：如果开启了 S3 存储，通过 302 重定向直连播放（避免 Lambda 6MB 限制与 500 报错）
+        if (storageService != null && storageService.isS3Enabled()) {
+            try {
+                // 如果已在 S3 上，优先重定向到 CloudFront CDN
+                if (id != null && id > 0) {
+                    com.wyyyyydl.dao.DownloadHistoryDAO.DownloadHistoryItem item = downloadHistoryDAO.findLocalFileBySongId(id);
+                    if (item != null && org.apache.commons.lang3.StringUtils.isNotBlank(item.getRelativePath())) {
+                        String s3Url = storageService.getAccessUrl(item.getRelativePath());
+                        if (org.apache.commons.lang3.StringUtils.isNotBlank(s3Url)) {
+                            response.sendRedirect(s3Url);
+                            return;
+                        }
+                    }
+                }
+                // 否则直接重定向到网易云原音频 CDN (自带 CORS * 与 Range 支持，极速秒播)
+                response.sendRedirect(url);
+                return;
+            } catch (Exception e) {
+                log.warn("云上重定向播放地址异常: url={}, error={}", url, e.getMessage());
+            }
+        }
+
+        // 本地模式：统一在线代理流（DRY：复用 AudioStreamUtil）
         com.wyyyyydl.utils.AudioStreamUtil.streamOnlineUrl(url, request, response);
     }
 
@@ -328,7 +365,34 @@ public class AnalysisController {
         if (localItem == null && id != null) {
             localItem = downloadHistoryDAO.findLocalFileBySongId(id);
         }
+
+        // ☁️ 云上优先：若开启 S3 存储且存在相对路径，重定向至 CloudFront CDN / S3 直连播放
+        if (storageService != null && storageService.isS3Enabled() && localItem != null) {
+            String path = localItem.getRelativePath();
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(path)) {
+                String accessUrl = storageService.getAccessUrl(path);
+                if (org.apache.commons.lang3.StringUtils.isNotBlank(accessUrl)) {
+                    try {
+                        response.sendRedirect(accessUrl);
+                        return;
+                    } catch (Exception e) {
+                        log.error("重定向到 CDN 播放地址异常: {}", accessUrl, e);
+                    }
+                }
+            }
+        }
+
         if (localItem == null || !Boolean.TRUE.equals(localItem.getFileExists())) {
+            // 云上兜底：如果本地记录未就绪，尝试动态解析并 302 重定向到在线音频
+            if (id != null && id > 0 && storageService != null && storageService.isS3Enabled()) {
+                try {
+                    SingleMusicAnalysisRespDTO analysis = analysisService.analyzeSingleSong(id, "lossless");
+                    if (analysis != null && org.apache.commons.lang3.StringUtils.isNotBlank(analysis.getUrl())) {
+                        response.sendRedirect(analysis.getUrl());
+                        return;
+                    }
+                } catch (Exception ignored) {}
+            }
             response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
             return;
         }

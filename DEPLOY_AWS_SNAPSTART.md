@@ -3,23 +3,22 @@
 > 📖 **方案概述**：  
 > 本指南支持将 `wyyyyy-dl` 部署为全托管 AWS 云原生应用。  
 > 我们在同个代码库中提供了**三套开箱即用的部署方案**，代码已完成三模自适应（本地 SQLite / RDS PostgreSQL / DynamoDB），按需挑选即可：
-> - 🌟 **方案 A：Supabase 极速版** — `AWS 东京 Lambda SnapStart + S3 + CloudFront + Supabase (东京区)`（**物理同在东京，延迟仅 1~2ms，待机月费 $0.00**，免 VPC、免 NAT 网关，标准 SQL）
-> - 🏆 **方案 B：DynamoDB 纯血版 (首推 ⭐⭐⭐⭐⭐)** — `AWS Lambda SnapStart + S3 + CloudFront + DynamoDB`（全 AWS 原生无状态，零第三方依赖，永久免休眠，$0.00 / 月）
+> - 🏆 **方案 A：DynamoDB 纯血版 (首推 ⭐⭐⭐⭐⭐)** — `AWS Lambda SnapStart + S3 + CloudFront + DynamoDB`（全 AWS 原生无状态，零第三方依赖，永久免休眠，$0.00 / 月）
+> - 🌟 **方案 B：Supabase 极速版** — `AWS 东京 Lambda SnapStart + S3 + CloudFront + Supabase (东京区)`（**物理同在东京，延迟仅 1~2ms，待机月费 $0.00**，免 VPC、免 NAT 网关，标准 SQL）
 > - 💸 **方案 C：土豪重装版** — `AWS Lambda SnapStart + S3 + CloudFront + VPC + RDS PostgreSQL`（独享 RDS 与私网全家桶，待机约 $45~$60/月，非必要勿建 😂）
 
 ---
 
-## 一、 为什么首推方案 A (Supabase 东京版)？
+## 一、 为什么推荐 Serverless 方案？
 
-1. **同城同机房极速互联**：
-   - AWS Lambda 部署在东京（`ap-northeast-1`），Supabase 项目也选择东京（`ap-northeast-1`），物理同城，网络延迟低至 **1 ~ 2 毫秒**！
-2. **纯正标准 PostgreSQL**：
-   - 原生支持标准 SQL 查询、多字段模糊检索与分页，**无需对代码做任何 NoSQL 改动**。
-3. **彻底甩开 VPC 账单包袱**：
-   - 因为 Supabase 是公网托管数据库，Lambda **彻底不需要配置任何 VPC**！
-   - **直接省下 $32/月的 NAT Gateway，直接省下 $13/月的 RDS**，待机固定月费真正等于 **$0.00**！
-4. **配合 Uptime Kuma 破除 7 天休眠**：
-   - 使用你的 Uptime Kuma 每 1~2 天对 CloudFront 健康检查地址发起一次心跳监控，既守护应用状态，又顺带让 Supabase 永远不会进入休眠！
+1. **方案 A (DynamoDB 首推)**：
+   - **全 AWS 原生闭环**：无需额外注册第三方平台账号，IAM 角色免密鉴权。
+   - **永久免休眠**：天然 $0 月租，即便几个月无流量也不会冻结，零心智维护负担。
+   - **天然无连接池上限**：基于 HTTP API 与 AWS 原生集成，永远无并发打爆数据库风险。
+2. **方案 B (Supabase 东京版)**：
+   - **物理同城超低延迟**：AWS 东京机房直连 Supabase 东京机房，延迟仅 1~2ms。
+   - **标准 PostgreSQL**：自带 Web Studio 可视化数据后台，支持标准 SQL 查询。
+   - **免 VPC 账单包袱**：省去 NAT 网关与 RDS 费用，配合 Uptime Kuma 即可保持活跃。
 
 ---
 
@@ -49,7 +48,7 @@ cd /Users/houtokki/Downloads/fast_sr/wyyyyy-dl
 
 ---
 
-## 四、 第二步：一键部署方案 A (Supabase 东京版)
+## 四、 第二步：部署方案 B (Supabase 东京版)
 
 进入专属目录并配置密码：
 
