@@ -41,7 +41,7 @@ public class DownloadHistoryControllerTest {
     private com.wyyyyydl.service.NeteaseAPIService neteaseAPIService;
 
     @MockBean
-    private com.wyyyyydl.service.storage.StorageService storageService;
+    private com.wyyyyydl.service.storage.IStorageService storageService;
 
     @Test
     @DisplayName("测试 /v3/history/list: 分页查询与列表数据包装")

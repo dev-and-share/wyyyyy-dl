@@ -130,10 +130,10 @@ public class MusicDownloadService implements InitializingBean {
 	}
 
 	@Resource
-	private com.wyyyyydl.dao.DownloadHistoryDAO downloadHistoryDAO;
+	private DownloadHistoryDAO downloadHistoryDAO;
 
 	@Resource
-	private com.wyyyyydl.service.storage.StorageService storageService;
+	private com.wyyyyydl.service.storage.IStorageService storageService;
 
 	public void downloadSingleSongV2(Long id) {
 		doDownloadSingleSongV2(id, this.path, "未知歌曲");
@@ -240,25 +240,19 @@ public class MusicDownloadService implements InitializingBean {
 			taskStatus.setStatus("SUCCESS");
 			taskStatus.setFilePath(file.getAbsolutePath());
 
-			// ☁️ 云上同步：若启用 S3 存储模式，自动同步音频与歌词到 S3 存储桶
-			String recordFilePath = file.getAbsolutePath();
-			if (storageService != null && storageService.isS3Enabled()) {
-				try {
-					String s3Key = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + file.getName();
-					while (s3Key.startsWith("/")) s3Key = s3Key.substring(1);
-					storageService.uploadFile(s3Key, file, null);
+			// 存储层统一归档：本地模式返回本地物理路径，云原生 S3 模式同步至云端并返回存储键
+			String s3Key = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + file.getName();
+			while (s3Key.startsWith("/")) s3Key = s3Key.substring(1);
+			String recordFilePath = storageService.uploadFile(s3Key, file, null);
+			if (recordFilePath == null) {
+				recordFilePath = file.getAbsolutePath();
+			}
 
-					File lrcFile = Paths.get(dir, fileName + ".lrc").toFile();
-					if (lrcFile.exists()) {
-						String lrcKey = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + lrcFile.getName();
-						while (lrcKey.startsWith("/")) lrcKey = lrcKey.substring(1);
-						storageService.uploadFile(lrcKey, lrcFile, "text/plain; charset=UTF-8");
-					}
-					recordFilePath = s3Key;
-					log.info("☁️ [AWS S3] 音频已成功归档至云端存储桶: {}", s3Key);
-				} catch (Exception s3Ex) {
-					log.error("⚠️ [AWS S3] 同步至 S3 异常: {}", s3Ex.getMessage(), s3Ex);
-				}
+			File lrcFile = Paths.get(dir, fileName + ".lrc").toFile();
+			if (lrcFile.exists()) {
+				String lrcKey = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + lrcFile.getName();
+				while (lrcKey.startsWith("/")) lrcKey = lrcKey.substring(1);
+				storageService.uploadFile(lrcKey, lrcFile, "text/plain; charset=UTF-8");
 			}
 
 			// 记录到历史库 (SQLite/RDS) 及扩展 Raw JSON 子表

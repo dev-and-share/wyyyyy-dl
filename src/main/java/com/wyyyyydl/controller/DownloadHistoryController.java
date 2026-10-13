@@ -29,7 +29,7 @@ public class DownloadHistoryController {
     private MusicDownloadService musicDownloadService;
 
     @Resource
-    private com.wyyyyydl.service.storage.StorageService storageService;
+    private com.wyyyyydl.service.storage.IStorageService storageService;
 
     @org.springframework.beans.factory.annotation.Value("${reveal.auto-open.enabled:true}")
     private boolean autoOpenEnabled = true;
@@ -240,27 +240,12 @@ public class DownloadHistoryController {
             return;
         }
 
-        // ☁️ 云上优先：若开启 S3 存储或路径存在于云端，302 重定向至 CloudFront CDN / S3 直连播放
-        if (storageService != null && storageService.isS3Enabled()) {
-            String accessUrl = storageService.getAccessUrl(path);
-            if (StringUtils.isNotBlank(accessUrl)) {
-                try {
-                    response.sendRedirect(accessUrl);
-                    return;
-                } catch (Exception e) {
-                    log.error("重定向到 CDN 播放地址异常: {}", accessUrl, e);
-                }
-            }
+        try {
+            storageService.serveMedia(path, request, response);
+        } catch (Exception e) {
+            log.error("流媒体服务传输异常: path={}", path, e);
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
-
-        File file = downloadHistoryDAO.resolveFile(path);
-        if (!file.exists() || !file.isFile()) {
-            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-
-        // 统一本地文件流（DRY：复用 AudioStreamUtil，支持 Range/206 分片）
-        com.wyyyyydl.utils.AudioStreamUtil.streamLocalFile(file, request, response);
     }
 
     /**
