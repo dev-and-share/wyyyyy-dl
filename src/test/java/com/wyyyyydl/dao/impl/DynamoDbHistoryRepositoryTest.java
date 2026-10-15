@@ -118,5 +118,70 @@ public class DynamoDbHistoryRepositoryTest {
         assertEquals(2, stats.get("totalCount"));
         assertEquals(2, stats.get("successTotal"));
         assertEquals(3000L, stats.get("totalSize"));
+        assertEquals(0, stats.get("missingCount"));
+        assertEquals(0, stats.get("nonMp3Count"));
+    }
+
+    @Test
+    @DisplayName("测试指摘 #2: relativePath 映射与 S3 对象同步删除")
+    public void testRelativePathMappingAndS3Delete() {
+        com.wyyyyydl.service.storage.IStorageService mockStorage = Mockito.mock(com.wyyyyydl.service.storage.IStorageService.class);
+        ReflectionTestUtils.setField(impl, "storageService", mockStorage);
+
+        Map<String, AttributeValue> itemMap = Map.of(
+                "id", AttributeValue.builder().n("101").build(),
+                "song_id", AttributeValue.builder().n("555").build(),
+                "song_name", AttributeValue.builder().s("安静").build(),
+                "artist", AttributeValue.builder().s("周杰伦").build(),
+                "file_path", AttributeValue.builder().s("周杰伦/安静.flac").build(),
+                "file_size", AttributeValue.builder().n("30000000").build(),
+                "status", AttributeValue.builder().s("SUCCESS").build()
+        );
+
+        when(mockClient.query(any(QueryRequest.class))).thenReturn(QueryResponse.builder().items(List.of(itemMap)).build());
+
+        DownloadHistoryItem item = repo.findLocalFileBySongId(555L);
+        assertNotNull(item);
+        assertEquals("周杰伦/安静.flac", item.getFilePath());
+        assertEquals("周杰伦/安静.flac", item.getRelativePath(), "指摘 #2: relativePath 必须与 filePath 保持同步映射");
+
+        boolean deleted = repo.deleteSongFileAndRecord(555L, "安静", "周杰伦");
+        assertTrue(deleted);
+        verify(mockStorage, times(1)).deleteFile("周杰伦/安静.flac");
+        verify(mockClient, times(1)).deleteItem(any(DeleteItemRequest.class));
+    }
+
+    @Test
+    @DisplayName("测试指摘 #8: LastEvaluatedKey 循环分页扫描防截断")
+    public void testScanPagination() {
+        Map<String, AttributeValue> item1 = Map.of(
+                "song_id", AttributeValue.builder().n("1001").build()
+        );
+        Map<String, AttributeValue> item2 = Map.of(
+                "song_id", AttributeValue.builder().n("1002").build()
+        );
+
+        Map<String, AttributeValue> lastKey = Map.of("song_id", AttributeValue.builder().n("1001").build());
+
+        ScanResponse page1 = ScanResponse.builder()
+                .items(List.of(item1))
+                .lastEvaluatedKey(lastKey)
+                .build();
+
+        ScanResponse page2 = ScanResponse.builder()
+                .items(List.of(item2))
+                .lastEvaluatedKey(Collections.emptyMap())
+                .build();
+
+        when(mockClient.scan(any(ScanRequest.class)))
+                .thenReturn(page1)
+                .thenReturn(page2);
+
+        java.util.Set<Long> likedIds = repo.getLikedSongIds();
+        assertEquals(2, likedIds.size(), "指摘 #8: 多页扫描应完整汇聚所有数据");
+        assertTrue(likedIds.contains(1001L));
+        assertTrue(likedIds.contains(1002L));
+        verify(mockClient, times(2)).scan(any(ScanRequest.class));
     }
 }
+

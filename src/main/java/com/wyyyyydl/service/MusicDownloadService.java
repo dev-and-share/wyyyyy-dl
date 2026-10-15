@@ -54,6 +54,9 @@ public class MusicDownloadService implements InitializingBean {
 	@Value("${download.path}")
 	private String path;
 
+	@Value("${download.async-on-play.enabled:true}")
+	private boolean asyncOnPlayEnabled = true;
+
 	private Boolean repeat = true;
 
 	@Override
@@ -143,7 +146,7 @@ public class MusicDownloadService implements InitializingBean {
 	 * 🚀 边播边存后台静默落盘调度器（自动按歌单/专辑分类，试听曲目严格过滤）
 	 */
 	public void asyncDownloadOnPlay(Long id, String playlistName, String albumName, String trackName) {
-		if (id == null || id <= 0) return;
+		if (!asyncOnPlayEnabled || id == null || id <= 0) return;
 		DownloadTaskStatus existing = downloadTasks.get(id);
 		if (existing != null && ("DOWNLOADING".equals(existing.getStatus()) || "SUCCESS".equals(existing.getStatus()))) {
 			return;
@@ -240,22 +243,33 @@ public class MusicDownloadService implements InitializingBean {
 			taskStatus.setStatus("SUCCESS");
 			taskStatus.setFilePath(file.getAbsolutePath());
 
-			// 存储层统一归档：本地模式返回本地物理路径，云原生 S3 模式同步至云端并返回存储键
-			String s3Key = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + file.getName();
-			while (s3Key.startsWith("/")) s3Key = s3Key.substring(1);
-			String recordFilePath = storageService.uploadFile(s3Key, file, null);
-			if (recordFilePath == null) {
-				recordFilePath = file.getAbsolutePath();
-			}
-
+			long downloadedFileSize = file.length();
 			File lrcFile = Paths.get(dir, fileName + ".lrc").toFile();
-			if (lrcFile.exists()) {
-				String lrcKey = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + lrcFile.getName();
-				while (lrcKey.startsWith("/")) lrcKey = lrcKey.substring(1);
-				storageService.uploadFile(lrcKey, lrcFile, "text/plain; charset=UTF-8");
+			String recordFilePath = file.getAbsolutePath();
+
+			try {
+				// 存储层统一归档：本地模式返回本地物理路径，云原生 S3 模式同步至云端并返回存储键
+				String s3Key = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + file.getName();
+				while (s3Key.startsWith("/")) s3Key = s3Key.substring(1);
+				String uploadedKey = storageService.uploadFile(s3Key, file, null);
+				if (uploadedKey != null) {
+					recordFilePath = uploadedKey;
+				}
+
+				if (lrcFile.exists()) {
+					String lrcKey = (dir.startsWith(this.path) ? dir.substring(this.path.length()) : "") + lrcFile.getName();
+					while (lrcKey.startsWith("/")) lrcKey = lrcKey.substring(1);
+					storageService.uploadFile(lrcKey, lrcFile, "text/plain; charset=UTF-8");
+				}
+			} finally {
+				// 云端 S3 模式下上传完毕后立即清理 /tmp 临时文件，防止撑爆 Lambda 512MB 临时磁盘
+				if (storageService != null && storageService.isCloudStorage()) {
+					try { if (file.exists()) file.delete(); } catch (Exception ignored) {}
+					try { if (lrcFile.exists()) lrcFile.delete(); } catch (Exception ignored) {}
+				}
 			}
 
-			// 记录到历史库 (SQLite/RDS) 及扩展 Raw JSON 子表
+			// 记录到历史库 (SQLite/RDS/DynamoDB) 及扩展 Raw JSON 子表
 			try {
 				long historyId = downloadHistoryDAO.addRecord(
 						id,
@@ -263,7 +277,7 @@ public class MusicDownloadService implements InitializingBean {
 						analysisSingleMusic.getAr_name(),
 						analysisSingleMusic.getAl_name(),
 						recordFilePath,
-						file.length(),
+						downloadedFileSize,
 						"lossless",
 						"SUCCESS"
 				);
@@ -287,13 +301,21 @@ public class MusicDownloadService implements InitializingBean {
 			throw new ServiceException(CommonRespInfo.SYS_ERROR);
 		}
 		List<TrackDTO> tracks = analysisPlaylist.getPlaylist().getTracks();
+		boolean isCloud = storageService != null && storageService.isCloudStorage();
+		List<java.util.concurrent.CompletableFuture<Void>> futures = new java.util.ArrayList<>();
 		for (TrackDTO trackDTO : tracks) {
 			DownloadTaskStatus taskStatus = new DownloadTaskStatus(trackDTO.getId(), trackDTO.getName(), "PENDING", null, System.currentTimeMillis());
 			downloadTasks.put(trackDTO.getId(), taskStatus);
-			executor.execute(() -> {
-				doDownloadSingleSongV2(trackDTO.getId(), this.path + "歌单/"
-						+ FileUtils.getValidatedPathName(analysisPlaylist.getPlaylist().getName()) + "/", trackDTO.getName());
-			});
+			Runnable task = () -> doDownloadSingleSongV2(trackDTO.getId(), this.path + "歌单/"
+					+ FileUtils.getValidatedPathName(analysisPlaylist.getPlaylist().getName()) + "/", trackDTO.getName());
+			if (isCloud) {
+				futures.add(java.util.concurrent.CompletableFuture.runAsync(task, executor));
+			} else {
+				executor.execute(task);
+			}
+		}
+		if (isCloud && !futures.isEmpty()) {
+			java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
 		}
 	}
 
@@ -303,13 +325,21 @@ public class MusicDownloadService implements InitializingBean {
 			throw new ServiceException(CommonRespInfo.SYS_ERROR);
 		}
 		List<TrackDTO> tracks = analysisAlbum.getAlbum().getSongs();
+		boolean isCloud = storageService != null && storageService.isCloudStorage();
+		List<java.util.concurrent.CompletableFuture<Void>> futures = new java.util.ArrayList<>();
 		for (TrackDTO trackDTO : tracks) {
 			DownloadTaskStatus taskStatus = new DownloadTaskStatus(trackDTO.getId(), trackDTO.getName(), "PENDING", null, System.currentTimeMillis());
 			downloadTasks.put(trackDTO.getId(), taskStatus);
-			executor.execute(() -> {
-				doDownloadSingleSongV2(trackDTO.getId(),
-						this.path + "专辑/" + FileUtils.getValidatedPathName(analysisAlbum.getAlbum().getName()) + "/", trackDTO.getName());
-			});
+			Runnable task = () -> doDownloadSingleSongV2(trackDTO.getId(),
+					this.path + "专辑/" + FileUtils.getValidatedPathName(analysisAlbum.getAlbum().getName()) + "/", trackDTO.getName());
+			if (isCloud) {
+				futures.add(java.util.concurrent.CompletableFuture.runAsync(task, executor));
+			} else {
+				executor.execute(task);
+			}
+		}
+		if (isCloud && !futures.isEmpty()) {
+			java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
 		}
 	}
 

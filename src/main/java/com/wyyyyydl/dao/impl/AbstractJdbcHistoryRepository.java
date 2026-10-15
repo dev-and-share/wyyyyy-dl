@@ -475,6 +475,9 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         DownloadHistoryItem item = findLocalFileBySongOrName(songId, name, artist);
         if (item == null) return false;
         try {
+            if (storageService != null && storageService.isCloudStorage() && item.getRelativePath() != null && !item.getRelativePath().isEmpty()) {
+                storageService.deleteFile(item.getRelativePath());
+            }
             if (item.getFilePath() != null) {
                 File targetFile = resolveFile(item.getFilePath());
                 if (targetFile.exists() && targetFile.isFile()) {
@@ -638,9 +641,16 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
-                stats.put("totalTracks", rs.getLong("total_count"));
-                stats.put("totalSize", rs.getLong("total_size"));
-                stats.put("totalSizeFormatted", formatSize(rs.getLong("total_size")));
+                long totalCount = rs.getLong("total_count");
+                long totalSize = rs.getLong("total_size");
+                stats.put("total", totalCount);
+                stats.put("totalCount", totalCount);
+                stats.put("totalTracks", totalCount);
+                stats.put("successTotal", totalCount);
+                stats.put("totalSize", totalSize);
+                stats.put("totalSizeFormatted", formatSize(totalSize));
+                stats.put("missingCount", getMissingRecords().size());
+                stats.put("nonMp3Count", getNonMp3Records().size());
             }
         } catch (Exception e) {
             log.error("查询持久化统计异常", e);
