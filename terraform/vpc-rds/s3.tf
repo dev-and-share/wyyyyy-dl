@@ -93,3 +93,48 @@ resource "aws_s3_bucket_policy" "allow_cloudfront_oac" {
     ]
   })
 }
+
+# ------------------------------------------
+# 前端 Svelte 静态资源与页面部署 (托管于 S3)
+# ------------------------------------------
+locals {
+  mime_types = {
+    "html" = "text/html; charset=utf-8"
+    "css"  = "text/css; charset=utf-8"
+    "js"   = "application/javascript; charset=utf-8"
+    "json" = "application/json; charset=utf-8"
+    "png"  = "image/png"
+    "svg"  = "image/svg+xml"
+    "ico"  = "image/x-icon"
+    "txt"  = "text/plain; charset=utf-8"
+  }
+}
+
+resource "aws_s3_object" "frontend_svelte_assets" {
+  for_each = fileset("${path.module}/../../src/main/resources/static/svelte", "**/*")
+
+  bucket       = aws_s3_bucket.music_bucket.id
+  key          = "svelte/${each.value}"
+  source       = "${path.module}/../../src/main/resources/static/svelte/${each.value}"
+  etag         = filemd5("${path.module}/../../src/main/resources/static/svelte/${each.value}")
+  content_type = lookup(local.mime_types, regex("[^.]+$", each.value), "application/octet-stream")
+}
+
+resource "aws_s3_object" "frontend_root_index" {
+  count        = fileexists("${path.module}/../../src/main/resources/static/svelte/index.html") ? 1 : 0
+  bucket       = aws_s3_bucket.music_bucket.id
+  key          = "index.html"
+  source       = "${path.module}/../../src/main/resources/static/svelte/index.html"
+  etag         = filemd5("${path.module}/../../src/main/resources/static/svelte/index.html")
+  content_type = "text/html; charset=utf-8"
+}
+
+resource "aws_s3_object" "frontend_root_assets" {
+  for_each = fileset("${path.module}/../../src/main/resources/static", "*.*")
+
+  bucket       = aws_s3_bucket.music_bucket.id
+  key          = each.value
+  source       = "${path.module}/../../src/main/resources/static/${each.value}"
+  etag         = filemd5("${path.module}/../../src/main/resources/static/${each.value}")
+  content_type = lookup(local.mime_types, regex("[^.]+$", each.value), "application/octet-stream")
+}

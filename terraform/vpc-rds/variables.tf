@@ -91,3 +91,23 @@ variable "cloudfront_price_class" {
   type        = string
   default     = "PriceClass_100"
 }
+
+variable "netease_cookie" {
+  description = "网易云登录 Cookie (可选)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "auth_username" {
+  description = "CloudFront 边缘访问控制用户名 (默认 admin)"
+  type        = string
+  default     = "admin"
+}
+
+variable "auth_password" {
+  description = "CloudFront 边缘访问控制密码 (留空则不开启鉴权)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

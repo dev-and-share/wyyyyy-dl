@@ -76,9 +76,9 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
 # 2. 上传部署包至 S3 (绕过 Lambda API 50MB 直接上传限制)
 resource "aws_s3_object" "lambda_package" {
   bucket = aws_s3_bucket.music_bucket.id
-  key    = "deployments/${var.project_name}-backend-${filemd5(var.lambda_zip_path)}.zip"
+  key    = "deployments/${var.project_name}-backend-${fileexists(var.lambda_zip_path) ? filemd5(var.lambda_zip_path) : "pending"}.zip"
   source = var.lambda_zip_path
-  etag   = filemd5(var.lambda_zip_path)
+  etag   = fileexists(var.lambda_zip_path) ? filemd5(var.lambda_zip_path) : null
 }
 
 # 3. Lambda 函数定义
@@ -116,6 +116,7 @@ resource "aws_lambda_function" "spring_app" {
       DB_URL                 = var.enable_rds ? "jdbc:postgresql://${aws_db_instance.postgres[0].endpoint}/${var.rds_db_name}" : ""
       DB_USER                = var.enable_rds ? var.rds_username : ""
       DB_PASS                = var.enable_rds ? var.rds_password : ""
+      NETEASE_COOKIE         = var.netease_cookie
     }
   }
 

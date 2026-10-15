@@ -20,13 +20,13 @@ variable "environment" {
 # Supabase PostgreSQL 配置
 # ==========================================
 variable "supabase_db_host" {
-  description = "Supabase 数据库主机 Host"
+  description = "Supabase 数据库主机 Host (⚠️ 无 VPC Lambda 仅支持 IPv4，请填入 Supavisor Pooler 地址如 aws-0-ap-northeast-1.pooler.supabase.com，勿用仅 IPv6 的 db.<ref>.supabase.co)"
   type        = string
-  default     = "db.iqnggtdrcgxuyvblbjbw.supabase.co"
+  default     = "aws-0-ap-northeast-1.pooler.supabase.com"
 }
 
 variable "supabase_db_port" {
-  description = "Supabase 端口 (直连 5432, Transaction Pooler 6543)"
+  description = "Supabase 端口 (Session Pooler 5432, Transaction Pooler 6543)"
   type        = number
   default     = 5432
 }

@@ -96,9 +96,9 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
 # 2. 上传部署包至 S3 (绕过 Lambda API 50MB 直接上传限制)
 resource "aws_s3_object" "lambda_package" {
   bucket = aws_s3_bucket.music_bucket.id
-  key    = "deployments/${var.project_name}-backend-${filemd5(var.lambda_zip_path)}.zip"
+  key    = "deployments/${var.project_name}-backend-${fileexists(var.lambda_zip_path) ? filemd5(var.lambda_zip_path) : "pending"}.zip"
   source = var.lambda_zip_path
-  etag   = filemd5(var.lambda_zip_path)
+  etag   = fileexists(var.lambda_zip_path) ? filemd5(var.lambda_zip_path) : null
 }
 
 # 3. Lambda 函数定义 (无 VPC 挂载，直接享受原生公网外呼网易云 API)
@@ -125,6 +125,7 @@ resource "aws_lambda_function" "spring_app" {
   environment {
     variables = {
       SPRING_PROFILES_ACTIVE = "aws,dynamodb"
+      STORAGE_TYPE           = "dynamodb"
       JAVA_TOOL_OPTIONS      = "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
       DYNAMODB_TABLE_NAME    = aws_dynamodb_table.music_history.name
       DYNAMODB_LIKES_TABLE   = aws_dynamodb_table.music_likes.name

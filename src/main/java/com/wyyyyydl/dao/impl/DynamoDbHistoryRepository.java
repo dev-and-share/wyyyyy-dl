@@ -42,6 +42,9 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
     @Value("${aws.region:${AWS_REGION:us-east-1}}")
     private String awsRegion;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.wyyyyydl.service.storage.IStorageService storageService;
+
     private DynamoDbClient dynamoDbClient;
     private boolean dynamoDbEnabled = false;
 
@@ -167,15 +170,22 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
         Set<Long> ids = new HashSet<>();
         if (!dynamoDbEnabled || StringUtils.isBlank(likesTableName)) return ids;
         try {
-            ScanResponse resp = dynamoDbClient.scan(ScanRequest.builder()
-                    .tableName(likesTableName)
-                    .projectionExpression("song_id")
-                    .build());
-            for (Map<String, AttributeValue> item : resp.items()) {
-                if (item.containsKey("song_id")) {
-                    ids.add(Long.parseLong(item.get("song_id").n()));
+            Map<String, AttributeValue> lastKey = null;
+            do {
+                ScanRequest.Builder reqBuilder = ScanRequest.builder()
+                        .tableName(likesTableName)
+                        .projectionExpression("song_id");
+                if (lastKey != null && !lastKey.isEmpty()) {
+                    reqBuilder.exclusiveStartKey(lastKey);
                 }
-            }
+                ScanResponse resp = dynamoDbClient.scan(reqBuilder.build());
+                for (Map<String, AttributeValue> item : resp.items()) {
+                    if (item.containsKey("song_id")) {
+                        ids.add(Long.parseLong(item.get("song_id").n()));
+                    }
+                }
+                lastKey = resp.lastEvaluatedKey();
+            } while (lastKey != null && !lastKey.isEmpty());
         } catch (Exception e) {
             log.error("扫描 DynamoDB 红心歌曲异常", e);
         }
@@ -298,6 +308,9 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
     public boolean deleteSongFileAndRecord(Long songId, String name, String artist) {
         DownloadHistoryItem item = findLocalFileBySongOrName(songId, name, artist);
         if (item != null && item.getId() != null) {
+            if (storageService != null && StringUtils.isNotBlank(item.getFilePath())) {
+                storageService.deleteFile(item.getFilePath());
+            }
             return deleteRecord(item.getId());
         }
         return false;
@@ -490,10 +503,20 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
         List<DownloadHistoryItem> list = new ArrayList<>();
         if (!dynamoDbEnabled) return list;
         try {
-            ScanResponse resp = dynamoDbClient.scan(ScanRequest.builder()
-                    .tableName(historyTableName)
-                    .build());
-            for (Map<String, AttributeValue> item : resp.items()) {
+            Map<String, AttributeValue> lastKey = null;
+            List<Map<String, AttributeValue>> allItems = new ArrayList<>();
+            do {
+                ScanRequest.Builder reqBuilder = ScanRequest.builder().tableName(historyTableName);
+                if (lastKey != null && !lastKey.isEmpty()) {
+                    reqBuilder.exclusiveStartKey(lastKey);
+                }
+                ScanResponse resp = dynamoDbClient.scan(reqBuilder.build());
+                if (resp.hasItems()) {
+                    allItems.addAll(resp.items());
+                }
+                lastKey = resp.lastEvaluatedKey();
+            } while (lastKey != null && !lastKey.isEmpty());
+            for (Map<String, AttributeValue> item : allItems) {
                 DownloadHistoryItem dto = mapItemFromAttributes(item);
                 if (StringUtils.isNotBlank(keyword)) {
                     String kw = keyword.toLowerCase();
@@ -524,7 +547,11 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
         if (item.containsKey("song_name")) dto.setSongName(item.get("song_name").s());
         if (item.containsKey("artist")) dto.setArtist(item.get("artist").s());
         if (item.containsKey("album")) dto.setAlbum(item.get("album").s());
-        if (item.containsKey("file_path")) dto.setFilePath(item.get("file_path").s());
+        if (item.containsKey("file_path")) {
+            String fp = item.get("file_path").s();
+            dto.setFilePath(fp);
+            dto.setRelativePath(fp);
+        }
         if (item.containsKey("file_size")) dto.setFileSize(Long.parseLong(item.get("file_size").n()));
         if (item.containsKey("quality")) dto.setQuality(item.get("quality").s());
         if (item.containsKey("status")) dto.setStatus(item.get("status").s());

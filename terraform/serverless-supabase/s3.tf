@@ -115,6 +115,7 @@ resource "aws_s3_object" "frontend_svelte_assets" {
 }
 
 resource "aws_s3_object" "frontend_root_index" {
+  count        = fileexists("${path.module}/../../src/main/resources/static/svelte/index.html") ? 1 : 0
   bucket       = aws_s3_bucket.music_bucket.id
   key          = "index.html"
   source       = "${path.module}/../../src/main/resources/static/svelte/index.html"

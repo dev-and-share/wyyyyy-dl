@@ -32,12 +32,46 @@ resource "aws_cloudfront_cache_policy" "media_cache_policy" {
   }
 }
 
+# ------------------------------------------
+# 边缘 HTTP Basic Auth 安全防护函数 (0 待机费，边缘拦截)
+# ------------------------------------------
+resource "aws_cloudfront_function" "basic_auth" {
+  count   = var.auth_password != "" ? 1 : 0
+  name    = "${var.project_name}-basic-auth-ddb-${var.environment}"
+  runtime = "cloudfront-js-2.0"
+  comment = "Edge HTTP Basic Auth for Wyyyyy-DL security"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+        var request = event.request;
+        var headers = request.headers;
+
+        var expectedAuth = "Basic ${base64encode("${var.auth_username}:${var.auth_password}")}";
+
+        if (headers.authorization && headers.authorization.value === expectedAuth) {
+            return request;
+        }
+
+        return {
+            statusCode: 401,
+            statusDescription: "Unauthorized",
+            headers: {
+                "www-authenticate": { value: 'Basic realm="Wyyyyy-DL Private Cloud", charset="UTF-8"' },
+                "content-type": { value: "text/plain; charset=utf-8" }
+            },
+            body: "401 Unauthorized: Access Denied. Please provide valid credentials."
+        };
+    }
+  EOT
+}
+
 resource "aws_cloudfront_distribution" "cdn" {
-  enabled         = true
-  is_ipv6_enabled = true
-  comment         = "CloudFront Distribution for ${var.project_name} DynamoDB Flavor"
-  price_class     = var.cloudfront_price_class
-  http_version    = "http2and3"
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "CloudFront Distribution for ${var.project_name} serverless-dynamodb Flavor"
+  price_class         = var.cloudfront_price_class
+  http_version        = "http2and3"
+  default_root_object = "index.html"
 
   origin {
     domain_name              = aws_s3_bucket.music_bucket.bucket_regional_domain_name
@@ -57,7 +91,31 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
 
+  # ------------------------------------------
+  # 默认行为：S3 静态前端直出 (全球 CDN 边缘极速缓存，0 报错，0 Lambda 消耗)
+  # ------------------------------------------
   default_cache_behavior {
+    target_origin_id       = local.s3_origin_id
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
+
+    dynamic "function_association" {
+      for_each = var.auth_password != "" ? [aws_cloudfront_function.basic_auth[0].arn] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  # ------------------------------------------
+  # 业务 API 动态路由 (/v3/* -> API Gateway -> Spring Boot Lambda)
+  # ------------------------------------------
+  ordered_cache_behavior {
+    path_pattern           = "/v3/*"
     target_origin_id       = local.apigw_origin_id
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
@@ -65,8 +123,19 @@ resource "aws_cloudfront_distribution" "cdn" {
 
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
     origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader
+
+    dynamic "function_association" {
+      for_each = var.auth_password != "" ? [aws_cloudfront_function.basic_auth[0].arn] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
   }
 
+  # ------------------------------------------
+  # 音频媒体路由 (/media/* -> S3 音频存储，支持 HTTP Range 流式播放)
+  # ------------------------------------------
   ordered_cache_behavior {
     path_pattern           = "/media/*"
     target_origin_id       = local.s3_origin_id
@@ -75,6 +144,14 @@ resource "aws_cloudfront_distribution" "cdn" {
     cached_methods         = ["GET", "HEAD"]
 
     cache_policy_id = aws_cloudfront_cache_policy.media_cache_policy.id
+
+    dynamic "function_association" {
+      for_each = var.auth_password != "" ? [aws_cloudfront_function.basic_auth[0].arn] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
   }
 
   restrictions {

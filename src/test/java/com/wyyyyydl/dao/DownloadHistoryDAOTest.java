@@ -290,4 +290,24 @@ public class DownloadHistoryDAOTest {
         assertEquals(1, tracks.size(), "递归抓取曲目也应自动跳过 .musicignore 目录");
         assertEquals("正常歌曲", tracks.get(0).getSongName());
     }
+
+    @Test
+    @DisplayName("测试指摘 #7: JDBC getStats 统计字段对齐契约 (totalCount / missingCount / nonMp3Count)")
+    public void testJdbcStatsContract() throws Exception {
+        File audio = new File(tempDir.toFile(), "测试.flac");
+        try (FileWriter w = new FileWriter(audio)) { w.write("flac audio payload"); }
+
+        dao.addRecord(5001L, "存在歌曲", "歌手1", "专辑1", audio.getAbsolutePath(), audio.length(), "lossless", "SUCCESS");
+        dao.addRecord(5002L, "丢失歌曲", "歌手2", "专辑2", "/non/existent/missing.mp3", 0L, "standard", "SUCCESS");
+
+        Map<String, Object> stats = dao.getStats();
+        assertNotNull(stats);
+        assertEquals(2L, stats.get("total"), "total 应为 2");
+        assertEquals(2L, stats.get("totalCount"), "指摘 #7: totalCount 必须对齐前端展示字段");
+        assertEquals(2L, stats.get("totalTracks"), "totalTracks 兼容旧字段");
+        assertEquals(2L, stats.get("successTotal"), "successTotal 必须存在");
+        assertEquals(1, stats.get("missingCount"), "指摘 #7: missingCount 必须准确识别出 1 首丢失");
+        assertEquals(1, stats.get("nonMp3Count"), "指摘 #7: nonMp3Count 必须准确识别出 1 首 flac 非 mp3");
+    }
 }
+
