@@ -39,7 +39,9 @@
       ? 'text-[#10b981] font-bold drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]'
       : skinId === 'aurora'
         ? 'text-[var(--skin-accent,#ef4444)] font-medium'
-        : 'text-[var(--text-muted)]'}"
+        : skinId === 'spring'
+          ? 'text-emerald-400 font-medium'
+          : 'text-[var(--text-muted)]'}"
   >
     {formatTime(curTime)}
   </span>
@@ -56,7 +58,9 @@
         ? 'bg-[#0b140d] border border-[#1b3d22]'
         : skinId === 'cassette'
           ? 'bg-[#15171c] border border-white/10'
-          : 'bg-black/10 dark:bg-white/15'}"
+          : skinId === 'spring'
+            ? 'bg-emerald-950/60 border border-emerald-500/20'
+            : 'bg-black/10 dark:bg-white/15'}"
     ></div>
 
     <!-- 播放进度填充 -->
@@ -67,7 +71,9 @@
           ? 'bg-gradient-to-r from-[var(--skin-dominant,#8b5cf6)] to-[var(--skin-accent,#ef4444)] shadow-[0_0_8px_var(--skin-glow,rgba(239,68,68,0.5))]'
           : skinId === 'cassette'
             ? 'bg-gradient-to-r from-amber-700 to-emerald-500'
-            : 'bg-gradient-to-r from-red-500 to-amber-500'}"
+            : skinId === 'spring'
+              ? 'bg-gradient-to-r from-emerald-600 via-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
+              : 'bg-gradient-to-r from-red-500 to-amber-500'}"
       style="width: {progressRatio * 100}%;"
     ></div>
 
@@ -96,7 +102,9 @@
       ? 'text-[#10b981]/70 font-bold'
       : skinId === 'aurora'
         ? 'text-[var(--skin-accent,#ef4444)]/80 font-medium'
-        : 'text-[var(--text-muted)]'}"
+        : skinId === 'spring'
+          ? 'text-emerald-400/80 font-medium'
+          : 'text-[var(--text-muted)]'}"
   >
     {formatTime(duration)}
   </span>

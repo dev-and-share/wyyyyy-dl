@@ -41,6 +41,12 @@ describe('skinStore', () => {
     skin.set('winamp');
     expect(skin.current).toBe('winamp');
     expect(localStorage.getItem('player_skin')).toBe('winamp');
+    expect(document.documentElement.getAttribute('data-skin')).toBe('winamp');
+
+    skin.set('spring');
+    expect(skin.current).toBe('spring');
+    expect(localStorage.getItem('player_skin')).toBe('spring');
+    expect(document.documentElement.getAttribute('data-skin')).toBe('spring');
   });
 
   it('ignores invalid skin in set()', () => {

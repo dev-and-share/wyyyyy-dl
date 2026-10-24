@@ -7,13 +7,22 @@ function isValidSkinId(val: any): val is SkinId {
   return typeof val === 'string' && val in SKINS;
 }
 
+function syncRootSkinAttribute(id: SkinId) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-skin', id);
+  }
+}
+
 function loadInitialSkin(): SkinId {
-  if (typeof window === 'undefined') return 'vinyl';
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (isValidSkinId(saved)) return saved;
-  } catch {}
-  return 'vinyl';
+  let initialSkin: SkinId = 'vinyl';
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (isValidSkinId(saved)) initialSkin = saved;
+    } catch {}
+    syncRootSkinAttribute(initialSkin);
+  }
+  return initialSkin;
 }
 
 export class SkinStore {
@@ -30,6 +39,7 @@ export class SkinStore {
   set(id: SkinId) {
     if (!isValidSkinId(id)) return;
     this.current = id;
+    syncRootSkinAttribute(id);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, id);
@@ -68,6 +78,7 @@ export class SkinStore {
   /** 测试辅助：清空缓存与重置状态 */
   _reset() {
     this.current = 'vinyl';
+    syncRootSkinAttribute('vinyl');
     this.palette = { ...DEFAULT_PALETTE };
     this.paletteCache.clear();
     this.lastRequestedUrl = '';

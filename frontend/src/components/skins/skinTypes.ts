@@ -1,4 +1,4 @@
-export type SkinId = 'vinyl' | 'aurora' | 'cassette' | 'winamp';
+export type SkinId = 'vinyl' | 'aurora' | 'cassette' | 'winamp' | 'spring';
 
 export interface SkinMeta {
   id: SkinId;
@@ -44,7 +44,7 @@ export const SKINS: Record<SkinId, SkinMeta> = {
     id: 'aurora',
     name: '灵动极光',
     emoji: '🌌',
-    desc: '现代流体与弥散光晕'
+    desc: '现代流体与弥散霓虹'
   },
   cassette: {
     id: 'cassette',
@@ -57,6 +57,12 @@ export const SKINS: Record<SkinId, SkinMeta> = {
     name: 'Winamp 经典',
     emoji: '⚡',
     desc: '千禧金属面板与绿色点阵频谱'
+  },
+  spring: {
+    id: 'spring',
+    name: '春日青绿',
+    emoji: '🌱',
+    desc: '草木生机与翡翠竹韵'
   }
 };
 

@@ -66,7 +66,9 @@
       ? 'bg-[#181a1f] border-t-2 border-[#2c3038] shadow-2xl'
       : skin.current === 'aurora'
         ? 'bg-slate-950/70 backdrop-blur-2xl border-t border-white/20 shadow-[0_-8px_32px_var(--skin-glow,rgba(239,68,68,0.25))]'
-        : 'bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[-12px_48px_rgba(0,0,0,0.45)]'}"
+        : skin.current === 'spring'
+          ? 'bg-[#071711]/95 backdrop-blur-2xl border-t border-emerald-500/25 shadow-[0_-8px_32px_rgba(16,185,129,0.25)]'
+          : 'bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[-12px_48px_rgba(0,0,0,0.45)]'}"
   style="{skin.cssVars}"
 >
   <div class="w-full max-w-[1280px] mx-auto flex justify-between items-center gap-5">
@@ -111,6 +113,17 @@
               onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
             />
           </div>
+        {:else if skin.current === 'spring'}
+          <!-- 春日青绿翡翠唱片 -->
+          <div class="relative w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-emerald-600 to-teal-400 shrink-0 shadow-md shadow-emerald-500/20">
+            <img
+              src={formatCoverUrl(curTrack?.cover, 100)}
+              alt="封面"
+              class="w-full h-full rounded-full object-cover {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
+              referrerpolicy="no-referrer"
+              onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
+            />
+          </div>
         {:else}
           <!-- 经典黑胶唱片环 -->
           <PlayerCoverRing
@@ -125,13 +138,17 @@
           <div class="flex items-center gap-1.5 overflow-hidden">
             {#if skin.current === 'winamp'}
               <span class="text-xs text-amber-400 font-mono">⚡</span>
+            {:else if skin.current === 'spring'}
+              <span class="text-xs text-emerald-400">🌱</span>
             {/if}
             <span
               class="text-sm font-semibold truncate leading-tight {skin.current === 'winamp'
                 ? 'font-mono text-[#10b981] drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]'
                 : skin.current === 'cassette'
                   ? 'font-mono text-neutral-200'
-                  : 'text-[var(--text-main,#0f172a)]'}"
+                  : skin.current === 'spring'
+                    ? 'text-emerald-400 font-semibold'
+                    : 'text-[var(--text-main,#0f172a)]'}"
             >
               {curTrack?.name || '未在播放'}
             </span>
@@ -144,7 +161,9 @@
               ? 'font-mono text-emerald-400/70'
               : skin.current === 'cassette'
                 ? 'font-mono text-neutral-400'
-                : 'text-[var(--text-secondary,#64748b)]'}"
+                : skin.current === 'spring'
+                  ? 'text-emerald-300/70'
+                  : 'text-[var(--text-secondary,#64748b)]'}"
           >
             {formatArtist(curTrack?.artist) || '未知歌手'}
           </div>
@@ -228,7 +247,7 @@
             max="1"
             step="0.02"
             bind:value={vol}
-            class="w-20 h-1 cursor-pointer bg-black/10 dark:bg-white/15 rounded-lg {skin.current === 'winamp'
+            class="w-20 h-1 cursor-pointer bg-black/10 dark:bg-white/15 rounded-lg {skin.current === 'winamp' || skin.current === 'spring'
               ? 'accent-emerald-500'
               : skin.current === 'aurora'
                 ? 'accent-[var(--skin-accent,#ef4444)]'

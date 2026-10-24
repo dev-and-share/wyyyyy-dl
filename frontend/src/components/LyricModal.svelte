@@ -14,6 +14,7 @@
   import AuroraSkinStage from './skins/AuroraSkinStage.svelte';
   import CassetteSkinStage from './skins/CassetteSkinStage.svelte';
   import WinampSkinStage from './skins/WinampSkinStage.svelte';
+  import SpringSkinStage from './skins/SpringSkinStage.svelte';
   import type { SkinId } from './skins/skinTypes';
 
   let {
@@ -63,7 +64,8 @@
     vinyl: VinylSkinStage,
     aurora: AuroraSkinStage,
     cassette: CassetteSkinStage,
-    winamp: WinampSkinStage
+    winamp: WinampSkinStage,
+    spring: SpringSkinStage
   };
 
   let Stage = $derived(STAGES[skin.current] || VinylSkinStage);
@@ -138,7 +140,7 @@
       />
     </div>
 
-    <!-- 左侧：动态皮肤舞台插槽（黑胶/极光/磁带/Winamp） -->
+    <!-- 左侧：动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/春日） -->
     <Stage
       {track}
       {playing}

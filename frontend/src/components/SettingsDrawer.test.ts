@@ -124,5 +124,9 @@ describe('TopBar & SettingsDrawer Integration', () => {
     const winampBtn = screen.getByTestId('settings-skin-winamp');
     await fireEvent.click(winampBtn);
     expect(localStorage.getItem('player_skin')).toBe('winamp');
+
+    const springBtn = screen.getByTestId('settings-skin-spring');
+    await fireEvent.click(springBtn);
+    expect(localStorage.getItem('player_skin')).toBe('spring');
   });
 });

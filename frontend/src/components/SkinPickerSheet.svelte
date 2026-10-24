@@ -41,7 +41,7 @@
   aria-modal="true"
   aria-label="选择播放器皮肤"
   data-testid="skin-picker-sheet"
-  class="fixed z-[100011] inset-x-0 bottom-0 max-w-[620px] mx-auto rounded-t-[28px] border-t border-[var(--border-color)] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] shadow-2xl p-5 flex flex-col gap-4 transition-transform duration-200 ease-out backdrop-blur-xl"
+  class="fixed z-[100011] inset-x-0 bottom-0 max-w-[720px] mx-auto rounded-t-[28px] border-t border-[var(--border-color)] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] shadow-2xl p-5 flex flex-col gap-4 transition-transform duration-200 ease-out backdrop-blur-xl"
   style="transform: {closing ? 'translateY(100%)' : 'translateY(0)'};"
 >
   <!-- 头部：标题与关闭按钮 -->
@@ -60,8 +60,8 @@
     </button>
   </div>
 
-  <!-- 皮肤卡片列表（移动端 2×2，桌面端 4 列） -->
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+  <!-- 皮肤卡片列表（移动端 2-3 列，桌面端 5 列） -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
     {#each SKIN_LIST as item}
       {@const isSelected = skin.current === item.id}
       <button
@@ -102,6 +102,14 @@
                 <div class="w-2 h-2 rounded-full bg-white border border-neutral-400"></div>
               </div>
               <div class="w-4 h-1 rounded-xs bg-emerald-500/80"></div>
+            </div>
+          {:else if item.id === 'spring'}
+            <!-- 春日青绿迷你预览 -->
+            <div class="relative w-full h-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-emerald-950 via-teal-900 to-green-950">
+              <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-emerald-400 blur-xs opacity-60"></div>
+              <div class="w-9 h-9 rounded-full bg-emerald-700/80 border border-emerald-300/40 p-1 flex items-center justify-center relative shadow-sm">
+                <div class="w-4 h-4 rounded-full bg-lime-400/90 border border-white/40 flex items-center justify-center text-[9px]">🍃</div>
+              </div>
             </div>
           {:else}
             <!-- Winamp 迷你预览 -->

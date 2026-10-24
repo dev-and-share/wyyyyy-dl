@@ -40,9 +40,11 @@
         ? 'w-7.5 h-7 rounded-md bg-[#22262d] border border-neutral-700 active:scale-95 text-neutral-400'
         : skinId === 'aurora'
           ? 'w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 active:scale-95'
-          : size === 'lg'
-            ? 'w-9 h-9 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-secondary)]'
-            : 'w-8 h-8 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
+          : skinId === 'spring'
+            ? 'w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 active:scale-95'
+            : size === 'lg'
+              ? 'w-9 h-9 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-secondary)]'
+              : 'w-8 h-8 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
     onclick={onToggleMode}
     title={modeTitle}
   >
@@ -59,9 +61,11 @@
         ? 'w-8 h-7.5 rounded-md bg-[#252930] border border-neutral-600 active:scale-95 text-neutral-300'
         : skinId === 'aurora'
           ? 'w-8.5 h-8.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 active:scale-95'
-          : size === 'lg'
-            ? 'w-10 h-10 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-main)]'
-            : 'w-8 h-8 rounded-full text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
+          : skinId === 'spring'
+            ? 'w-8.5 h-8.5 rounded-full bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 active:scale-95'
+            : size === 'lg'
+              ? 'w-10 h-10 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-main)]'
+              : 'w-8 h-8 rounded-full text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
     onclick={onPrev}
     title="上一首"
   >
@@ -82,8 +86,10 @@
         ? 'w-9 h-8.5 rounded-md bg-[#2d323b] border-2 border-neutral-500 text-emerald-400 active:scale-95 shadow-sm'
         : skinId === 'aurora'
           ? 'w-10 h-10 rounded-full bg-gradient-to-r from-[var(--skin-accent,#ef4444)] to-[var(--skin-dominant,#6366f1)] text-white shadow-[0_0_16px_var(--skin-glow,rgba(239,68,68,0.5))] hover:scale-105 active:scale-95'
-          : 'rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/35 hover:scale-105 active:scale-95 ' +
-            (size === 'lg' ? 'w-12 h-12' : 'w-9.5 h-9.5')}"
+          : skinId === 'spring'
+            ? 'w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/40 hover:scale-105 active:scale-95'
+            : 'rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/35 hover:scale-105 active:scale-95 ' +
+              (size === 'lg' ? 'w-12 h-12' : 'w-9.5 h-9.5')}"
     onclick={onTogglePlay}
     title={playing ? '暂停' : '播放'}
   >
@@ -104,9 +110,11 @@
         ? 'w-8 h-7.5 rounded-md bg-[#252930] border border-neutral-600 active:scale-95 text-neutral-300'
         : skinId === 'aurora'
           ? 'w-8.5 h-8.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 active:scale-95'
-          : size === 'lg'
-            ? 'w-10 h-10 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-main)]'
-            : 'w-8 h-8 rounded-full text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
+          : skinId === 'spring'
+            ? 'w-8.5 h-8.5 rounded-full bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 active:scale-95'
+            : size === 'lg'
+              ? 'w-10 h-10 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-main)]'
+              : 'w-8 h-8 rounded-full text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
     onclick={onNext}
     title="下一首"
   >

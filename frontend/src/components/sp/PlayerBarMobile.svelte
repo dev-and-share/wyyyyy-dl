@@ -65,7 +65,9 @@
       ? 'bg-[#181a1f] border-t-2 border-[#2b2f38] shadow-2xl'
       : skin.current === 'aurora'
         ? 'bg-slate-950/75 backdrop-blur-2xl border-t border-white/20 shadow-[0_-8px_24px_var(--skin-glow,rgba(239,68,68,0.3))]'
-        : 'bg-[var(--card-bg-solid)] backdrop-blur-2xl border-t border-[var(--border-color)]'}"
+        : skin.current === 'spring'
+          ? 'bg-[#061710]/95 backdrop-blur-2xl border-t border-emerald-500/25 shadow-[0_-8px_24px_rgba(16,185,129,0.25)]'
+          : 'bg-[var(--card-bg-solid)] backdrop-blur-2xl border-t border-[var(--border-color)]'}"
   style="{skin.cssVars}"
 >
   <!-- 2.1 顶部区域：左侧封面；右侧上下两行 -->
@@ -106,6 +108,16 @@
             onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
           />
         </div>
+      {:else if skin.current === 'spring'}
+        <div class="relative w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-emerald-600 to-teal-400 shrink-0 shadow-md shadow-emerald-500/20">
+          <img
+            src={formatCoverUrl(curTrack?.cover, 80)}
+            alt="封面"
+            class="w-full h-full rounded-full object-cover {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
+            referrerpolicy="no-referrer"
+            onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
+          />
+        </div>
       {:else}
         <PlayerCoverRing
           cover={curTrack?.cover || DEFAULT_VINYL_COVER}
@@ -124,13 +136,17 @@
       <div class="flex items-center gap-1.5 overflow-hidden cursor-pointer" onclick={onLyric} title="点击展开全屏播放器与歌词">
         {#if skin.current === 'winamp'}
           <span class="text-xs text-amber-400 font-mono">⚡</span>
+        {:else if skin.current === 'spring'}
+          <span class="text-xs text-emerald-400">🌱</span>
         {/if}
         <span
           class="text-sm font-semibold truncate leading-tight {skin.current === 'winamp'
             ? 'font-mono text-[#10b981] drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]'
             : skin.current === 'cassette'
               ? 'font-mono text-neutral-200'
-              : 'text-[var(--text-main,#0f172a)]'}"
+              : skin.current === 'spring'
+                ? 'text-emerald-400 font-semibold'
+                : 'text-[var(--text-main,#0f172a)]'}"
         >
           {curTrack?.name || '未在播放'}
         </span>
@@ -148,7 +164,9 @@
             ? 'font-mono text-emerald-400/70'
             : skin.current === 'cassette'
               ? 'font-mono text-neutral-400'
-              : 'text-[var(--text-secondary,#64748b)]'}"
+              : skin.current === 'spring'
+                ? 'text-emerald-300/70'
+                : 'text-[var(--text-secondary,#64748b)]'}"
           onclick={onLyric}
           title="点击展开全屏播放器与歌词"
         >
@@ -252,7 +270,9 @@
           ? 'rounded-md bg-[#22262d] border border-neutral-700 text-neutral-400'
           : skin.current === 'aurora'
             ? 'rounded-full bg-white/10 text-white border border-white/15'
-            : 'rounded-full text-[var(--text-secondary)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]'}"
+            : skin.current === 'spring'
+              ? 'rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+              : 'rounded-full text-[var(--text-secondary)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]'}"
       onclick={onToggleMode}
       title={playMode === 'single' ? '单曲循环' : (playMode === 'shuffle' ? '随机播放' : '列表循环')}
     >
@@ -267,7 +287,9 @@
           ? 'rounded-md bg-[#252930] border border-neutral-600 text-neutral-300'
           : skin.current === 'aurora'
             ? 'rounded-full bg-white/10 text-white border border-white/15'
-            : 'rounded-full text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]'}"
+            : skin.current === 'spring'
+              ? 'rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+              : 'rounded-full text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]'}"
       onclick={onPrev}
       title="上一首"
     >
@@ -286,7 +308,9 @@
           ? 'w-11 h-10 rounded-md bg-[#2d323b] border-2 border-neutral-500 text-emerald-400'
           : skin.current === 'aurora'
             ? 'w-12 h-12 rounded-full bg-gradient-to-r from-[var(--skin-accent,#ef4444)] to-[var(--skin-dominant,#6366f1)] text-white shadow-[0_0_16px_var(--skin-glow,rgba(239,68,68,0.5))]'
-            : 'w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40'}"
+            : skin.current === 'spring'
+              ? 'w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/40'
+              : 'w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40'}"
       onclick={onTogglePlay}
       title={playing ? '暂停' : '播放'}
     >
@@ -305,7 +329,9 @@
           ? 'rounded-md bg-[#252930] border border-neutral-600 text-neutral-300'
           : skin.current === 'aurora'
             ? 'rounded-full bg-white/10 text-white border border-white/15'
-            : 'rounded-full text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]'}"
+            : skin.current === 'spring'
+              ? 'rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+              : 'rounded-full text-[var(--text-main)] bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)]'}"
       onclick={onNext}
       title="下一首"
     >

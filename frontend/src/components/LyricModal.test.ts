@@ -132,5 +132,15 @@ describe('LyricModal Component', () => {
       expect(getByTestId('skin-stage-winamp')).toBeInTheDocument();
       expect(queryByTestId('skin-stage-cassette')).toBeNull();
     });
+
+    // 点击春日青绿
+    const springCard = getByText('春日青绿');
+    await fireEvent.click(springCard);
+    expect(skin.current).toBe('spring');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-spring')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-winamp')).toBeNull();
+    });
   });
 });

@@ -106,6 +106,17 @@
             <img src={formatCoverUrl(curTrack?.cover, 80)} alt="封面" class="w-full h-full object-cover {playing ? 'scale-105' : ''}" />
           </div>
         </div>
+      {:else if skin.current === 'spring'}
+        <!-- 春日青绿翡翠晶球 -->
+        <div
+          class="w-14 h-14 rounded-full bg-[#081a12] border-2 border-emerald-400/50 p-1 flex items-center justify-center shadow-2xl"
+          style="box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);"
+        >
+          <div class="w-11 h-11 rounded-full overflow-hidden shadow-inner flex items-center justify-center relative">
+            <img src={formatCoverUrl(curTrack?.cover, 80)} alt="封面" class="w-full h-full rounded-full object-cover {playing ? 'animate-[spin_16s_linear_infinite]' : ''}" />
+            <div class="absolute inset-0 rounded-full border border-emerald-400/30"></div>
+          </div>
+        </div>
       {:else}
         <!-- 经典黑胶环形进度微型球 -->
         <div class="w-14 h-14 rounded-full bg-[rgba(15,23,42,0.94)] backdrop-blur-2xl shadow-[0_12px_32px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.15)] flex items-center justify-center">

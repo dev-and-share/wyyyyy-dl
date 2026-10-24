@@ -191,7 +191,7 @@
         <span>播放器皮肤</span>
         <span class="text-[11px] text-[var(--text-muted)] font-medium">{SKINS[skin.current]?.name || '经典黑胶'}</span>
       </div>
-      <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-2 sm:grid-cols-4 gap-1">
+      <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-3 sm:grid-cols-5 gap-1">
         {#each SKIN_LIST as s}
           <button
             type="button"
