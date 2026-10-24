@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, platform } from '../lib/utils';
+  import { formatArtist, platform } from '../lib/utils';
   import { showToast } from '../lib/toast.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
@@ -8,6 +8,12 @@
   import SongCommentModal from './SongCommentModal.svelte';
   import LyricPanel from './LyricPanel.svelte';
   import TrackQuickActions from './TrackQuickActions.svelte';
+  import SkinPickerSheet from './SkinPickerSheet.svelte';
+  import { skin } from '../lib/skinStore.svelte';
+  import VinylSkinStage from './skins/VinylSkinStage.svelte';
+  import AuroraSkinStage from './skins/AuroraSkinStage.svelte';
+  import CassetteSkinStage from './skins/CassetteSkinStage.svelte';
+  import type { SkinId } from './skins/skinTypes';
 
   let {
     track,
@@ -48,8 +54,22 @@
   }>();
 
   let showVolPopup = $state(false);
+  let showSkinPicker = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let showCommentModal = $state(false);
+
+  const STAGES = {
+    vinyl: VinylSkinStage,
+    aurora: AuroraSkinStage,
+    cassette: CassetteSkinStage
+  };
+
+  let Stage = $derived(STAGES[skin.current] || VinylSkinStage);
+
+  // 切歌或封面变动时更新主题色调色板
+  $effect(() => {
+    skin.updatePalette(track?.cover);
+  });
 
   function handleAddToPlaylist() {
     if (track) {
@@ -59,7 +79,13 @@
 
   onMount(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (showSkinPicker) {
+          showSkinPicker = false;
+        } else {
+          onClose();
+        }
+      }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -68,11 +94,24 @@
 
 <div
   class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col transition-colors duration-300 select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)]"
+  style="{skin.cssVars}"
 >
   <!-- 顶部标题栏 -->
-  <div class="min-h-[calc(54px+env(safe-area-inset-top,0px))] pt-[max(10px,env(safe-area-inset-top,0px))] pb-2.5 px-4 border-b border-[var(--border-subtle)] flex justify-between items-center bg-[var(--immersive-header-bg)] backdrop-blur-md w-full shrink-0">
-    <div class="w-9.5 h-9.5 shrink-0 pointer-events-none" aria-hidden="true"></div>
+  <div class="min-h-[calc(54px+env(safe-area-inset-top,0px))] pt-[max(10px,env(safe-area-inset-top,0px))] pb-2.5 px-4 border-b border-[var(--border-subtle)] flex justify-between items-center bg-[var(--immersive-header-bg)] backdrop-blur-md w-full shrink-0 z-20">
+    <!-- 皮肤切换入口按钮 -->
+    <button
+      type="button"
+      class="w-9.5 h-9.5 rounded-full flex items-center justify-center text-base bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] active:scale-92 transition-all cursor-pointer"
+      onclick={() => showSkinPicker = true}
+      title="切换播放器皮肤"
+      data-testid="btn-open-skin-picker"
+    >
+      <span class="text-sm">🎨</span>
+    </button>
+
     <h3 class="text-base font-bold text-[var(--text-main)] flex-1 text-center truncate px-2">🎵 全屏沉浸播放</h3>
+
+    <!-- 关闭沉浸页 -->
     <button
       type="button"
       class="w-9.5 h-9.5 rounded-full flex items-center justify-center text-base bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] active:scale-92 transition-all cursor-pointer"
@@ -83,7 +122,7 @@
     </button>
   </div>
 
-  <!-- 中间主体：左侧大黑胶唱片 + 右侧滚动歌词 + 左下角快捷交互栏 -->
+  <!-- 中间主体：动态皮肤舞台 + 右侧滚动歌词 + 左下角快捷交互栏 -->
   <div class="flex-1 relative flex flex-col md:flex-row overflow-hidden p-3 md:p-10 gap-3 md:gap-10 max-w-[1200px] w-full mx-auto items-center">
     <!-- 移动端专属（md:hidden）：左下角快捷操作栏，大拇指舒适热区 -->
     <div class="absolute left-3.5 bottom-3 z-30 md:hidden">
@@ -97,50 +136,25 @@
       />
     </div>
 
-    <!-- 左侧：大黑胶唱片与歌曲元信息 -->
-    <div class="flex flex-col items-center justify-center gap-3 md:gap-4 max-w-[440px] w-full md:w-auto shrink-0">
-      <div class="w-[140px] h-[140px] md:w-[220px] md:h-[220px] flex items-center justify-center">
-        <div class="w-full h-full rounded-full bg-[var(--immersive-ring-bg)] shadow-[var(--immersive-ring-shadow)] p-1.5 flex items-center justify-center transition-all duration-300">
-          <img
-            src={formatCoverUrl(track?.cover, 400)}
-            class="w-full h-full rounded-full object-cover shadow-inner {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
-            alt="大图封面"
-            referrerpolicy="no-referrer"
-            onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
-          />
-        </div>
-      </div>
-      <div class="flex flex-col items-center text-center max-w-[340px] w-full">
-        <!-- 歌名 -->
-        <h4 class="text-base md:text-lg font-bold text-[var(--text-main)] truncate max-w-full px-2" title={track?.name}>
-          {track?.name || '未在播放'}
-        </h4>
-
-        <!-- 歌手名 -->
-        <div class="text-xs md:text-sm text-[var(--text-secondary)] truncate max-w-full mt-1 px-2" title={formatArtist(track?.artist)}>
-          {formatArtist(track?.artist) || '未知歌手'}
-        </div>
-
-        <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排 -->
-        <div class="hidden md:flex mt-3">
-          <TrackQuickActions
-            {track}
-            {isLiked}
-            layout="row"
-            {onToggleLike}
-            onOpenComments={() => showCommentModal = true}
-            onAddToPlaylist={handleAddToPlaylist}
-          />
-        </div>
-      </div>
-    </div>
+    <!-- 左侧：动态皮肤舞台插槽（黑胶/极光/磁带） -->
+    <Stage
+      {track}
+      {playing}
+      {currentTime}
+      {duration}
+      palette={skin.palette}
+      {isLiked}
+      {onToggleLike}
+      onOpenComments={() => showCommentModal = true}
+      onAddToPlaylist={handleAddToPlaylist}
+    />
 
     <!-- 右侧：滚动歌词展示面板 -->
-    <LyricPanel {track} {currentTime} {onSeekTime} />
+    <LyricPanel {track} {currentTime} {onSeekTime} skinId={skin.current} />
   </div>
 
   <!-- 底部：全屏沉浸播放控制条 -->
-  <div class="w-full px-4 md:px-12 py-3 border-t border-[var(--border-subtle)] bg-[var(--immersive-footer-bg)] backdrop-blur-xl flex flex-col items-center gap-2.5 shrink-0">
+  <div class="w-full px-4 md:px-12 py-3 border-t border-[var(--border-subtle)] bg-[var(--immersive-footer-bg)] backdrop-blur-xl flex flex-col items-center gap-2.5 shrink-0 z-20">
     <div class="w-full max-w-[680px]">
       <PlayerProgressBar
         curTime={currentTime}
@@ -250,6 +264,10 @@
     </div>
   </div>
 </div>
+
+{#if showSkinPicker}
+  <SkinPickerSheet onClose={() => showSkinPicker = false} />
+{/if}
 
 {#if addToPlaylistSong}
   <AddToPlaylistModal

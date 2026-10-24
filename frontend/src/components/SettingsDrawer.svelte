@@ -1,6 +1,8 @@
 <script lang="ts">
   import { platform } from '../lib/platform';
   import type { ThemeMode } from '../lib/theme';
+  import { skin } from '../lib/skinStore.svelte';
+  import { SKIN_LIST, SKINS } from './skins/skinTypes';
   import SettingsCacheSection from './settings/SettingsCacheSection.svelte';
   import SettingsAccountSection from './settings/SettingsAccountSection.svelte';
   import SettingsMaintenanceSection from './settings/SettingsMaintenanceSection.svelte';
@@ -182,6 +184,24 @@
         >
           <span>🌓</span> 自动
         </button>
+      </div>
+
+      <!-- 播放器皮肤三选一 -->
+      <div class="flex items-center justify-between text-xs text-[var(--text-secondary)] mt-1 px-1">
+        <span>播放器皮肤</span>
+        <span class="text-[11px] text-[var(--text-muted)] font-medium">{SKINS[skin.current]?.name || '经典黑胶'}</span>
+      </div>
+      <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-3 gap-1">
+        {#each SKIN_LIST as s}
+          <button
+            type="button"
+            data-testid="settings-skin-{s.id}"
+            class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {skin.current === s.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            onclick={() => skin.set(s.id)}
+          >
+            <span>{s.emoji}</span> {s.name}
+          </button>
+        {/each}
       </div>
     </section>
 
