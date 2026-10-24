@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatArtist, DEFAULT_VINYL_COVER, platform } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, platform, formatCoverUrl } from '../../lib/utils';
   import type { Track } from '../../lib/types';
   import PlayerCoverRing from '../PlayerCoverRing.svelte';
   import PlayerProgressBar from '../PlayerProgressBar.svelte';
@@ -7,6 +7,9 @@
   import PlayerIcon from '../PlayerIcon.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
+  import { skin } from '../../lib/skinStore.svelte';
+  import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
+  import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
 
   let {
     curTrack,
@@ -55,43 +58,106 @@
   let isLiked = $derived(curTrack ? likedSet.has(Number(curTrack.id)) : false);
 </script>
 
-<div class="fixed bottom-0 left-0 right-0 h-[74px] bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[-12px_48px_rgba(0,0,0,0.45)] z-[9998] px-6 flex items-center transition-colors duration-300">
+<div
+  data-testid="player-bar-desktop"
+  class="fixed bottom-0 left-0 right-0 h-[76px] z-[9998] px-6 flex items-center transition-all duration-300 select-none {skin.current === 'winamp'
+    ? 'bg-gradient-to-b from-[#303642] via-[#21252d] to-[#171920] border-t-2 border-l-2 border-white/20 border-b-2 border-r-2 border-black/90 shadow-2xl'
+    : skin.current === 'cassette'
+      ? 'bg-[#181a1f] border-t-2 border-[#2c3038] shadow-2xl'
+      : skin.current === 'aurora'
+        ? 'bg-slate-950/70 backdrop-blur-2xl border-t border-white/20 shadow-[0_-8px_32px_var(--skin-glow,rgba(239,68,68,0.25))]'
+        : 'bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[-12px_48px_rgba(0,0,0,0.45)]'}"
+  style="{skin.cssVars}"
+>
   <div class="w-full max-w-[1280px] mx-auto flex justify-between items-center gap-5">
-    <!-- 1. 左侧：黑胶封面与歌曲元信息 -->
+    <!-- 1. 左侧：根据皮肤渲染专属封面/状态槽 -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="flex items-center gap-3 flex-1 min-w-[180px] max-w-[340px]">
-      <div class="cursor-pointer select-none flex items-center gap-3 flex-1 min-w-0" onclick={onLyric} title="点击展开全屏歌词与大黑胶">
-        <PlayerCoverRing
-          cover={curTrack?.cover || DEFAULT_VINYL_COVER}
-          {playing}
-          {ringDashOffset}
-          size="md"
-        />
+    <div class="flex items-center gap-3 flex-1 min-w-[200px] max-w-[360px]">
+      <div class="cursor-pointer select-none flex items-center gap-3 flex-1 min-w-0" onclick={onLyric} title="点击展开全屏播放器">
+        {#if skin.current === 'winamp'}
+          <!-- Winamp 风格封面 + 经典示波频谱 -->
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-11 h-11 rounded-xs overflow-hidden border border-white/30 shadow-sm shrink-0">
+              <img
+                src={formatCoverUrl(curTrack?.cover, 100)}
+                alt="封面"
+                class="w-full h-full object-cover"
+                referrerpolicy="no-referrer"
+                onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
+              />
+            </div>
+            <WinampMiniVisualizer {playing} barCount={8} />
+          </div>
+        {:else if skin.current === 'cassette'}
+          <!-- 磁带风格微型双轴旋转窗 -->
+          <CassetteMiniSpools
+            cover={curTrack?.cover || DEFAULT_VINYL_COVER}
+            {playing}
+            {progressRatio}
+            size="md"
+          />
+        {:else if skin.current === 'aurora'}
+          <!-- 极光风格圆角方形悬浮发光封面 -->
+          <div
+            class="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-lg border border-white/30 transition-transform hover:scale-105"
+            style="box-shadow: 0 0 16px var(--skin-glow, rgba(239, 68, 68, 0.45));"
+          >
+            <img
+              src={formatCoverUrl(curTrack?.cover, 100)}
+              alt="封面"
+              class="w-full h-full object-cover {playing ? 'scale-105' : 'scale-100'} transition-transform duration-500"
+              referrerpolicy="no-referrer"
+              onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
+            />
+          </div>
+        {:else}
+          <!-- 经典黑胶唱片环 -->
+          <PlayerCoverRing
+            cover={curTrack?.cover || DEFAULT_VINYL_COVER}
+            {playing}
+            {ringDashOffset}
+            size="md"
+          />
+        {/if}
+
         <div class="flex flex-col overflow-hidden min-w-0 flex-1">
           <div class="flex items-center gap-1.5 overflow-hidden">
-            <span class="text-sm font-semibold text-[var(--text-main,#0f172a)] truncate leading-tight">
+            {#if skin.current === 'winamp'}
+              <span class="text-xs text-amber-400 font-mono">⚡</span>
+            {/if}
+            <span
+              class="text-sm font-semibold truncate leading-tight {skin.current === 'winamp'
+                ? 'font-mono text-[#10b981] drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]'
+                : skin.current === 'cassette'
+                  ? 'font-mono text-neutral-200'
+                  : 'text-[var(--text-main,#0f172a)]'}"
+            >
               {curTrack?.name || '未在播放'}
             </span>
             {#if curTrack}
               <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
             {/if}
           </div>
-          <div class="text-xs text-[var(--text-secondary,#64748b)] truncate mt-0.5">
+          <div
+            class="text-xs truncate mt-0.5 {skin.current === 'winamp'
+              ? 'font-mono text-emerald-400/70'
+              : skin.current === 'cassette'
+                ? 'font-mono text-neutral-400'
+                : 'text-[var(--text-secondary,#64748b)]'}"
+          >
             {formatArtist(curTrack?.artist) || '未知歌手'}
           </div>
         </div>
       </div>
-      <!-- ❤️ 红心按钮：紧贴歌曲信息右侧，独立于点击区 -->
+
+      <!-- ❤️ 红心按钮 -->
       {#if curTrack}
-        <TrackLikeBtn
-          liked={isLiked}
-          onclick={onToggleLike}
-        />
+        <TrackLikeBtn liked={isLiked} onclick={onToggleLike} />
       {/if}
     </div>
 
-    <!-- 2. 中间：核心控制按键 + 全宽进度条 -->
+    <!-- 2. 中间：按皮肤定制的核心控制按键 + 全宽进度条 -->
     <div class="flex flex-col items-center justify-center flex-2 max-w-[580px] gap-1.5 w-full">
       <PlayerControls
         {playing}
@@ -101,12 +167,14 @@
         {onNext}
         {onToggleMode}
         size="md"
+        skinId={skin.current}
       />
       <PlayerProgressBar
         {curTime}
         {duration}
         {progressRatio}
         {onSeek}
+        skinId={skin.current}
       />
     </div>
 
@@ -116,7 +184,7 @@
         type="button"
         class="w-8.5 h-8.5 rounded-lg flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onLyric}
-        title="全屏沉浸歌词"
+        title="全屏歌词与皮肤舞台"
       >
         <PlayerIcon name="mic" size={17} />
       </button>
@@ -142,7 +210,7 @@
           {queue.length}
         </span>
       </button>
-      <!-- iOS (Safari/PWA) HTML5 audio volume 为系统级只读，隐藏滑块避免误解 -->
+
       {#if platform.canAdjustVolume}
         <div class="flex items-center gap-1.5">
           <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -160,15 +228,20 @@
             max="1"
             step="0.02"
             bind:value={vol}
-            class="w-20 h-1 accent-red-500 cursor-pointer bg-black/10 dark:bg-white/15 rounded-lg"
+            class="w-20 h-1 cursor-pointer bg-black/10 dark:bg-white/15 rounded-lg {skin.current === 'winamp'
+              ? 'accent-emerald-500'
+              : skin.current === 'aurora'
+                ? 'accent-[var(--skin-accent,#ef4444)]'
+                : 'accent-red-500'}"
           />
         </div>
       {/if}
+
       <button
         type="button"
         class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 active:scale-95 transition-all cursor-pointer"
         onclick={onMinimize}
-        title="收起为黑胶悬浮球"
+        title="收起为浮球"
       >
         <PlayerIcon name="close" size={13} />
       </button>

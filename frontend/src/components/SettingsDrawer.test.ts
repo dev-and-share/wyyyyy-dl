@@ -120,5 +120,9 @@ describe('TopBar & SettingsDrawer Integration', () => {
     const cassetteBtn = screen.getByTestId('settings-skin-cassette');
     await fireEvent.click(cassetteBtn);
     expect(localStorage.getItem('player_skin')).toBe('cassette');
+
+    const winampBtn = screen.getByTestId('settings-skin-winamp');
+    await fireEvent.click(winampBtn);
+    expect(localStorage.getItem('player_skin')).toBe('winamp');
   });
 });

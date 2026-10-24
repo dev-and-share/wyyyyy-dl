@@ -13,6 +13,7 @@
   import VinylSkinStage from './skins/VinylSkinStage.svelte';
   import AuroraSkinStage from './skins/AuroraSkinStage.svelte';
   import CassetteSkinStage from './skins/CassetteSkinStage.svelte';
+  import WinampSkinStage from './skins/WinampSkinStage.svelte';
   import type { SkinId } from './skins/skinTypes';
 
   let {
@@ -61,7 +62,8 @@
   const STAGES = {
     vinyl: VinylSkinStage,
     aurora: AuroraSkinStage,
-    cassette: CassetteSkinStage
+    cassette: CassetteSkinStage,
+    winamp: WinampSkinStage
   };
 
   let Stage = $derived(STAGES[skin.current] || VinylSkinStage);
@@ -136,7 +138,7 @@
       />
     </div>
 
-    <!-- 左侧：动态皮肤舞台插槽（黑胶/极光/磁带） -->
+    <!-- 左侧：动态皮肤舞台插槽（黑胶/极光/磁带/Winamp） -->
     <Stage
       {track}
       {playing}
@@ -161,6 +163,7 @@
         {duration}
         progressRatio={duration ? (currentTime / duration) : 0}
         {onSeek}
+        skinId={skin.current}
       />
     </div>
 
@@ -225,7 +228,6 @@
         <PlayerIcon name="list" size={19} />
       </button>
 
-      <!-- iOS (Safari/PWA) HTML5 audio volume 属性为只读，系统强制由实体键控制，隐藏滑块避免误解 -->
       {#if platform.canAdjustVolume}
         <!-- 音量竖立弹出滑块 -->
         <div class="relative">

@@ -122,5 +122,15 @@ describe('LyricModal Component', () => {
       expect(getByTestId('skin-stage-cassette')).toBeInTheDocument();
       expect(queryByTestId('skin-stage-aurora')).toBeNull();
     });
+
+    // 点击 Winamp 经典
+    const winampCard = getByText('Winamp 经典');
+    await fireEvent.click(winampCard);
+    expect(skin.current).toBe('winamp');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-winamp')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-cassette')).toBeNull();
+    });
   });
 });

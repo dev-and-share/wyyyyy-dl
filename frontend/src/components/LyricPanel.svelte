@@ -62,7 +62,7 @@
 
 <div class="flex-1 w-full h-full min-h-0 overflow-hidden flex flex-col justify-center">
   <div
-    class="w-full h-full overflow-y-auto overflow-x-hidden px-4 py-8 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_93%,transparent_100%)] {skinId === 'cassette' ? 'font-mono' : ''}"
+    class="w-full h-full overflow-y-auto overflow-x-hidden px-4 py-8 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_93%,transparent_100%)] {skinId === 'cassette' || skinId === 'winamp' ? 'font-mono' : ''}"
     id="lyricModalContent"
   >
     {#if lrcs.length > 0}
@@ -76,8 +76,12 @@
                 ? 'text-lg md:text-2xl font-bold text-[var(--skin-accent,#ef4444)] scale-105 drop-shadow-[0_0_16px_var(--skin-glow,rgba(239,68,68,0.5))]'
                 : skinId === 'cassette'
                   ? 'text-lg md:text-xl font-bold text-[var(--skin-accent,#10b981)] scale-105 tracking-wide drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]'
-                  : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
-            : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+                  : skinId === 'winamp'
+                    ? 'text-lg md:text-xl font-bold text-[#10b981] scale-105 tracking-widest drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]'
+                    : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
+            : (skinId === 'winamp'
+                ? 'text-sm md:text-base text-emerald-500/50 hover:text-[#10b981]'
+                : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]')}"
           onclick={() => { userSeekedAt = Date.now(); onSeekTime(l.time); }}
         >
           {l.text}

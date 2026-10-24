@@ -37,6 +37,10 @@ describe('skinStore', () => {
     skin.set('cassette');
     expect(skin.current).toBe('cassette');
     expect(localStorage.getItem('player_skin')).toBe('cassette');
+
+    skin.set('winamp');
+    expect(skin.current).toBe('winamp');
+    expect(localStorage.getItem('player_skin')).toBe('winamp');
   });
 
   it('ignores invalid skin in set()', () => {
