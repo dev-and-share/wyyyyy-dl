@@ -263,11 +263,53 @@ export async function cacheTrackToBrowser(
 let currentPlayingTrackId: string | number | null = null;
 let autoCacheTimer: any = null;
 
+let activeBlobUrl: string | null = null;
+
+/**
+ * 释放当前已创建的离线 Blob URL 内存
+ */
+export function revokeActiveBlobUrl() {
+  if (activeBlobUrl) {
+    try {
+      URL.revokeObjectURL(activeBlobUrl);
+    } catch {}
+    activeBlobUrl = null;
+  }
+}
+
+/**
+ * 从浏览器 Cache Storage 直接提取已缓存音频并生成本地零网络 Blob URL 秒播
+ */
+export async function getCachedAudioBlobUrl(idOrUrl: string | number): Promise<string | null> {
+  if (typeof window === 'undefined' || !('caches' in window)) return null;
+  try {
+    const cache = await caches.open(PWA_CACHE_NAME);
+    const id = String(idOrUrl);
+    const canonicalUrl = `/v3/stream?id=${id}`;
+    let match = await cache.match(canonicalUrl);
+    if (!match && typeof idOrUrl === 'string' && idOrUrl.includes('/stream')) {
+      match = await cache.match(idOrUrl);
+    }
+    if (match) {
+      const blob = await match.blob();
+      if (blob && blob.size > 0) {
+        revokeActiveBlobUrl();
+        activeBlobUrl = URL.createObjectURL(blob);
+        return activeBlobUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('[PWA] 提取离线音频 BlobUrl 失败:', err);
+  }
+  return null;
+}
+
 /**
  * 重置当前播放歌曲标记（在切歌、播放列表清空或播放结束时调用）
  */
 export function resetTrackPlayback() {
   currentPlayingTrackId = null;
+  revokeActiveBlobUrl();
   if (autoCacheTimer) {
     clearTimeout(autoCacheTimer);
     autoCacheTimer = null;

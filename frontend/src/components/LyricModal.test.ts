@@ -6,7 +6,9 @@ import { api } from '../lib/api';
 vi.mock('../lib/api', () => ({
   api: {
     songV1: vi.fn(),
-    playlistAdd: vi.fn()
+    playlistAdd: vi.fn(),
+    songStats: vi.fn().mockResolvedValue({ code: '000000', data: { redCount: 52000, commentCount: 13140 } }),
+    songComments: vi.fn().mockResolvedValue({ code: '000000', data: { total: 0, hotComments: [], comments: [] } })
   }
 }));
 

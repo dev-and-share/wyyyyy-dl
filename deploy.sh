@@ -34,6 +34,21 @@ esac
 
 PKG="frontend/package.json"
 
+# ── 0. 前置质量门禁 (Pre-flight Checks) ────────────────────────────────────────
+echo "🛡️  [门禁 1/3] 检查前端 TypeScript / Svelte 5 类型规范 (svelte-check)..."
+npm --prefix frontend run check
+
+echo "🧪 [门禁 2/3] 运行前端自动化测试套件 (vitest)..."
+npm --prefix frontend test
+
+echo "☕ [门禁 3/3] 预检后端 Java 编译..."
+if command -v /usr/libexec/java_home &> /dev/null; then
+  export JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || echo "$JAVA_HOME")
+fi
+./gradlew compileJava --no-daemon
+
+echo "✅ 前后端质量门禁全部通过！"
+
 # ── 1. 读取当前版本 ──────────────────────────────────────────────────────────
 CURRENT=$(node -p "require('./$PKG').version")
 echo "📦 当前版本：$CURRENT"

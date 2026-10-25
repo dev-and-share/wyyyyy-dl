@@ -230,5 +230,29 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(isSameTrack(localNoId1, localNoId2)).toBe(true);
     expect(isSameTrack(localNoId1, localNoId3)).toBe(false);
   });
+
+  it('marks track as unplayable when api returns null url with unplayableReason', async () => {
+    const restrictedTrack: Track = {
+      id: 404,
+      name: '晚风',
+      artist: '浪哥'
+    };
+
+    (api.songV1 as any).mockResolvedValueOnce({
+      code: '000000',
+      data: {
+        id: 404,
+        url: null,
+        status: 404,
+        unplayableReason: '因版权保护或所在地区限制暂时无法播放'
+      }
+    });
+
+    const url = await resolveTrackUrl(restrictedTrack);
+
+    expect(url).toBe('');
+    expect(restrictedTrack.unplayable).toBe(true);
+    expect(restrictedTrack.unplayableReason).toBe('因版权保护或所在地区限制暂时无法播放');
+  });
 });
 

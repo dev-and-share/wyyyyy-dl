@@ -2,8 +2,10 @@ package com.wyyyyydl.controller;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,11 +63,17 @@ public class AnalysisController {
     }
 
     @RequestMapping(value = "/playlist", method = {RequestMethod.GET, RequestMethod.POST})
-    public RespEntity<?> playlist(@RequestParam(required = true) Long id) {
-    	PlaylistAnalysisRespDTO result = analysisService.analyzePlaylist(id);
-    	if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
-			downloadHistoryDAO.markLocalStatusBatch(result.getPlaylist().getTracks());
-		}
+    public RespEntity<?> playlist(@RequestParam(required = true) String id) {
+        Long playlistId;
+        try {
+            playlistId = Long.parseLong(id.trim());
+        } catch (Exception e) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单 ID 无效或不合法", null);
+        }
+        PlaylistAnalysisRespDTO result = analysisService.analyzePlaylist(playlistId);
+        if (result != null && result.getPlaylist() != null && result.getPlaylist().getTracks() != null) {
+            downloadHistoryDAO.markLocalStatusBatch(result.getPlaylist().getTracks());
+        }
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }
 
@@ -177,6 +185,80 @@ public class AnalysisController {
 
         return RespEntity.apply(CommonRespInfo.SUCCESS, songInfo);
     }
+
+    /**
+     * 📊 获取单曲红心数量与评论总数 (沉浸模式轻量统计)
+     */
+    @RequestMapping(value = "/song/stats", method = {RequestMethod.GET})
+    public RespEntity<Map<String, Object>> getSongStats(@RequestParam Long id) {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("songId", id);
+        Long redCount = null;
+        Long commentCount = null;
+
+        if (id != null && id > 0) {
+            // 1. 获取红心数
+            try {
+                String redJson = neteaseAPIService.getSongRedCount(id);
+                if (redJson != null) {
+                    com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(redJson);
+                    if (obj.getIntValue("code") == 200 && obj.getJSONObject("data") != null) {
+                        redCount = obj.getJSONObject("data").getLong("count");
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("获取歌曲红心数异常: id={}, msg={}", id, e.getMessage());
+            }
+
+            // 2. 获取评论总数 (传 limit=1 获取 total 即可)
+            try {
+                String commentJson = neteaseAPIService.getSongComments(id, 0, 1);
+                if (commentJson != null) {
+                    com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(commentJson);
+                    if (obj.containsKey("total")) {
+                        commentCount = obj.getLong("total");
+                    } else if (obj.getIntValue("code") == 200 && obj.containsKey("total")) {
+                        commentCount = obj.getLong("total");
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("获取歌曲评论数异常: id={}, msg={}", id, e.getMessage());
+            }
+        }
+
+        stats.put("redCount", redCount);
+        stats.put("commentCount", commentCount);
+        return RespEntity.apply(CommonRespInfo.SUCCESS, stats);
+    }
+
+    /**
+     * 💬 获取歌曲评论列表与热评详情 (沉浸模式点击评论查看)
+     */
+    @RequestMapping(value = "/song/comments", method = {RequestMethod.GET})
+    public RespEntity<?> getSongComments(@RequestParam Long id,
+                                         @RequestParam(defaultValue = "0") int offset,
+                                         @RequestParam(defaultValue = "20") int limit) {
+        if (id == null || id <= 0) {
+            return RespEntity.apply(CommonRespInfo.NOT_LEGAL_PARAM.getCode(), "歌曲 ID 不合法", null);
+        }
+        try {
+            String jsonResp = neteaseAPIService.getSongComments(id, offset, limit);
+            if (jsonResp != null) {
+                com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
+                if (obj.containsKey("total") || obj.getIntValue("code") == 200) {
+                    return RespEntity.apply(CommonRespInfo.SUCCESS, obj);
+                } else {
+                    String msg = obj.getString("message") != null ? obj.getString("message") : obj.getString("msg");
+                    return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), msg != null ? msg : "获取评论失败", obj);
+                }
+            }
+            return RespEntity.apply(CommonRespInfo.SUCCESS, null);
+        } catch (Exception e) {
+            log.error("获取歌曲评论列表异常: id={}", id, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), e.getMessage(), null);
+        }
+    }
+
 
     /**
      * 🌐 在线音频 CORS 代理流接口（解决 Web Audio API 均衡器跨域静音，并支持 Range 分片拖拽与边播边存）

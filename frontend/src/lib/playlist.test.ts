@@ -241,4 +241,51 @@ describe('Playlist Play Count & Sorting Contract', () => {
     expect(myPlaylists.some(p => p.id === 999)).toBe(true);
     expect(getApiCache('my_playlists')?.data?.playlists?.some((p: any) => p.id === 999)).toBe(true);
   });
+
+  it('contracts infinite scroll cumulative loading and search keyword reset', async () => {
+    const { renderPlaylist, getPaged, loadMoreTracks, hasMoreTracks, setPlaylistSearchKeyword } = await import('./playlist.svelte');
+
+    // 生成 55 首模拟曲目
+    const mockTracks = Array.from({ length: 55 }, (_, i) => ({
+      id: i + 1,
+      name: `歌曲_${i + 1}`,
+      ar: [{ name: i % 2 === 0 ? '周杰伦' : '林俊杰' }]
+    }));
+
+    renderPlaylist({
+      id: '8888',
+      name: '测试大歌单',
+      tracks: mockTracks
+    });
+
+    // 初始状态：展示第 1 页（0..20），且有更多数据
+    expect(getPaged().length).toBe(20);
+    expect(hasMoreTracks()).toBe(true);
+    expect(getPaged()[0].id).toBe(1);
+    expect(getPaged()[19].id).toBe(20);
+
+    // 第一次触底加载下一页：累计追加至 40 首
+    const res1 = loadMoreTracks();
+    expect(res1).toBe(true);
+    expect(getPaged().length).toBe(40);
+    expect(hasMoreTracks()).toBe(true);
+    expect(getPaged()[39].id).toBe(40);
+
+    // 第二次触底加载下一页：累计追加至全部 55 首
+    const res2 = loadMoreTracks();
+    expect(res2).toBe(true);
+    expect(getPaged().length).toBe(55);
+    expect(hasMoreTracks()).toBe(false);
+
+    // 已经全部加载完毕，再次触发返回 false
+    const res3 = loadMoreTracks();
+    expect(res3).toBe(false);
+    expect(getPaged().length).toBe(55);
+
+    // 搜索过滤触发时，自动重置回第 1 页
+    setPlaylistSearchKeyword('周杰伦');
+    // 55 首中偶数索引有 28 首周杰伦，第 1 页应展示前 20 首匹配歌曲
+    expect(getPaged().length).toBe(20);
+    expect(hasMoreTracks()).toBe(true);
+  });
 });

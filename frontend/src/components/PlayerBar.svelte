@@ -12,6 +12,7 @@
     duration,
     playMode,
     vol = $bindable(0.85),
+    likedSet = new Set<number>(),
     onTogglePlay,
     onPrev,
     onNext,
@@ -20,7 +21,9 @@
     onLyric,
     onPeq,
     onQueue,
-    onClearQueue
+    onClearQueue,
+    onToggleLike = () => {},
+    minimized = $bindable(false)
   } = $props<{
     curTrack: Track | null;
     queue: Track[];
@@ -29,6 +32,8 @@
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
     vol: number;
+    likedSet?: Set<number>;
+    minimized?: boolean;
     onTogglePlay: () => void;
     onPrev: () => void;
     onNext: () => void;
@@ -38,9 +43,8 @@
     onPeq: () => void;
     onQueue: () => void;
     onClearQueue: () => void;
+    onToggleLike?: () => void;
   }>();
-
-  let minimized = $state(false);
 
   // 环形进度计算 (半径 r=23, 周长 2*pi*23 ≈ 144.513)
   const RING_CIRCUMFERENCE = 144.513;
@@ -100,6 +104,7 @@
         bind:vol
         {progressRatio}
         {ringDashOffset}
+        {likedSet}
         {onTogglePlay}
         {onPrev}
         {onNext}
@@ -108,6 +113,7 @@
         {onLyric}
         {onPeq}
         {onQueue}
+        {onToggleLike}
         onMinimize={() => minimized = true}
       />
     </div>
@@ -124,6 +130,7 @@
         bind:vol
         {progressRatio}
         {ringDashOffset}
+        {likedSet}
         {onTogglePlay}
         {onPrev}
         {onNext}
@@ -132,6 +139,7 @@
         {onLyric}
         {onPeq}
         {onQueue}
+        {onToggleLike}
         onMinimize={() => minimized = true}
       />
     </div>

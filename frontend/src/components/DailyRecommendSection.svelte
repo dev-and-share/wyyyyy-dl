@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER, deleteApiCache } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, deleteApiCache } from '../lib/utils';
   import { toPlayerTrack } from '../lib/playerHelper';
   import { myPlaylists, loadMyPlaylists, getLastBackupPlaylist, setLastBackupPlaylist, updatePlaylistTrackCount } from '../lib/playlist.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
@@ -16,6 +16,7 @@
 
   let {
     open = $bindable(false),
+    flat = false,
     onToggle,
     curTrack = null,
     playing = false,
@@ -27,8 +28,9 @@
     onReveal,
     showToast
   } = $props<{
-    open: boolean;
-    onToggle: () => void;
+    open?: boolean;
+    flat?: boolean;
+    onToggle?: () => void;
     curTrack?: any;
     playing?: boolean;
     likedSet?: Set<number>;
@@ -184,7 +186,7 @@
   }
 </script>
 
-<AccordionCard title="📅 3. 每日专属推荐" bind:open onToggle={onToggle}>
+<AccordionCard title="📅 3. 每日专属推荐" bind:open {flat} accent="amber" onToggle={onToggle}>
   <!-- 头部控制栏：日期 + 核心快捷动作组 -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 py-1 mb-3 border-b border-[var(--border-subtle)] pb-3">
     <div class="flex items-center gap-2 flex-wrap">
@@ -306,7 +308,7 @@
             {#if coverUrl}
               <div class="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-lg overflow-hidden bg-black/10 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-xs">
                 <img
-                  src={coverUrl}
+                  src={formatCoverUrl(coverUrl, 120)}
                   alt={t.name}
                   class="w-full h-full object-cover"
                   loading="lazy"

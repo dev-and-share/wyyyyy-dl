@@ -115,4 +115,91 @@ describe('SongDetailModal Component', () => {
       expect(showToast).toHaveBeenCalledWith(expect.stringContaining('夜曲'), 'success');
     });
   });
+
+  it('renders 1:1 skeleton loader during loading to prevent layout jump', async () => {
+    // Return a pending promise that never resolves during this assertion
+    (api.songV1 as any).mockReturnValue(new Promise(() => {}));
+
+    const { getByTestId, getByText } = render(SongDetailModal, {
+      props: {
+        songId: '404',
+        onClose: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    expect(getByTestId('song-detail-skeleton')).toBeInTheDocument();
+    expect(getByText(/正在解析单曲信息与高规格音频/i)).toBeInTheDocument();
+  });
+
+  it('calls onTogglePlay when clicking play on already active track', async () => {
+    const { playerStore } = await import('../lib/playerStore.svelte');
+    playerStore.setQueue([{ id: 505, name: '稻香', artist: '周杰伦' }]);
+    playerStore.playing = false;
+
+    (api.songV1 as any).mockResolvedValue({
+      code: '000000',
+      data: { id: 505, name: '稻香', ar: [{ name: '周杰伦' }] }
+    });
+
+    const onTogglePlay = vi.fn();
+    const { getByRole } = render(SongDetailModal, {
+      props: {
+        songId: '505',
+        onTogglePlay,
+        onClose: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: /立即试听/i })).toBeInTheDocument();
+    });
+
+    await fireEvent.click(getByRole('button', { name: /立即试听/i }));
+    expect(onTogglePlay).toHaveBeenCalled();
+  });
+
+  it('displays album id in parentheses, triggers onAlbum with name, and provides copy album ID', async () => {
+    (api.songV1 as any).mockResolvedValue({
+      code: '000000',
+      data: {
+        id: 707,
+        name: '七里香',
+        ar: [{ name: '周杰伦' }],
+        al_id: '9988',
+        al_name: '七里香专辑'
+      }
+    });
+
+    const onAlbum = vi.fn();
+    const onClose = vi.fn();
+    const showToast = vi.fn();
+
+    const { getByText, getByRole } = render(SongDetailModal, {
+      props: {
+        songId: '707',
+        onAlbum,
+        onClose,
+        showToast
+      }
+    });
+
+    await waitFor(() => {
+      expect(getByText('七里香专辑')).toBeInTheDocument();
+    });
+
+    // 验证括号内显示专辑 ID
+    expect(getByText('(9988)')).toBeInTheDocument();
+
+    // 点击专辑跳转
+    const albumBtn = getByRole('button', { name: '七里香专辑' });
+    await fireEvent.click(albumBtn);
+    expect(onAlbum).toHaveBeenCalledWith('9988', '七里香专辑');
+    expect(onClose).toHaveBeenCalled();
+
+    // 验证底部复制专辑 ID 按钮
+    expect(getByRole('button', { name: /复制歌曲 ID: 707/i })).toBeInTheDocument();
+    expect(getByRole('button', { name: /复制专辑 ID: 9988/i })).toBeInTheDocument();
+  });
 });

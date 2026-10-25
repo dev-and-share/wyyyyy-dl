@@ -1,57 +1,109 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import {
     allTracks,
+    getFilteredTracks,
     pageSize,
-    getPaged,
     getTotalPages,
     getPlaylist,
-    getCurPage,
+    getPlaylistSearchKeyword,
     loadPlaylistDetail,
-    incPage,
     recordPlaylistPlay
   } from '../../lib/playlist.svelte';
   import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
+  import PlaylistTrackFilter from '../PlaylistTrackFilter.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import ForkPlaylistModal from '../ForkPlaylistModal.svelte';
+  import RemoveFromPlaylistModal from '../RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
 
   let {
-    playlistId,
-    playlistTrigger = 0,
-    curTrack = null,
-    playing = false,
-    likedSet,
-    downloadedSet = new Set<number>(),
-    onBackToGallery,
-    onToggleLike,
-    onPlayQueue,
-    onAlbum,
-    onReveal,
-    showToast
+    playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
+    downloadedSet = new Set<number>(), onBackToGallery, onToggleLike, onPlayQueue,
+    onAlbum, onReveal, showToast
   } = $props<{
-    playlistId: string;
-    playlistTrigger?: number;
-    curTrack?: any;
-    playing?: boolean;
-    likedSet: Set<number>;
-    downloadedSet?: Set<number>;
-    onBackToGallery: () => void;
-    onToggleLike: (id: number, name: string) => void;
-    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
-    onAlbum?: (albumId: string) => void;
-    onReveal?: (item: any) => void;
-    showToast: (m: string, t?: string) => void;
+    playlistId: string; playlistTrigger?: number; curTrack?: any; playing?: boolean;
+    likedSet: Set<number>; downloadedSet?: Set<number>; onBackToGallery: () => void;
+    onToggleLike: (id: number, name: string) => void; onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
+    onAlbum?: (albumId: string) => void; onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
 
   let desktopCurPage = $state(1);
-  let totalPages = $derived(Math.max(1, Math.ceil(allTracks.length / pageSize)));
-  let paged = $derived(allTracks.slice((desktopCurPage - 1) * pageSize, desktopCurPage * pageSize));
+  let filteredTracks = $derived(getFilteredTracks());
+  let totalPages = $derived(Math.max(1, Math.ceil(filteredTracks.length / pageSize)));
+  let hasMore = $derived(desktopCurPage < totalPages);
+  let paged = $derived(filteredTracks.slice(0, desktopCurPage * pageSize));
   let playlist = $derived(getPlaylist());
+
+  let sentinelEl = $state<HTMLElement | null>(null);
+  let isLoadingNext = $state(false);
+
+  function loadNextPage() {
+    if (!hasMore || isLoadingNext) return;
+    isLoadingNext = true;
+    desktopCurPage = Math.min(totalPages, desktopCurPage + 1);
+    tick().then(() => {
+      isLoadingNext = false;
+      checkSentinel();
+    });
+  }
+
+  function checkSentinel() {
+    if (!sentinelEl || !hasMore || isLoadingNext) return;
+    const rect = sentinelEl.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.top <= vh + 200) {
+      loadNextPage();
+    }
+  }
+
+  let prevKeyword = $state(getPlaylistSearchKeyword());
+  $effect(() => {
+    const kw = getPlaylistSearchKeyword();
+    if (kw !== prevKeyword) {
+      prevKeyword = kw;
+      desktopCurPage = 1;
+    }
+  });
+
+  $effect(() => {
+    if (desktopCurPage > totalPages) {
+      desktopCurPage = Math.max(1, totalPages);
+    }
+  });
+
+  $effect(() => {
+    if (!sentinelEl || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting) {
+        loadNextPage();
+      }
+    }, {
+      rootMargin: '200px'
+    });
+
+    observer.observe(sentinelEl);
+
+    const scrollParent = sentinelEl.closest('.app-main-container') || window;
+    const onScroll = () => checkSentinel();
+    scrollParent.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    checkSentinel();
+
+    return () => {
+      observer.disconnect();
+      scrollParent.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
+    };
+  });
 
   let downloadedCount = $derived(
     allTracks.filter((t: any) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length
@@ -66,6 +118,7 @@
   let showForkModal = $state(false);
   let cachingTrackId = $state<number | null>(null);
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
+  let removingTrack = $state<{ id: number | string; name: string; artist?: string } | null>(null);
   let lastSeenTrigger = -1;
   let lastSeenId = '';
 
@@ -205,7 +258,7 @@
     <!-- 2. 精致紧凑 Hero 横幅区 -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
       <img
-        src={playlist.coverImgUrl || DEFAULT_VINYL_COVER}
+        src={formatCoverUrl(playlist.coverImgUrl, 300)}
         alt={playlist.name}
         class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover shadow-md shrink-0 border border-[var(--border-subtle)]"
       />
@@ -277,125 +330,115 @@
       </div>
     </div>
 
+    <!-- 歌单内歌曲过滤栏 -->
+    <PlaylistTrackFilter />
+
     <!-- 3. 宽屏歌曲大表格 (流式平滑展开，表头吸顶，与外层视口完美契合) -->
-    <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
-      <div class="overflow-x-auto custom-table-scroll">
-        <table class="w-full text-left border-collapse text-xs">
-          <!-- 吸顶表头 -->
-          <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
-            <tr>
-              <th class="w-12 py-3 pl-4 font-semibold">#</th>
-              <th class="py-3 px-3 font-semibold">标题</th>
-              <th class="py-3 px-3 font-semibold w-40">歌手</th>
-              <th class="py-3 px-3 font-semibold w-44 hidden md:table-cell">专辑</th>
-              <th class="py-3 pr-4 text-right font-semibold w-56">快捷操作</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--border-subtle)]">
-            {#each paged as t, i (t.id)}
-              {@const idx = (desktopCurPage - 1) * pageSize + i + 1}
-              {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
-              {@const artist = formatArtist(t)}
-              {@const isPlayingThis = isSameTrack(curTrack, t)}
-              <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
-                <!-- 序号 -->
-                <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
-                  {#if isPlayingThis && playing}
-                    <span class="text-red-500 animate-pulse">▶</span>
-                  {:else}
-                    {idx}
-                  {/if}
-                </td>
-
-                <!-- 标题 + Badge + Like -->
-                <td class="py-2.5 px-3 min-w-0">
-                  <div class="flex items-center gap-2 min-w-0">
-                    <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
-                      {t.name}
-                    </span>
-                    <TrackSourceBadge id={t.id} isLocal={t.isLocal} {curTrack} class="shrink-0" />
-                    <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
-                  </div>
-                </td>
-
-                <!-- 歌手 -->
-                <td class="py-2.5 px-3 text-[var(--text-secondary)] truncate">
-                  {artist || '群星'}
-                </td>
-
-                <!-- 专辑 -->
-                <td class="py-2.5 px-3 text-[var(--text-muted)] truncate hidden md:table-cell">
-                  {#if t.al?.id && onAlbum}
-                    <button
-                      type="button"
-                      class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
-                      onclick={() => onAlbum?.(String(t.al.id))}
-                    >
-                      {t.al.name || '单曲'}
-                    </button>
-                  {:else}
-                    <span>{t.al?.name || '单曲'}</span>
-                  {/if}
-                </td>
-
-                <!-- 操作栏 -->
-                <td class="py-2.5 pr-4 text-right whitespace-nowrap">
-                  <div class="inline-flex items-center justify-end gap-1.5">
-                    <SlotBtn
-                      playing={isPlayingThis && playing}
-                      onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
-                    >
-                      {isPlayingThis && playing ? '⏸ 暂停' : (status.isLocal ? '▶ 本地' : '▶ 试听')}
-                    </SlotBtn>
-
-                    {#if status.isServer}
-                      <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>
-                        📂 定位
-                      </SlotBtn>
-                    {:else}
-                      <SlotBtn onclick={() => handleDownloadSingle(String(t.id), t.name)}>
-                        📥 下载
-                      </SlotBtn>
-                    {/if}
-
-                    <SlotBtn onclick={() => handleCache(t)}>
-                      {status.isPhone ? '✅ 缓存' : cachingTrackId === t.id ? '⏳' : '📲 缓存'}
-                    </SlotBtn>
-
-                    <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>
-                      ➕
-                    </SlotBtn>
-                  </div>
-                </td>
+    {#if filteredTracks.length === 0}
+      <div class="py-16 text-center text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-dashed border-[var(--border-color)] p-8">
+        <span class="text-3xl block mb-2">🔍</span>
+        <span>未找到包含 "{getPlaylistSearchKeyword()}" 的歌曲或歌手</span>
+      </div>
+    {:else}
+      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
+        <div class="overflow-x-auto custom-table-scroll">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
+              <tr>
+                <th class="w-12 py-3 pl-4 font-semibold">#</th>
+                <th class="py-3 px-3 font-semibold">标题</th>
+                <th class="py-3 px-3 font-semibold w-40">歌手</th>
+                <th class="py-3 px-3 font-semibold w-44 hidden md:table-cell">专辑</th>
+                <th class="py-3 pr-4 text-right font-semibold w-56">快捷操作</th>
               </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody class="divide-y divide-[var(--border-subtle)]">
+              {#each paged as t, i (t.id)}
+                {@const idx = i + 1}
+                {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
+                {@const artist = formatArtist(t)}
+                {@const isPlayingThis = isSameTrack(curTrack, t)}
+                <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
+                  <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
+                    {#if isPlayingThis && playing}
+                      <span class="text-red-500 animate-pulse">▶</span>
+                    {:else}
+                      {idx}
+                    {/if}
+                  </td>
+                  <td class="py-2.5 px-3 min-w-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
+                        {t.name}
+                      </span>
+                      <TrackSourceBadge id={t.id} isLocal={t.isLocal} {curTrack} class="shrink-0" />
+                      <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
+                    </div>
+                  </td>
+                  <td class="py-2.5 px-3 text-[var(--text-secondary)] truncate">
+                    {artist || '群星'}
+                  </td>
+                  <td class="py-2.5 px-3 text-[var(--text-muted)] truncate hidden md:table-cell">
+                    {#if t.al?.id && onAlbum}
+                      <button
+                        type="button"
+                        class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
+                        onclick={() => onAlbum?.(String(t.al.id))}
+                      >
+                        {t.al.name || '单曲'}
+                      </button>
+                    {:else}
+                      <span>{t.al?.name || '单曲'}</span>
+                    {/if}
+                  </td>
+                  <td class="py-2.5 pr-4 text-right whitespace-nowrap">
+                    <div class="inline-flex items-center justify-end gap-1.5">
+                      <SlotBtn
+                        playing={isPlayingThis && playing}
+                        onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                      >
+                        {isPlayingThis && playing ? '⏸ 暂停' : (status.isLocal ? '▶ 本地' : '▶ 试听')}
+                      </SlotBtn>
+                      {#if status.isServer}
+                        <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
+                      {:else}
+                        <SlotBtn onclick={() => handleDownloadSingle(String(t.id), t.name)}>📥 下载</SlotBtn>
+                      {/if}
+                      <SlotBtn onclick={() => handleCache(t)}>
+                        {status.isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}
+                      </SlotBtn>
+                      <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕</SlotBtn>
+                      {#if playlist && (playlist.isCreator || !playlist.subscribed)}
+                        <SlotBtn onclick={() => removingTrack = { id: t.id, name: t.name, artist }}>🗑️</SlotBtn>
+                      {/if}
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
 
-      <!-- 分页控制 -->
-      <div class="flex items-center justify-between px-4 py-3 border-t border-[var(--border-color)] bg-[var(--card-bg)]">
-        <button
-          type="button"
-          class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
-          disabled={desktopCurPage <= 1}
-          onclick={() => desktopCurPage = Math.max(1, desktopCurPage - 1)}
+        <!-- 触底自动刷下一页哨兵与状态提示 -->
+        <div
+          bind:this={sentinelEl}
+          data-testid="playlist-infinite-sentinel"
+          class="flex flex-col items-center justify-center py-3.5 px-4 border-t border-[var(--border-color)] bg-[var(--card-bg)] text-xs text-[var(--text-secondary)] transition-all select-none"
         >
-          上一页
-        </button>
-        <span class="text-xs text-[var(--text-secondary)]">
-          第 <strong class="text-[var(--text-main)]">{desktopCurPage}</strong> / {totalPages} 页 (共 {allTracks.length} 首)
-        </span>
-        <button
-          type="button"
-          class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
-          disabled={desktopCurPage >= totalPages}
-          onclick={() => desktopCurPage = Math.min(totalPages, desktopCurPage + 1)}
-        >
-          下一页
-        </button>
+          {#if hasMore}
+            <div class="flex items-center gap-2 text-[var(--text-secondary)] py-1">
+              <span class="inline-block animate-spin text-red-500 text-sm">⏳</span>
+              <span>正在加载更多曲目 (已显示 {paged.length} / {filteredTracks.length} 首)...</span>
+            </div>
+          {:else}
+            <div class="flex items-center gap-2 text-[var(--text-muted)] text-[11px] py-1">
+              <span>✨</span>
+              <span>已加载全部 {filteredTracks.length} 首曲目{#if getPlaylistSearchKeyword()} (筛选自 {allTracks.length} 首){/if}</span>
+            </div>
+          {/if}
+        </div>
       </div>
-    </div>
+    {/if}
   {:else if loadError}
     <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
       <span class="text-3xl">⚠️</span>
@@ -426,22 +469,18 @@
   {/if}
 
   {#if addToPlaylistSong}
-    <AddToPlaylistModal
-      song={addToPlaylistSong}
-      onClose={() => addToPlaylistSong = null}
-      {showToast}
-    />
+    <AddToPlaylistModal song={addToPlaylistSong} onClose={() => addToPlaylistSong = null} {showToast} />
   {/if}
 
   {#if showForkModal && playlist}
     <ForkPlaylistModal
-      playlistName={playlist.name}
-      trackCount={allTracks.length}
-      trackIds={allTracks.map((t: any) => t.id)}
-      onClose={() => showForkModal = false}
-      onSuccess={handleForkSuccess}
-      {showToast}
+      playlistName={playlist.name} trackCount={allTracks.length} trackIds={allTracks.map((t: any) => t.id)}
+      onClose={() => showForkModal = false} onSuccess={handleForkSuccess} {showToast}
     />
+  {/if}
+
+  {#if removingTrack && playlist}
+    <RemoveFromPlaylistModal song={removingTrack} playlistId={playlist.id} playlistName={playlist.name} onClose={() => removingTrack = null} {showToast} />
   {/if}
 </div>
 

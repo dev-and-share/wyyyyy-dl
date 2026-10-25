@@ -47,4 +47,15 @@ describe('router navigation and URL sync contracts', () => {
 
     cleanup();
   });
+
+  it('updates routerState when jumpToAlbum is called with id and name', async () => {
+    const { jumpToAlbum } = await import('./router.svelte');
+    jumpToAlbum('5566', 'Fantasy');
+
+    expect(routerState.albumId).toBe('5566');
+    expect(routerState.albumName).toBe('Fantasy');
+    expect(routerState.albumTrigger).toBeGreaterThan(0);
+    expect(routerState.tab).toBe('search');
+    expect(location.hash).toBe('#search');
+  });
 });

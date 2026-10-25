@@ -945,6 +945,42 @@ public class NeteaseAPIService implements InitializingBean{
 	        return requestLinuxApi(innerUrl, innerParams);
 	    }
 
+	    /**
+	     * 获取歌曲的红心数量（全网喜欢/收藏数）
+	     * @param songId 歌曲 ID
+	     * @return 包含 count 的响应 JSON
+	     */
+	    public String getSongRedCount(Long songId) throws Exception {
+	        if (songId == null || songId <= 0) {
+	            throw new IllegalArgumentException("songId 不能为空");
+	        }
+	        String innerUrl = "http://music.163.com/api/song/red/count";
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("songId", String.valueOf(songId));
+	        return requestLinuxApi(innerUrl, innerParams);
+	    }
+
+	    /**
+	     * 获取歌曲的评论列表与评论总数
+	     * @param songId 歌曲 ID
+	     * @param offset 分页偏移量
+	     * @param limit 每页条数
+	     * @return 评论数据 JSON (包含 total, hotComments, comments)
+	     */
+	    public String getSongComments(Long songId, int offset, int limit) throws Exception {
+	        if (songId == null || songId <= 0) {
+	            throw new IllegalArgumentException("songId 不能为空");
+	        }
+	        String innerUrl = "http://music.163.com/api/v1/resource/comments/R_SO_4_" + songId;
+	        Map<String, Object> innerParams = new LinkedHashMap<>();
+	        innerParams.put("rid", "R_SO_4_" + songId);
+	        innerParams.put("offset", Math.max(0, offset));
+	        innerParams.put("limit", Math.max(1, limit));
+	        innerParams.put("beforeTime", 0);
+	        return requestLinuxApi(innerUrl, innerParams);
+	    }
+
+
 	    public static void main(String[] args) throws Exception {
 	    	NeteaseAPIService service = new NeteaseAPIService();
 	    	service.cookie = "1234"; 

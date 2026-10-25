@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
-  import { toPlayerTrack } from '../lib/playerHelper';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../lib/utils';
   import type { Track } from '../lib/types';
+  import { toPlayerTrack } from '../lib/playerHelper';
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
@@ -205,7 +205,7 @@
             {#if coverUrl}
               <div class="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-lg overflow-hidden bg-black/10 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-xs">
                 <img
-                  src={coverUrl}
+                  src={formatCoverUrl(coverUrl, 120)}
                   alt={r.name}
                   class="w-full h-full object-cover"
                   loading="lazy"
@@ -287,7 +287,7 @@
           <div class="flex items-center gap-2.5 min-w-0 flex-1">
             <div class="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-lg overflow-hidden bg-black/10 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-xs">
               <img
-                src={r.picUrl || DEFAULT_VINYL_COVER}
+                src={formatCoverUrl(r.picUrl, 120)}
                 alt={r.name}
                 class="w-full h-full object-cover"
                 loading="lazy"
@@ -345,7 +345,7 @@
           <div class="flex items-center gap-2.5 min-w-0 flex-1">
             <div class="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-lg overflow-hidden bg-black/10 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-xs">
               <img
-                src={r.coverImgUrl || DEFAULT_VINYL_COVER}
+                src={formatCoverUrl(r.coverImgUrl, 120)}
                 alt={r.name}
                 class="w-full h-full object-cover"
                 loading="lazy"
@@ -409,7 +409,7 @@
           <div class="flex items-center gap-2.5 min-w-0 flex-1">
             <div class="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-full overflow-hidden bg-black/10 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-xs">
               <img
-                src={r.picUrl || r.img1v1Url || DEFAULT_VINYL_COVER}
+                src={formatCoverUrl(r.picUrl || r.img1v1Url, 120)}
                 alt={r.name}
                 class="w-full h-full object-cover"
                 loading="lazy"

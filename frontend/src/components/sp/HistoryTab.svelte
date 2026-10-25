@@ -2,6 +2,7 @@
   import { api } from '../../lib/api';
   import { formatBytes } from '../../lib/utils';
   import AccordionCard from '../AccordionCard.svelte';
+  import LocalSearchBox from '../LocalSearchBox.svelte';
   import SlotBtn from '../SlotBtn.svelte';
 
   let histKw = $state('');
@@ -67,13 +68,15 @@
 
   <!-- 搜索输入行 -->
   <div class="flex gap-2 mb-2.5">
-    <input
-      type="text"
-      placeholder="🔍 搜索已下载歌曲 (按回车搜索)..."
-      class="flex-1 px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500 transition-all"
-      bind:value={histKw}
-      onkeydown={(e) => e.key === 'Enter' && loadHistory(1)}
-    />
+    <div class="flex-1 min-w-0">
+      <LocalSearchBox
+        bind:value={histKw}
+        placeholder="🔍 搜索已下载歌曲 (按回车搜索)..."
+        historyKey="wyyyy_history_search_history"
+        onSearch={() => loadHistory(1)}
+        onClear={() => loadHistory(1)}
+      />
+    </div>
     <button
       type="button"
       class="btn-primary px-4 py-1.5 text-xs hidden md:inline-flex"

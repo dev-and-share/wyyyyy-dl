@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, getApiCache, setApiCache } from '../../lib/utils';
   import type { Track } from '../../lib/types';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
@@ -10,6 +10,7 @@
   import DesktopArtistDetail from './DesktopArtistDetail.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { routerState } from '../../lib/router.svelte';
 
   let {
     curTrack = null,
@@ -29,7 +30,7 @@
     downloadedSet?: Set<number>;
     likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string, artist?: string) => void;
-    onAlbum?: (id: string) => void;
+    onAlbum?: (id: string, name?: string) => void;
     onPlaylist: (id: string) => void;
     onPlayQueue?: (tracks: any[], idx?: number) => void;
     onSong?: (id: string) => void;
@@ -51,6 +52,20 @@
   let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
   let searchHistory = $state<string[]>([]);
   let activeArtistId = $state('');
+
+  let lastHandledAlbumTrigger = 0;
+  $effect(() => {
+    if (routerState.albumTrigger > 0 && routerState.albumTrigger !== lastHandledAlbumTrigger) {
+      lastHandledAlbumTrigger = routerState.albumTrigger;
+      activeArtistId = '';
+      sType = '10';
+      const searchWord = routerState.albumName || routerState.albumId;
+      if (searchWord) {
+        kw = searchWord;
+        executeSearch(searchWord);
+      }
+    }
+  });
 
   onMount(() => {
     if (typeof localStorage !== 'undefined') {
@@ -330,7 +345,7 @@
                       <button
                         type="button"
                         class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
-                        onclick={() => onAlbum(String(r.al.id))}
+                        onclick={() => onAlbum(String(r.al.id), r.al?.name)}
                       >
                         {r.al.name || '单曲'}
                       </button>
@@ -369,13 +384,13 @@
         {#each sResults as al (al.id)}
           <div class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1">
             <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
-              <img src={al.picUrl || DEFAULT_VINYL_COVER} alt={al.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+              <img src={formatCoverUrl(al.picUrl, 250)} alt={al.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </div>
             <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={al.name}>{al.name}</span>
             <span class="text-[11px] text-[var(--text-secondary)] truncate">{formatArtist(al.artists || al.artist) || '群星'}</span>
             <div class="flex items-center gap-1.5 pt-1">
               {#if onAlbum}
-                <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onAlbum(String(al.id))}>💽 查看</button>
+                <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onAlbum(String(al.id), al.name)}>💽 查看</button>
               {/if}
               <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => handleDownloadAlbum(String(al.id), al.name)} title="整辑下载">📥</button>
             </div>
@@ -388,7 +403,7 @@
         {#each sResults as pl (pl.id)}
           <div class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1">
             <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
-              <img src={pl.coverImgUrl || DEFAULT_VINYL_COVER} alt={pl.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+              <img src={formatCoverUrl(pl.coverImgUrl, 250)} alt={pl.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </div>
             <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={pl.name}>{pl.name}</span>
             <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
@@ -413,7 +428,7 @@
               onclick={() => activeArtistId = String(ar.id)}
               title="点击查看 {ar.name} 热门 50 首"
             >
-              <img src={ar.picUrl || ar.img1v1Url || DEFAULT_VINYL_COVER} alt={ar.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+              <img src={formatCoverUrl(ar.picUrl || ar.img1v1Url, 250)} alt={ar.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </button>
             <button
               type="button"
@@ -469,12 +484,6 @@
 </div>
 
 <style>
-  .custom-table-scroll::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .custom-table-scroll::-webkit-scrollbar-thumb {
-    background: var(--border-color, rgba(255, 255, 255, 0.15));
-    border-radius: 4px;
-  }
+  .custom-table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+  .custom-table-scroll::-webkit-scrollbar-thumb { background: var(--border-color, rgba(255, 255, 255, 0.15)); border-radius: 4px; }
 </style>

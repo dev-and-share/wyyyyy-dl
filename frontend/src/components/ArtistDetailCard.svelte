@@ -16,6 +16,7 @@
     artist = null,
     artistLoading = false,
     open = $bindable(false),
+    flat = false,
     currentArtistId = $bindable(''),
     curTrack = null,
     playing = false,
@@ -31,6 +32,7 @@
     artist?: any;
     artistLoading?: boolean;
     open?: boolean;
+    flat?: boolean;
     currentArtistId: string;
     curTrack?: any;
     playing?: boolean;
@@ -243,7 +245,7 @@
   }
 </script>
 
-<AccordionCard title="🎤 3. 歌手解析与热门 50 首" bind:open>
+<AccordionCard title="🎤 3. 歌手解析与热门 50 首" bind:open {flat} accent="purple">
   <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
     <input
       type="text"
