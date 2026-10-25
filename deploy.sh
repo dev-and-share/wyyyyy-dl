@@ -39,6 +39,10 @@ case "$ACTION" in
       BUMP="$ACTION"
     fi
     ;;
+  keep|current|none)
+    IS_RELEASE=false
+    BUMP="none"
+    ;;
   *)
     IS_RELEASE=false
     BUMP="patch"
@@ -71,6 +75,7 @@ IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
 case "$BUMP" in
   major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
   minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+  none)  ;;
   *)     PATCH=$((PATCH + 1)) ;;
 esac
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
