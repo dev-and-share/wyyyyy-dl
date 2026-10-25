@@ -25,7 +25,7 @@
 <!-- 顶栏 (TopBar) -->
 {#if isDesktopLayout}
   <!-- 💻 PC 桌面侧边栏模式：右上角极简控制图标 (只有 icon，hover 悬停时才有反馈) -->
-  <header class="hidden lg:flex absolute right-4 top-4 z-20 items-center justify-end select-none pointer-events-auto" data-testid="desktop-top-bar">
+  <header class="hidden lg:flex absolute right-4 top-4 z-20 items-center justify-end select-none pointer-events-auto wco-no-drag" data-testid="desktop-top-bar">
     <div class="flex items-center gap-1">
       <button
         data-testid="btn-toggle-theme"
@@ -49,8 +49,8 @@
     </div>
   </header>
 {:else}
-  <!-- 📱 移动端：标准顶栏 (撑满两端对齐) -->
-  <div class="w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300">
+  <!-- 📱 移动端：标准顶栏 (撑满两端对齐，支持 PWA 顶栏拖拽与安全区) -->
+  <div class="w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer" onclick={onRefresh} title="点击刷新数据">

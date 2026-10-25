@@ -67,3 +67,15 @@ export const SKINS: Record<SkinId, SkinMeta> = {
 };
 
 export const SKIN_LIST: SkinMeta[] = Object.values(SKINS);
+
+/**
+ * 🎨 5 套皮肤对应的 PWA 标题栏 / 系统主题色 (深色/浅色)
+ * 适配 macOS PWA (Safari 添加到程序坞 / Chrome WCO) 与移动端状态栏
+ */
+export const SKIN_THEME_COLORS: Record<SkinId, { dark: string; light: string }> = {
+  spring: { dark: '#06140f', light: '#f0fdf4' }, // 翡翠幽绿 / 萌芽嫩白
+  winamp: { dark: '#11141b', light: '#f1f5f9' }, // 钛金冷灰 / 明亮银白
+  cassette: { dark: '#121316', light: '#fefce8' }, // 随身听焦糖黑 / 暖阳纸黄
+  aurora: { dark: '#0c0a1a', light: '#faf5ff' }, // 极光幽夜紫 / 丁香浅紫
+  vinyl: { dark: '#0a0e1a', light: '#ffffff' }  // 黑曜深蓝 / 典雅高光白
+};

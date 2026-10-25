@@ -77,3 +77,17 @@ body {
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.35);
 }
+
+/* ==========================================================================
+   🪟 Window Controls Overlay (WCO) & macOS Titlebar Dragging
+   ========================================================================== */
+.wco-drag-region {
+    -webkit-app-region: drag;
+    app-region: drag;
+}
+
+.wco-no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+}
+

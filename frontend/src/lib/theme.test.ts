@@ -36,6 +36,7 @@ describe('theme system & OS listener contracts', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBeNull();
     expect(localStorage.getItem('theme_mode')).toBe('dark');
     expect(getInitialTheme()).toBe('dark');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
   });
 
   it('applies light theme explicitly', () => {
@@ -43,6 +44,7 @@ describe('theme system & OS listener contracts', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     expect(localStorage.getItem('theme_mode')).toBe('light');
     expect(getInitialTheme()).toBe('light');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#ffffff');
   });
 
   it('applies auto theme and follows system match', () => {

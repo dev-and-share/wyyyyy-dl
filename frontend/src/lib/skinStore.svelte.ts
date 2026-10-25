@@ -1,4 +1,4 @@
-import { DEFAULT_PALETTE, type CoverPalette, type SkinId, SKINS } from '../components/skins/skinTypes';
+import { DEFAULT_PALETTE, type CoverPalette, type SkinId, SKINS, SKIN_THEME_COLORS } from '../components/skins/skinTypes';
 import { extractCoverPalette } from './colorExtractor';
 
 const STORAGE_KEY = 'player_skin';
@@ -13,6 +13,27 @@ function syncRootSkinAttribute(id: SkinId) {
   }
 }
 
+/**
+ * 动态同步 <meta name="theme-color">
+ * 保证 macOS PWA (Safari 添加到程序坞 / Chrome 顶栏) 与移动端标题栏实时感知皮肤与深浅色切换
+ */
+export function syncMetaThemeColor(skinId?: SkinId) {
+  if (typeof document === 'undefined') return;
+  const currentSkin: SkinId = skinId || (skin?.current ? skin.current : 'vinyl');
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const color = isLight
+    ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
+    : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a');
+
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', color);
+}
+
 function loadInitialSkin(): SkinId {
   let initialSkin: SkinId = 'vinyl';
   if (typeof window !== 'undefined') {
@@ -21,6 +42,7 @@ function loadInitialSkin(): SkinId {
       if (isValidSkinId(saved)) initialSkin = saved;
     } catch {}
     syncRootSkinAttribute(initialSkin);
+    syncMetaThemeColor(initialSkin);
   }
   return initialSkin;
 }
@@ -40,6 +62,7 @@ export class SkinStore {
     if (!isValidSkinId(id)) return;
     this.current = id;
     syncRootSkinAttribute(id);
+    syncMetaThemeColor(id);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, id);
@@ -79,6 +102,7 @@ export class SkinStore {
   _reset() {
     this.current = 'vinyl';
     syncRootSkinAttribute('vinyl');
+    syncMetaThemeColor('vinyl');
     this.palette = { ...DEFAULT_PALETTE };
     this.paletteCache.clear();
     this.lastRequestedUrl = '';

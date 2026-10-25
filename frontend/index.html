@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>网易云音乐下载器 · Svelte 5</title>
+    <meta name="theme-color" id="pwa-theme-color" content="#0a0e1a" />
     <script>
       (function() {
         var mode = localStorage.getItem('theme_mode') || 'dark';
@@ -11,9 +12,22 @@
         if (mode === 'auto') active = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', active);
         document.documentElement.setAttribute('data-theme-mode', mode);
+
+        var skin = localStorage.getItem('player_skin') || 'vinyl';
+        document.documentElement.setAttribute('data-skin', skin);
+
+        var skinColors = {
+          spring: { dark: '#06140f', light: '#f0fdf4' },
+          winamp: { dark: '#11141b', light: '#f1f5f9' },
+          cassette: { dark: '#121316', light: '#fefce8' },
+          aurora: { dark: '#0c0a1a', light: '#faf5ff' },
+          vinyl: { dark: '#0a0e1a', light: '#ffffff' }
+        };
+        var tc = (skinColors[skin] || skinColors.vinyl)[active === 'light' ? 'light' : 'dark'];
+        var meta = document.getElementById('pwa-theme-color');
+        if (meta) meta.setAttribute('content', tc);
       })();
     </script>
-    <meta name="theme-color" content="#0a0e1a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

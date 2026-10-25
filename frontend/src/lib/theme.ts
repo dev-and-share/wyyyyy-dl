@@ -1,3 +1,5 @@
+import { syncMetaThemeColor } from './skinStore.svelte';
+
 export type ThemeMode = 'dark' | 'light' | 'auto';
 
 let mediaListenerBound = false;
@@ -43,6 +45,8 @@ export function applyTheme(mode: ThemeMode) {
   try {
     localStorage.setItem('theme_mode', mode);
   } catch {}
+
+  syncMetaThemeColor();
 }
 
 export function getInitialTheme(): ThemeMode {

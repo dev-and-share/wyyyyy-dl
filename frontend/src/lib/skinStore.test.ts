@@ -47,6 +47,13 @@ describe('skinStore', () => {
     expect(skin.current).toBe('spring');
     expect(localStorage.getItem('player_skin')).toBe('spring');
     expect(document.documentElement.getAttribute('data-skin')).toBe('spring');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#06140f');
+
+    // 浅色模式下切换皮肤测试
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('aurora');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#faf5ff');
+    document.documentElement.removeAttribute('data-theme');
   });
 
   it('ignores invalid skin in set()', () => {
