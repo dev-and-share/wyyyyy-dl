@@ -10,10 +10,19 @@ ACTION=${1:-local}
 IS_RELEASE=false
 BUMP="patch"
 
+if docker compose version &> /dev/null; then
+  COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+  COMPOSE_CMD="docker-compose"
+else
+  echo "❌ 找不到 docker compose 或 docker-compose 命令"
+  exit 1
+fi
+
 case "$ACTION" in
   native)
     echo "⚡ 本地 Native 模式：使用 docker-compose.native.yml 启动原生容器..."
-    docker compose -f docker-compose.native.yml up -d --build
+    $COMPOSE_CMD -f docker-compose.native.yml up -d --build
     echo "🎉 Native 容器已启动！访问地址：http://localhost:8081"
     exit 0
     ;;
@@ -96,7 +105,7 @@ else
 fi
 
 # ── 6. docker build + 启动 ───────────────────────────────────────────────────
-docker compose up -d --build
+$COMPOSE_CMD up -d --build
 if [ "$IS_RELEASE" = false ]; then
   echo "🎉 本地部署成功：v$NEW_VERSION 已在本地 Docker 运行 (未推送代码，无 git tag)"
 else
