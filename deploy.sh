@@ -21,10 +21,14 @@ case "$ACTION" in
     IS_RELEASE=true
     BUMP=${2:-patch}
     ;;
-  major|minor|patch)
+  major|minor|mini|patch)
     # 兼容传入版本幅度，但默认依然是安全的本地模式
     IS_RELEASE=false
-    BUMP="$ACTION"
+    if [ "$ACTION" = "mini" ]; then
+      BUMP="minor"
+    else
+      BUMP="$ACTION"
+    fi
     ;;
   *)
     IS_RELEASE=false
