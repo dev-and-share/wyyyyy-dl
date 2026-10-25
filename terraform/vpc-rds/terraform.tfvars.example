@@ -1,0 +1,23 @@
+# ==========================================
+# wyyyyy-dl AWS Terraform 示例配置文件
+# 使用时请复制此文件为 terraform.tfvars
+# ==========================================
+
+aws_region   = "ap-northeast-1"
+project_name = "wyyyyy-dl"
+environment  = "prod"
+
+# Lambda 内存建议分配 1536MB ~ 2048MB
+lambda_memory_size = 2048
+lambda_timeout     = 30
+
+# 是否开启 RDS PostgreSQL 持久化状态
+enable_rds            = true
+rds_instance_class    = "db.t4g.micro"
+rds_allocated_storage = 20
+rds_db_name           = "musicdb"
+rds_username          = "dbadmin"
+rds_password          = "WyyyyyDlSecurePass2026!" # 生产环境请替换为高强度密码
+
+# CloudFront 边缘缓存层级 (PriceClass_100: 美欧, PriceClass_All: 全球)
+cloudfront_price_class = "PriceClass_100"

@@ -60,31 +60,35 @@
   class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width,height] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
   style="height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'}; max-height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'};"
 >
-  <!-- 1. 顶栏：Logo 与折叠切换按钮 (紧凑精致) -->
-  <div class="h-12 flex items-center px-3 border-b border-[var(--border-color)] justify-between gap-1 overflow-hidden shrink-0">
-    {#if !collapsed}
-      <div class="flex items-center gap-2 min-w-0 pl-0.5">
-        <span class="text-lg leading-none shrink-0">🎵</span>
-        <span class="font-bold text-sm text-[var(--text-main)] tracking-tight truncate">
-          网易云下载器
-        </span>
-      </div>
-    {:else}
-      <div class="w-full flex justify-center" title="网易云下载器">
-        <span class="text-lg leading-none">🎵</span>
-      </div>
-    {/if}
+  <!-- 1. 顶栏：Logo 与折叠切换按钮 (支持 macOS WCO 避让与窗口拖拽) -->
+  <div class="flex flex-col border-b border-[var(--border-color)] shrink-0 wco-drag-region">
+    <!-- macOS WCO 红绿灯避让占位区 (仅在 Chrome/Edge WCO 模式下生效，默认 0px) -->
+    <div class="w-full shrink-0" style="height: env(titlebar-area-height, 0px);"></div>
+    <div class="h-12 flex items-center px-3 justify-between gap-1 overflow-hidden shrink-0">
+      {#if !collapsed}
+        <div class="flex items-center gap-2 min-w-0 pl-0.5">
+          <span class="text-lg leading-none shrink-0">🎵</span>
+          <span class="font-bold text-sm text-[var(--text-main)] tracking-tight truncate">
+            网易云下载器
+          </span>
+        </div>
+      {:else}
+        <div class="w-full flex justify-center" title="网易云下载器">
+          <span class="text-lg leading-none">🎵</span>
+        </div>
+      {/if}
 
-    <button
-      type="button"
-      data-testid="btn-toggle-sidebar"
-      class="p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0"
-      onclick={onToggleCollapse}
-      title={collapsed ? '展开边栏 (宽屏展开)' : '收起边栏 (紧凑纯图标)'}
-      aria-label={collapsed ? '展开边栏' : '收起边栏'}
-    >
-      {collapsed ? '»' : '«'}
-    </button>
+      <button
+        type="button"
+        data-testid="btn-toggle-sidebar"
+        class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0"
+        onclick={onToggleCollapse}
+        title={collapsed ? '展开边栏 (宽屏展开)' : '收起边栏 (紧凑纯图标)'}
+        aria-label={collapsed ? '展开边栏' : '收起边栏'}
+      >
+        {collapsed ? '»' : '«'}
+      </button>
+    </div>
   </div>
 
   <!-- 2. 主导航区 (紧凑利落) -->

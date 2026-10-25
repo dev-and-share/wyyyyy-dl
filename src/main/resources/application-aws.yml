@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: wyyyyy-dl
+  mvc:
+    publish-request-handled-event: false
+  web:
+    resources:
+      static-locations: classpath:/static/,classpath:/static/svelte/
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USER:dbadmin}
+    password: ${DB_PASS:password}
+    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
+    hikari:
+      minimum-idle: 0
+      maximum-pool-size: 5
+      idle-timeout: 30000
+      max-lifetime: 60000
+      connection-timeout: 10000
+      connection-test-query: SELECT 1
+
+# AWS Lambda 环境专属存储目录（仅 /tmp 具备写入权限）
+# 默认关闭后台异步边播边存，防止 Lambda 响应返回后 MicroVM 冻结导致半截传输中断
+download:
+  path: ${LAMBDA_TMP_DIR:/tmp/music/}
+  async-on-play:
+    enabled: ${ASYNC_DOWNLOAD_ON_PLAY:false}
+
+aws:
+  s3:
+    bucket: ${S3_BUCKET_NAME:}
+  cloudfront:
+    domain: ${CLOUDFRONT_DOMAIN:}
+  dynamodb:
+    table: ${DYNAMODB_TABLE_NAME:}
+    likes-table: ${DYNAMODB_LIKES_TABLE:}
+    raw-table: ${DYNAMODB_RAW_TABLE:}
+    config-table: ${DYNAMODB_CONFIG_TABLE:}
+  region: ${AWS_REGION:us-east-1}
+
+storage:
+  type: ${STORAGE_TYPE:}
+
+reveal:
+  auto-open:
+    enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dynamodb
+
+storage:
+  type: dynamodb

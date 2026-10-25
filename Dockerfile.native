@@ -24,7 +24,7 @@ WORKDIR /build
 # 拷贝 Gradle 核心配置文件（利用 Docker 缓存层）
 COPY gradlew settings.gradle build.gradle gradle.properties ./
 COPY gradle/ ./gradle/
-RUN chmod +x ./gradlew
+RUN chmod +x ./gradlew && sed -i '/org.gradle.java.home/d' gradle.properties
 
 # 预先拉取并缓存 Gradle Wrapper
 RUN --mount=type=cache,target=/root/.gradle ./gradlew --version

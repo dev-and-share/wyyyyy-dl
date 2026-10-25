@@ -95,4 +95,38 @@ describe('TopBar & SettingsDrawer Integration', () => {
     await fireEvent.click(autoBtn);
     expect(onSelectTheme).toHaveBeenCalledWith('auto');
   });
+
+  it('SettingsDrawer allows selecting player skins', async () => {
+    const onToggleRepeat = vi.fn();
+    const onSelectTheme = vi.fn();
+    const onOpenPeq = vi.fn();
+    const onClose = vi.fn();
+
+    render(SettingsDrawer, {
+      repeat: false,
+      themeMode: 'dark',
+      onToggleRepeat,
+      onSelectTheme,
+      onOpenPeq,
+      onClose
+    });
+
+    expect(screen.getByText('播放器皮肤')).toBeTruthy();
+
+    const auroraBtn = screen.getByTestId('settings-skin-aurora');
+    await fireEvent.click(auroraBtn);
+    expect(localStorage.getItem('player_skin')).toBe('aurora');
+
+    const cassetteBtn = screen.getByTestId('settings-skin-cassette');
+    await fireEvent.click(cassetteBtn);
+    expect(localStorage.getItem('player_skin')).toBe('cassette');
+
+    const winampBtn = screen.getByTestId('settings-skin-winamp');
+    await fireEvent.click(winampBtn);
+    expect(localStorage.getItem('player_skin')).toBe('winamp');
+
+    const springBtn = screen.getByTestId('settings-skin-spring');
+    await fireEvent.click(springBtn);
+    expect(localStorage.getItem('player_skin')).toBe('spring');
+  });
 });

@@ -1,0 +1,187 @@
+package com.wyyyyydl.dao.impl;
+
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
+import com.wyyyyydl.dao.IHistoryStorageRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.test.util.ReflectionTestUtils;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.*;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@DisplayName("⚡ IHistoryStorageRepository DynamoDB 接口实现类单元测试")
+public class DynamoDbHistoryRepositoryTest {
+
+    private IHistoryStorageRepository repo;
+    private DynamoDbHistoryRepository impl;
+    private DynamoDbClient mockClient;
+
+    @BeforeEach
+    public void setup() {
+        impl = new DynamoDbHistoryRepository();
+        repo = impl;
+        mockClient = Mockito.mock(DynamoDbClient.class);
+
+        ReflectionTestUtils.setField(impl, "historyTableName", "test-history");
+        ReflectionTestUtils.setField(impl, "likesTableName", "test-likes");
+        ReflectionTestUtils.setField(impl, "rawTableName", "test-raw");
+        ReflectionTestUtils.setField(impl, "configTableName", "test-config");
+        ReflectionTestUtils.setField(impl, "awsRegion", "us-east-1");
+        ReflectionTestUtils.setField(impl, "dynamoDbClient", mockClient);
+        ReflectionTestUtils.setField(impl, "dynamoDbEnabled", true);
+    }
+
+    @Test
+    @DisplayName("测试契约方法: 配置项读写 (saveConfig / getConfig)")
+    public void testConfigSaveAndGet() {
+        repo.saveConfig("NETEASE_COOKIE", "cookie_test_value");
+        verify(mockClient, times(1)).putItem(any(PutItemRequest.class));
+
+        GetItemResponse mockResp = GetItemResponse.builder()
+                .item(Map.of("config_value", AttributeValue.builder().s("cookie_test_value").build()))
+                .build();
+        when(mockClient.getItem(any(GetItemRequest.class))).thenReturn(mockResp);
+
+        String config = repo.getConfig("NETEASE_COOKIE");
+        assertEquals("cookie_test_value", config);
+    }
+
+    @Test
+    @DisplayName("测试契约方法: 红心喜好管理 (isLiked / addLikedSong / removeLikedSong)")
+    public void testLikesOperations() {
+        when(mockClient.getItem(any(GetItemRequest.class))).thenReturn(GetItemResponse.builder().build());
+        assertFalse(repo.isLiked(12345L));
+
+        boolean added = repo.addLikedSong(12345L, "告白气球", "周杰伦");
+        assertTrue(added);
+        verify(mockClient, times(1)).putItem(any(PutItemRequest.class));
+
+        boolean removed = repo.removeLikedSong(12345L);
+        assertTrue(removed);
+        verify(mockClient, times(1)).deleteItem(any(DeleteItemRequest.class));
+    }
+
+    @Test
+    @DisplayName("测试契约方法: GSI 检索 (findLocalFileBySongId)")
+    public void testFindBySongId() {
+        Map<String, AttributeValue> itemMap = Map.of(
+                "id", AttributeValue.builder().n("999").build(),
+                "song_id", AttributeValue.builder().n("8888").build(),
+                "song_name", AttributeValue.builder().s("晴天").build(),
+                "artist", AttributeValue.builder().s("周杰伦").build(),
+                "status", AttributeValue.builder().s("SUCCESS").build()
+        );
+
+        QueryResponse queryResp = QueryResponse.builder()
+                .items(List.of(itemMap))
+                .build();
+        when(mockClient.query(any(QueryRequest.class))).thenReturn(queryResp);
+
+        DownloadHistoryItem item = repo.findLocalFileBySongId(8888L);
+        assertNotNull(item);
+        assertEquals(8888L, item.getSongId());
+        assertEquals("晴天", item.getSongName());
+        assertTrue(item.getFileExists());
+    }
+
+    @Test
+    @DisplayName("测试契约方法: 统计计算 (getStats)")
+    public void testGetStats() {
+        Map<String, AttributeValue> itemMap1 = Map.of(
+                "id", AttributeValue.builder().n("1").build(),
+                "status", AttributeValue.builder().s("SUCCESS").build(),
+                "file_size", AttributeValue.builder().n("1000").build(),
+                "quality", AttributeValue.builder().s("lossless").build()
+        );
+        Map<String, AttributeValue> itemMap2 = Map.of(
+                "id", AttributeValue.builder().n("2").build(),
+                "status", AttributeValue.builder().s("SUCCESS").build(),
+                "file_size", AttributeValue.builder().n("2000").build(),
+                "quality", AttributeValue.builder().s("standard").build()
+        );
+
+        ScanResponse scanResp = ScanResponse.builder()
+                .items(List.of(itemMap1, itemMap2))
+                .build();
+        when(mockClient.scan(any(ScanRequest.class))).thenReturn(scanResp);
+
+        Map<String, Object> stats = repo.getStats();
+        assertEquals(2, stats.get("totalCount"));
+        assertEquals(2, stats.get("successTotal"));
+        assertEquals(3000L, stats.get("totalSize"));
+        assertEquals(0, stats.get("missingCount"));
+        assertEquals(0, stats.get("nonMp3Count"));
+    }
+
+    @Test
+    @DisplayName("测试指摘 #2: relativePath 映射与 S3 对象同步删除")
+    public void testRelativePathMappingAndS3Delete() {
+        com.wyyyyydl.service.storage.IStorageService mockStorage = Mockito.mock(com.wyyyyydl.service.storage.IStorageService.class);
+        ReflectionTestUtils.setField(impl, "storageService", mockStorage);
+
+        Map<String, AttributeValue> itemMap = Map.of(
+                "id", AttributeValue.builder().n("101").build(),
+                "song_id", AttributeValue.builder().n("555").build(),
+                "song_name", AttributeValue.builder().s("安静").build(),
+                "artist", AttributeValue.builder().s("周杰伦").build(),
+                "file_path", AttributeValue.builder().s("周杰伦/安静.flac").build(),
+                "file_size", AttributeValue.builder().n("30000000").build(),
+                "status", AttributeValue.builder().s("SUCCESS").build()
+        );
+
+        when(mockClient.query(any(QueryRequest.class))).thenReturn(QueryResponse.builder().items(List.of(itemMap)).build());
+
+        DownloadHistoryItem item = repo.findLocalFileBySongId(555L);
+        assertNotNull(item);
+        assertEquals("周杰伦/安静.flac", item.getFilePath());
+        assertEquals("周杰伦/安静.flac", item.getRelativePath(), "指摘 #2: relativePath 必须与 filePath 保持同步映射");
+
+        boolean deleted = repo.deleteSongFileAndRecord(555L, "安静", "周杰伦");
+        assertTrue(deleted);
+        verify(mockStorage, times(1)).deleteFile("周杰伦/安静.flac");
+        verify(mockClient, times(1)).deleteItem(any(DeleteItemRequest.class));
+    }
+
+    @Test
+    @DisplayName("测试指摘 #8: LastEvaluatedKey 循环分页扫描防截断")
+    public void testScanPagination() {
+        Map<String, AttributeValue> item1 = Map.of(
+                "song_id", AttributeValue.builder().n("1001").build()
+        );
+        Map<String, AttributeValue> item2 = Map.of(
+                "song_id", AttributeValue.builder().n("1002").build()
+        );
+
+        Map<String, AttributeValue> lastKey = Map.of("song_id", AttributeValue.builder().n("1001").build());
+
+        ScanResponse page1 = ScanResponse.builder()
+                .items(List.of(item1))
+                .lastEvaluatedKey(lastKey)
+                .build();
+
+        ScanResponse page2 = ScanResponse.builder()
+                .items(List.of(item2))
+                .lastEvaluatedKey(Collections.emptyMap())
+                .build();
+
+        when(mockClient.scan(any(ScanRequest.class)))
+                .thenReturn(page1)
+                .thenReturn(page2);
+
+        java.util.Set<Long> likedIds = repo.getLikedSongIds();
+        assertEquals(2, likedIds.size(), "指摘 #8: 多页扫描应完整汇聚所有数据");
+        assertTrue(likedIds.contains(1001L));
+        assertTrue(likedIds.contains(1002L));
+        verify(mockClient, times(2)).scan(any(ScanRequest.class));
+    }
+}
+

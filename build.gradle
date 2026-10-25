@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.wyyyyydl'
-version = '5.1.18'
+version = '5.2.0'
 sourceCompatibility = '21'
 targetCompatibility = '21'
 
@@ -29,6 +29,7 @@ configurations.all {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation "com.google.guava:guava:$guavaVersion"
     implementation "com.alibaba:fastjson:$fastjsonVersion"
@@ -55,6 +56,19 @@ dependencies {
     implementation("org.xerial:sqlite-jdbc:3.45.3.0")
     // Jakarta annotation API 替代 javax.annotation
     implementation "jakarta.annotation:jakarta.annotation-api:2.1.1"
+
+    // AWS Lambda & SnapStart 支持
+    implementation 'com.amazonaws.serverless:aws-serverless-java-container-springboot3:2.1.4'
+    implementation 'org.crac:crac:1.5.0'
+
+    // AWS SDK S3 & DynamoDB 支持
+    implementation platform('software.amazon.awssdk:bom:2.25.40')
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'software.amazon.awssdk:dynamodb-enhanced'
+
+    // RDS 数据库驱动（PostgreSQL）
+    implementation 'org.postgresql:postgresql:42.7.3'
 }
 
 tasks.named('test') {
@@ -101,3 +115,23 @@ tasks.named("bootBuildImage") {
         host = "unix:///var/run/docker.sock"
     }
 }
+
+// 前端 Svelte 5 静态产物自动构建任务
+tasks.register('buildFrontend', Exec) {
+    onlyIf { !project.hasProperty('skipFrontendBuild') }
+    workingDir 'frontend'
+    commandLine 'npm', 'run', 'build'
+}
+
+// AWS Lambda Serverless ZIP 打包任务 (符合 AWS Lambda Java 21 标准 Classpath 规范)
+tasks.register('buildAwsZip', Zip) {
+    dependsOn 'buildFrontend'
+    archiveBaseName.set('wyyyyy-dl-aws')
+    archiveVersion.set('')
+    from compileJava
+    from processResources
+    into('lib') {
+        from configurations.runtimeClasspath
+    }
+}
+

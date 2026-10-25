@@ -4,7 +4,7 @@
 FROM node:22-alpine AS frontend-builder
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json* ./frontend/
-RUN --mount=type=cache,target=/root/.npm cd frontend && npm ci --ignore-scripts
+RUN cd frontend && npm ci --ignore-scripts
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run check && npm run build
 
@@ -16,11 +16,11 @@ WORKDIR /build
 COPY gradlew settings.gradle build.gradle gradle.properties ./
 COPY gradle ./gradle/
 # 提前预热并持久化缓存 Gradle Wrapper (避免每次重新下载 120MB zip)
-RUN --mount=type=cache,target=/root/.gradle chmod +x ./gradlew && ./gradlew --version
+RUN chmod +x ./gradlew && ./gradlew --version
 COPY src ./src/
 # 注入已编译的 Svelte 产物
 COPY --from=frontend-builder /build/src/main/resources/static/svelte ./src/main/resources/static/svelte
-RUN --mount=type=cache,target=/root/.gradle ./gradlew bootJar -x test --no-daemon
+RUN ./gradlew bootJar -x test --no-daemon
 
 # ==============================================================================
 # Stage 3: Runtime

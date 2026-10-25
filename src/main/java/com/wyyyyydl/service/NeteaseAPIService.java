@@ -40,78 +40,116 @@ public class NeteaseAPIService implements InitializingBean{
 	
 	private volatile boolean ready = false;
 	
-	 private static final String AES_KEY = "e82ckenh8dichen8";
+	private static final String AES_KEY = "e82ckenh8dichen8";
 	 
-	 @Value("${download.path}")
-	 private String path;
+	@Value("${download.path}")
+	private String path;
 	 
-	 private final String cookieFile = "cookie.txt";
+	@Value("${NETEASE_COOKIE:}")
+	private String envCookie;
+
+	@org.springframework.beans.factory.annotation.Autowired(required = false)
+	private com.wyyyyydl.dao.IConfigRepository configRepository;
 	 
-	 private transient String cookie;
+	private final String cookieFile = "cookie.txt";
 	 
-	 private transient Long uid; // 登录用户 UID
+	private transient String cookie;
 	 
-	 public Long getUserUid() {
-		 return this.uid;
-	 }
-	 public void refreshCookie(String cookie) {
-		 String cookiePath =  path + cookieFile;
-		 File file = new File(cookiePath); 
-		 if (file.exists()) {
-			 file.delete();
-		 }
-		 File pFile = new File(file.getParent());
-		 if(!pFile.exists()) {
-			 pFile.mkdirs();
-		 }
-		 FileOutputStream outputStream = null;
-		 try {
-			outputStream = new FileOutputStream(file);
-			IOUtils.write(cookie.getBytes("utf-8"), outputStream);
+	private transient Long uid; // 登录用户 UID
+	 
+	public Long getUserUid() {
+		return this.uid;
+	}
+
+	public void refreshCookie(String cookie) {
+		if (cookie == null || cookie.trim().isEmpty()) return;
+		this.cookie = cookie.trim();
+
+		// 1. 若本地下载路径可写，尝试写本地文件 cookie.txt
+		try {
+			String cookiePath = path + cookieFile;
+			File file = new File(cookiePath);
+			File pFile = file.getParentFile();
+			if (pFile != null && !pFile.exists()) {
+				pFile.mkdirs();
+			}
+			try (FileOutputStream outputStream = new FileOutputStream(file)) {
+				IOUtils.write(cookie.getBytes("utf-8"), outputStream);
+			}
 		} catch (Exception e) {
-			throw new ServiceException(CommonRespInfo.SYS_ERROR,e);
-		} finally {
-			if (null != outputStream) {
-				IOUtils.closeQuietly(outputStream);
+			log.warn("⚠️ [Cookie] 写入本地磁盘失败 (Serverless 运行环境忽略): {}", e.getMessage());
+		}
+
+		// 2. 自动持久化保存到数据库 (Supabase / RDS / SQLite)
+		if (configRepository != null) {
+			try {
+				configRepository.saveConfig("NETEASE_COOKIE", this.cookie);
+				log.info("💾 [Cookie] 已自动同步持久化至数据库 system_config 表！");
+			} catch (Exception e) {
+				log.error("❌ [Cookie] 持久化到数据库失败: {}", e.getMessage());
 			}
 		}
-		 this.cookie = cookie;
-		 try {
-				getAccountInfo();
-				ready = true;
-			} catch (Exception e) {
-				ready = false;
-				this.cookie = null;
-				this.uid = null;
-				file.delete();
-				log.info("获取账号信息失败!,请重新登录!!");
-				log.error("获取账号信息失败,需要重新登录",e);
-				throw new ServiceException(CommonRespInfo.SYS_ERROR,e);
-			}
-	 }
+
+		// 3. 校验并获取账号信息
+		try {
+			getAccountInfo();
+			ready = true;
+			log.info("✅ [Cookie] 登录成功并完成账号校验! UID: {}", this.uid);
+		} catch (Exception e) {
+			ready = false;
+			this.cookie = null;
+			this.uid = null;
+			log.error("❌ 获取账号信息失败, 需要重新登录", e);
+			throw new ServiceException(CommonRespInfo.SYS_ERROR, e);
+		}
+	}
 	  
-	 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		String cookiePath =  path + cookieFile;
-		File file = new File(cookiePath);
-		
-		if (file.exists() && file.length() > 0) {
-			byte[] buff = new byte[(int)file.length()];
-			try (FileInputStream fileInputStream = new FileInputStream(file)) {
-				IOUtils.readFully(fileInputStream, buff);
-			} ;
-			this.cookie = new String(buff,"utf-8");
+		// 1. 优先读取环境变量 NETEASE_COOKIE (适用于云端 Lambda / 容器直接注入)
+		if (org.apache.commons.lang3.StringUtils.isNotBlank(envCookie)) {
+			log.info("🍪 [Cookie] 检测到环境变量 NETEASE_COOKIE，优先载入...");
+			this.cookie = envCookie.trim();
+		}
+
+		// 2. 其次读取数据库持久化的 Cookie (适用于 Supabase / RDS / SQLite 云端多实例共享)
+		if (org.apache.commons.lang3.StringUtils.isBlank(this.cookie) && configRepository != null) {
+			String dbCookie = configRepository.getConfig("NETEASE_COOKIE");
+			if (org.apache.commons.lang3.StringUtils.isNotBlank(dbCookie)) {
+				log.info("🍪 [Cookie] 从数据库 system_config 成功载入持久化 Cookie");
+				this.cookie = dbCookie.trim();
+			}
+		}
+
+		// 3. 最后读取本地文件 cookie.txt (兼容传统本地单机部署)
+		if (org.apache.commons.lang3.StringUtils.isBlank(this.cookie)) {
+			String cookiePath = path + cookieFile;
+			File file = new File(cookiePath);
+			if (file.exists() && file.length() > 0) {
+				byte[] buff = new byte[(int)file.length()];
+				try (FileInputStream fileInputStream = new FileInputStream(file)) {
+					IOUtils.readFully(fileInputStream, buff);
+				}
+				this.cookie = new String(buff, "utf-8").trim();
+				log.info("🍪 [Cookie] 从本地磁盘文件 {} 载入 Cookie", cookiePath);
+			}
+		}
+
+		// 4. 若获取到 Cookie，执行账号有效性校验
+		if (org.apache.commons.lang3.StringUtils.isNotBlank(this.cookie)) {
 			try {
 				getAccountInfo();
 				ready = true;
+				log.info("✅ [Cookie] 账号信息校验成功! UID: {}", this.uid);
+				// 若数据库中尚未保存，自动同步至数据库备份
+				if (configRepository != null) {
+					configRepository.saveConfig("NETEASE_COOKIE", this.cookie);
+				}
 			} catch (Exception e) {
 				ready = false;
 				this.cookie = null;
 				this.uid = null;
-				file.delete();
-				log.info("获取账号信息失败!,请重新登录!!");
-				log.error("获取账号信息失败,需要重新登录",e);
+				log.warn("⚠️ [Cookie] 载入的 Cookie 无效或已过期，请重新登录: {}", e.getMessage());
 			}
 		}
 	}

@@ -28,7 +28,6 @@ import com.wyyyyydl.models.dtos.SingleMusicAnalysisRespDTO;
 import com.wyyyyydl.models.dtos.TrackDTO;
 import com.wyyyyydl.models.dtos.UserPlaylistListRespDTO;
 import com.wyyyyydl.models.dtos.UserPlaylistSummaryDTO;
-import com.wyyyyydl.dao.DownloadHistoryDAO;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -588,7 +587,7 @@ public class AnalysisService {
     /**
      * 统一将已匹配到的本地音轨元数据覆盖到单曲分析 DTO 中 (DRY 收口)
      */
-    public void applyLocalTrackOverride(SingleMusicAnalysisRespDTO songInfo, DownloadHistoryDAO.DownloadHistoryItem localItem) {
+    public void applyLocalTrackOverride(SingleMusicAnalysisRespDTO songInfo, com.wyyyyydl.models.dtos.DownloadHistoryItem localItem) {
         if (songInfo == null || localItem == null || !Boolean.TRUE.equals(localItem.getFileExists())) {
             return;
         }

@@ -14,7 +14,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.wyyyyydl.dao.DownloadHistoryDAO;
+import com.wyyyyydl.dao.IHistoryStorageRepository;
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
+import com.wyyyyydl.models.dtos.FolderCheckDTO;
+import com.wyyyyydl.models.dtos.FolderItemDTO;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -32,7 +35,7 @@ public class FolderExplorerControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private DownloadHistoryDAO downloadHistoryDAO;
+    private IHistoryStorageRepository downloadHistoryDAO;
 
     @Test
     @DisplayName("测试 /v3/folder/roots 获取根目录列表")
@@ -54,8 +57,8 @@ public class FolderExplorerControllerTest {
     @Test
     @DisplayName("测试 /v3/folder/browse 浏览目录")
     public void testBrowseFolder() throws Exception {
-        List<DownloadHistoryDAO.FolderItemDTO> list = new ArrayList<>();
-        DownloadHistoryDAO.FolderItemDTO item = new DownloadHistoryDAO.FolderItemDTO();
+        List<FolderItemDTO> list = new ArrayList<>();
+        FolderItemDTO item = new FolderItemDTO();
         item.setName("叶惠美");
         item.setDirectory(true);
         item.setTrackCount(11);
@@ -73,8 +76,8 @@ public class FolderExplorerControllerTest {
     @Test
     @DisplayName("测试 /v3/folder/tracks 提取文件夹全部 MP3 音轨")
     public void testGetFolderTracks() throws Exception {
-        List<DownloadHistoryDAO.DownloadHistoryItem> tracks = new ArrayList<>();
-        DownloadHistoryDAO.DownloadHistoryItem track = new DownloadHistoryDAO.DownloadHistoryItem();
+        List<DownloadHistoryItem> tracks = new ArrayList<>();
+        DownloadHistoryItem track = new DownloadHistoryItem();
         track.setId(1001L);
         track.setSongName("晴天");
         track.setArtist("周杰伦");
@@ -105,7 +108,7 @@ public class FolderExplorerControllerTest {
     @Test
     @DisplayName("测试 /v3/folder/check 预检文件夹信息")
     public void testCheckFolder() throws Exception {
-        DownloadHistoryDAO.FolderCheckDTO check = new DownloadHistoryDAO.FolderCheckDTO();
+        FolderCheckDTO check = new FolderCheckDTO();
         check.setFolderName("2023.08DJ");
         check.setTotalFiles(8);
         check.setTotalDirs(1);

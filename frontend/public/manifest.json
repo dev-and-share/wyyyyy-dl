@@ -4,6 +4,10 @@
   "description": "网易云音乐个人下载管理与离线播放器",
   "start_url": "/",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",

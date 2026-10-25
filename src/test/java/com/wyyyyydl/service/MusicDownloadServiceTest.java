@@ -47,4 +47,15 @@ public class MusicDownloadServiceTest {
         // 非法扩展名拦截
         Assertions.assertEquals(".mp3", MusicDownloadService.getType("https://evil.com/payload.exe?a=1", "exe"));
     }
+
+    @Test
+    @DisplayName("测试指摘 #4: AWS Lambda 环境下 download.async-on-play.enabled=false 立即跳过静默下载")
+    public void testAsyncOnPlayDisabled() {
+        MusicDownloadService service = new MusicDownloadService();
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "asyncOnPlayEnabled", false);
+
+        service.asyncDownloadOnPlay(999988L, "歌单", "专辑", "歌曲");
+        Assertions.assertNull(MusicDownloadService.downloadTasks.get(999988L), "当 asyncOnPlayEnabled=false 时，绝对不能向下载队列提交任务，防止 Lambda 响应后 MicroVM 冻结");
+    }
 }
+

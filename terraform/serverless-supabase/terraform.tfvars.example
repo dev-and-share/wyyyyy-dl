@@ -1,0 +1,25 @@
+# ==========================================
+# wyyyyy-dl Supabase Serverless 方案配置
+# ==========================================
+
+aws_region   = "ap-northeast-1"
+project_name = "wyyyyy-dl"
+environment  = "prod"
+
+# Supabase 连接信息 (⚠️ AWS Lambda 默认仅 IPv4 出站，必须使用 Supavisor Pooler 地址与 postgres.<project_ref> 用户名)
+supabase_db_host     = "aws-0-ap-northeast-1.pooler.supabase.com"
+supabase_db_port     = 5432
+supabase_db_name     = "postgres"
+supabase_db_user     = "postgres.YOUR_PROJECT_REF"
+# ⚠️ 安全建议：密码强烈建议通过环境变量注入，避免明文落盘：
+# export TF_VAR_supabase_db_password="你的真实密码"
+# 或者取消下行注释在本地私有 terraform.tfvars 中指定：
+# supabase_db_password = "REPLACE_WITH_YOUR_DB_PASSWORD"
+
+# Lambda 配置
+lambda_memory_size     = 2048
+lambda_timeout         = 30
+cloudfront_price_class = "PriceClass_All"
+
+# 网易云登录 Cookie (可选，注入后启动即为已登录状态，推荐通过 export TF_VAR_netease_cookie 注入)
+# netease_cookie = "MUSIC_U=..."

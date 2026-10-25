@@ -1,0 +1,13 @@
+# ==========================================
+# wyyyyy-dl Serverless DynamoDB 极致省钱版配置
+# 待机固定月费：$0.00 (无 VPC / 无 NAT / 无 RDS)
+# ==========================================
+
+aws_region   = "us-east-1"
+project_name = "wyyyyy-dl"
+environment  = "prod"
+
+lambda_memory_size = 2048
+lambda_timeout     = 30
+
+cloudfront_price_class = "PriceClass_100"

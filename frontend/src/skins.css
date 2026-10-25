@@ -1,0 +1,238 @@
+/* ==========================================================================
+   🎵 Player Skins & Global Theme Engine (Winamp, Spring, Aurora, Cassette, Vinyl)
+   ========================================================================== */
+
+/* 1. 春日青绿 (Spring Meadow) 全局主题 */
+[data-skin="spring"] {
+  --bg-color: #06140f;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(16, 185, 129, 0.22) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(52, 211, 153, 0.12) 0%, transparent 65%);
+  --card-bg: rgba(9, 32, 22, 0.9);
+  --card-bg-solid: #0c271b;
+  --card-header-bg: rgba(9, 32, 22, 0.96);
+  --card-header-hover: rgba(52, 211, 153, 0.08);
+  --border-color: rgba(52, 211, 153, 0.2);
+  --border-subtle: rgba(52, 211, 153, 0.08);
+  --primary-color: #10b981;
+  --primary-hover: #059669;
+  --primary-glow: rgba(16, 185, 129, 0.4);
+  --btn-primary-bg: linear-gradient(135deg, #10b981, #059669);
+  --nav-tabs-bg: rgba(16, 185, 129, 0.1);
+  --nav-tab-active-bg: rgba(16, 185, 129, 0.22);
+  --nav-tab-active-color: #34d399;
+  --topbar-bg: rgba(9, 32, 22, 0.92);
+  --topbar-border: rgba(52, 211, 153, 0.18);
+  --input-focus-border: #10b981;
+  --input-focus-glow: rgba(16, 185, 129, 0.25);
+  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #022c22 65%, #021a14 100%);
+  --immersive-header-bg: rgba(6, 78, 59, 0.65);
+  --immersive-ring-bg: #022c22;
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(52, 211, 153, 0.18);
+}
+[data-theme="light"][data-skin="spring"], [data-theme="light"] [data-skin="spring"] {
+  --bg-color: #f0fdf4;
+  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #bbf7d0;
+  --border-subtle: #dcfce7;
+  --primary-color: #059669;
+  --primary-hover: #047857;
+  --primary-glow: rgba(16, 185, 129, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #10b981, #059669);
+  --nav-tabs-bg: #dcfce7;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #047857;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(16, 185, 129, 0.15);
+  --input-focus-border: #059669;
+  --input-focus-glow: rgba(16, 185, 129, 0.2);
+  --immersive-bg: radial-gradient(circle at center, #ffffff 0%, #ecfdf5 60%, #d1fae5 100%);
+}
+
+/* 2. 灵动极光 (Aurora Glass) 全局主题 */
+[data-skin="aurora"] {
+  --bg-color: #0c0a1a;
+  --bg-gradient: radial-gradient(ellipse at 25% 20%, rgba(168, 85, 247, 0.24) 0%, transparent 65%), radial-gradient(ellipse at 75% 80%, rgba(236, 72, 153, 0.18) 0%, transparent 65%);
+  --card-bg: rgba(22, 18, 44, 0.88);
+  --card-bg-solid: #171330;
+  --card-header-bg: rgba(22, 18, 44, 0.96);
+  --border-color: rgba(168, 85, 247, 0.24);
+  --border-subtle: rgba(168, 85, 247, 0.1);
+  --primary-color: #a855f7;
+  --primary-hover: #9333ea;
+  --primary-glow: rgba(168, 85, 247, 0.4);
+  --btn-primary-bg: linear-gradient(135deg, #a855f7, #ec4899);
+  --nav-tabs-bg: rgba(168, 85, 247, 0.12);
+  --nav-tab-active-bg: rgba(168, 85, 247, 0.26);
+  --nav-tab-active-color: #f0abfc;
+  --topbar-bg: rgba(22, 18, 44, 0.92);
+  --topbar-border: rgba(168, 85, 247, 0.2);
+  --input-focus-border: #a855f7;
+  --input-focus-glow: rgba(168, 85, 247, 0.3);
+  --immersive-bg: radial-gradient(circle at center, #2e1065 0%, #170736 60%, #0b041a 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(168, 85, 247, 0.2);
+}
+[data-theme="light"][data-skin="aurora"], [data-theme="light"] [data-skin="aurora"] {
+  --bg-color: #faf5ff;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(168, 85, 247, 0.12) 0%, transparent 65%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #e9d5ff;
+  --border-subtle: #f3e8ff;
+  --primary-color: #9333ea;
+  --primary-hover: #7e22ce;
+  --primary-glow: rgba(147, 51, 234, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #a855f7, #ec4899);
+  --nav-tabs-bg: #f3e8ff;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #7e22ce;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(168, 85, 247, 0.15);
+}
+
+/* 3. 复古磁带 (Cassette Walkman) 全局主题 */
+[data-skin="cassette"] {
+  --bg-color: #121316;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(245, 158, 11, 0.14) 0%, transparent 65%);
+  --card-bg: rgba(26, 28, 34, 0.92);
+  --card-bg-solid: #191b20;
+  --card-header-bg: rgba(26, 28, 34, 0.96);
+  --border-color: rgba(245, 158, 11, 0.2);
+  --border-subtle: rgba(245, 158, 11, 0.08);
+  --primary-color: #f59e0b;
+  --primary-hover: #d97706;
+  --primary-glow: rgba(245, 158, 11, 0.35);
+  --btn-primary-bg: linear-gradient(135deg, #f59e0b, #d97706);
+  --nav-tabs-bg: rgba(245, 158, 11, 0.1);
+  --nav-tab-active-bg: rgba(245, 158, 11, 0.24);
+  --nav-tab-active-color: #fde68a;
+  --topbar-bg: rgba(26, 28, 34, 0.92);
+  --topbar-border: rgba(245, 158, 11, 0.15);
+  --input-focus-border: #f59e0b;
+  --input-focus-glow: rgba(245, 158, 11, 0.25);
+  --immersive-bg: radial-gradient(circle at center, #2e2416 0%, #1c160e 65%, #0e0a06 100%);
+}
+[data-theme="light"][data-skin="cassette"], [data-theme="light"] [data-skin="cassette"] {
+  --bg-color: #fefce8;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(245, 158, 11, 0.1) 0%, transparent 65%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #fef08a;
+  --border-subtle: #fef9c3;
+  --primary-color: #d97706;
+  --primary-hover: #b45309;
+  --primary-glow: rgba(217, 119, 6, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #f59e0b, #d97706);
+  --nav-tabs-bg: #fef9c3;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #b45309;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(245, 158, 11, 0.15);
+}
+
+/* 4. Winamp 经典 (Retro Winamp) 全局主题 */
+[data-skin="winamp"] {
+  --bg-color: #11141b;
+  --bg-gradient: linear-gradient(180deg, #1f2532 0%, #0d1015 100%);
+  --card-bg: rgba(26, 31, 41, 0.94);
+  --card-bg-solid: #181d26;
+  --card-header-bg: rgba(26, 31, 41, 0.96);
+  --border-color: rgba(255, 255, 255, 0.16);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --primary-color: #10b981;
+  --primary-hover: #059669;
+  --primary-glow: rgba(16, 185, 129, 0.4);
+  --btn-primary-bg: linear-gradient(135deg, #374151, #1f2937);
+  --nav-tabs-bg: rgba(255, 255, 255, 0.08);
+  --nav-tab-active-bg: rgba(16, 185, 129, 0.2);
+  --nav-tab-active-color: #34d399;
+  --topbar-bg: rgba(26, 31, 41, 0.94);
+  --topbar-border: rgba(255, 255, 255, 0.12);
+  --input-focus-border: #10b981;
+  --input-focus-glow: rgba(16, 185, 129, 0.3);
+  --immersive-bg: radial-gradient(circle at center, #1b2820 0%, #0f1712 65%, #080c09 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(16, 185, 129, 0.2);
+}
+[data-theme="light"][data-skin="winamp"], [data-theme="light"] [data-skin="winamp"] {
+  --bg-color: #f1f5f9;
+  --bg-gradient: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #cbd5e1;
+  --border-subtle: #e2e8f0;
+  --primary-color: #059669;
+  --primary-hover: #047857;
+  --primary-glow: rgba(5, 150, 105, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #475569, #334155);
+  --nav-tabs-bg: #e2e8f0;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #059669;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(0, 0, 0, 0.1);
+}
+
+/* 🎵 歌单正在播放曲目的皮肤个性化呈现 (Skin Playing Card Highlight) */
+[data-skin="spring"] .track-item-card.is-active-playing {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(52, 211, 153, 0.35) !important;
+}
+[data-skin="spring"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #10b981 !important;
+}
+[data-skin="spring"] .track-btn-slot.is-playing-btn,
+[data-skin="spring"] .jump-link-btn.is-playing-btn {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+  color: #34d399 !important;
+}
+
+[data-skin="aurora"] .track-item-card.is-active-playing {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.15);
+}
+[data-skin="aurora"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #c084fc !important;
+  text-shadow: 0 0 8px rgba(192, 132, 252, 0.35);
+}
+[data-skin="aurora"] .track-btn-slot.is-playing-btn,
+[data-skin="aurora"] .jump-link-btn.is-playing-btn {
+  background: rgba(168, 85, 247, 0.2) !important;
+  border-color: rgba(168, 85, 247, 0.45) !important;
+  color: #f0abfc !important;
+}
+
+[data-skin="cassette"] .track-item-card.is-active-playing {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+[data-skin="cassette"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #fbbf24 !important;
+}
+[data-skin="cassette"] .track-btn-slot.is-playing-btn,
+[data-skin="cassette"] .jump-link-btn.is-playing-btn {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #fde68a !important;
+}
+
+[data-skin="winamp"] .track-item-card.is-active-playing {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  font-family: monospace;
+}
+[data-skin="winamp"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #10b981 !important;
+  font-family: monospace;
+}
+[data-skin="winamp"] .track-btn-slot.is-playing-btn,
+[data-skin="winamp"] .jump-link-btn.is-playing-btn {
+  background: #0f2615 !important;
+  border: 1px solid #10b981 !important;
+  color: #10b981 !important;
+  font-family: monospace;
+}

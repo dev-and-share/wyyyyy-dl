@@ -12,6 +12,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.wyyyyydl.models.dtos.DownloadHistoryItem;
+import com.wyyyyydl.models.dtos.FolderCheckDTO;
+import com.wyyyyydl.models.dtos.FolderItemDTO;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("📥 下载历史记录与智能文件匹配 DAO 单元测试")
@@ -47,7 +51,7 @@ public class DownloadHistoryDAOTest {
         long id = dao.addRecord(326696L, "用心良苦", "张宇", "男人的好", mockMusic.getAbsolutePath(), mockMusic.length(), "lossless", "SUCCESS");
         assertTrue(id > 0, "插入记录返回的数据库 ID 应大于 0");
 
-        DownloadHistoryDAO.DownloadHistoryItem item = dao.getRecordById(id);
+        DownloadHistoryItem item = dao.getRecordById(id);
         assertNotNull(item, "查询出的历史记录不应为 null");
         assertEquals("用心良苦", item.getSongName());
         assertEquals("张宇", item.getArtist());
@@ -63,7 +67,7 @@ public class DownloadHistoryDAOTest {
         }
         dao.addRecord(326696L, "用心良苦", "张宇", "男人的好", mockMusic.getAbsolutePath(), mockMusic.length(), "lossless", "SUCCESS");
 
-        DownloadHistoryDAO.DownloadHistoryItem matched = dao.findLocalFileBySongOrName(1975924437L, "用心良苦", "张宇");
+        DownloadHistoryItem matched = dao.findLocalFileBySongOrName(1975924437L, "用心良苦", "张宇");
         
         assertNotNull(matched, "即使 songId 不同，智能比对也应成功查找到本地文件");
         assertEquals("用心良苦", matched.getSongName());
@@ -80,7 +84,7 @@ public class DownloadHistoryDAOTest {
         dao.addRecord(88801L, "我爱你那么多", "萧亚轩", "红蔷薇", elvaSong.getAbsolutePath(), elvaSong.length(), "lossless", "SUCCESS");
 
         // 1. 测试王菲的《我爱你》，绝不能命中萧亚轩的《我爱你那么多》
-        DownloadHistoryDAO.DownloadHistoryItem fayeResult = dao.findLocalFileBySongOrName(999901L, "我爱你", "王菲");
+        DownloadHistoryItem fayeResult = dao.findLocalFileBySongOrName(999901L, "我爱你", "王菲");
         assertNull(fayeResult, "王菲的《我爱你》绝不应该误匹配到萧亚轩的《我爱你那么多》");
 
         // 2. 测试王菲的《我爱你 (电影原声版)》，在录入王菲《我爱你》后应当精准跨版本命中
@@ -90,7 +94,7 @@ public class DownloadHistoryDAOTest {
         }
         dao.addRecord(88802L, "我爱你", "王菲", "将爱", fayeSong.getAbsolutePath(), fayeSong.length(), "lossless", "SUCCESS");
 
-        DownloadHistoryDAO.DownloadHistoryItem fayeMatched = dao.findLocalFileBySongOrName(999902L, "我爱你 (电影原声版)", "王菲");
+        DownloadHistoryItem fayeMatched = dao.findLocalFileBySongOrName(999902L, "我爱你 (电影原声版)", "王菲");
         assertNotNull(fayeMatched, "王菲《我爱你 (电影原声版)》应当精准匹配到本地王菲的《我爱你》");
         assertEquals("我爱你", fayeMatched.getSongName());
     }
@@ -112,7 +116,7 @@ public class DownloadHistoryDAOTest {
     public void testMissingFileFilter() {
         dao.addRecord(9999L, "不存在的歌", "匿名", "未知", "/invalid/path/non_exist.mp3", 0L, "standard", "SUCCESS");
 
-        DownloadHistoryDAO.DownloadHistoryItem matched = dao.findLocalFileBySongOrName(9999L, "不存在的歌", "匿名");
+        DownloadHistoryItem matched = dao.findLocalFileBySongOrName(9999L, "不存在的歌", "匿名");
         assertNull(matched, "当物理文件不存在时，不应命中为本地可播放路径");
     }
 
@@ -133,7 +137,7 @@ public class DownloadHistoryDAOTest {
         assertTrue((int) result.get("scannedFiles") >= 1, "扫描到的文件数应当大于等于 1");
         assertTrue((int) result.get("addedCount") >= 1, "成功录入数据库的新索引数应当大于等于 1");
 
-        DownloadHistoryDAO.DownloadHistoryItem item = dao.findLocalFileBySongOrName(null, "吻别", "张学友");
+        DownloadHistoryItem item = dao.findLocalFileBySongOrName(null, "吻别", "张学友");
         assertNotNull(item, "智能比对应当成功命中扫描录入的《吻别》");
         assertEquals("吻别", item.getSongName());
     }
@@ -168,10 +172,10 @@ public class DownloadHistoryDAOTest {
         long id1 = dao.addRecord(101L, "歌曲1", "歌手1", "专辑1", mockMusic1.getAbsolutePath(), mockMusic1.length(), "lossless", "SUCCESS");
         long id2 = dao.addRecord(102L, "歌曲2", "歌手2", "专辑2", mockMusic2.getAbsolutePath(), mockMusic2.length(), "lossless", "SUCCESS");
 
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> byIds = dao.getRecordsByIds(java.util.Arrays.asList(id1, id2));
+        java.util.List<DownloadHistoryItem> byIds = dao.getRecordsByIds(java.util.Arrays.asList(id1, id2));
         assertEquals(2, byIds.size());
 
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> bySongIds = dao.getRecordsBySongIds(java.util.Arrays.asList(101L, 102L));
+        java.util.List<DownloadHistoryItem> bySongIds = dao.getRecordsBySongIds(java.util.Arrays.asList(101L, 102L));
         assertEquals(2, bySongIds.size());
     }
 
@@ -230,13 +234,13 @@ public class DownloadHistoryDAOTest {
         dao.addRecord(2002L, "缺失歌曲1", "歌手B", "专辑B", "/non/exist/file1.mp3", 0L, "lossless", "SUCCESS");
         dao.addRecord(2003L, "缺失歌曲2", "歌手C", "专辑C", "", 0L, "lossless", "SUCCESS");
 
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> missing = dao.getMissingRecords();
+        java.util.List<DownloadHistoryItem> missing = dao.getMissingRecords();
         assertEquals(2, missing.size(), "应当准确筛选出 2 首物理文件不存在的记录");
 
         int cleaned = dao.cleanMissingRecords();
         assertEquals(2, cleaned, "应当成功清理 2 首缺失记录");
 
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> remainingMissing = dao.getMissingRecords();
+        java.util.List<DownloadHistoryItem> remainingMissing = dao.getMissingRecords();
         assertEquals(0, remainingMissing.size(), "清理后缺失记录应当为 0");
     }
 
@@ -247,13 +251,13 @@ public class DownloadHistoryDAOTest {
         dao.addRecord(3002L, "FLAC歌曲", "歌手B", "专辑B", "song.flac", 2000L, "lossless", "SUCCESS");
         dao.addRecord(3003L, "M4A歌曲", "歌手C", "专辑C", "song.m4a", 1500L, "standard", "SUCCESS");
 
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> nonMp3 = dao.getNonMp3Records();
+        java.util.List<DownloadHistoryItem> nonMp3 = dao.getNonMp3Records();
         assertEquals(2, nonMp3.size(), "应当准确筛选出 2 首非 MP3 格式记录");
 
         int cleaned = dao.cleanNonMp3Records();
         assertEquals(2, cleaned, "应当成功清理 2 首非 MP3 记录");
 
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> remaining = dao.getNonMp3Records();
+        java.util.List<DownloadHistoryItem> remaining = dao.getNonMp3Records();
         assertEquals(0, remaining.size(), "清理后非 MP3 记录应当为 0");
     }
 
@@ -278,12 +282,32 @@ public class DownloadHistoryDAOTest {
         Map<String, Object> scanRes = dao.scanExternalLibraries();
         assertEquals(1, scanRes.get("scannedFiles"), "扫描应当自动跳过带 .musicignore 标记的目录，仅扫描到 1 首歌曲");
 
-        java.util.List<DownloadHistoryDAO.FolderItemDTO> contents = dao.listFolderContents(tempDir.toAbsolutePath().toString());
+        java.util.List<FolderItemDTO> contents = dao.listFolderContents(tempDir.toAbsolutePath().toString());
         assertEquals(1, contents.size(), "目录浏览应当过滤掉 .musicignore 目录");
         assertEquals("正常专辑", contents.get(0).getName());
 
-        java.util.List<DownloadHistoryDAO.DownloadHistoryItem> tracks = dao.getFolderTracks(tempDir.toAbsolutePath().toString(), true);
+        java.util.List<DownloadHistoryItem> tracks = dao.getFolderTracks(tempDir.toAbsolutePath().toString(), true);
         assertEquals(1, tracks.size(), "递归抓取曲目也应自动跳过 .musicignore 目录");
         assertEquals("正常歌曲", tracks.get(0).getSongName());
     }
+
+    @Test
+    @DisplayName("测试指摘 #7: JDBC getStats 统计字段对齐契约 (totalCount / missingCount / nonMp3Count)")
+    public void testJdbcStatsContract() throws Exception {
+        File audio = new File(tempDir.toFile(), "测试.flac");
+        try (FileWriter w = new FileWriter(audio)) { w.write("flac audio payload"); }
+
+        dao.addRecord(5001L, "存在歌曲", "歌手1", "专辑1", audio.getAbsolutePath(), audio.length(), "lossless", "SUCCESS");
+        dao.addRecord(5002L, "丢失歌曲", "歌手2", "专辑2", "/non/existent/missing.mp3", 0L, "standard", "SUCCESS");
+
+        Map<String, Object> stats = dao.getStats();
+        assertNotNull(stats);
+        assertEquals(2L, stats.get("total"), "total 应为 2");
+        assertEquals(2L, stats.get("totalCount"), "指摘 #7: totalCount 必须对齐前端展示字段");
+        assertEquals(2L, stats.get("totalTracks"), "totalTracks 兼容旧字段");
+        assertEquals(2L, stats.get("successTotal"), "successTotal 必须存在");
+        assertEquals(1, stats.get("missingCount"), "指摘 #7: missingCount 必须准确识别出 1 首丢失");
+        assertEquals(1, stats.get("nonMp3Count"), "指摘 #7: nonMp3Count 必须准确识别出 1 首 flac 非 mp3");
+    }
 }
+
