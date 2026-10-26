@@ -1,0 +1,16 @@
+export default {
+  'toast.playlist.created': '播放清單建立成功',
+  'toast.playlist.forked': '播放清單已成功 Fork 至本地',
+  'toast.playlist.removed': '已從播放清單移除',
+  'toast.playlist.added': '已新增至播放清單',
+  'toast.download.added': '已加入下載佇列',
+  'toast.copy.success': '複製成功',
+  'toast.copy.failed': '複製失敗，請手動長按複製',
+  'toast.cache.cleared': '快取清理完成',
+  'toast.peq.reset': '等化器已重設為預設曲線',
+  'toast.locatingFile': '🚀 正在定位本機實體檔案...',
+  'toast.update.available': '發現新版本，正在背景更新...',
+  'toast.like.removed': '已取消紅心',
+  'toast.like.added': '已收藏 {name}',
+  'toast.like.failed': '收藏狀態更新失敗',
+} as const;

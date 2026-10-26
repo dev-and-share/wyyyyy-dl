@@ -5,6 +5,7 @@ import { markSongDownloaded, getTrackSourceStatus } from './trackStatus.svelte';
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
 import { recordPlaylistPlay } from './playlist.svelte';
 import { playerStore, type SetQueueOptions } from './playerStore.svelte';
+import { t } from './i18n';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -57,7 +58,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
         track.unplayable = false;
       } else {
         track.unplayable = true;
-        track.unplayableReason = song.unplayableReason || (song.status === 404 ? '因地区或版权限制暂无法播放' : '暂无可播音频源');
+        track.unplayableReason = song.unplayableReason || (song.status === 404 ? t('player.regionOrCopyrightRestricted') : t('player.noPlayableSource'));
       }
       const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v3/stream'));
       if (isServerLocal) {
@@ -72,11 +73,11 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       return song.url || track.url || '';
     } else {
       track.unplayable = true;
-      track.unplayableReason = '获取歌曲信息失败';
+      track.unplayableReason = t('player.getInfoFailed');
     }
   } catch {
     track.unplayable = true;
-    track.unplayableReason = '网络请求失败';
+    track.unplayableReason = t('player.networkFailed');
   }
   return track.url || '';
 }
@@ -132,17 +133,17 @@ export async function playPlaylistTracks(
     playerStore.queue.length > 0
   ) {
     if (playerStore.playing) {
-      showToast(`正在播放《${playlistName}》`, 'info', 1500);
+      showToast(t('player.nowPlayingPlaylist', { name: playlistName }), 'info', 1500);
       return;
     } else {
-      showToast(`继续播放《${playlistName}》`, 'info', 1500);
+      showToast(t('player.continuePlayingPlaylist', { name: playlistName }), 'info', 1500);
       playerStore.playing = true;
       return;
     }
   }
 
   try {
-    showToast(`正在载入《${playlistName}》...`, 'info', 1500);
+    showToast(t('player.loadingPlaylist', { name: playlistName }), 'info', 1500);
     const res = await api.playlist(playlistId);
     const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
     if (tracks && tracks.length > 0) {
@@ -152,31 +153,31 @@ export async function playPlaylistTracks(
         playlistId,
         isExplicitTrack: false
       });
-      showToast(`已开始播放《${playlistName}》(${tracks.length} 首)`, 'success', 2000);
+      showToast(t('player.startPlayingPlaylistCount', { name: playlistName, count: tracks.length }), 'success', 2000);
     } else {
-      showToast('歌单内暂无曲目', 'warning');
+      showToast(t('player.emptyPlaylistNotice'), 'warning');
     }
   } catch (e: any) {
-    showToast('播放失败: ' + (e?.message || e), 'error');
+    showToast(t('player.playFailed') + ': ' + (e?.message || e), 'error');
   }
 }
 
 /**
- * 🎯 统一将各种来源元数据对象（songInfo、搜索条目、歌单曲目）规范化转换为 Player Track (DRY)
+ * Normalize raw metadata into Player Track (DRY)
  */
 export function toPlayerTrack(item: any, overrides?: Partial<Track>): Track {
   if (!item) {
     return {
       id: 0,
-      name: '未知曲目',
-      artist: '未知歌手',
+      name: t('common.unknownTrack'),
+      artist: t('common.unknownArtist'),
       cover: DEFAULT_VINYL_COVER,
       ...overrides
     };
   }
 
   const id = item.id || item.songId || 0;
-  const name = item.name || item.songName || '未知曲目';
+  const name = item.name || item.songName || t('common.unknownTrack');
   const artist = formatArtist(item) || item.artist || item.ar_name || '';
   const cover = item.pic || item.picUrl || item.al?.picUrl || item.cover || DEFAULT_VINYL_COVER;
   const isLocal = Boolean(

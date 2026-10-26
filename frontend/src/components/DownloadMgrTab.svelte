@@ -1,16 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import FolderExplorer from './FolderExplorer.svelte';
-  import AccordionCard from './AccordionCard.svelte';
-  import LocalSearchBox from './LocalSearchBox.svelte';
-  import BrowserCacheSection from './BrowserCacheSection.svelte';
-  import SegmentedTabs from './sp/SegmentedTabs.svelte';
-  import SlotBtn from './SlotBtn.svelte';
-  import Modal from './Modal.svelte';
-  import { openSheet } from '../lib/ui.svelte';
   import { api } from '../lib/api';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../lib/utils';
+  import AccordionCard from './AccordionCard.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
+  import SlotBtn from './SlotBtn.svelte';
+  import FolderExplorer from './FolderExplorer.svelte';
+  import BrowserCacheSection from './BrowserCacheSection.svelte';
+  import Modal from './Modal.svelte';
+  import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
+  import { t } from '../lib/i18n';
   import type { Track } from '../lib/types';
 
   let {
@@ -18,39 +18,36 @@
     playing = false,
     onPlayQueue,
     onReveal,
-    showToast
+    showToast = () => {}
   } = $props<{
     curTrack?: Track | null;
     playing?: boolean;
     onPlayQueue: (tracks: any[], idx?: number) => void;
     onReveal: (item: any) => void;
-    showToast: (m: string, t?: string) => void;
+    showToast?: (m: string, t?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
   }>();
 
-  const STORAGE_KEY_SUBTAB = 'wyyyy_download_mgr_subtab';
-  let activeSubtab: 'folder' | 'history' | 'cache' = $state(
-    (typeof localStorage !== 'undefined' ? (localStorage.getItem(STORAGE_KEY_SUBTAB) as any) : null) || 'folder'
-  );
-  let accFolder = $state(true);
-  let accHistory = $state(true);
+  let mobileTab = $state<'folder' | 'history' | 'cache'>('history');
 
   let histKw = $state('');
   let histPage = $state(1);
   let histList: any[] = $state([]);
   let histStats: any = $state(null);
   let histTotal = $state(0);
+  let histTotalPages = $derived(Math.max(1, Math.ceil(histTotal / 10)));
 
-  // 扫描结果面板状态
-  let scanBoxVisible = $state(false);
-  let scanType: 'external' | 'disk' | null = $state(null);
-  let scanLoading = $state(false);
-  let externalResult: any = $state(null);
-  let diskResult: any = $state(null);
+  let scanExternalLoading = $state(false);
+  let scanDiskLoading = $state(false);
+  let externalResult = $state<any>(null);
+  let diskResult = $state<any>(null);
 
-  // 弹窗状态 (缺失文件清单 / 非MP3清单)
-  let modalType: 'missing' | 'non_mp3' | null = $state(null);
-  let modalList: any[] = $state([]);
+  let modalType = $state<'missing' | 'nonMp3' | null>(null);
+  let modalList = $state<any[]>([]);
   let modalLoading = $state(false);
+
+  onMount(() => {
+    loadHistory(1);
+  });
 
   async function loadHistory(p = 1) {
     histPage = p;
@@ -79,411 +76,412 @@
       histStats = stats;
       if (stats) setApiCache('history_stats', stats);
     } catch (e: any) {
-      showToast('加载历史失败: ' + (e.message || e), 'error');
+      showToast(t('download.loadHistoryFailed', { error: e.message || e }), 'error');
     }
   }
 
-  let histTotalPages = $derived(Math.max(1, Math.ceil(histTotal / 10)));
-
-  // 📁 1. 扫描外部曲库
   async function scanExternalLibraries() {
-    scanBoxVisible = true;
-    scanType = 'external';
-    scanLoading = true;
+    scanExternalLoading = true;
     externalResult = null;
     try {
       const j = await api.historyScanExternal();
-      scanLoading = false;
       if (j?.code === '000000') {
-        externalResult = j.data || {};
-        showToast('外部曲库扫描完成！', 'success');
+        externalResult = j.data;
+        showToast(t('download.scanExternalDone'), 'success');
         loadHistory(1);
       } else {
-        showToast(j?.msg || '扫描失败', 'warning');
+        showToast(j?.msg || t('download.scanFailed'), 'warning');
       }
     } catch (e: any) {
-      scanLoading = false;
-      showToast('请求扫描接口异常: ' + (e.message || e), 'error');
+      showToast(t('download.scanException', { error: e.message || e }), 'error');
+    } finally {
+      scanExternalLoading = false;
     }
   }
 
-  // 🔍 2. 对齐磁盘
   async function scanDiskFiles() {
-    scanBoxVisible = true;
-    scanType = 'disk';
-    scanLoading = true;
+    scanDiskLoading = true;
     diskResult = null;
     try {
       const j = await api.historyScan();
-      scanLoading = false;
       if (j?.code === '000000') {
-        diskResult = j.data || {};
-        showToast('磁盘对齐扫描完成！', 'success');
+        diskResult = j.data;
+        showToast(t('download.diskCheckDone'), 'success');
         loadHistory(histPage);
       } else {
-        showToast(j?.msg || '扫描失败', 'warning');
+        showToast(j?.msg || t('download.scanFailed'), 'warning');
       }
     } catch (e: any) {
-      scanLoading = false;
-      showToast('磁盘扫描异常: ' + (e.message || e), 'error');
+      showToast(t('download.diskCheckException', { error: e.message || e }), 'error');
+    } finally {
+      scanDiskLoading = false;
     }
   }
 
-  // 📥 导入未录入物理音频
   async function importUntrackedFiles() {
     try {
       const j = await api.historyImportUntracked();
       if (j?.code === '000000') {
-        showToast(`🎉 成功将 ${j.data} 首物理音频导入至历史数据库！`, 'success');
-        scanBoxVisible = false;
+        showToast(t('download.importedUntrackedSuccess', { count: j.data }), 'success');
+        diskResult = null;
         loadHistory(1);
       } else {
-        showToast(j?.msg || '导入失败', 'warning');
+        showToast(j?.msg || t('download.importFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('导入异常: ' + (e.message || e), 'error');
+      showToast(t('download.importException', { error: e.message || e }), 'error');
     }
   }
 
-  // 🧹 3. 清理失效记录
   async function cleanMissingRecords() {
     try {
       const j = await api.historyCleanMissing();
       if (j?.code === '000000') {
-        showToast(`✅ 已成功清理 ${j.data} 条失效记录！`, 'success');
-        scanBoxVisible = false;
-        modalType = null;
+        showToast(t('download.cleanMissingSuccess', { count: j.data }), 'success');
+        if (modalType === 'missing') modalType = null;
         loadHistory(1);
       } else {
-        showToast(j?.msg || '清理失败', 'warning');
+        showToast(j?.msg || t('download.cleanFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('清理异常: ' + (e.message || e), 'error');
+      showToast(t('download.cleanException', { error: e.message || e }), 'error');
     }
   }
 
-  // 🧹 清理非 MP3 记录
   async function cleanNonMp3Records() {
     try {
       const j = await api.historyCleanNonMp3();
       if (j?.code === '000000') {
-        showToast(`✅ 已成功清理 ${j.data} 条非 MP3 记录！`, 'success');
-        modalType = null;
+        showToast(t('download.cleanNonMp3Success', { count: j.data }), 'success');
+        if (modalType === 'nonMp3') modalType = null;
         loadHistory(1);
       } else {
-        showToast(j?.msg || '清理失败', 'warning');
+        showToast(j?.msg || t('download.cleanFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('清理异常: ' + (e.message || e), 'error');
+      showToast(t('download.cleanException', { error: e.message || e }), 'error');
     }
   }
 
-  // 🗑️ 删除单条历史记录
   async function deleteItem(id: number) {
     try {
       const j = await api.historyDelete(id);
       if (j?.code === '000000') {
-        showToast('已删除该条记录', 'info');
+        showToast(t('download.recordDeleted'), 'info');
         loadHistory(histPage);
       } else {
-        showToast(j?.msg || '删除失败', 'warning');
+        showToast(j?.msg || t('download.deleteFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('删除异常: ' + (e.message || e), 'error');
+      showToast(t('download.deleteException', { error: e.message || e }), 'error');
     }
   }
 
-  // 打开缺失记录清单弹窗
   async function openMissingModal() {
     modalType = 'missing';
     modalLoading = true;
     modalList = [];
     try {
       const j = await api.historyMissing();
-      modalLoading = false;
       modalList = j?.data || [];
     } catch (e: any) {
+      showToast(t('download.loadMissingListFailed', { error: e.message || e }), 'error');
+    } finally {
       modalLoading = false;
-      showToast('加载缺失列表失败: ' + (e.message || e), 'error');
     }
   }
 
-  // 打开非 MP3 清单弹窗
   async function openNonMp3Modal() {
-    modalType = 'non_mp3';
+    modalType = 'nonMp3';
     modalLoading = true;
     modalList = [];
     try {
       const j = await api.historyNonMp3();
-      modalLoading = false;
       modalList = j?.data || [];
     } catch (e: any) {
+      showToast(t('download.loadNonMp3ListFailed', { error: e.message || e }), 'error');
+    } finally {
       modalLoading = false;
-      showToast('加载非MP3列表失败: ' + (e.message || e), 'error');
     }
   }
 
-  onMount(() => {
-    loadHistory(1);
-  });
+  function openTrackSheet(h: any) {
+    const isPlayingThis = isSameTrack(curTrack, h);
+    const artistName = h.artist || (h.artists ? formatArtist(h.artists) : '');
 
-  function openHistTrackSheet(h: any, artistName: string, isPlayingThis: boolean) {
     openSheet({
-      title: h.songName || h.name || '未知歌曲',
-      subtitle: artistName || '本地音频',
+      title: h.songName || h.name || t('common.unknownSong'),
+      subtitle: artistName || t('download.localAudio'),
       actions: [
-        ...(h.fileExists !== false
-          ? [
-              {
-                label: isPlayingThis && playing ? '⏸ 暂停当前播放' : '▶️ 播放本地音频',
-                style: 'primary' as const,
-                onclick: () => onPlayQueue([{
-                  id: h.songId || h.id, name: h.songName || h.name, artist: artistName,
-                  cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true
-                }])
-              },
-              {
-                label: '📂 在服务器磁盘中定位',
-                style: 'default' as const,
-                onclick: () => onReveal(h)
-              }
-            ]
-          : []),
         {
-          label: '🗑️ 从历史记录中删除',
-          style: 'danger' as const,
+          label: isPlayingThis && playing ? t('track.actionPauseDesktop') : t('track.actionPlayLocalFull'),
+          style: 'primary',
+          onclick: () => {
+            onPlayQueue([{
+              id: h.songId && h.songId > 0 ? h.songId : (h.id || `local_${Date.now()}`),
+              name: h.songName || h.name,
+              artist: artistName,
+              album: h.album || t('download.localLibrary'),
+              cover: h.cover || DEFAULT_VINYL_COVER,
+              url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath || '')}`,
+              isLocal: true
+            }]);
+          }
+        },
+        {
+          label: t('playlist.locateInDisk'),
+          onclick: () => {
+            onReveal({ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, path: h.hostFilePath || h.filePath || h.path });
+          }
+        },
+        {
+          label: t('download.deleteFromHistory'),
+          style: 'danger',
           onclick: () => deleteItem(h.id)
         }
       ]
     });
   }
+
+  const mobileTabs = $derived([
+    { id: 'folder', label: t('download.tabLocal'), icon: '📁', accent: 'red' },
+    { id: 'history', label: t('download.tabHistory'), icon: '📥', accent: 'blue' },
+    { id: 'cache', label: t('download.tabCache'), icon: '📲', accent: 'emerald' }
+  ]);
 </script>
 
-<!-- 📱 SP 移动端顶部三段式分段切换器 -->
-<SegmentedTabs
-  items={[
-    { id: 'folder', label: '本地曲库', icon: '📁', accent: 'red' },
-    { id: 'history', label: '下载历史', icon: '📥', accent: 'blue' },
-    { id: 'cache', label: '离线缓存', icon: '📲', accent: 'emerald' }
-  ]}
-  activeId={activeSubtab}
-  onChange={(id) => {
-    activeSubtab = id as any;
-    try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {}
-  }}
-/>
+<div class="flex flex-col gap-2.5">
+  <!-- Mobile Tab Segmented Switcher -->
+  <div class="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-xs select-none">
+    {#each mobileTabs as tb}
+      <button
+        type="button"
+        class="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold cursor-pointer transition-all border-none {mobileTab === tb.id ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
+        onclick={() => mobileTab = tb.id as any}
+      >
+        <span>{tb.icon}</span>
+        <span>{tb.label}</span>
+      </button>
+    {/each}
+  </div>
 
-<!-- Section 1: 本地曲库与文件夹树连播 -->
-<div class:hidden={activeSubtab !== 'folder'}>
-  <AccordionCard title="📁 本地曲库与文件夹树连播" flat open={true} accent="red">
-    <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
-  </AccordionCard>
-</div>
+  {#if mobileTab === 'folder'}
+    <AccordionCard title={t('download.accordionLocalTree')} flat open={true} accent="red">
+      <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
+    </AccordionCard>
+  {/if}
 
-<!-- Section 2: 本地下载历史与文件管理 -->
-<div class:hidden={activeSubtab !== 'history'}>
-  <AccordionCard title="📥 本地下载历史与文件管理" flat open={true} accent="blue">
-    <!-- 统计数据条 -->
-    <div style="display:flex; flex-wrap:wrap; gap:8px; background:var(--stat-bar-bg); border:1px solid var(--border-subtle); padding:10px 12px; border-radius:8px; margin-bottom:10px; align-items:center; font-size:13px;">
-      <span>已记录下载：<strong>{histStats?.totalCount ?? histTotal ?? 0}</strong> 首</span>
-      <span>占用空间：<strong>{histStats?.totalSize ? formatBytes(histStats.totalSize) : '-'}</strong></span>
-      {#if (histStats?.missingCount ?? 0) > 0}
-        <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-red-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openMissingModal} title="点击查看所有缺失文件清单">
-          ⚠️ 文件缺失：{histStats.missingCount} 首 <span style="font-size:10px; border:1px solid rgba(239,68,68,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
-        </button>
-      {/if}
-      {#if (histStats?.nonMp3Count ?? 0) > 0}
-        <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-amber-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openNonMp3Modal} title="点击查看所有非 MP3 音频清单">
-          📁 非 MP3 格式：{histStats.nonMp3Count} 首 <span style="font-size:10px; border:1px solid rgba(245,158,11,0.3); padding:1px 4px; border-radius:6px;">查看 ↗</span>
-        </button>
-      {/if}
-      <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={scanExternalLibraries}>📁 外部曲库</button>
-        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={scanDiskFiles}>🔍 对齐磁盘</button>
-        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={cleanMissingRecords}>🧹 清理失效</button>
-        <button class="btn-secondary" style="padding:5px 10px; font-size:12px;" onclick={() => loadHistory(1)}>🔄 刷新</button>
+  {#if mobileTab === 'history'}
+    <AccordionCard title={t('download.accordionHistoryShort')} flat open={true} accent="blue">
+      <div class="flex flex-wrap gap-2.5 bg-[var(--stat-bar-bg)] border border-[var(--border-subtle)] p-2.5 px-3.5 rounded-xl mb-2.5 items-center text-xs">
+        <span class="text-[var(--text-secondary)]">{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
+        <span class="text-[var(--text-secondary)]">{t('download.diskSpaceUsed', { size: histStats?.totalSize ? formatBytes(histStats.totalSize) : '-' })}</span>
+        {#if (histStats?.missingCount ?? 0) > 0}
+          <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-red-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openMissingModal} title={t('download.modalTitleMissing')}>
+            {t('download.missingCount', { count: histStats.missingCount })} <span class="text-[10px] border border-red-500/30 px-1 py-0.5 rounded-md">{t('download.viewArrow')}</span>
+          </button>
+        {/if}
+        {#if (histStats?.nonMp3Count ?? 0) > 0}
+          <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-amber-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openNonMp3Modal} title={t('download.modalTitleNonMp3')}>
+            {t('download.nonMp3Format', { count: histStats.nonMp3Count })} <span class="text-[10px] border border-amber-500/30 px-1 py-0.5 rounded-md">{t('download.viewArrow')}</span>
+          </button>
+        {/if}
+        <div class="ml-auto flex gap-1.5 flex-wrap">
+          <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanExternalLibraries}>{t('download.btnExternal')}</button>
+          <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanDiskFiles}>{t('download.btnAlignDisk')}</button>
+          <button class="btn-secondary px-2.5 py-1 text-xs" onclick={cleanMissingRecords}>{t('download.btnCleanMissing')}</button>
+          <button class="btn-secondary px-2.5 py-1 text-xs" onclick={() => loadHistory(1)}>🔄 {t('common.refresh')}</button>
+        </div>
       </div>
-    </div>
 
-    <!-- 📊 扫描结果可折叠展示面板 -->
-    {#if scanBoxVisible}
-      <div style="background:var(--card-bg-solid); border:1px solid var(--border-color); border-radius:8px; padding:14px; margin-bottom:12px; position:relative;">
-        <button style="position:absolute; right:10px; top:10px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px;" onclick={() => scanBoxVisible = false}>✕</button>
-        
-        {#if scanLoading}
-          <div style="color:var(--text-secondary); font-size:13px; text-align:center; padding:10px;">🔄 正在执行扫描，请稍候...</div>
-        {:else if scanType === 'external' && externalResult}
-          <div style="font-size:13px; line-height:1.7;">
-            <div style="color:var(--text-main); font-weight:bold; margin-bottom:6px; font-size:14px;">✅ 多目录外部曲库扫描同步完成！</div>
-            <div style="color:var(--text-main);">• 配置扫描目录列表: <code style="background:var(--tag-btn-bg); padding:2px 6px; border-radius:4px; border:1px solid var(--border-color); font-size:12px;">{(externalResult.configuredDirs || []).join(' ; ') || '未配置'}</code></div>
-            <div style="color:var(--text-main);">• 累计扫描物理音频文件: <strong>{externalResult.scannedFiles || 0}</strong> 首</div>
-            <div style="color:var(--text-main);">• 本次成功新录入索引: <strong style="color:var(--primary-color);">{externalResult.addedCount || 0}</strong> 首</div>
-            <div style="margin-top:6px; font-size:12px; color:var(--text-secondary);">💡 提示：现在在线搜索或播放歌单时，凡在上述目录中的音乐，系统均会自动 0 延迟秒播本地文件！</div>
-          </div>
-        {:else if scanType === 'disk' && diskResult}
-          <div style="font-size:13px; line-height:1.7;">
-            <div style="margin-bottom:8px;">
-              <strong>数据库记录：</strong>{diskResult.totalRecords || 0} | 
-              <strong>物理文件正常：</strong><span>{diskResult.validRecordsCount || 0}</span> | 
-              <strong>缺失记录：</strong><span style="color:#ef4444; font-weight:600;">{diskResult.missingCount || 0}</span> | 
-              <strong>未录入物理音频：</strong><span style="color:var(--primary-color); font-weight:600;">{diskResult.untrackedCount || 0}</span>
+      <!-- Scan result panels -->
+      {#if scanExternalLoading || externalResult}
+        <div class="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-xl p-3 mb-2.5 text-xs flex flex-col gap-1.5">
+          {#if scanExternalLoading}
+            <div class="text-[var(--text-secondary)] text-center py-2.5">{t('download.scanningPleaseWait')}</div>
+          {:else if externalResult}
+            <div class="text-[var(--text-main)] font-bold text-sm mb-1">{t('download.externalScanFinished')}</div>
+            <div class="text-[var(--text-main)]">{t('download.configuredDirsList', { dirs: (externalResult.configuredDirs || []).join(' ; ') || '-' })}</div>
+            <div class="text-[var(--text-main)]">{t('download.totalScannedFiles', { count: externalResult.scannedFiles || 0 })}</div>
+            <div class="text-[var(--text-main)]">{t('download.newlyIndexedCount', { count: externalResult.addedCount || 0 })}</div>
+            <div class="text-[var(--text-secondary)] mt-1.5">{t('download.externalScanTip')}</div>
+          {/if}
+        </div>
+      {/if}
+
+      {#if scanDiskLoading || diskResult}
+        <div class="bg-[var(--card-bg)] border border-[var(--border-subtle)] rounded-xl p-3 mb-2.5 text-xs flex flex-col gap-1.5">
+          {#if scanDiskLoading}
+            <div class="text-[var(--text-secondary)] text-center py-2.5">{t('download.scanningPleaseWait')}</div>
+          {:else if diskResult}
+            <div>
+              <strong>{t('download.labelDbRecords')}</strong>{diskResult.totalRecords || 0} |
+              <strong>{t('download.labelValidRecords')}</strong>{diskResult.validRecordsCount || 0} |
+              <strong>{t('download.labelMissingRecords')}</strong><span class="text-red-500 font-semibold">{diskResult.missingCount || 0}</span> |
+              <strong>{t('download.labelUntrackedRecords')}</strong><span class="text-red-500 font-semibold">{diskResult.untrackedCount || 0}</span>
             </div>
-
-            {#if diskResult.untrackedFiles && diskResult.untrackedFiles.length > 0}
-              <div style="margin:10px 0; padding:10px 12px; background:var(--stat-bar-bg); border:1px solid var(--border-color); border-radius:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                <span style="color:var(--text-main); font-size:13px;">💡 搜寻到 <strong>{diskResult.untrackedCount}</strong> 首本地已有物理音频未记录在数据库中：</span>
-                <button class="btn-primary" style="padding:4px 12px; font-size:12px;" onclick={importUntrackedFiles}>
-                  📥 导入至数据库
-                </button>
+            {#if diskResult.untrackedCount > 0}
+              <div class="flex items-center justify-between gap-2 mt-1 flex-wrap">
+                <span class="text-[var(--text-main)]">{t('download.foundUntrackedNotice', { count: diskResult.untrackedCount })}</span>
+                <button class="btn-primary px-2.5 py-1 text-xs" onclick={importUntrackedFiles}>{t('download.importToDb')}</button>
               </div>
-              <ul style="padding-left:18px; margin:6px 0; color:var(--text-secondary); font-size:12px; max-height:140px; overflow-y:auto;">
-                {#each diskResult.untrackedFiles.slice(0, 10) as u}
-                  <li>{u.fileName} ({formatBytes(u.fileSize)}) - <code style="font-size:11px; background:var(--tag-btn-bg); padding:1px 4px; border-radius:3px;">{u.filePath}</code></li>
+              <ul class="text-[11px] text-[var(--text-secondary)] pl-4 max-h-24 overflow-y-auto">
+                {#each (diskResult.untrackedFiles || []).slice(0, 5) as uf}
+                  <li class="truncate">{uf}</li>
                 {/each}
-                {#if diskResult.untrackedFiles.length > 10}
-                  <li>...及更多共 {diskResult.untrackedFiles.length} 项</li>
+                {#if (diskResult.untrackedFiles || []).length > 5}
+                  <li>{t('download.andMoreItems', { count: diskResult.untrackedFiles.length })}</li>
                 {/if}
               </ul>
             {:else}
-              <div style="color:var(--text-main); font-weight:600;">✅ 所有磁盘物理音频文件均已与数据库完全映射对齐！</div>
+              <div class="text-[var(--text-main)] font-semibold">{t('download.allAlignedNotice')}</div>
             {/if}
-          </div>
-        {/if}
-      </div>
-    {/if}
+          {/if}
+        </div>
+      {/if}
 
-    <!-- 搜索筛选行 -->
-    <div class="flex items-center gap-2 mb-2.5 w-full">
-      <div class="flex-1 min-w-0">
-        <LocalSearchBox
-          bind:value={histKw}
-          placeholder="🔍 检索本地歌曲名 / 歌手 / 物理文件名 (按回车检索)"
-          historyKey="wyyyy_history_search_history"
-          onSearch={() => loadHistory(1)}
-          onClear={() => loadHistory(1)}
-        />
+      <!-- Search Row -->
+      <div class="flex gap-2 mb-2.5">
+        <div class="flex-1 min-w-0">
+          <LocalSearchBox
+            bind:value={histKw}
+            placeholder={t('download.searchHistoryAdvancedPlaceholder')}
+            historyKey="wyyyy_history_search_history"
+            onSearch={() => loadHistory(1)}
+            onClear={() => loadHistory(1)}
+          />
+        </div>
+        <button class="btn-primary shrink-0 whitespace-nowrap hidden md:inline-flex px-4 py-1.5 text-xs" onclick={() => loadHistory(1)}>
+          {t('common.search')}
+        </button>
       </div>
-      <button class="btn-primary shrink-0 whitespace-nowrap hidden md:inline-flex" onclick={() => loadHistory(1)}>检索</button>
-    </div>
 
-    <!-- 历史曲目列表 -->
-    <ul class="data-list scrollable-list">
-      {#each histList as h, idx}
-        {@const artistName = formatArtist(h.artist)}
-        {@const isPlayingThis = isSameTrack(curTrack, h)}
-        <li class="track-item-card" class:is-active-playing={isPlayingThis}>
-          <div class="track-title-row">
-            <button
-              type="button"
-              class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
-              onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
-            >
-              {(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || '未知歌曲'}
-            </button>
-            {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
-            <span class="audio-source-badge icon-only badge-server ml-1.5" title="🖥️ 本地已下载">🖥️</span>
-            {#if h.fileExists === false}
-              <span class="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1 py-0.5 rounded">⚠️ 失效</span>
-            {/if}
-          </div>
-          <div class="track-action-group">
-            <!-- 💻 PC 桌面端快捷操作 -->
-            <div class="hidden md:inline-flex items-center gap-1.5">
-              {#if h.fileExists !== false}
-                <SlotBtn
-                  playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
-                >
-                  {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
-                </SlotBtn>
-                <SlotBtn onclick={() => onReveal(h)}>
-                  📂 定位
-                </SlotBtn>
-              {/if}
-              <SlotBtn onclick={() => deleteItem(h.id)} title="从数据库删除此条历史记录">
-                🗑️ 删除
+      <!-- History List -->
+      <ul class="data-list divide-y divide-black/5 dark:divide-white/5 border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)] m-0 p-0 list-none">
+        {#each histList as h, idx (h.id || idx)}
+          {@const isPlayingThis = isSameTrack(curTrack, h)}
+          {@const artistName = h.artist || (h.artists ? formatArtist(h.artists) : '')}
+          {@const displayPath = h.hostFilePath || h.filePath || h.path}
+          <li class="flex justify-between items-center py-2 px-3 hover:bg-black/5 dark:hover:bg-white/5 transition-all group">
+            <div class="flex-1 overflow-hidden min-w-0 pr-2">
+              <div class="font-bold text-xs text-[var(--text-main)] truncate flex items-center">
+                <span>{(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || t('common.unknownSong')}</span>
+                <span class="audio-source-badge icon-only badge-server ml-1.5" title={t('download.localDownloadedTooltip')}>🖥️</span>
+                {#if h.fileExists === false}
+                  <span class="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1 py-0.5 rounded ml-1">{t('download.missingBadge')}</span>
+                {/if}
+              </div>
+              <div class="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
+                {artistName} {h.fileSize ? `| ${formatBytes(h.fileSize)}` : ''}
+              </div>
+            </div>
+
+            <!-- Desktop actions -->
+            <div class="hidden md:inline-flex items-center gap-1.5 shrink-0">
+              <SlotBtn
+                playing={isPlayingThis && playing}
+                onclick={() => onPlayQueue([{
+                  id: h.songId && h.songId > 0 ? h.songId : (h.id || `local_${Date.now()}`),
+                  name: h.songName || h.name,
+                  artist: artistName,
+                  album: h.album || t('download.localLibrary'),
+                  cover: h.cover || DEFAULT_VINYL_COVER,
+                  url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath || '')}`,
+                  isLocal: true
+                }])}
+              >
+                {isPlayingThis && playing ? t('track.actionPlaying') : t('track.actionPlayShort')}
+              </SlotBtn>
+              <SlotBtn onclick={() => onReveal({ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, path: displayPath })}>
+                {t('common.reveal')}
+              </SlotBtn>
+              <SlotBtn onclick={() => deleteItem(h.id)} title={t('download.deleteFromHistory')}>
+                {t('common.delete')}
               </SlotBtn>
             </div>
 
-            <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
-            <div class="inline-flex md:hidden items-center gap-1.5">
-              {#if h.fileExists !== false}
-                <SlotBtn
-                  playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([{ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, cover: DEFAULT_VINYL_COVER, url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath)}`, isLocal: true }])}
-                >
-                  {isPlayingThis && playing ? '⏸ 播放中' : '▶️ 播放'}
-                </SlotBtn>
-              {/if}
+            <!-- Mobile actions -->
+            <div class="inline-flex md:hidden items-center gap-1 shrink-0">
+              <SlotBtn
+                playing={isPlayingThis && playing}
+                onclick={() => onPlayQueue([{
+                  id: h.songId && h.songId > 0 ? h.songId : (h.id || `local_${Date.now()}`),
+                  name: h.songName || h.name,
+                  artist: artistName,
+                  album: h.album || t('download.localLibrary'),
+                  cover: h.cover || DEFAULT_VINYL_COVER,
+                  url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath || '')}`,
+                  isLocal: true
+                }])}
+              >
+                {isPlayingThis && playing ? t('track.actionPlaying') : t('track.actionPlayShort')}
+              </SlotBtn>
               <button
                 type="button"
-                class="btn-more-actions"
-                onclick={() => openHistTrackSheet(h, artistName, isPlayingThis)}
-                title="更多操作"
-                aria-label="更多操作"
+                class="w-7 h-7 flex items-center justify-center rounded-lg bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] cursor-pointer"
+                onclick={() => openTrackSheet(h)}
+                title={t('common.moreActions')}
+                aria-label={t('common.moreActions')}
               >
                 ···
               </button>
             </div>
-          </div>
-        </li>
-      {:else}
-        <li style="padding:20px; text-align:center; color:var(--text-muted);">暂无下载历史记录</li>
-      {/each}
-    </ul>
+          </li>
+        {:else}
+          <li class="p-5 text-center text-[var(--text-muted)] text-xs list-none">{t('download.noHistoryFound')}</li>
+        {/each}
+      </ul>
 
-    <!-- 分页 -->
-    <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-      <button class="btn-secondary" disabled={histPage <= 1} onclick={() => loadHistory(histPage - 1)}>上一页</button>
-      <span style="font-size:12px; color:var(--text-secondary);">第 {histPage} / {histTotalPages} 页 (共 {histTotal} 首)</span>
-      <button class="btn-secondary" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>下一页</button>
-    </div>
-  </AccordionCard>
+      <!-- Pagination -->
+      <div class="flex justify-between items-center mt-3 text-xs text-[var(--text-secondary)] select-none">
+        <button class="btn-secondary px-3 py-1 text-xs" disabled={histPage <= 1} onclick={() => loadHistory(histPage - 1)}>{t('download.prevPage')}</button>
+        <span>{t('download.pageStats', { page: histPage, total: histTotalPages, count: histTotal })}</span>
+        <button class="btn-secondary px-3 py-1 text-xs" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>{t('download.nextPage')}</button>
+      </div>
+    </AccordionCard>
+  {/if}
+
+  {#if mobileTab === 'cache'}
+    <BrowserCacheSection flat open={true} {onPlayQueue} {showToast} />
+  {/if}
 </div>
 
-<!-- Section 3: 手机/浏览器离线缓存管理 -->
-<div class:hidden={activeSubtab !== 'cache'}>
-  <BrowserCacheSection flat open={true} {onPlayQueue} {showToast} />
-</div>
-
-<!-- 📋 缺失文件 / 非MP3 格式 清单弹窗 -->
+<!-- Modal: Missing Files or Non-MP3 -->
 {#if modalType}
   <Modal
-    title="{modalType === 'missing' ? '文件已缺失的历史记录' : '非 MP3 格式音频记录'} ({modalList.length} 项)"
-    icon={modalType === 'missing' ? '⚠️' : '📁'}
-    maxWidth="max-w-[620px]"
+    title="{modalType === 'missing' ? t('download.modalTitleMissing') : t('download.modalTitleNonMp3')} ({modalList.length})"
+    maxWidth="max-w-[580px]"
     onClose={() => modalType = null}
   >
     {#if modalLoading}
-      <div class="py-5 text-center text-[var(--text-muted)] text-xs">🔄 正在加载清单...</div>
+      <div class="py-5 text-center text-[var(--text-muted)] text-xs">{t('download.loadingList')}</div>
     {:else if modalList.length > 0}
-      <div class="mb-2.5 text-xs text-[var(--text-secondary)]">
-        {modalType === 'missing' ? '以下数据库记录在物理磁盘上已不存在对应文件：' : '以下音频为 FLAC / WAV / M4A / AAC 等高解析格式文件：'}
+      <div class="text-xs text-[var(--text-secondary)] mb-2">
+        {modalType === 'missing' ? t('download.missingNotice') : t('download.nonMp3Notice')}
       </div>
-      <ul class="divide-y divide-black/5 dark:divide-white/5 max-h-[50vh] overflow-y-auto">
-        {#each modalList as item, i}
-          {@const mArtist = formatArtist(item.artist)}
-          <li class="py-2 px-1 text-xs">
-            <div class="font-semibold text-[var(--text-main)]">{i + 1}. {item.songName}{mArtist ? ' - ' + mArtist : ''}</div>
-            <div class="text-[var(--text-muted)] text-[11px] font-mono break-all mt-0.5">{item.filePath}</div>
+      <ul class="max-h-60 overflow-y-auto divide-y divide-black/5 dark:divide-white/5 border border-[var(--border-subtle)] rounded-xl p-0 m-0 list-none text-xs">
+        {#each modalList as it}
+          <li class="py-1.5 px-3 flex justify-between items-center gap-2">
+            <span class="truncate font-medium">{it.songName || it.name}</span>
+            <span class="text-[11px] text-[var(--text-muted)] truncate max-w-[200px]">{it.filePath || it.format || ''}</span>
           </li>
         {/each}
       </ul>
     {:else}
-      <div class="py-8 text-center text-emerald-500 font-medium text-xs">✅ 没有找到相关异常记录！</div>
+      <div class="py-8 text-center text-emerald-500 font-medium text-xs">{t('download.noAbnormalRecords')}</div>
     {/if}
 
     {#snippet footer()}
-      {#if modalType === 'missing' && modalList.length > 0}
-        <button class="btn-primary bg-gradient-to-br from-red-500 to-rose-600 text-xs" onclick={cleanMissingRecords}>
-          🧹 一键清理全部失效记录
-        </button>
-      {:else if modalType === 'non_mp3' && modalList.length > 0}
-        <button class="btn-primary bg-gradient-to-br from-amber-500 to-orange-600 text-xs" onclick={cleanNonMp3Records}>
-          🧹 批量清理非 MP3 记录
-        </button>
-      {/if}
-      <button class="btn-secondary text-xs" onclick={() => modalType = null}>关闭</button>
+      <div class="flex justify-between items-center w-full gap-2">
+        {#if modalType === 'missing' && modalList.length > 0}
+          <button class="btn-secondary text-xs text-red-400" onclick={cleanMissingRecords}>{t('download.cleanAllMissingBtn')}</button>
+        {:else if modalType === 'nonMp3' && modalList.length > 0}
+          <button class="btn-secondary text-xs text-amber-400" onclick={cleanNonMp3Records}>{t('download.cleanAllNonMp3Btn')}</button>
+        {:else}
+          <span></span>
+        {/if}
+        <button class="btn-secondary text-xs" onclick={() => modalType = null}>{t('common.close')}</button>
+      </div>
     {/snippet}
   </Modal>
 {/if}

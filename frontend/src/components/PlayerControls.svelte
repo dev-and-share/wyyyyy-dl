@@ -1,5 +1,6 @@
 <script lang="ts">
   import PlayerIcon, { type PlayerIconName } from './PlayerIcon.svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     playing = false,
@@ -25,7 +26,7 @@
     playMode === 'single' ? 'repeat-1' : playMode === 'shuffle' ? 'shuffle' : 'repeat'
   );
   let modeTitle = $derived(
-    playMode === 'single' ? '单曲循环' : playMode === 'shuffle' ? '随机播放' : '列表循环'
+    playMode === 'single' ? t('player.repeatOne') : playMode === 'shuffle' ? t('player.shuffle') : t('player.repeatAll')
   );
 </script>
 
@@ -67,7 +68,7 @@
               ? 'w-10 h-10 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-main)]'
               : 'w-8 h-8 rounded-full text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
     onclick={onPrev}
-    title="上一首"
+    title={t('player.previous')}
   >
     {#if skinId === 'winamp'}
       <span class="text-xs font-mono font-bold leading-none">|◀</span>
@@ -91,7 +92,7 @@
             : 'rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/35 hover:scale-105 active:scale-95 ' +
               (size === 'lg' ? 'w-12 h-12' : 'w-9.5 h-9.5')}"
     onclick={onTogglePlay}
-    title={playing ? '暂停' : '播放'}
+    title={playing ? t('player.pause') : t('player.play')}
   >
     {#if skinId === 'winamp'}
       <span class="text-xs font-mono font-bold leading-none">{playing ? '❚❚' : '▶'}</span>
@@ -116,7 +117,7 @@
               ? 'w-10 h-10 rounded-full bg-[var(--btn-slot-bg)] border border-[var(--border-subtle)] text-[var(--text-main)]'
               : 'w-8 h-8 rounded-full text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95'}"
     onclick={onNext}
-    title="下一首"
+    title={t('player.next')}
   >
     {#if skinId === 'winamp'}
       <span class="text-xs font-mono font-bold leading-none">▶|</span>

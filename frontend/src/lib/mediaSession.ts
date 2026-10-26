@@ -1,5 +1,6 @@
 import type { Track } from './types';
 import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from './utils';
+import { t } from './i18n';
 
 export interface MediaSessionHandlers {
   onPlay: () => void;
@@ -22,13 +23,12 @@ export function setupMediaSession(handlers: MediaSessionHandlers) {
     navigator.mediaSession.setActionHandler('previoustrack', () => handlers.onPrev());
     navigator.mediaSession.setActionHandler('nexttrack', () => handlers.onNext());
 
-    // 彻底清除并禁用所有时间快进/快退/时间跳转动作，
-    // 强制锁定系统控制中心与锁屏为【曲目导航（⏮ ⏯ ⏭）】而非【跳秒快进（↺15 ↻15）】
+    // Clear backward/forward actions to enforce track navigation instead of 15s skip
     try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
     try { navigator.mediaSession.setActionHandler('seekforward', null); } catch {}
     try { navigator.mediaSession.setActionHandler('seekto', null); } catch {}
   } catch (e) {
-    console.warn('[MediaSession] 注册动作监听失败:', e);
+    console.warn('[MediaSession] Failed to register action handlers:', e);
   }
 }
 
@@ -105,24 +105,19 @@ export function updateMediaSessionMetadata(track: Track | null, lyricInfo?: Medi
     currentCoverUrl = null;
   }
 
-  const songName = track.name || '未知歌曲';
-  const artistName = formatArtist(track.artist) || '未知歌手';
+  const songName = track.name || t('common.unknownSong');
+  const artistName = formatArtist(track.artist) || t('common.unknownArtist');
 
   const currentText = lyricInfo?.currentText?.trim();
   const nextText = lyricInfo?.nextText?.trim();
 
   const title = currentText || songName;
   const artist = currentText ? `${songName} · ${artistName}` : artistName;
-  const album = nextText ? `⏭ ${nextText}` : (currentText ? songName : '网易云音乐');
+  const album = nextText ? `⏭ ${nextText}` : (currentText ? songName : t('common.neteaseCloudMusic'));
 
   const coverUrl = formatArtworkUrl(track.cover);
   const trackKey = track.id ?? track.url ?? `${songName}-${artistName}`;
 
-  // 🛡️ 车载蓝牙与锁屏防抖契约（Tesla 封面避坑）：
-  // 仅在歌曲切换或封面发生变更时，才全量构造 new MediaMetadata 并绑定 artwork。
-  // 随后歌词跳动（每 2~3 秒一次）时，必须【就地修改】metadata 的 title / artist / album，
-  // 绝对不可重新实例化 MediaMetadata 或重新赋值 artwork！
-  // 否则会导致车载蓝牙 BIP（Basic Imaging Profile）图片传输死循环被掐断，车机超时退化为黑色默认图标。
   if (
     navigator.mediaSession.metadata &&
     currentTrackKey === trackKey &&
@@ -145,7 +140,7 @@ export function updateMediaSessionMetadata(track: Track | null, lyricInfo?: Medi
       artwork: createArtworkList(coverUrl)
     });
   } catch (e) {
-    console.warn('[MediaSession] 更新曲目元数据失败:', e);
+    console.warn('[MediaSession] Failed to update metadata:', e);
   }
 }
 

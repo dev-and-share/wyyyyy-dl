@@ -1,4 +1,5 @@
 import { api } from './api';
+import { t } from './i18n';
 
 export const PWA_CACHE_NAME = 'netease-music-audio-v1';
 export const PWA_TRACK_META_KEY = 'pwa_cached_tracks_meta_v1';
@@ -164,13 +165,13 @@ export async function cacheTrackToBrowser(
   },
   options?: { skipTrial?: boolean; silent?: boolean }
 ): Promise<{ success: boolean; msg: string; isTrial?: boolean }> {
-  // 1. 若开启跳过试听且曲目已确认为试听，直接拦截不存
+  // 1. Skip trial if configured
   if (options?.skipTrial && track.freeTrial === true) {
-    return { success: false, isTrial: true, msg: '此曲为 VIP 试听片段，跳过手机离线缓存' };
+    return { success: false, isTrial: true, msg: t('cache.vipTrialSkip') };
   }
 
   if (typeof window === 'undefined' || !('caches' in window)) {
-    return { success: false, msg: '当前浏览器不支持 Cache API 或未在安全环境(HTTPS/Localhost)运行' };
+    return { success: false, msg: t('cache.unsupportedEnv') };
   }
 
   const id = String(track.id);
@@ -184,7 +185,7 @@ export async function cacheTrackToBrowser(
       songData = resp?.data || {};
 
       if (!audioUrl) {
-        // 触发一次服务端兜底解析
+        // trigger fallback download
         await api.downloadSingle(id).catch(() => {});
         const retry = await api.songV1(id, 'lossless');
         audioUrl = retry?.data?.url;
@@ -193,20 +194,19 @@ export async function cacheTrackToBrowser(
     }
 
     if (!audioUrl) {
-      return { success: false, msg: '无法获取歌曲音频播放流（可能需要网易云 VIP 或当前无版权）' };
+      return { success: false, msg: t('cache.cannotGetAudioStream') };
     }
 
     const streamResp = await fetch(audioUrl);
     if (!streamResp.ok) {
-      return { success: false, msg: `音频流拉取失败 (HTTP ${streamResp.status})` };
+      return { success: false, msg: t('cache.streamFetchFailed', { status: streamResp.status }) };
     }
 
     const blob = await streamResp.blob();
     const isTrial = blob.size < 1250000 || Boolean(songData.freeTrial) || Boolean(track.freeTrial);
 
-    // 🛡️ 边听边存严格策略：只要是试听片段，绝不写入手机 Cache
     if (options?.skipTrial && isTrial) {
-      return { success: false, isTrial: true, msg: '检测到为试听片段，跳过自动缓存' };
+      return { success: false, isTrial: true, msg: t('cache.detectedTrialSkip') };
     }
 
     const cache = await caches.open(PWA_CACHE_NAME);
@@ -225,8 +225,8 @@ export async function cacheTrackToBrowser(
 
     // 写入本地离线曲库元数据供断网渲染与播放器读取
     const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const sName = songData.name || track.name || '未知歌曲';
-    const sArtist = songData.ar_name || track.artist || '未知歌手';
+    const sName = songData.name || track.name || t('common.unknownSong');
+    const sArtist = songData.ar_name || track.artist || t('common.unknownArtist');
     const sCover = songData.al_pic_url || track.cover || '/favicon.png';
     const sAlbum = songData.al_name || track.album || '';
     const currentPlayCount = getSongPlayCount(id);
@@ -247,15 +247,15 @@ export async function cacheTrackToBrowser(
     }
     localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
 
-    // 派发全局缓存变更事件，通知离线曲库列表实时刷新
+    // Dispatch global event to notify offline track list
     window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id, meta } }));
 
     if (isTrial) {
-      return { success: true, isTrial: true, msg: `已缓存《${sName}》(⚠️ 提示: 此曲为 VIP 试听片段)` };
+      return { success: true, isTrial: true, msg: t('cache.cachedTrialNotice', { name: sName }) };
     }
-    return { success: true, msg: `已成功离线缓存《${sName}》，断网可直接秒播！` };
+    return { success: true, msg: t('cache.cachedSuccessOfflineReady', { name: sName }) };
   } catch (e: any) {
-    return { success: false, msg: '离线缓存异常: ' + (e.message || e) };
+    return { success: false, msg: t('cache.cacheException', { error: e.message || e }) };
   }
 }
 
@@ -299,7 +299,7 @@ export async function getCachedAudioBlobUrl(idOrUrl: string | number): Promise<s
       }
     }
   } catch (err) {
-    console.warn('[PWA] 提取离线音频 BlobUrl 失败:', err);
+    console.warn('[PWA] Failed to extract offline audio blob url:', err);
   }
   return null;
 }
@@ -347,7 +347,7 @@ export function handleTrackPlayback(track: any, isStillPlaying?: () => boolean) 
     try {
       await cacheTrackToBrowser(track, { skipTrial: true, silent: true });
     } catch (err) {
-      console.warn('[AutoCache] 边听边存失败:', err);
+      console.warn('[AutoCache] Failed to auto cache track:', err);
     }
   }, 2500);
 }

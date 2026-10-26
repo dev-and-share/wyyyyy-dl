@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { formatArtist, platform } from '../lib/utils';
   import { showToast } from '../lib/toast.svelte';
+  import { t } from '../lib/i18n/index.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
@@ -107,20 +108,20 @@
       type="button"
       class="w-9.5 h-9.5 rounded-full flex items-center justify-center text-base bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] active:scale-92 transition-all cursor-pointer"
       onclick={() => showSkinPicker = true}
-      title="切换播放器皮肤"
+      title={t('player.skin')}
       data-testid="btn-open-skin-picker"
     >
       <span class="text-sm">🎨</span>
     </button>
 
-    <h3 class="text-base font-bold text-[var(--text-main)] flex-1 text-center truncate px-2">🎵 全屏沉浸播放</h3>
+    <h3 class="text-base font-bold text-[var(--text-main)] flex-1 text-center truncate px-2">🎵 {t('player.pureMode')}</h3>
 
     <!-- 关闭沉浸页 -->
     <button
       type="button"
       class="w-9.5 h-9.5 rounded-full flex items-center justify-center text-base bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] active:scale-92 transition-all cursor-pointer"
       onclick={onClose}
-      title="关闭全屏"
+      title={t('common.close')}
     >
       <PlayerIcon name="close" size={16} />
     </button>
@@ -175,7 +176,7 @@
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onToggleMode}
-        title="切换播放模式"
+        title={t('player.toggleMode')}
       >
         <PlayerIcon name={playMode === 'single' ? 'repeat-1' : playMode === 'shuffle' ? 'shuffle' : 'repeat'} size={19} />
       </button>
@@ -183,7 +184,7 @@
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onPrev}
-        title="上一首"
+        title={t('player.previous')}
       >
         <PlayerIcon name="prev" size={20} />
       </button>
@@ -191,7 +192,7 @@
         type="button"
         class="w-11 h-11 rounded-full flex items-center justify-center text-lg bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
         onclick={onTogglePlay}
-        title="播放 / 暂停"
+        title={playing ? t('player.pause') : t('player.play')}
       >
         <PlayerIcon name={playing ? 'pause' : 'play'} size={22} />
       </button>
@@ -199,7 +200,7 @@
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-sm text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onNext}
-        title="下一首"
+        title={t('player.next')}
       >
         <PlayerIcon name="next" size={20} />
       </button>
@@ -208,7 +209,7 @@
           type="button"
           class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
           onclick={onTogglePeq}
-          title="打开均衡器"
+          title={t('player.peq')}
         >
           <PlayerIcon name="equalizer" size={19} />
         </button>
@@ -217,7 +218,7 @@
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-emerald-400 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={handleAddToPlaylist}
-        title="收藏当前歌曲到歌单"
+        title={t('playlist.addTo')}
       >
         <PlayerIcon name="plus" size={19} />
       </button>
@@ -225,7 +226,7 @@
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onToggleDrawer}
-        title="播放列表"
+        title={t('player.playlist')}
       >
         <PlayerIcon name="list" size={19} />
       </button>
@@ -237,7 +238,7 @@
             type="button"
             class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
             onclick={() => showVolPopup = !showVolPopup}
-            title="调节音量"
+            title={t('player.volume')}
           >
             <PlayerIcon name={vol === 0 ? 'volume-mute' : vol < 0.4 ? 'volume-low' : 'volume'} size={19} />
           </button>
@@ -258,7 +259,7 @@
               />
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <span class="cursor-pointer select-none flex items-center justify-center text-[var(--text-secondary)]" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title="点击切换静音">
+              <span class="cursor-pointer select-none flex items-center justify-center text-[var(--text-secondary)]" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title={t('player.muteToggle')}>
                 <PlayerIcon name={vol === 0 ? 'volume-mute' : 'volume'} size={15} />
               </span>
             </div>

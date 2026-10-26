@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "check:lines": "node scripts/check-file-lines.js",
+    "check:i18n": "node scripts/i18n-scan.js",
     "check:secrets": "secretlint --secretlintrc ../.secretlintrc.json '../src/**/*.java' '../.env' '../.env.example' 'src/**/*.{ts,svelte,js}'",
     "test": "vitest run",
     "test:watch": "vitest",

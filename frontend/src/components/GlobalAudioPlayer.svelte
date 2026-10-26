@@ -10,6 +10,7 @@
   import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
   import { handleTrackPlayback, resetTrackPlayback } from '../lib/pwaCache.svelte';
   import type { Track } from '../lib/types';
+  import { t } from '../lib/i18n';
 
   import { platform } from '../lib/platform';
 
@@ -87,7 +88,7 @@
           audioEl.addEventListener('loadedmetadata', onMeta);
         }
       } catch (e) {
-        console.warn('[Player] 恢复断点进度失败:', e);
+        console.warn('[Player] Failed to restore playback position:', e);
       }
     };
     setTimeout(doSeek, 60);
@@ -103,14 +104,14 @@
     if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
       playerStore.playing = false;
       const noMoreMsg = isTrial
-        ? `🛡️ 《${track.name}》为试听片段，队列中暂无其他完整曲目`
-        : `⚠️ 队列中已无其他可播曲目`;
+        ? t('player.trialNoMoreCompleteTracks', { name: track.name })
+        : t('player.noMorePlayableTracks');
       showToast(noMoreMsg, 'warning', 2500);
       return;
     }
     const toastMsg = isTrial
-      ? `🛡️ 已跳过试听曲目《${track.name}》`
-      : `⚠️ 《${track.name}》${reason}，自动播放下一首`;
+      ? t('player.skippedTrialTrack', { name: track.name })
+      : t('player.autoPlayNextReason', { name: track.name, reason });
     showToast(toastMsg, isTrial ? 'info' : 'warning', 2000);
     playerStore.qIndex = nextIdx;
     playerStore.curTime = 0;
@@ -132,12 +133,11 @@
       }
     }
 
-    // 智能跳过已知试听曲目与不可播曲目
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      return handleSkipTrack(track, '为试听片段', true);
+      return handleSkipTrack(track, t('player.isTrialClip'), true);
     }
     if (track.unplayable === true) {
-      return handleSkipTrack(track, track.unplayableReason || '因地区或版权限制暂无法播放', false);
+      return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
     }
 
     const startAudio = () => {
@@ -180,7 +180,7 @@
     if (platform.isIOS) { audioEl.muted = prevMuted; }
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      return handleSkipTrack(track, '为试听片段', true);
+      return handleSkipTrack(track, t('player.isTrialClip'), true);
     }
 
     if (!url || track.unplayable) {
@@ -190,7 +190,7 @@
         try { audioEl.currentTime = 0; } catch {}
         audioEl.src = '';
       }
-      return handleSkipTrack(track, track.unplayableReason || '因地区或版权限制暂无法播放', false);
+      return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
     }
 
     if (url && audioEl && playerStore.activeTrack === track) {
@@ -233,7 +233,7 @@
           audioEl.pause();
           try { audioEl.currentTime = 0; } catch {}
         }
-        showToast('🛡️ 队列中暂无其他可播放的完整曲目', 'info', 2000);
+        showToast(t('player.noMoreCompleteTracksToPlay'), 'info', 2000);
         return;
       }
     }
@@ -282,10 +282,10 @@
       playerStore.queue.length > 0
     ) {
       if (playerStore.playing) {
-        showToast('正在播放该歌单中', 'info', 1500);
+        showToast(t('player.playingThisPlaylistNow'), 'info', 1500);
         return;
       } else {
-        showToast('继续播放该歌单', 'info', 1500);
+        showToast(t('player.continuePlayingThisPlaylist'), 'info', 1500);
         ensurePlay(false);
         return;
       }
@@ -302,7 +302,7 @@
         markSongDownloaded(targetTrack.id);
       } else {
         api.downloadSingle(String(targetTrack.id)).then(() => {
-          showToast(`已将《${targetTrack.name || '歌曲'}》加入自动下载任务`, 'info', 2000);
+          showToast(t('player.addedAutoDownload', { name: targetTrack.name || t('common.song') }), 'info', 2000);
           window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
         }).catch(() => {});
       }
@@ -315,7 +315,7 @@
   function handleToggleMode() {
     const nextMode = playerStore.togglePlayMode();
     if (nextMode === 'shuffle') {
-      showToast('🎲 已随机洗牌！当前歌曲置顶，后续顺序播放', 'info', 2000);
+      showToast(t('player.shuffledNotice'), 'info', 2000);
       preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
     }
   }
@@ -328,8 +328,8 @@
   onMount(() => {
     playerStore.restore();
     if (playerStore.curTime > 0) pendingSeekTime = playerStore.curTime;
-    const t = playerStore.activeTrack;
-    if (t) prepareTrackInUI(t);
+    const currentTrack = playerStore.activeTrack;
+    if (currentTrack) prepareTrackInUI(currentTrack);
 
     setupMediaSession({
       onPlay: () => { if (audioEl?.paused) handleTogglePlay(); },
@@ -356,15 +356,15 @@
 
     const onPlayFolder = (e: CustomEvent) => {
       const { tracks, name } = e.detail;
-      if (!tracks?.length) return showToast('该目录无可播文件', 'warning');
+      if (!tracks?.length) return showToast(t('folder.noPlayableFiles'), 'warning');
       const q = tracks.map((item: any, i: number) => ({
         id: item.songId || item.id || `local_${Date.now()}_${i}`,
-        name: item.songName || item.name || '未知', artist: item.artist || '未知',
+        name: item.songName || item.name || t('common.unknownTrack'), artist: item.artist || t('common.unknownArtist'),
         cover: item.cover || '/favicon.png', isLocal: true,
         url: item.url || (item.relativePath ? `/v3/history/stream?path=${encodeURIComponent(item.relativePath)}` : item.filePath ? `/v3/history/stream?path=${encodeURIComponent(item.filePath)}` : item.streamUrl || '')
       }));
       handleSetQueue(q, 0);
-      showToast(`已连播 ${name} 共 ${q.length} 首`, 'success', 3000);
+      showToast(t('folder.playingFolderStats', { name, count: q.length }), 'success', 3000);
     };
 
     window.addEventListener('svelte:playFolder', onPlayFolder as EventListener);
@@ -427,12 +427,12 @@
     }
   }}
   onerror={() => {
-    console.warn('[Player] 原生音频流加载失败:', audioEl?.error);
+    console.warn('[Player] Native audio stream load failed:', audioEl?.error);
     const cur = playerStore.activeTrack;
     if (audioEl?.src && audioEl.src !== window.location.href && cur && playerStore.playing) {
       cur.unplayable = true;
-      cur.unplayableReason = '音频流播放失败';
-      handleSkipTrack(cur, '音频流播放失败', false);
+      cur.unplayableReason = t('player.audioStreamFailed');
+      handleSkipTrack(cur, t('player.audioStreamFailed'), false);
     } else {
       playerStore.playing = false;
     }
@@ -440,9 +440,8 @@
   onended={(e) => {
     resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
-    // 🛡️ 弱网防抖：若播放时间过短且总时长正常，可能是网络提前断裂导致误发 ended，尝试重试拉流
     if (a.currentTime < 3 && a.duration > 10) {
-      console.warn('[Player] 检测到音频流提前中断，尝试重连而非跳切');
+      console.warn('[Player] Audio stream interrupted prematurely, attempting reconnect');
       try { a.load(); a.play().catch(() => {}); return; } catch {}
     }
     if (playerStore.playMode === 'single') {
@@ -461,7 +460,7 @@
   bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next}
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
-  onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}
+  onClearQueue={() => { playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info'); }}
   {likedSet} onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
 />
 
@@ -472,7 +471,7 @@
     autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly}
     downloadedSet={taskState.downloadedSet}
     onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
-    onClearQueue={() => { playerStore.clearQueue(); showToast('播放队列已清空', 'info'); }}
+    onClearQueue={() => { playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info'); }}
     onRemoveItem={(realIdx) => playerStore.removeItem(realIdx)}
     onToggleLike={onToggleLike} onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
     onToggleServerOnly={(val) => playerStore.toggleServerOnly(val)} onToggleOfflineOnly={(val) => playerStore.toggleOfflineOnly(val)}

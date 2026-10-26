@@ -2,6 +2,7 @@
   import { api } from '../lib/api';
   import { addNewPlaylist } from '../lib/playlist.svelte';
   import Modal from './Modal.svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let { onClose, onSuccess, zIndex = 'z-[100030]' } = $props<{ onClose: () => void; onSuccess: (id?: string) => void; zIndex?: string }>();
   let name = $state('');
@@ -31,18 +32,18 @@
         alert(j.msg);
       }
     } catch (e) {
-      alert('创建失败:' + e);
+      alert(t('playlist.createException', { error: String(e) }));
     }
     loading = false;
   }
 </script>
 
-<Modal title="新建自建歌单" icon="➕" maxWidth="max-w-[500px]" {zIndex} {onClose}>
+<Modal title={t('playlist.createTitle')} icon="➕" maxWidth="max-w-[500px]" {zIndex} {onClose}>
   <div class="mb-4">
-    <div class="text-xs text-[var(--text-secondary,#94a3b8)] mb-1.5 font-medium">歌单名称：</div>
+    <div class="text-xs text-[var(--text-secondary,#94a3b8)] mb-1.5 font-medium">{t('playlist.nameLabel')}</div>
     <input
       type="text"
-      placeholder="输入歌单名称"
+      placeholder={t('playlist.namePlaceholder')}
       bind:value={name}
       onkeydown={(e) => e.key === 'Enter' && submit()}
       class="w-full px-3 py-2.5 rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] text-sm focus:outline-none focus:border-blue-500 transition-all"
@@ -55,7 +56,7 @@
       onchange={(e) => isPrivate = (e.target as HTMLInputElement).checked}
       class="w-4 h-4 rounded accent-blue-500 cursor-pointer"
     />
-    设置为隐私歌单（仅自己可见）
+    {t('playlist.privacyLabel')}
   </label>
 
   {#snippet footer()}
@@ -64,7 +65,7 @@
       onclick={onClose}
       class="px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 text-xs text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer"
     >
-      取消
+      {t('common.cancel')}
     </button>
     <button
       type="button"
@@ -72,7 +73,7 @@
       disabled={loading || !name.trim()}
       class="btn-primary text-xs px-4.5 py-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {loading ? '创建中...' : '立即创建'}
+      {loading ? t('playlist.creating') : t('playlist.createAction')}
     </button>
   {/snippet}
 </Modal>

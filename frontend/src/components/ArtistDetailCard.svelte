@@ -9,8 +9,9 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { cachedSongIdSet, cacheTrackToBrowser } from '../lib/pwaCache.svelte';
-  import { getTrackSourceStatus, isSameTrack } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
   import { api } from '../lib/api';
+  import { t } from '../lib/i18n';
 
   let {
     artist = null,
@@ -63,7 +64,7 @@
     }
     const targetId = id || currentArtistId;
     if (!targetId) {
-      showToast('请输入歌手 ID', 'warning');
+      showToast(t('artist.enterId'), 'warning');
       return;
     }
     currentArtistId = targetId;
@@ -78,14 +79,14 @@
       const res = await api.artist(targetId);
       innerLoading = false;
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || '获取歌手信息失败', 'warning');
+        showToast(res.msg || t('artist.fetchFailed'), 'warning');
         return;
       }
       innerArtist = res?.data?.artist || res?.data || res;
       setApiCache('artist_' + targetId, res.data);
     } catch (e: any) {
       innerLoading = false;
-      showToast('获取歌手失败: ' + (e.message || e), 'error');
+      showToast(t('artist.fetchFailedWithMsg', { message: e.message || e }), 'error');
     }
   }
 
@@ -110,28 +111,28 @@
       };
     });
     onPlayQueue(q, 0);
-    showToast(`已开始播放《${displayArtist.name}》热门曲目 (共 ${q.length} 首)`, 'success');
+    showToast(t('artist.playingTopToast', { name: displayArtist.name, count: q.length }), 'success');
   }
 
   async function forkTopSongsToPlaylist() {
     const songs = displayArtist?.songs || [];
     if (!songs.length) {
-      showToast('当前歌手无曲目可收藏', 'warning');
+      showToast(t('artist.noSongsToCollect'), 'warning');
       return;
     }
-    const plName = `《${displayArtist.name || '歌手'}》热门 ${songs.length} 首`;
+    const plName = t('artist.topSongsPlaylistName', { name: displayArtist.name || t('artist.artistWord'), count: songs.length });
     const trackIds = songs.map((s: any) => s.id).join(',');
     forking = true;
     try {
       const res = await api.playlistFork(plName, false, trackIds);
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || '收藏为歌单失败', 'error');
+        showToast(res.msg || t('artist.forkFailedWithMsg', { message: res.msg }), 'error');
         return;
       }
-      showToast(`已成功将 50 首热门曲目收藏为新歌单：${plName}`, 'success', 3500);
+      showToast(t('artist.forkSuccess', { name: plName }), 'success', 3500);
       window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
     } catch (e: any) {
-      showToast('收藏为歌单失败: ' + (e.message || e), 'error');
+      showToast(t('artist.forkFailedWithMsg', { message: e.message || e }), 'error');
     } finally {
       forking = false;
     }
@@ -141,7 +142,7 @@
     const songs = displayArtist?.songs || [];
     if (!songs.length) return;
     cachingBatch = true;
-    showToast(`开始批量缓存《${displayArtist.name}》热门曲目...`, 'info', 2000);
+    showToast(t('artist.cachingBatchStart', { name: displayArtist.name }), 'info', 2000);
     let successCount = 0;
     for (const s of songs) {
       try {
@@ -156,18 +157,18 @@
       } catch {}
     }
     cachingBatch = false;
-    showToast(`批量缓存完成：成功缓存 ${successCount}/${songs.length} 首`, 'success');
+    showToast(t('artist.cachingBatchComplete', { success: successCount, total: songs.length }), 'success');
   }
 
   function openTrackSheet(s: any, isLocal: boolean, isPhone: boolean, isServer: boolean, artistName: string, isPlayingThis: boolean) {
     openSheet({
       title: s.name,
-      subtitle: artistName || '未知歌手',
+      subtitle: artistName || t('common.unknownArtist'),
       actions: [
         ...(onPlayQueue
           ? [
               {
-                label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
+                label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }),
                 style: 'primary' as const,
                 onclick: () =>
                   onPlayQueue([
@@ -185,25 +186,25 @@
         ...(isServer && onReveal
           ? [
               {
-                label: '📂 在服务器磁盘中定位',
+                label: t('player.revealOnDisk'),
                 style: 'default' as const,
                 onclick: () => onReveal({ id: s.id, name: s.name, artist: artistName })
               }
             ]
           : [
               {
-                label: '📥 下载到电脑服务器',
+                label: t('search.downloadTrackToServer'),
                 style: 'default' as const,
                 onclick: () => {
                   api.downloadSingle(String(s.id)).then(() => {
-                    showToast(`已提交《${s.name}》下载任务`, 'info');
+                    showToast(t('download.submitSuccessWithName', { name: s.name }), 'info');
                     window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
-                  }).catch((e: any) => showToast('下载提交失败: ' + e, 'error'));
+                  }).catch((e: any) => showToast(t('download.submitFailedWithMsg', { message: e }), 'error'));
                 }
               }
             ]),
         {
-          label: isPhone ? '📲 重新离线缓存 (手机已存)' : '📲 离线缓存到本手机 (PWA)',
+          label: isPhone ? t('search.reCacheToPhone') : t('search.cacheToPhonePwa'),
           style: 'default' as const,
           onclick: () => {
             cacheTrackToBrowser({
@@ -218,14 +219,14 @@
         ...(onSong
           ? [
               {
-                label: '🎧 查看单曲详情',
+                label: t('search.songDetail'),
                 style: 'default' as const,
                 onclick: () => onSong(String(s.id))
               }
             ]
           : []),
         {
-          label: '➕ 收藏到歌单',
+          label: t('search.actionCollectToPlaylist'),
           style: 'default' as const,
           onclick: () => {
             addToPlaylistSong = { id: s.id, name: s.name, artist: artistName };
@@ -234,7 +235,7 @@
         ...(onToggleLike
           ? [
               {
-                label: likedSet.has(Number(s.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
+                label: likedSet.has(Number(s.id)) ? t('search.actionUnlike') : t('search.actionLike'),
                 style: 'default' as const,
                 onclick: () => onToggleLike(Number(s.id), s.name, artistName)
               }
@@ -245,37 +246,37 @@
   }
 </script>
 
-<AccordionCard title="🎤 3. 歌手解析与热门 50 首" bind:open {flat} accent="purple">
+<AccordionCard title={t('artist.accordionTitle')} bind:open {flat} accent="purple">
   <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
     <input
       type="text"
-      placeholder="输入歌手 ID (如 3061，按回车解析)"
+      placeholder={t('artist.inputIdPlaceholderWithEnter')}
       class="flex-1 min-w-0"
       bind:value={currentArtistId}
       onkeydown={(e) => e.key === 'Enter' && handleLoad()}
     />
     <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => handleLoad()}>
-      解析<span class="hidden sm:inline">歌手</span>
+      {t('artist.parse')}<span class="hidden sm:inline">{t('artist.artistWord')}</span>
     </button>
   </div>
 
   {#if displayLoading}
     <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">
-      🔄 正在解析歌手热门 50 首曲目，请稍候...
+      {t('artist.parsingTop50')}
     </div>
   {:else if displayArtist}
     <DetailHeaderCard
       cover={displayArtist.coverImgUrl || DEFAULT_VINYL_COVER}
-      title={displayArtist.name || '未知歌手'}
-      subtitle={`单曲：${displayArtist.musicSize || 0} 首 | 专辑：${displayArtist.albumSize || 0} 张`}
-      subDetail={`🔥 热门 Top ${displayArtist.songs?.length || 0} 首曲目`}
+      title={displayArtist.name || t('artist.unknown')}
+      subtitle={`${t('artist.songCount', { count: displayArtist.musicSize || 0 })} | ${t('artist.albumCount', { count: displayArtist.albumSize || 0 })}`}
+      subDetail={t('artist.subDetailTop', { count: displayArtist.songs?.length || 0 })}
     >
-      <button class="btn-primary" onclick={playAllArtistTopSongs}>▶️ 连播热门</button>
+      <button class="btn-primary" onclick={playAllArtistTopSongs}>{t('artist.playAllTop')}</button>
       <button class="btn-secondary !text-blue-500 !border-blue-500/30 font-semibold" onclick={forkTopSongsToPlaylist} disabled={forking}>
-        {forking ? '⏳ 正在转存...' : '📁 收藏为歌单'}
+        {forking ? t('artist.forking') : t('artist.collectAsPlaylist')}
       </button>
       <button class="btn-secondary hidden sm:inline-flex" onclick={cacheAllTopSongs} disabled={cachingBatch}>
-        {cachingBatch ? '⏳ 缓存中...' : '📲 缓存全榜'}
+        {cachingBatch ? t('artist.caching') : t('artist.cacheAllTop')}
       </button>
     </DetailHeaderCard>
 
@@ -286,13 +287,14 @@
     {/if}
 
     <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">
-      🔥 热门 50 首曲目列表 ({displayArtist.songs ? displayArtist.songs.length : 0} 首)：
+      {t('artist.topListHeader', { count: displayArtist.songs ? displayArtist.songs.length : 0 })}
     </h4>
     <ul class="data-list scrollable-list">
       {#each (displayArtist.songs || []) as s, i}
         {@const artistName = formatArtist(s.artist || s.ar || s.artists || displayArtist.name || '')}
         {@const status = getTrackSourceStatus(s.id, s.isLocal, curTrack)}
         {@const isPlayingThis = isSameTrack(curTrack, s)}
+        {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
             <button
@@ -316,18 +318,18 @@
                   playing={isPlayingThis && playing}
                   onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: s.picUrl || s.al?.picUrl || displayArtist.coverImgUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {playLabel}
                 </SlotBtn>
               {/if}
               {#if status.isServer}
-                <SlotBtn onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}>📂 定位</SlotBtn>
+                <SlotBtn onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}>{t('common.reveal')}</SlotBtn>
               {:else}
                 <SlotBtn onclick={() => {
                   api.downloadSingle(String(s.id)).then(() => {
-                    showToast(`已提交《${s.name}》下载任务`, 'info');
+                    showToast(t('download.submitSuccessWithName', { name: s.name }), 'info');
                     window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
-                  }).catch((e: any) => showToast('下载提交失败: ' + e, 'error'));
-                }}>📥 下载</SlotBtn>
+                  }).catch((e: any) => showToast(t('download.submitFailedWithMsg', { message: e }), 'error'));
+                }}>{t('download.downloadSingle')}</SlotBtn>
               {/if}
               <SlotBtn onclick={() => {
                 cacheTrackToBrowser({
@@ -337,9 +339,9 @@
                   cover: s.picUrl || s.al?.picUrl || displayArtist.coverImgUrl || DEFAULT_VINYL_COVER,
                   album: s.album || s.al?.name || ''
                 }).then(r => showToast(r.msg, r.success ? 'success' : 'warning'));
-              }}>{status.isPhone ? '✅ 已缓存' : '📲 缓存'}</SlotBtn>
+              }}>{status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}</SlotBtn>
               {#if onSong}
-                <SlotBtn onclick={() => onSong(String(s.id))}>👉 详情</SlotBtn>
+                <SlotBtn onclick={() => onSong(String(s.id))}>{t('common.detailShort')}</SlotBtn>
               {/if}
             </div>
 
@@ -350,15 +352,15 @@
                   playing={isPlayingThis && playing}
                   onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: s.picUrl || s.al?.picUrl || displayArtist.coverImgUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {playLabel}
                 </SlotBtn>
               {/if}
               <button
                 type="button"
                 class="btn-more-actions"
                 onclick={() => openTrackSheet(s, status.isLocal, status.isPhone, status.isServer, artistName, isPlayingThis)}
-                title="更多操作"
-                aria-label="更多操作"
+                title={t('common.moreActions')}
+                aria-label={t('common.moreActions')}
               >
                 ···
               </button>

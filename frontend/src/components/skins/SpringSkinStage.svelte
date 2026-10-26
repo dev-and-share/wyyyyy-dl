@@ -2,6 +2,7 @@
   import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
   import type { SkinStageProps } from './skinTypes';
   import TrackQuickActions from '../TrackQuickActions.svelte';
+  import { t } from '../../lib/i18n/index.svelte';
 
   let {
     track,
@@ -38,7 +39,7 @@
     <div
       class="absolute -top-3 right-2 md:-top-4 md:right-4 z-20 pointer-events-none transition-transform duration-600 ease-[cubic-bezier(0.4,0,0.2,1)] origin-[18px_18px] md:origin-[24px_24px]"
       style="transform: rotate({playing ? '21deg' : '0deg'});"
-      title="青竹唱臂"
+      title="Bamboo Tonearm"
     >
       <svg
         class="w-[70px] h-[100px] md:w-[95px] md:h-[135px] drop-shadow-md"
@@ -86,7 +87,7 @@
         <img
           src={formatCoverUrl(track?.cover, 400)}
           class="w-full h-full rounded-full object-cover shadow-inner {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
-          alt="春日青绿封面"
+          alt={t('player.cover')}
           referrerpolicy="no-referrer"
           onerror={(e) => {
             const img = e.currentTarget as HTMLImageElement;
@@ -103,12 +104,12 @@
   <div class="flex flex-col items-center text-center max-w-[340px] w-full">
     <!-- 歌名 -->
     <h4 class="text-base md:text-lg font-bold text-emerald-400 truncate max-w-full px-2" title={track?.name}>
-      {track?.name || '未在播放'}
+      {track?.name || t('player.noTrackPlaying')}
     </h4>
 
     <!-- 歌手名 -->
     <div class="text-xs md:text-sm text-emerald-300/80 truncate max-w-full mt-1 px-2" title={formatArtist(track?.artist)}>
-      {formatArtist(track?.artist) || '未知歌手'}
+      {formatArtist(track?.artist) || t('player.unknownArtist')}
     </div>
 
     <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排 -->

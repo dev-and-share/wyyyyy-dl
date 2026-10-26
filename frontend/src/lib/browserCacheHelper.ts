@@ -1,5 +1,6 @@
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
 import type { Track } from './types';
+import { t } from './i18n';
 import {
   PWA_CACHE_NAME,
   PWA_TRACK_META_KEY,
@@ -112,8 +113,8 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
           urls: [request.url],
           relUrls: [relUrl],
           relUrl,
-          name: songName || (songId ? `离线音轨 #${songId}` : (urlHistMatch ? `本地音轨 #${urlHistMatch[1]}` : '本地缓存音频')),
-          artist: songArtist || '浏览器已离线',
+          name: songName || (songId ? t('cache.offlineTrackWithId', { id: songId }) : (urlHistMatch ? t('cache.localTrackWithId', { id: urlHistMatch[1] }) : t('cache.localCachedAudio'))),
+          artist: songArtist || t('cache.browserOffline'),
           cover: meta.cover || DEFAULT_VINYL_COVER,
           size,
           time: itemTime,
@@ -197,7 +198,7 @@ export async function removeTrackBrowserCache(songId: string | number): Promise<
     window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
     return deleted;
   } catch (err) {
-    console.warn('清除单曲浏览器离线缓存异常:', err);
+    console.warn('[PWA] Failed to remove single track cache:', err);
     return false;
   }
 }
@@ -316,7 +317,7 @@ export async function clearAllImageCache(): Promise<void> {
       navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_IMAGE_CACHE' });
     }
   } catch (err) {
-    console.warn('清空图片缓存失败:', err);
+    console.warn('[PWA] Failed to clear image cache:', err);
   }
 }
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '../../lib/i18n/index.svelte';
+
   let {
     tab,
     onSwitchTab
@@ -20,7 +22,7 @@
     onclick={() => onSwitchTab('playlist')}
   >
     <span class="text-[17px] leading-tight">📁</span>
-    <span class="text-[11px] mt-0.5 leading-none">歌单</span>
+    <span class="text-[11px] mt-0.5 leading-none">{t('topbar.playlist')}</span>
   </button>
   <button
     type="button"
@@ -29,7 +31,7 @@
     onclick={() => onSwitchTab('search')}
   >
     <span class="text-[17px] leading-tight">🔍</span>
-    <span class="text-[11px] mt-0.5 leading-none">搜索</span>
+    <span class="text-[11px] mt-0.5 leading-none">{t('topbar.search')}</span>
   </button>
   <button
     type="button"
@@ -38,6 +40,6 @@
     onclick={() => onSwitchTab('download-mgr')}
   >
     <span class="text-[17px] leading-tight">📥</span>
-    <span class="text-[11px] mt-0.5 leading-none">本地</span>
+    <span class="text-[11px] mt-0.5 leading-none">{t('topbar.local')}</span>
   </button>
 </nav>
