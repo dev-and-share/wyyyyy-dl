@@ -315,32 +315,52 @@ public class AnalysisController {
     }
 
     /**
-     * 📁 本地已下载音频播放/流传输接口（支持 /v3/stream 与 /v3/stream/local 双路由别名）
+     * 📁 本地/在线音频播放/流传输接口（支持 /v3/stream 与 /v3/stream/local 双路由别名）
+     * 支持传参：id (网易云歌曲ID)、historyId (下载历史主键ID)、path (物理文件绝对或相对路径)
      */
     @RequestMapping(value = {"/stream", "/stream/local"}, method = {RequestMethod.GET})
-    public void streamAudio(@RequestParam(required = false) Long id,
-                            @RequestParam(required = false) Long historyId,
+    public void streamAudio(@RequestParam(value = "id", required = false) String idStr,
+                            @RequestParam(value = "historyId", required = false) String historyIdStr,
+                            @RequestParam(value = "path", required = false) String path,
                             jakarta.servlet.http.HttpServletRequest request,
                             jakarta.servlet.http.HttpServletResponse response) {
+        Long id = parseSafeLong(idStr);
+        Long historyId = parseSafeLong(historyIdStr);
+
         com.wyyyyydl.models.dtos.DownloadHistoryItem localItem = null;
         if (historyId != null && historyId > 0) {
             localItem = downloadHistoryDAO.getRecordById(historyId);
         }
-        if (localItem == null && id != null) {
+        if (localItem == null && id != null && id > 0) {
             localItem = downloadHistoryDAO.findLocalFileBySongId(id);
         }
 
-        // ☁️ 云上优先：若开启 S3 存储且存在相对路径，重定向至 CloudFront CDN / S3 直连播放
-        if (localItem != null && org.apache.commons.lang3.StringUtils.isNotBlank(localItem.getRelativePath())) {
-            try {
-                storageService.serveMedia(localItem.getRelativePath(), request, response);
-                return;
-            } catch (Exception e) {
-                log.error("流媒体服务传输异常: path={}", localItem.getRelativePath(), e);
+        // 1. 本地历史记录命中：优先流传输物理文件 (兼顾相对路径与绝对路径)
+        if (localItem != null) {
+            String targetPath = org.apache.commons.lang3.StringUtils.isNotBlank(localItem.getRelativePath())
+                    ? localItem.getRelativePath()
+                    : localItem.getFilePath();
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(targetPath)) {
+                try {
+                    storageService.serveMedia(targetPath, request, response);
+                    return;
+                } catch (Exception e) {
+                    log.error("流媒体服务传输异常: path={}", targetPath, e);
+                }
             }
         }
 
-        // 兜底策略：如果历史记录未命中，尝试动态解析并在当前通道直接播放
+        // 2. 若显式传入 path 参数，尝试物理文件流传输
+        if (org.apache.commons.lang3.StringUtils.isNotBlank(path)) {
+            try {
+                storageService.serveMedia(path, request, response);
+                return;
+            } catch (Exception e) {
+                log.error("流媒体服务基于 path 传输异常: path={}", path, e);
+            }
+        }
+
+        // 3. 兜底策略：如果历史记录与 path 均未命中，尝试动态解析并在当前通道直接播放
         if (id != null && id > 0) {
             try {
                 SingleMusicAnalysisRespDTO analysis = analysisService.analyzeSingleSong(id, "lossless");
@@ -351,6 +371,19 @@ public class AnalysisController {
             } catch (Exception ignored) {}
         }
         response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+    }
+
+    private Long parseSafeLong(String val) {
+        if (org.apache.commons.lang3.StringUtils.isBlank(val)
+                || "null".equalsIgnoreCase(val)
+                || "undefined".equalsIgnoreCase(val)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(val.trim());
+        } catch (Exception e) {
+            return null;
+        }
     }
     
     @RequestMapping(value = "/my_playlists", method = {RequestMethod.GET, RequestMethod.POST})

@@ -64,7 +64,7 @@
           artist: trackItem.artist || t('common.unknownArtist'),
           album: trackItem.album || name,
           cover: DEFAULT_VINYL_COVER,
-          url: `/v3/history/stream?path=${encodeURIComponent(playPath)}`,
+          url: `/v3/stream?path=${encodeURIComponent(playPath)}`,
           isLocal: true
         };
       });
@@ -85,7 +85,7 @@
       artist: item.artist || t('common.unknownArtist'),
       album: item.album || t('download.localLibrary'),
       cover: DEFAULT_VINYL_COVER,
-      url: item.streamUrl || `/v3/history/stream?path=${encodeURIComponent(playPath)}`,
+      url: item.streamUrl || `/v3/stream?path=${encodeURIComponent(playPath)}`,
       isLocal: true
     };
     if (onPlayQueue) {

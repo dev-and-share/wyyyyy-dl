@@ -307,7 +307,7 @@
                             artist: artist || t('common.unknownArtist'),
                             album: item.album || t('download.localLibrary'),
                             cover: item.cover || DEFAULT_VINYL_COVER,
-                            url: `/v3/history/stream?path=${encodeURIComponent(item.relativePath || item.filePath || '')}`,
+                            url: `/v3/stream?${item.songId && item.songId > 0 ? `id=${item.songId}&` : ''}${item.id ? `historyId=${item.id}&` : ''}path=${encodeURIComponent(item.relativePath || item.filePath || '')}`,
                             isLocal: true
                           }])}
                         >
