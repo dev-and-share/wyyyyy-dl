@@ -60,7 +60,7 @@ export default {
   'player.skin.aurora.desc': 'モダンなフルードとネオンの輝き',
   'player.skin.cassette.name': 'レトロカセット',
   'player.skin.cassette.desc': 'カセットテープとウォークマンの質感',
-  'player.skin.winamp.name': 'Winamp クラシック',
+  'player.skin.winamp.name': 'Winamp',
   'player.skin.winamp.desc': 'レトロなメタリックと緑色スペクトラム',
   'player.skin.spring.name': '春のエメラルド',
   'player.skin.spring.desc': 'みずみずしい新緑と翡翠のグラデーション',

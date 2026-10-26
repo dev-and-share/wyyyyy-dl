@@ -54,7 +54,7 @@ export const SKINS: Record<SkinId, SkinMeta> = {
   },
   winamp: {
     id: 'winamp',
-    name: 'Winamp Classic',
+    name: 'Winamp',
     emoji: '⚡',
     desc: 'Y2K metal chassis and matrix spectrum'
   },

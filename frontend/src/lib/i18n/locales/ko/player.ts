@@ -60,7 +60,7 @@ export default {
   'player.skin.aurora.desc': '모던 유체와 네온 조명',
   'player.skin.cassette.name': '레트로 카세트',
   'player.skin.cassette.desc': '듀얼 스풀 테이프와 워크맨 감성',
-  'player.skin.winamp.name': 'Winamp 클래식',
+  'player.skin.winamp.name': 'Winamp',
   'player.skin.winamp.desc': '메탈릭 스킨과 녹색 스펙트럼',
   'player.skin.spring.name': '봄날의 에메랄드',
   'player.skin.spring.desc': '생동감 넘치는 대나무와 비취빛',

@@ -123,8 +123,8 @@ describe('LyricModal Component', () => {
       expect(queryByTestId('skin-stage-aurora')).toBeNull();
     });
 
-    // 点击 Winamp 经典
-    const winampCard = getByText('Winamp 经典');
+    // 点击 Winamp
+    const winampCard = getByText('Winamp');
     await fireEvent.click(winampCard);
     expect(skin.current).toBe('winamp');
 

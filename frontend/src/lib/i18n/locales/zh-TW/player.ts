@@ -60,7 +60,7 @@ export default {
   'player.skin.aurora.desc': '現代流體與彌散霓虹',
   'player.skin.cassette.name': '復古磁帶',
   'player.skin.cassette.desc': '機械雙軸與隨身聽質感',
-  'player.skin.winamp.name': 'Winamp 經典',
+  'player.skin.winamp.name': 'Winamp',
   'player.skin.winamp.desc': '千禧金屬面板與綠色點陣頻譜',
   'player.skin.spring.name': '春日青綠',
   'player.skin.spring.desc': '草木生機與翡翠竹韻',

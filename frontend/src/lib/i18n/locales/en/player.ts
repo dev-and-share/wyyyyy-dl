@@ -60,7 +60,7 @@ export default {
   'player.skin.aurora.desc': 'Modern fluid & diffused neon',
   'player.skin.cassette.name': 'Retro Cassette',
   'player.skin.cassette.desc': 'Dual-spool tape & Walkman feel',
-  'player.skin.winamp.name': 'Winamp Classic',
+  'player.skin.winamp.name': 'Winamp',
   'player.skin.winamp.desc': 'Millennium metallic skin & green analyzer',
   'player.skin.spring.name': 'Spring Green',
   'player.skin.spring.desc': 'Vibrant bamboo & emerald jade',

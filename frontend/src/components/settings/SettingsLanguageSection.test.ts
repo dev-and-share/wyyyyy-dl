@@ -17,17 +17,16 @@ describe('SettingsLanguageSection', () => {
     expect(getByTestId('settings-lang-ko')).toBeInTheDocument();
   });
 
-  it('switches language when clicking language button', async () => {
+  it('switches language when changing select dropdown', async () => {
     const { getByTestId } = render(SettingsLanguageSection);
-    const enBtn = getByTestId('settings-lang-en');
+    const select = getByTestId('settings-language-select') as HTMLSelectElement;
 
-    await fireEvent.click(enBtn);
+    await fireEvent.change(select, { target: { value: 'en' } });
     await vi.waitFor(() => {
       expect(i18n.locale).toBe('en');
     });
 
-    const jaBtn = getByTestId('settings-lang-ja');
-    await fireEvent.click(jaBtn);
+    await fireEvent.change(select, { target: { value: 'ja' } });
     await vi.waitFor(() => {
       expect(i18n.locale).toBe('ja');
     });

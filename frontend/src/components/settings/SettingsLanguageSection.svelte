@@ -10,7 +10,9 @@
     { id: 'ko', label: '한국어' }
   ];
 
-  async function handleSelect(lang: Locale) {
+  async function handleChange(e: Event) {
+    const select = e.currentTarget as HTMLSelectElement;
+    const lang = select.value as Locale;
     if (i18n.locale === lang) return;
     await setLocale(lang);
   }
@@ -21,16 +23,30 @@
     <span>🌐</span>
     <span>{t('settings.language')}</span>
   </div>
-  <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-2 sm:grid-cols-3 gap-1">
-    {#each languages as lang}
-      <button
-        type="button"
-        data-testid="settings-lang-{lang.id}"
-        class="py-2 px-1 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center text-center {i18n.locale === lang.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => handleSelect(lang.id)}
+  <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
+    <div class="flex flex-col gap-0.5 min-w-0">
+      <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.language')}</span>
+      <span class="text-xs text-[var(--text-secondary)]">
+        {languages.find((l) => l.id === i18n.locale)?.label || 'English'}
+      </span>
+    </div>
+    <div class="relative shrink-0">
+      <select
+        data-testid="settings-language-select"
+        class="appearance-none bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] border border-[var(--border-color)] rounded-xl py-2 pl-3.5 pr-8 text-xs font-semibold cursor-pointer outline-none hover:border-[var(--primary-color)] focus:border-[var(--primary-color)] focus:ring-2 focus:ring-[var(--primary-glow)] transition-all shadow-sm"
+        value={i18n.locale}
+        onchange={handleChange}
+        aria-label={t('settings.language')}
       >
-        <span>{lang.label}</span>
-      </button>
-    {/each}
+        {#each languages as lang}
+          <option data-testid="settings-lang-{lang.id}" value={lang.id} class="bg-[var(--card-bg-solid,#111827)] text-[var(--text-main)] py-1">
+            {lang.label}
+          </option>
+        {/each}
+      </select>
+      <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-secondary)] text-[10px] select-none">
+        ▼
+      </span>
+    </div>
   </div>
 </section>
