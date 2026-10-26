@@ -75,11 +75,12 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- Global Backdrop -->
+<!-- Global Backdrop (融入皮肤色彩与顶部状态栏，深浅色自适应) -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-200 {closing ? 'opacity-0' : 'opacity-100'}"
+  class="fixed inset-0 z-[100049] transition-opacity duration-200 backdrop-blur-md {closing ? 'opacity-0' : 'opacity-100'}
+    bg-black/40 dark:bg-gradient-to-b dark:from-[var(--bg-color)]/95 dark:via-[var(--bg-color)]/70 dark:to-black/80"
   onclick={handleClose}
 ></div>
 
@@ -88,20 +89,22 @@
   role="dialog"
   aria-modal="true"
   aria-label={t('settings.title')}
-  class="fixed z-50 bg-[var(--card-bg)] text-[var(--text-main)] shadow-2xl transition-transform duration-200 ease-out border-[var(--border-color)] flex flex-col
-    inset-x-0 bottom-0 max-h-[85vh] rounded-t-[28px] border-t
-    lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[420px] lg:max-h-full lg:rounded-none lg:border-l lg:border-t-0"
-  style="transform: {closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`};"
+  class="fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-transform duration-200 ease-out flex flex-col
+    inset-x-0 bottom-0 max-h-[88vh] rounded-t-[28px] border-t border-[var(--border-color)] backdrop-blur-2xl
+    pb-[calc(16px+env(safe-area-inset-bottom,0px))]
+    lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[420px] lg:max-h-full lg:rounded-none lg:border-l lg:border-t-0 lg:pb-0"
+  style="transform: {closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`};
+         box-shadow: 0 -12px 40px var(--primary-glow, rgba(0, 0, 0, 0.5)), 0 -1px 0 0 var(--border-color);"
 >
   <!-- Mobile Drag Handle -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="lg:hidden flex justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing select-none"
+    class="lg:hidden flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing select-none"
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
     ontouchend={handleTouchEnd}
   >
-    <div class="w-10 h-1 bg-[var(--text-muted)] opacity-30 rounded-full"></div>
+    <div class="w-10 h-1.2 rounded-full bg-[var(--primary-color)] opacity-40 shadow-[0_0_8px_var(--primary-glow)]"></div>
   </div>
 
   <!-- Header -->
@@ -122,7 +125,7 @@
   </div>
 
   <!-- Content -->
-  <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col gap-6 custom-scrollbar text-sm">
+  <div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-8 flex flex-col gap-6 custom-scrollbar text-sm">
     <!-- Section 1: Download Preferences -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
@@ -190,7 +193,7 @@
           <button
             type="button"
             data-testid="settings-skin-{s.id}"
-            class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {skin.current === s.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            class="py-2 px-1 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1 whitespace-nowrap {skin.current === s.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => skin.set(s.id)}
           >
             <span>{s.emoji}</span> {t(`player.skin.${s.id}.name` as any)}
