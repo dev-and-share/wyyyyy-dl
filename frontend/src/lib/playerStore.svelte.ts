@@ -8,6 +8,18 @@ export interface SetQueueOptions {
   startIndex?: number;
   playlistId?: string | number | null;
   isExplicitTrack?: boolean;
+  forceReplace?: boolean;
+}
+
+/**
+ * 校验两首歌曲是否指代同一曲目实体
+ */
+export function isSameTrackEntity(a: Track | null | undefined, b: Track | null | undefined): boolean {
+  if (!a || !b) return false;
+  if (a.id && b.id && String(a.id) === String(b.id)) return true;
+  if (a.filePath && b.filePath && a.filePath === b.filePath) return true;
+  if (a.name && b.name && a.name === b.name && a.artist === b.artist) return true;
+  return false;
 }
 
 /**
@@ -197,11 +209,16 @@ export class PlayerStore {
   }
 
   /**
-   * 批量重设播放队列
+   * 批量或单曲重设播放队列
    * 智能处理当前播放模式（WYSIWYG 架构）：
-   * 1. 若当前处于 shuffle 模式且为整单播放，整单洗牌，打乱后的首首立即起播；
-   * 2. 若当前处于 shuffle 模式且指定了单曲，目标歌曲置顶为第 0 项，其余曲目洗牌排后；
-   * 3. 顺序或单曲循环模式下保持原始顺序。
+   * 1. 单曲播放且当前队列有歌曲时：
+   *    - 若歌曲已在当前队列，不切歌单，直接精准定位索引，无缝起播；
+   *    - 若歌曲不在当前队列：
+   *      - 正在播放中：插入到当前曲目后一位 (qIndex + 1)，立即播放插播曲，播完后继续播放原歌单后续曲目；
+   *      - 未在播放中：插入到首位 (index 0)，立即播放，播完后顺延播放原歌单；
+   * 2. 若当前处于 shuffle 模式且为整单播放，整单洗牌，打乱后的首首立即起播；
+   * 3. 若当前处于 shuffle 模式且指定了单曲，目标歌曲置顶为第 0 项，其余曲目洗牌排后；
+   * 4. 顺序或单曲循环模式下保持原始顺序。
    */
   setQueue(
     tracks: Track[],
@@ -213,6 +230,7 @@ export class PlayerStore {
     let startIndex = 0;
     let playlistId: string | number | null = null;
     let isExplicitTrack = false;
+    let forceReplace = false;
 
     if (typeof optionsOrIndex === 'number') {
       startIndex = optionsOrIndex;
@@ -223,8 +241,41 @@ export class PlayerStore {
       startIndex = optionsOrIndex.startIndex ?? 0;
       playlistId = optionsOrIndex.playlistId ?? null;
       isExplicitTrack = Boolean(optionsOrIndex.isExplicitTrack);
+      forceReplace = Boolean(optionsOrIndex.forceReplace);
     }
 
+    // 🎯 核心场景：播放单首歌（tracks.length === 1）且当前已有队列，且未显式要求强制替换
+    if (tracks.length === 1 && this.queue.length > 0 && !forceReplace) {
+      const target = tracks[0];
+      const existingIndex = this.queue.findIndex((t) => isSameTrackEntity(t, target));
+
+      if (existingIndex !== -1) {
+        // 场景 1：如果歌在歌单里面，不切歌单，直接定位并更新可能有变动的信息（如 isLocal、url）
+        this.queue[existingIndex] = { ...this.queue[existingIndex], ...target };
+        this.qIndex = existingIndex;
+        this.curTime = 0;
+        this.save();
+        return;
+      }
+
+      // 场景 2：歌不在歌单里面，append 到当前正在播放的歌单
+      if (this.playing && this.activeTrack) {
+        // 场景 2.1：当前正在播放，插入到当前曲目的后一位，跳过当前歌立即播放插播曲，播完继续播原歌单剩下歌曲
+        const insertIndex = this.qIndex + 1;
+        this.queue.splice(insertIndex, 0, target);
+        this.qIndex = insertIndex;
+      } else {
+        // 场景 2.2：没有处于播放状态，插入到第一位，开始播放，形成播完后继续播放后面歌单的效果
+        this.queue = [target, ...this.queue];
+        this.qIndex = 0;
+      }
+
+      this.curTime = 0;
+      this.save();
+      return;
+    }
+
+    // 场景 3：整单播放或原歌单为空时的常规歌单重设
     if (playlistId !== null && playlistId !== undefined) {
       this.playlistId = String(playlistId);
     } else {
@@ -233,11 +284,11 @@ export class PlayerStore {
 
     if (this.playMode === 'shuffle' && tracks.length > 1) {
       if (!isExplicitTrack && startIndex === 0) {
-        // 场景 A：整单随机播放（播放全部 / 点击歌单播放按钮）
+        // 场景 3.1：整单随机播放（播放全部 / 点击歌单播放按钮）
         this.queue = shuffleArray(tracks);
         this.qIndex = 0;
       } else {
-        // 场景 B：在随机模式下点击了指定单曲（startIndex）
+        // 场景 3.2：在随机模式下点击了指定单曲（startIndex）
         const validIdx = startIndex >= 0 && startIndex < tracks.length ? startIndex : 0;
         const target = tracks[validIdx];
         const others = tracks.filter((_, i) => i !== validIdx);
