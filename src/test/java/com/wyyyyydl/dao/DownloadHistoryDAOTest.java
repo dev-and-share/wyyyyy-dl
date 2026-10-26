@@ -188,20 +188,20 @@ public class DownloadHistoryDAOTest {
         File extAudio = new File(musicExtDir, "RobTop - MenuLoop.mp3");
         try (FileWriter w = new FileWriter(extAudio)) { w.write("external audio"); }
 
-        ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/Users/houtokki/Music");
+        ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/Users/testuser/Music");
         ReflectionTestUtils.setField(dao, "externalLibraryContainerPath", containerExtRoot.getAbsolutePath());
-        ReflectionTestUtils.setField(dao, "hostDownloadPath", "/Users/houtokki/Downloads/fast_sr");
+        ReflectionTestUtils.setField(dao, "hostDownloadPath", "/Users/testuser/Downloads/fast_sr");
 
         // 1. 外部曲库文件应准确映射至宿主机 Music 目录，绝对不能拼接 Downloads/fast_sr
         String hostExtPath = dao.toHostPath(extAudio);
-        assertEquals(new File("/Users/houtokki/Music/网易云音乐/RobTop - MenuLoop.mp3").getPath(), hostExtPath);
+        assertEquals(new File("/Users/testuser/Music/网易云音乐/RobTop - MenuLoop.mp3").getPath(), hostExtPath);
         assertFalse(hostExtPath.contains("Downloads/fast_sr"), "外部曲库宿主机路径绝不能包含 hostDownloadPath");
 
         // 2. 主下载目录文件应映射至 hostDownloadPath
         File localAudio = new File(tempDir.toFile(), "周杰伦 - 晴天.flac");
         try (FileWriter w = new FileWriter(localAudio)) { w.write("local audio"); }
         String hostLocalPath = dao.toHostPath(localAudio);
-        assertEquals(new File("/Users/houtokki/Downloads/fast_sr/周杰伦 - 晴天.flac").getPath(), hostLocalPath);
+        assertEquals(new File("/Users/testuser/Downloads/fast_sr/周杰伦 - 晴天.flac").getPath(), hostLocalPath);
     }
 
     @Test
@@ -213,12 +213,12 @@ public class DownloadHistoryDAOTest {
         File audio = new File(albumDir, "test.mp3");
         try (FileWriter w = new FileWriter(audio)) { w.write("test"); }
 
-        ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/Users/houtokki/Music");
+        ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/Users/testuser/Music");
         ReflectionTestUtils.setField(dao, "externalLibraryContainerPath", containerExtRoot.getAbsolutePath());
-        ReflectionTestUtils.setField(dao, "hostDownloadPath", "/Users/houtokki/Downloads/fast_sr");
+        ReflectionTestUtils.setField(dao, "hostDownloadPath", "/Users/testuser/Downloads/fast_sr");
 
-        // 模拟错误嵌套路径: /Users/houtokki/Downloads/fast_sr + containerExtRoot + /网易云/test.mp3
-        String corruptedPath = "/Users/houtokki/Downloads/fast_sr" + containerExtRoot.getAbsolutePath() + "/网易云/test.mp3";
+        // 模拟错误嵌套路径: /Users/testuser/Downloads/fast_sr + containerExtRoot + /网易云/test.mp3
+        String corruptedPath = "/Users/testuser/Downloads/fast_sr" + containerExtRoot.getAbsolutePath() + "/网易云/test.mp3";
         File resolved = dao.resolveFile(corruptedPath);
         assertEquals(audio.getCanonicalPath(), resolved.getCanonicalPath());
         assertTrue(resolved.exists(), "容错机制应当成功定位到底层真实物理文件");

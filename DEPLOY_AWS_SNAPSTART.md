@@ -38,7 +38,7 @@
 无论采用哪种方案，编译与打包只需在项目根目录下执行一次：
 
 ```bash
-cd /Users/houtokki/Downloads/fast_sr/wyyyyy-dl
+cd wyyyyy-dl
 
 # 执行打包任务 (生成包含 Java 21 class 与所有第三方依赖的标准 Zip)
 ./gradlew buildAwsZip
