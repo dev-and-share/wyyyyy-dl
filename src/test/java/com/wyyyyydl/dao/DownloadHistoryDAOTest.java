@@ -309,5 +309,32 @@ public class DownloadHistoryDAOTest {
         assertEquals(1, stats.get("missingCount"), "指摘 #7: missingCount 必须准确识别出 1 首丢失");
         assertEquals(1, stats.get("nonMp3Count"), "指摘 #7: nonMp3Count 必须准确识别出 1 首 flac 非 mp3");
     }
+
+    @Test
+    @DisplayName("测试智能跨版本/跨ID本地标记与优先本地机制 (markLocalStatusBatch)")
+    public void testMarkLocalStatusBatchCrossVersion() throws Exception {
+        File audio = new File(tempDir.toFile(), "莫文蔚 - 电台情歌.mp3");
+        try (FileWriter w = new FileWriter(audio)) { w.write("mock mp3 content"); }
+
+        // 本地只下载了原版 ID 277822
+        dao.addRecord(277822L, "电台情歌", "莫文蔚", "做自己", audio.getAbsolutePath(), audio.length(), "lossless", "SUCCESS");
+
+        // 歌单中出现两首：一首是原版 277822，另一首是精选集版 27937432 (不同 ID)
+        com.wyyyyydl.models.dtos.TrackDTO track1 = new com.wyyyyydl.models.dtos.TrackDTO();
+        track1.setId(27937432L);
+        track1.setName("电台情歌");
+        track1.setArtists("莫文蔚");
+
+        com.wyyyyydl.models.dtos.TrackDTO track2 = new com.wyyyyydl.models.dtos.TrackDTO();
+        track2.setId(277822L);
+        track2.setName("电台情歌");
+        track2.setArtists("莫文蔚");
+
+        java.util.List<com.wyyyyydl.models.dtos.TrackDTO> batch = java.util.Arrays.asList(track1, track2);
+        dao.markLocalStatusBatch(batch);
+
+        assertTrue(track2.getIsLocal(), "原版 ID 应精准按 songId 命中本地");
+        assertTrue(track1.getIsLocal(), "跨版本不同 ID 的同名同歌手曲目应成功被优先本地机制标记为 isLocal=true");
+    }
 }
 

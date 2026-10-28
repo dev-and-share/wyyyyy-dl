@@ -28,7 +28,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     track.isLocal = true;
     if (track.id) markSongDownloaded(track.id);
     if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
-      api.songV1(String(track.id), 'lossless').then((j: any) => {
+      api.songV1(String(track.id), 'lossless', track.name, track.artist).then((j: any) => {
         const song = j?.data;
         if (song) {
           const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
@@ -50,7 +50,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   // 3. 在线歌曲：合并为单次请求，一次性拿齐播放 URL、高清封面与歌词
   if (!track.id) return track.url || '';
   try {
-    const j = await api.songV1(String(track.id), 'lossless');
+    const j = await api.songV1(String(track.id), 'lossless', track.name, track.artist);
     const song = j?.data;
     if (song) {
       if (song.url) {

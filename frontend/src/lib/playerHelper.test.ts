@@ -51,7 +51,7 @@ describe('playerHelper URL resolution & preload contracts', () => {
 
     const url = await resolveTrackUrl(onlineTrack);
 
-    expect(api.songV1).toHaveBeenCalledWith('202', 'lossless');
+    expect(api.songV1).toHaveBeenCalledWith('202', 'lossless', '告白气球', '周杰伦');
     expect(url).toBe('http://m701.music.126.net/test.mp3');
     expect(onlineTrack.url).toBe('http://m701.music.126.net/test.mp3');
     expect(onlineTrack.cover).toBe('http://p1.music.126.net/cover.jpg');
@@ -90,8 +90,8 @@ describe('playerHelper URL resolution & preload contracts', () => {
     preloadNextTrack(queue, 1, 'list');
 
     // 下一首（id: 3）与上一首（id: 1）均应被静默预热
-    expect(api.songV1).toHaveBeenCalledWith('3', 'lossless');
-    expect(api.songV1).toHaveBeenCalledWith('1', 'lossless');
+    expect(api.songV1).toHaveBeenCalledWith('3', 'lossless', '曲目3', '歌手3');
+    expect(api.songV1).toHaveBeenCalledWith('1', 'lossless', '曲目1', '歌手1');
   });
 
   it('playPlaylistTracks safely handles string artists, ar array, and artist properties without throwing .map errors', async () => {

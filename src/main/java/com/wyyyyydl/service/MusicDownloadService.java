@@ -222,11 +222,14 @@ public class MusicDownloadService implements InitializingBean {
 			FileUtils.writeToFile(file.toPath(),
 					HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
 
-			// 🛑 核心防污染拦截：如果下载的音频文件小于 1.2MB (1,250,000 字节)，判定为 30s VIP 试听片段，拒绝落盘入库并删除临时文件
-			if (file.exists() && file.length() < 1250000) {
-				log.warn("检测到歌曲: {} 属于 30s VIP 试听片段 (大小: {} KB)，自动擦除并拒绝入库!", fileName, file.length() / 1024);
-				try { file.delete(); } catch (Exception ignored) {}
-				throw new RuntimeException("该歌曲仅为 30s VIP 试听片段，已自动阻止落盘与入库");
+			// 🛑 核心防污染拦截：如果音频文件缺失、大小为0、或小于 1.25MB (1,250,000 字节) 试听片段，统一拒绝落盘入库并清理残留
+			if (!file.exists() || file.length() < 1250000) {
+				long sz = file.exists() ? file.length() : 0L;
+				log.warn("检测到歌曲: {} 音频缺失或属于 30s VIP 试听片段 (大小: {} 字节)，自动擦除并拒绝入库!", fileName, sz);
+				try { if (file.exists()) file.delete(); } catch (Exception ignored) {}
+				File residualLrc = Paths.get(dir, fileName + ".lrc").toFile();
+				try { if (residualLrc.exists()) residualLrc.delete(); } catch (Exception ignored) {}
+				throw new RuntimeException("该歌曲未成功获取有效完整音频(大小: " + sz + " 字节)，已自动阻止落盘与入库");
 			}
 
 			TagUtils.setTags(file, analysisSingleMusic.getName(), analysisSingleMusic.getAr_name(),
