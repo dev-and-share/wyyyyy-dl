@@ -19,19 +19,17 @@
   import LyricModal from './LyricModal.svelte';
   import PeqDrawer from './PeqDrawer.svelte';
 
-  interface Props {
+  let {
+    curTrack = $bindable(null), playing = $bindable(false), setQueue = $bindable(),
+    togglePlay = $bindable(() => {}), isOverlayOpen = $bindable(false), likedSet = new Set<number>(),
+    onToggleLike = () => {}, onReveal = () => {}, showPeq = $bindable(false), isPlayerMinimized = $bindable(false)
+  } = $props<{
     curTrack?: Track | null; playing?: boolean;
     setQueue?: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void;
     togglePlay?: () => void; isOverlayOpen?: boolean; likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string) => void; onReveal?: (item: any) => void;
     showPeq?: boolean; isPlayerMinimized?: boolean;
-  }
-
-  let {
-    curTrack = $bindable(null), playing = $bindable(false), setQueue = $bindable(),
-    togglePlay = $bindable(() => {}), isOverlayOpen = $bindable(false), likedSet = new Set<number>(),
-    onToggleLike = () => {}, onReveal = () => {}, showPeq = $bindable(false), isPlayerMinimized = $bindable(false)
-  }: Props = $props();
+  }>();
 
   // ---------- 视图与 DOM 状态 ----------
   let showDrawer = $state(false), showLyric = $state(false), showPeqLocal = $state(false);
@@ -125,12 +123,14 @@
     const track = playerStore.activeTrack;
     if (!track || !audioEl) return;
 
-    if (resetTime) { pendingSeekTime = null; playerStore.curTime = 0; }
+    if (resetTime) pendingSeekTime = null;
 
     const existingUrl = track.url;
     if (existingUrl && audioEl.src !== existingUrl) {
       audioEl.src = existingUrl;
-      if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
+      if (resetTime) {
+        try { audioEl.currentTime = 0; } catch {}
+      }
     }
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
@@ -158,6 +158,7 @@
     // ① 已有 URL：同步触发播放，保留 iOS 手势令牌
     if (existingUrl) {
       if (resetTime) {
+        playerStore.curTime = 0;
         const onMeta = () => {
           try { if (audioEl) audioEl.currentTime = 0; } catch {}
           audioEl?.removeEventListener('loadedmetadata', onMeta);
@@ -168,11 +169,8 @@
       return;
     }
 
-    // ② URL 尚未解析：先立即暂停上一首音频，防止在等待异步请求 URL 期间继续播放旧歌曲的开头/残余片段
-    audioEl.pause();
-    if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
-
-    // 仅在 iOS Safari/PWA 下使用静音占位保住手势令牌；桌面端严禁空转 play/mute 防 CoreAudio 竞争假死
+    // ② URL 尚未解析：仅在 iOS Safari/PWA 下使用静音占位保住手势令牌；桌面端严禁空转 play/mute 防 CoreAudio 竞争假死
+    if (resetTime) playerStore.curTime = 0;
     const prevMuted = audioEl.muted;
     if (platform.isIOS) {
       try { audioEl.muted = true; audioEl.play().catch(() => {}); } catch {}
@@ -180,9 +178,6 @@
 
     const url = await resolveTrackUrl(track);
     if (platform.isIOS) { audioEl.muted = prevMuted; }
-
-    // 防竞态：若在等待 URL 解析期间用户已切换到其他曲目，直接放弃本次过期的起播
-    if (playerStore.activeTrack !== track) return;
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
       return handleSkipTrack(track, t('player.isTrialClip'), true);
@@ -198,10 +193,12 @@
       return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
     }
 
-    if (url && audioEl) {
+    if (url && audioEl && playerStore.activeTrack === track) {
       updateMediaSessionMetadata(track);
       audioEl.src = url;
-      if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
+      if (resetTime) {
+        try { audioEl.currentTime = 0; } catch {}
+      }
       startAudio();
     }
   }
@@ -240,16 +237,16 @@
         return;
       }
     }
-    if (audioEl) { audioEl.pause(); }
     playerStore.stepNext();
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
   }
 
   async function prev() {
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
-    if (audioEl) { audioEl.pause(); }
     playerStore.stepPrev();
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
   }
 
@@ -277,20 +274,25 @@
     }
 
     // 🛡️ 同歌单防误触保护：如果已在播放该歌单
-    const isSamePlaylist = targetPlaylistId != null && playerStore.playlistId && String(playerStore.playlistId) === String(targetPlaylistId) && playerStore.queue.length > 0;
-    if (isSamePlaylist) {
+    if (
+      targetPlaylistId !== null &&
+      targetPlaylistId !== undefined &&
+      playerStore.playlistId &&
+      String(playerStore.playlistId) === String(targetPlaylistId) &&
+      playerStore.queue.length > 0
+    ) {
       if (playerStore.playing) {
         showToast(t('player.playingThisPlaylistNow'), 'info', 1500);
+        return;
       } else {
         showToast(t('player.continuePlayingThisPlaylist'), 'info', 1500);
         ensurePlay(false);
+        return;
       }
-      return;
     }
 
-    resetTrackPlayback();
-    if (audioEl) { audioEl.pause(); }
     playerStore.setQueue(tracks, optionsOrIdx, maybePlaylistId);
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
     ensurePlay(true);
 
@@ -468,7 +470,7 @@
     queue={playerStore.queue} qIndex={playerStore.qIndex} tasks={taskState.tasks} {likedSet}
     autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly}
     downloadedSet={taskState.downloadedSet}
-    onPlayIndex={(idx) => { resetTrackPlayback(); if (audioEl) { audioEl.pause(); } playerStore.qIndex = idx; playerStore.curTime = 0; ensurePlay(true); }}
+    onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
     onClearQueue={() => { playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info'); }}
     onRemoveItem={(realIdx) => playerStore.removeItem(realIdx)}
     onToggleLike={onToggleLike} onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
