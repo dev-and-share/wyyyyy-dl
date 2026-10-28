@@ -88,5 +88,10 @@ export default {
   'settings.btnExternalScan': '📁 Scan External Library',
   'settings.btnImportUntracked': '📥 Import Audio',
   'settings.btnCleanMissing': '🧹 Clean Invalid Records',
+  'settings.iosShortcutTitle': 'iOS Shortcuts Auto-Wake (PWA)',
+  'settings.iosShortcutDesc': 'Use with iOS Shortcuts "Open URL" to auto-launch the player in standalone full-screen mode on Bluetooth/Car connection.',
+  'settings.iosShortcutCopy': 'Copy Wake URL',
+  'settings.iosShortcutCopied': 'Copied wake URL: {url}',
+  'settings.iosShortcutDoc': 'View Guide',
   'skin.name.vinyl': 'Classic Vinyl',
 } as const;

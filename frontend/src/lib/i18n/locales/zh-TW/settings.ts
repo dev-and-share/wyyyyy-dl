@@ -88,5 +88,10 @@ export default {
   'settings.btnExternalScan': '📁 掃描外部曲庫',
   'settings.btnImportUntracked': '📥 匯入實體音訊',
   'settings.btnCleanMissing': '🧹 清理失效記錄',
+  'settings.iosShortcutTitle': 'iOS 捷徑自動喚醒 (PWA)',
+  'settings.iosShortcutDesc': '配合 iOS 捷徑「打開 URL」，可在連上藍牙或車機時以獨立全螢幕模式自動喚醒播放器。',
+  'settings.iosShortcutCopy': '複製喚醒 URL',
+  'settings.iosShortcutCopied': '已複製喚醒 URL: {url}',
+  'settings.iosShortcutDoc': '查看教學',
   'skin.name.vinyl': '經典黑膠',
 } as const;

@@ -88,5 +88,10 @@ export default {
   'settings.btnExternalScan': '📁 외부 라이브러리 검사',
   'settings.btnImportUntracked': '📥 오디오 가져오기',
   'settings.btnCleanMissing': '🧹 누락 기록 정리',
+  'settings.iosShortcutTitle': 'iOS 단축어 자동 실행 (PWA)',
+  'settings.iosShortcutDesc': 'iOS 단축어의 "URL 열기"와 연동하여 블루투스나 차량 연결 시 전체화면 독립형 모드로 자동 실행할 수 있습니다.',
+  'settings.iosShortcutCopy': '실행 URL 복사',
+  'settings.iosShortcutCopied': '실행 URL 복사됨: {url}',
+  'settings.iosShortcutDoc': '가이드 보기',
   'skin.name.vinyl': '클래식 바이닐',
 } as const;

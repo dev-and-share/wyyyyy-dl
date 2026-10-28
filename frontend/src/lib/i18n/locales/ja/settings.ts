@@ -88,5 +88,10 @@ export default {
   'settings.btnExternalScan': '📁 外部曲庫スキャン',
   'settings.btnImportUntracked': '📥 音源インポート',
   'settings.btnCleanMissing': '🧹 無効記録整理',
+  'settings.iosShortcutTitle': 'iOS ショートカット自動起動 (PWA)',
+  'settings.iosShortcutDesc': 'iOS「ショートカット」の「URLを開く」と組み合わせることで、Bluetoothやカーナビ接続時に全画面で自動起動できます。',
+  'settings.iosShortcutCopy': '起動URLをコピー',
+  'settings.iosShortcutCopied': '起動URLをコピーしました: {url}',
+  'settings.iosShortcutDoc': 'ガイドを見る',
   'skin.name.vinyl': 'クラシックレコード',
 } as const;

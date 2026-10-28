@@ -23,6 +23,28 @@
   let isCacheLoading = $state(false);
   let minPlayThreshold = $state(2);
 
+  const wakeUrl = typeof window !== 'undefined'
+    ? `webapp://${window.location.host}${window.location.pathname.replace(/\/$/, '')}`
+    : 'webapp://music.yourdomain.com';
+
+  async function handleCopyWakeUrl() {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(wakeUrl);
+      } else {
+        const input = document.createElement('input');
+        input.value = wakeUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      showToast(t('settings.iosShortcutCopied', { url: wakeUrl }), 'success');
+    } catch {
+      showToast(wakeUrl, 'info');
+    }
+  }
+
   export async function refreshCache() {
     if (!platform.supportsCache) return;
     isCacheLoading = true;
@@ -182,6 +204,39 @@
           </button>
         </div>
       {/if}
+    </div>
+
+    <!-- 📱 iOS 快捷指令独立唤醒小技巧 -->
+    <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-1.5 font-semibold text-xs text-[var(--text-main)]">
+          <span>⚡</span>
+          <span>{t('settings.iosShortcutTitle')}</span>
+        </div>
+        <a
+          href="https://github.com/dev-and-share/wyyyyy-dl/blob/main/docs/ios-shortcuts-pwa.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-[11px] text-red-500 hover:underline flex items-center gap-0.5"
+        >
+          {t('settings.iosShortcutDoc')} ↗
+        </a>
+      </div>
+      <p class="text-xs text-[var(--text-secondary)] m-0 leading-relaxed">
+        {t('settings.iosShortcutDesc')}
+      </p>
+      <div class="flex items-center gap-2 pt-1">
+        <code class="flex-1 px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border-color)] font-mono text-[11px] text-[var(--text-main)] truncate select-all">
+          {wakeUrl}
+        </code>
+        <button
+          type="button"
+          class="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs text-[var(--text-main)] font-medium border border-[var(--border-color)] cursor-pointer transition-all active:scale-95"
+          onclick={handleCopyWakeUrl}
+        >
+          {t('settings.iosShortcutCopy')}
+        </button>
+      </div>
     </div>
   {:else}
     <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
