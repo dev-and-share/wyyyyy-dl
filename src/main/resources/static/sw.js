@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wyyyyy-dl-v5.2.2';
+const CACHE_NAME = 'wyyyyy-dl-v5.2.4';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const IMAGE_CACHE_NAME = 'netease-music-image-v1';
 const MAX_IMAGE_CACHE_ITEMS = 2000;
