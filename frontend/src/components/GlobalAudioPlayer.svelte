@@ -50,8 +50,7 @@
     if (t?.id && !t.lyric) {
       api.songV1(String(t.id), 'lossless').then((j: any) => {
         if (j?.data?.lyric && playerStore.activeTrack?.id === t.id) {
-          t.lyric = j.data.lyric;
-          playerStore.activeTrack.lyric = j.data.lyric;
+          t.lyric = j.data.lyric; playerStore.activeTrack.lyric = j.data.lyric;
         }
       }).catch(() => {});
     }
@@ -61,9 +60,7 @@
     if (track.isLocal && track.id) markSongDownloaded(track.id);
     if (track.url && track.url.startsWith('blob:')) track.url = track.id ? `/v3/stream?id=${track.id}` : '';
     const url = track.url || (await resolveTrackUrl(track));
-    if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:'))) {
-      audioEl.src = url;
-    }
+    if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:'))) audioEl.src = url;
   }
 
   function applyPendingSeek() {
@@ -135,9 +132,11 @@
     }
 
     const startAudio = () => {
+      if (audioEl) audioEl.muted = false;
       const p = audioEl?.play();
       if (p !== undefined) {
         p.then(() => {
+          if (audioEl) audioEl.muted = false;
           if (resetTime && audioEl) {
             try { audioEl.currentTime = 0; } catch {}
             playerStore.curTime = 0;
@@ -181,12 +180,9 @@
      *    - 换源就绪后：赋值 audioEl.src = url 并重置时间，最后恢复 audioEl.muted = prevMuted 正常起播。
      */
     if (resetTime) playerStore.curTime = 0;
-    const prevMuted = audioEl.muted;
     try {
       audioEl.muted = true;
-      if (platform.isIOS && audioEl.paused) {
-        audioEl.play().catch(() => {});
-      }
+      if (platform.isIOS && audioEl.paused) audioEl.play().catch(() => {});
     } catch {}
 
     const url = await resolveTrackUrl(track);
@@ -195,13 +191,13 @@
     if (playerStore.activeTrack !== track) return;
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      try { audioEl.muted = prevMuted; } catch {}
+      try { audioEl.muted = false; } catch {}
       return handleSkipTrack(track, t('player.isTrialClip'), true);
     }
 
     if (!url || track.unplayable) {
       track.unplayable = true;
-      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; try { audioEl.muted = prevMuted; } catch {} }
+      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; try { audioEl.muted = false; } catch {} }
       return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
     }
 
@@ -209,7 +205,7 @@
       updateMediaSessionMetadata(track);
       audioEl.src = url;
       if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
-      try { audioEl.muted = prevMuted; } catch {}
+      try { audioEl.muted = false; } catch {}
       startAudio();
     }
   }
@@ -217,15 +213,17 @@
   function handleTogglePlay() {
     if (!audioEl) return;
     if (audioEl.paused) {
-      if (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:') || !audioEl.duration) {
+      if (audioEl) audioEl.muted = false;
+      if (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:')) {
         ensurePlay(false);
       } else {
         const p = audioEl.play();
         if (p !== undefined) {
           p.then(() => {
+            if (audioEl) audioEl.muted = false;
             applyPendingSeek();
             preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-          }).catch(() => { playerStore.playing = false; });
+          }).catch(() => { playerStore.playing = false; ensurePlay(false); });
         }
       }
     } else {
@@ -334,10 +332,10 @@
     if (currentTrack) prepareTrackInUI(currentTrack);
 
     setupMediaSession({
-      onPlay: () => { if (audioEl?.paused) handleTogglePlay(); },
-      onPause: () => { if (!audioEl?.paused) handleTogglePlay(); },
+      onPlay: () => { if (audioEl?.paused) handleTogglePlay(); }, onPause: () => { if (!audioEl?.paused) handleTogglePlay(); },
       onPrev: prev, onNext: next
     });
+    if (typeof navigator !== 'undefined' && 'audioSession' in navigator) { try { (navigator as any).audioSession.type = 'playback'; } catch {} }
 
     window.addEventListener('beforeunload', () => playerStore.save());
 
@@ -384,6 +382,7 @@
   onplay={() => {
     playerStore.playing = true;
     updateMediaSessionPlaybackState(true);
+    if (audioEl) { try { audioEl.muted = false; } catch {} }
     if (playerStore.activeTrack) {
       updateMediaSessionMetadata(playerStore.activeTrack);
       handleTrackPlayback(playerStore.activeTrack, () => playerStore.playing);
