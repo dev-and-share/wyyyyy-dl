@@ -17,6 +17,7 @@
 | **07** | iPhone 熄屏瞬间，锁屏播放控件变灰（disabled）或几秒后卡片彻底消失 | 按电源键熄屏瞬间 | iPhone 熄屏时系统将网络切至后台节流模式，`<audio>` 在后台缓冲时极易触发 `waiting` 或 `stalled`。若监听了 `onwaiting/onstalled => playing = false`，会导致向 MediaSession 谎报 `paused`，系统判定已停止播放而禁用控件或销毁 Now Playing 会话。 | **彻底移除 `onwaiting` 与 `onstalled` 将 `playing` 置为 `false` 的错误逻辑**；在 `onplay` 时重新确认 `updateMediaSessionPlaybackState(true)`。 |
 | **08** | iOS 熄屏后台播放数秒后音频静音中断 | 熄屏后台播放 | iOS 后台拉流使用 HTTP Range 206 分片机制，若 Service Worker 拦截该流请求，后台休眠会导致 fetch 挂起中断。 | 在 `sw.js` 中增加防御：检测到音频流且请求头含 `Range` 时，**直接 return 放行**，交由浏览器原生网络栈直连。 |
 | **09** | 单文件代码膨胀触发 git commit 拦截失败 | 业务扩展新增面板 | 项目配置了 Husky pre-commit hook 单文件 <= 500 行限制（`scripts/check-file-lines.js`）。 | 保持组件高内聚与轻量化，及时抽离独立业务区域（例如将手机离线缓存从 `DownloadMgrTab` 剥离为独立的 `BrowserCacheSection.svelte`）。 |
+| **10** | iOS 熄屏点击暂停后再次播放无声，进度假走针（外面走，里面不走） | 熄屏暂停后点播放 / 锁屏控制中心 | 1. **SW 拦截 Range 续传请求**：未缓存的在线音频流在后台触发 Range 续传，SW 拦截后调用 `fetch()`，但 iOS 熄屏后台会挂起/节流 SW 网络，导致音频流饥饿断流；系统 NowPlaying 依据用户手势先空转（外面假走针），但内部 `<audio>` 拿不到数据并未发声。<br>2. **`!audioEl.duration` 错误分支**：熄屏暂停时 iOS WebKit 偶发将 `duration` 置为 0 或 NaN，导致触发 `ensurePlay(false)`；内部用 `audioEl.src !== existingUrl`（绝对 vs 相对路径）误判为新曲并重新赋值 `src`，触发 WebKit 锁屏重置且被系统拒播。 | 1. `sw.js` 维护离线音频索引 `cachedAudioKeys`：带 `Range` 且未离线缓存的音频流直接 `return` 放行，交由系统原生网络栈直连；<br>2. `handleTogglePlay` 移除 `!audioEl.duration` 误判；<br>3. 封装 `isSameAudioSource` 规范化比对 URL，严禁原地重置 `audioEl.src`；<br>4. MediaSession `onPlay` 优先同步调用 `audioEl.play()`。 |
 
 ---
 
