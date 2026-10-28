@@ -13,6 +13,28 @@ const PRECACHE_URLS = [
 ];
 
 let isTrimmingImages = false;
+let cachedAudioKeys = new Set();
+
+async function syncAudioCacheIndex() {
+  try {
+    const cache = await caches.open(AUDIO_CACHE_NAME);
+    const keys = await cache.keys();
+    const newKeys = new Set();
+    for (const req of keys) {
+      try {
+        const u = new URL(req.url);
+        const songId = u.searchParams.get('id');
+        if (songId) newKeys.add(songId);
+        newKeys.add(u.pathname + u.search);
+        newKeys.add(u.pathname);
+      } catch {}
+    }
+    cachedAudioKeys = newKeys;
+  } catch {}
+}
+
+syncAudioCacheIndex();
+
 async function trimCache(cacheName, maxItems) {
   if (isTrimmingImages) return;
   isTrimmingImages = true;
@@ -65,7 +87,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => syncAudioCacheIndex()).then(() => self.clients.claim())
   );
 });
 
@@ -76,6 +98,8 @@ self.addEventListener('message', (event) => {
       self.skipWaiting();
     } else if (event.data.type === 'CLEAR_IMAGE_CACHE') {
       caches.delete(IMAGE_CACHE_NAME).catch(() => {});
+    } else if (event.data.type === 'REFRESH_AUDIO_CACHE') {
+      syncAudioCacheIndex();
     }
   }
 });
@@ -94,6 +118,19 @@ self.addEventListener('fetch', (event) => {
                         (requestUrl.pathname.includes('/v3/stream') || requestUrl.pathname.includes('/v3/history/stream'));
 
   if (isAudioStream) {
+    const hasRange = event.request.headers.has('Range');
+    const songId = requestUrl.searchParams.get('id');
+    const isCachedLocally = (songId && cachedAudioKeys.has(songId)) ||
+                            cachedAudioKeys.has(requestUrl.pathname + requestUrl.search) ||
+                            cachedAudioKeys.has(requestUrl.pathname);
+
+    // 🛡️ iOS 关键防御：未在本地离线缓存中的音频流，且带有 Range 续传请求时，
+    // 严禁使用 event.respondWith 拦截！直接 return 放行交由浏览器原生网络栈直连。
+    // 杜绝 iOS 熄屏后台深度节流导致 SW fetch() 挂起，彻底解决音频断流静音、锁屏假走针与播放器卡死。
+    if (hasRange && !isCachedLocally && self.navigator?.onLine !== false) {
+      return;
+    }
+
     // 🎵 音频流处理：优先检查离线 Cache，命中则构造 Range 206 切片响应秒播；未命中回退网络
     event.respondWith((async () => {
       try {
@@ -157,7 +194,7 @@ self.addEventListener('fetch', (event) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(AUDIO_CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(event.request, responseToCache).then(() => syncAudioCacheIndex());
           });
         }
         return networkResponse;

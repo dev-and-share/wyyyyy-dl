@@ -129,6 +129,9 @@ if (typeof window !== 'undefined') {
     } else {
       refreshCachedSongIds();
     }
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'REFRESH_AUDIO_CACHE' });
+    }
   }) as EventListener);
 }
 
