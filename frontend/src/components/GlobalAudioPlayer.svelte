@@ -20,13 +20,15 @@
   import PeqDrawer from './PeqDrawer.svelte';
 
   let {
-    curTrack = $bindable(null), playing = $bindable(false), setQueue = $bindable(), togglePlay = $bindable(() => {}),
-    isOverlayOpen = $bindable(false), likedSet = new Set<number>(), onToggleLike = () => {}, onReveal = () => {},
-    showPeq = $bindable(false), isPlayerMinimized = $bindable(false)
+    curTrack = $bindable(null), playing = $bindable(false), setQueue = $bindable(),
+    togglePlay = $bindable(() => {}), isOverlayOpen = $bindable(false), likedSet = new Set<number>(),
+    onToggleLike = () => {}, onReveal = () => {}, showPeq = $bindable(false), isPlayerMinimized = $bindable(false)
   } = $props<{
-    curTrack?: Track | null; playing?: boolean; togglePlay?: () => void; isOverlayOpen?: boolean; likedSet?: Set<number>;
+    curTrack?: Track | null; playing?: boolean;
     setQueue?: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void;
-    onToggleLike?: (id: number, name: string) => void; onReveal?: (item: any) => void; showPeq?: boolean; isPlayerMinimized?: boolean;
+    togglePlay?: () => void; isOverlayOpen?: boolean; likedSet?: Set<number>;
+    onToggleLike?: (id: number, name: string) => void; onReveal?: (item: any) => void;
+    showPeq?: boolean; isPlayerMinimized?: boolean;
   }>();
 
   // ---------- 视图与 DOM 状态 ----------
@@ -50,7 +52,8 @@
     if (t?.id && !t.lyric) {
       api.songV1(String(t.id), 'lossless').then((j: any) => {
         if (j?.data?.lyric && playerStore.activeTrack?.id === t.id) {
-          t.lyric = j.data.lyric; playerStore.activeTrack.lyric = j.data.lyric;
+          t.lyric = j.data.lyric;
+          playerStore.activeTrack.lyric = j.data.lyric;
         }
       }).catch(() => {});
     }
@@ -60,7 +63,9 @@
     if (track.isLocal && track.id) markSongDownloaded(track.id);
     if (track.url && track.url.startsWith('blob:')) track.url = track.id ? `/v3/stream?id=${track.id}` : '';
     const url = track.url || (await resolveTrackUrl(track));
-    if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:'))) audioEl.src = url;
+    if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:'))) {
+      audioEl.src = url;
+    }
   }
 
   function applyPendingSeek() {
@@ -90,7 +95,11 @@
   }
 
   async function handleSkipTrack(track: Track, reason: string, isTrial = false) {
-    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; }
+    if (audioEl) {
+      audioEl.pause();
+      try { audioEl.currentTime = 0; } catch {}
+      audioEl.src = '';
+    }
     const nextIdx = playerStore.getNextTrackIndex();
     if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
       playerStore.playing = false;
@@ -132,11 +141,9 @@
     }
 
     const startAudio = () => {
-      if (audioEl) audioEl.muted = false;
       const p = audioEl?.play();
       if (p !== undefined) {
         p.then(() => {
-          if (audioEl) audioEl.muted = false;
           if (resetTime && audioEl) {
             try { audioEl.currentTime = 0; } catch {}
             playerStore.curTime = 0;
@@ -152,60 +159,46 @@
     if (existingUrl) {
       if (resetTime) {
         playerStore.curTime = 0;
-        const onMeta = () => { try { if (audioEl) audioEl.currentTime = 0; } catch {} audioEl?.removeEventListener('loadedmetadata', onMeta); };
+        const onMeta = () => {
+          try { if (audioEl) audioEl.currentTime = 0; } catch {}
+          audioEl?.removeEventListener('loadedmetadata', onMeta);
+        };
         audioEl.addEventListener('loadedmetadata', onMeta);
       }
       startAudio();
       return;
     }
 
-    /**
-     * 🛡️【核心锁屏保活与防瞬音规范 — 严禁随意修改或引入 pause()】🛡️
-     *
-     * 1. 为什么切歌时严禁调用 audioEl.pause()？
-     *    - 手机（iOS Safari / Android Chrome）在锁屏熄屏状态下，允许网页后台运行发请求的唯一通行证是「有原生音频处于 playing 状态」。
-     *    - 一旦调用 pause()，操作系统会在毫秒级内冻结（Freeze）网页后台 JS 线程与网络，导致后续 resolveTrackUrl 卡死无法返回。
-     *    - 且在 pause() 后经历异步等待，会彻底丢失耳机按键的用户手势令牌（User Gesture Token），后续 .play() 报 NotAllowedError。
-     *
-     * 2. 为什么不能用 audioEl.volume = 0？
-     *    - 在 iOS Safari/WebKit 中，系统音量完全由物理按键控制，JS 中的 audio.volume 为只读属性，写入会被静默忽略。
-     *    - 但全平台（iOS/Android/桌面）均 100% 支持 audioEl.muted = true。
-     *
-     * 3. 为什么切歌时严禁对旧音频执行 currentTime = 0？
-     *    - 切歌瞬间 audioEl.src 仍是上一曲，此时倒带会导致旧歌前奏重播数百毫秒（即历史上的“切歌瞬间杂音”Bug）。
-     *    - 必须且仅在换上新曲目的 audioEl.src 之后，才对新歌曲重置 currentTime = 0。
-     *
-     * 4. 零杂音无缝过渡架构：
-     *    - 等待新 URL 期间：audioEl.muted = true 静音无声播放，旧音频无声空转，死死咬住系统后台 Session 与手势保活。
-     *    - 换源就绪后：赋值 audioEl.src = url 并重置时间，最后恢复 audioEl.muted = prevMuted 正常起播。
-     */
+    // ② URL 尚未解析：仅在 iOS Safari/PWA 下使用静音占位保住手势令牌；桌面端严禁空转 play/mute 防 CoreAudio 竞争假死
     if (resetTime) playerStore.curTime = 0;
-    try {
-      audioEl.muted = true;
-      if (platform.isIOS && audioEl.paused) audioEl.play().catch(() => {});
-    } catch {}
+    const prevMuted = audioEl.muted;
+    if (platform.isIOS) {
+      try { audioEl.muted = true; audioEl.play().catch(() => {}); } catch {}
+    }
 
     const url = await resolveTrackUrl(track);
-
-    // 防竞态：若在等待异步 URL 期间用户已切到其他曲目，直接放弃本次过期起播
-    if (playerStore.activeTrack !== track) return;
+    if (platform.isIOS) { audioEl.muted = prevMuted; }
 
     if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      try { audioEl.muted = false; } catch {}
       return handleSkipTrack(track, t('player.isTrialClip'), true);
     }
 
     if (!url || track.unplayable) {
       track.unplayable = true;
-      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; try { audioEl.muted = false; } catch {} }
+      if (audioEl) {
+        audioEl.pause();
+        try { audioEl.currentTime = 0; } catch {}
+        audioEl.src = '';
+      }
       return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
     }
 
-    if (url && audioEl) {
+    if (url && audioEl && playerStore.activeTrack === track) {
       updateMediaSessionMetadata(track);
       audioEl.src = url;
-      if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
-      try { audioEl.muted = false; } catch {}
+      if (resetTime) {
+        try { audioEl.currentTime = 0; } catch {}
+      }
       startAudio();
     }
   }
@@ -213,17 +206,15 @@
   function handleTogglePlay() {
     if (!audioEl) return;
     if (audioEl.paused) {
-      if (audioEl) audioEl.muted = false;
-      if (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:')) {
+      if (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:') || !audioEl.duration) {
         ensurePlay(false);
       } else {
         const p = audioEl.play();
         if (p !== undefined) {
           p.then(() => {
-            if (audioEl) audioEl.muted = false;
             applyPendingSeek();
             preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-          }).catch(() => { playerStore.playing = false; ensurePlay(false); });
+          }).catch(() => { playerStore.playing = false; });
         }
       }
     } else {
@@ -238,21 +229,24 @@
     if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
       if (playerStore.autoSkipTrial && (playerStore.activeTrack as any)?.freeTrial === true) {
         playerStore.playing = false;
-        if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
+        if (audioEl) {
+          audioEl.pause();
+          try { audioEl.currentTime = 0; } catch {}
+        }
         showToast(t('player.noMoreCompleteTracksToPlay'), 'info', 2000);
         return;
       }
     }
-    // ⚠️ 严禁在此处调用 audioEl.pause() 或 audioEl.currentTime = 0，详见 ensurePlay 顶部防误杀规范
     playerStore.stepNext();
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
   }
 
   async function prev() {
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
-    // ⚠️ 严禁在此处调用 audioEl.pause() 或 audioEl.currentTime = 0，详见 ensurePlay 顶部防误杀规范
     playerStore.stepPrev();
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
   }
 
@@ -280,19 +274,25 @@
     }
 
     // 🛡️ 同歌单防误触保护：如果已在播放该歌单
-    const isSamePlaylist = targetPlaylistId != null && playerStore.playlistId && String(playerStore.playlistId) === String(targetPlaylistId) && playerStore.queue.length > 0;
-    if (isSamePlaylist) {
+    if (
+      targetPlaylistId !== null &&
+      targetPlaylistId !== undefined &&
+      playerStore.playlistId &&
+      String(playerStore.playlistId) === String(targetPlaylistId) &&
+      playerStore.queue.length > 0
+    ) {
       if (playerStore.playing) {
         showToast(t('player.playingThisPlaylistNow'), 'info', 1500);
+        return;
       } else {
         showToast(t('player.continuePlayingThisPlaylist'), 'info', 1500);
         ensurePlay(false);
+        return;
       }
-      return;
     }
 
-    resetTrackPlayback();
     playerStore.setQueue(tracks, optionsOrIdx, maybePlaylistId);
+    if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
     ensurePlay(true);
 
@@ -332,10 +332,11 @@
     if (currentTrack) prepareTrackInUI(currentTrack);
 
     setupMediaSession({
-      onPlay: () => { if (audioEl?.paused) handleTogglePlay(); }, onPause: () => { if (!audioEl?.paused) handleTogglePlay(); },
-      onPrev: prev, onNext: next
+      onPlay: () => { if (audioEl?.paused) handleTogglePlay(); },
+      onPause: () => { if (!audioEl?.paused) handleTogglePlay(); },
+      onPrev: prev,
+      onNext: next
     });
-    if (typeof navigator !== 'undefined' && 'audioSession' in navigator) { try { (navigator as any).audioSession.type = 'playback'; } catch {} }
 
     window.addEventListener('beforeunload', () => playerStore.save());
 
@@ -345,7 +346,8 @@
       const time = audioEl.currentTime || 0;
       const onMeta = () => {
         try { if (audioEl && audioEl.duration && time < audioEl.duration) audioEl.currentTime = time; } catch {}
-        audioEl?.removeEventListener('loadedmetadata', onMeta); audioEl?.play().catch(() => {});
+        audioEl?.removeEventListener('loadedmetadata', onMeta);
+        audioEl?.play().catch(() => {});
       };
       audioEl.addEventListener('loadedmetadata', onMeta);
       try { audioEl.load(); } catch {}
@@ -382,7 +384,6 @@
   onplay={() => {
     playerStore.playing = true;
     updateMediaSessionPlaybackState(true);
-    if (audioEl) { try { audioEl.muted = false; } catch {} }
     if (playerStore.activeTrack) {
       updateMediaSessionMetadata(playerStore.activeTrack);
       handleTrackPlayback(playerStore.activeTrack, () => playerStore.playing);
@@ -469,7 +470,7 @@
     queue={playerStore.queue} qIndex={playerStore.qIndex} tasks={taskState.tasks} {likedSet}
     autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly}
     downloadedSet={taskState.downloadedSet}
-    onPlayIndex={(idx) => { resetTrackPlayback(); playerStore.qIndex = idx; playerStore.curTime = 0; ensurePlay(true); }}
+    onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
     onClearQueue={() => { playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info'); }}
     onRemoveItem={(realIdx) => playerStore.removeItem(realIdx)}
     onToggleLike={onToggleLike} onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
