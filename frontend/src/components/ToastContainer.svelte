@@ -10,7 +10,7 @@
 
 <div
   id="globalToastContainer"
-  class="fixed top-[calc(16px+env(safe-area-inset-top,0px))] right-[calc(16px+env(safe-area-inset-right,0px))] z-[100000] flex flex-col items-end gap-2 pointer-events-none max-w-[min(420px,90vw)]"
+  class="fixed top-[calc(16px+env(safe-area-inset-top,0px))] right-[calc(16px+env(safe-area-inset-right,0px))] z-[110000] flex flex-col items-end gap-2 pointer-events-none max-w-[min(420px,90vw)]"
 >
   {#each activeToasts as t (t.id)}
     <div

@@ -16,6 +16,9 @@
         var skin = localStorage.getItem('player_skin') || 'vinyl';
         document.documentElement.setAttribute('data-skin', skin);
 
+        var locale = localStorage.getItem('wyl.locale');
+        if (locale) document.documentElement.lang = locale;
+
         var skinColors = {
           spring: { dark: '#06140f', light: '#f0fdf4' },
           winamp: { dark: '#11141b', light: '#f1f5f9' },

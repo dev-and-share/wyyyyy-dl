@@ -4,6 +4,7 @@
   import PlayerBarMobile from './sp/PlayerBarMobile.svelte';
   import { DEFAULT_VINYL_COVER, formatCoverUrl } from '../lib/utils';
   import { skin } from '../lib/skinStore.svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     curTrack,
@@ -67,7 +68,7 @@
       class="player-minimized-bubble fixed right-[18px] cursor-pointer select-none transition-all duration-250 hover:scale-110 hover:-translate-y-0.5 active:scale-95 animate-[scaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)] z-[9999]"
       style="{skin.cssVars}"
       onclick={() => minimized = false}
-      title="点击展开播放器 ({skin.current} 皮肤模式, 进度 {Math.round(progressRatio * 100)}%)"
+      title={t('player.expandBubble', { skin: skin.current, progress: Math.round(progressRatio * 100) })}
     >
       {#if skin.current === 'winamp'}
         <!-- Winamp 迷你机箱挂件 -->
@@ -77,7 +78,7 @@
             <span class="text-[8px] font-mono font-bold text-emerald-400">{Math.round(progressRatio * 100)}%</span>
           </div>
           <div class="w-7 h-7 rounded-xs overflow-hidden border border-white/20 shadow-xs">
-            <img src={formatCoverUrl(curTrack?.cover, 60)} alt="封面" class="w-full h-full object-cover" />
+            <img src={formatCoverUrl(curTrack?.cover, 60)} alt={t('player.cover')} class="w-full h-full object-cover" />
           </div>
           <div class="w-full h-1 bg-[#0b140d] rounded-xs overflow-hidden">
             <div class="h-full bg-emerald-500" style="width: {progressRatio * 100}%;"></div>
@@ -90,7 +91,7 @@
             <div class="w-2 h-2 rounded-full bg-white {playing ? 'animate-[spin_4s_linear_infinite]' : ''}"></div>
           </div>
           <div class="w-5 h-5 rounded overflow-hidden border border-white/30">
-            <img src={formatCoverUrl(curTrack?.cover, 60)} alt="封面" class="w-full h-full object-cover" />
+            <img src={formatCoverUrl(curTrack?.cover, 60)} alt={t('player.cover')} class="w-full h-full object-cover" />
           </div>
           <div class="w-4 h-4 rounded-full bg-[#3b2416] border border-neutral-600 flex items-center justify-center">
             <div class="w-2 h-2 rounded-full bg-white {playing ? 'animate-[spin_4s_linear_infinite]' : ''}"></div>
@@ -103,7 +104,7 @@
           style="box-shadow: 0 0 24px var(--skin-glow, rgba(239, 68, 68, 0.45));"
         >
           <div class="w-11 h-11 rounded-xl overflow-hidden shadow-inner">
-            <img src={formatCoverUrl(curTrack?.cover, 80)} alt="封面" class="w-full h-full object-cover {playing ? 'scale-105' : ''}" />
+            <img src={formatCoverUrl(curTrack?.cover, 80)} alt={t('player.cover')} class="w-full h-full object-cover {playing ? 'scale-105' : ''}" />
           </div>
         </div>
       {:else if skin.current === 'spring'}
@@ -113,7 +114,7 @@
           style="box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);"
         >
           <div class="w-11 h-11 rounded-full overflow-hidden shadow-inner flex items-center justify-center relative">
-            <img src={formatCoverUrl(curTrack?.cover, 80)} alt="封面" class="w-full h-full rounded-full object-cover {playing ? 'animate-[spin_16s_linear_infinite]' : ''}" />
+            <img src={formatCoverUrl(curTrack?.cover, 80)} alt={t('player.cover')} class="w-full h-full rounded-full object-cover {playing ? 'animate-[spin_16s_linear_infinite]' : ''}" />
             <div class="absolute inset-0 rounded-full border border-emerald-400/30"></div>
           </div>
         </div>
@@ -141,7 +142,7 @@
           <div class="relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(0,0,0,0.6)]">
             <img
               src={curTrack?.cover || DEFAULT_VINYL_COVER}
-              alt="封面"
+              alt={t('player.cover')}
               class="w-full h-full rounded-full object-cover {playing ? 'animate-[spin_16s_linear_infinite]' : ''}"
               referrerpolicy="no-referrer"
               onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}

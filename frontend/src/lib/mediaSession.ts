@@ -1,5 +1,6 @@
 import type { Track } from './types';
 import { formatArtist, DEFAULT_VINYL_COVER, isIOS } from './utils';
+import { t } from './i18n';
 
 export interface MediaSessionHandlers {
   onPlay: () => void;
@@ -22,13 +23,12 @@ export function setupMediaSession(handlers: MediaSessionHandlers) {
     navigator.mediaSession.setActionHandler('previoustrack', () => handlers.onPrev());
     navigator.mediaSession.setActionHandler('nexttrack', () => handlers.onNext());
 
-    // 彻底清除并禁用所有时间快进/快退/时间跳转动作，
-    // 强制锁定系统控制中心与锁屏为【曲目导航（⏮ ⏯ ⏭）】而非【跳秒快进（↺15 ↻15）】
+    // Clear backward/forward actions to enforce track navigation instead of 15s skip
     try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
     try { navigator.mediaSession.setActionHandler('seekforward', null); } catch {}
     try { navigator.mediaSession.setActionHandler('seekto', null); } catch {}
   } catch (e) {
-    console.warn('[MediaSession] 注册动作监听失败:', e);
+    console.warn('[MediaSession] Failed to register action handlers:', e);
   }
 }
 
@@ -47,6 +47,15 @@ export interface MediaSessionLyricInfo {
  */
 let currentTrackKey: string | number | null = null;
 let currentCoverUrl: string | null = null;
+let lastPositionSyncedKey: string | number | null = null;
+
+export function getLastPositionSyncedKey(): string | number | null {
+  return lastPositionSyncedKey;
+}
+
+export function getCurrentTrackKey(): string | number | null {
+  return currentTrackKey;
+}
 
 function formatArtworkUrl(url: string | undefined): string {
   if (!url || url === DEFAULT_VINYL_COVER) {
@@ -105,24 +114,19 @@ export function updateMediaSessionMetadata(track: Track | null, lyricInfo?: Medi
     currentCoverUrl = null;
   }
 
-  const songName = track.name || '未知歌曲';
-  const artistName = formatArtist(track.artist) || '未知歌手';
+  const songName = track.name || t('common.unknownSong');
+  const artistName = formatArtist(track.artist) || t('common.unknownArtist');
 
   const currentText = lyricInfo?.currentText?.trim();
   const nextText = lyricInfo?.nextText?.trim();
 
   const title = currentText || songName;
   const artist = currentText ? `${songName} · ${artistName}` : artistName;
-  const album = nextText ? `⏭ ${nextText}` : (currentText ? songName : '网易云音乐');
+  const album = nextText ? `⏭ ${nextText}` : (currentText ? songName : t('common.neteaseCloudMusic'));
 
   const coverUrl = formatArtworkUrl(track.cover);
   const trackKey = track.id ?? track.url ?? `${songName}-${artistName}`;
 
-  // 🛡️ 车载蓝牙与锁屏防抖契约（Tesla 封面避坑）：
-  // 仅在歌曲切换或封面发生变更时，才全量构造 new MediaMetadata 并绑定 artwork。
-  // 随后歌词跳动（每 2~3 秒一次）时，必须【就地修改】metadata 的 title / artist / album，
-  // 绝对不可重新实例化 MediaMetadata 或重新赋值 artwork！
-  // 否则会导致车载蓝牙 BIP（Basic Imaging Profile）图片传输死循环被掐断，车机超时退化为黑色默认图标。
   if (
     navigator.mediaSession.metadata &&
     currentTrackKey === trackKey &&
@@ -145,7 +149,7 @@ export function updateMediaSessionMetadata(track: Track | null, lyricInfo?: Medi
       artwork: createArtworkList(coverUrl)
     });
   } catch (e) {
-    console.warn('[MediaSession] 更新曲目元数据失败:', e);
+    console.warn('[MediaSession] Failed to update metadata:', e);
   }
 }
 
@@ -160,36 +164,48 @@ export function updateMediaSessionPlaybackState(playing: boolean) {
 }
 
 /**
+ * 清除系统锁屏上的进度状态（切换曲目时避免旧曲目时间与满格残留）
+ */
+export function clearMediaSessionPosition() {
+  lastPositionSyncedKey = null;
+  if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+  if (!('setPositionState' in navigator.mediaSession)) return;
+  try {
+    navigator.mediaSession.setPositionState();
+  } catch {
+    try {
+      (navigator.mediaSession.setPositionState as any)(null);
+    } catch {}
+  }
+}
+
+/**
  * 实时同步当前音频进度与总时长至系统锁屏进度条
  *
- * 🛡️ 架构防御契约（iOS WebKit 避坑）：
- * 1. 绝不上报 setPositionState，保持完全空实现。
- * 2. 根因剖析：
- *    - 假走针与断流：iOS 熄屏状态下无用户前台手势令牌，后台网络处于深度节流。一旦上报 setPositionState
- *      或响应锁屏 seek，用户在锁屏拖拽会导致音频 Range 拉流挂死静音，而系统 NowPlaying 却以 1.0 倍速独立空转（假走针），
- *      直到用户重新点亮屏幕打开 App，音频才被迫从 0 秒重新拉流起播。
- *    - 播客模式降级：向苹果 WebKit 暴露时间轴进度或跳转意图，会导致系统强行将【⏮ 播放/暂停 ⏭】
- *      降级为【↺15 播放/暂停 ↻15】跳秒按钮。
- * 3. 锁屏歌词解耦：锁屏动态歌词（Title / Artist / Album 映射）与进度条完全独立，绝不受此影响。
- * 4. 结论：锁屏进度条保持静默，进度调节完全收拢在 App 内部，换取 100% 稳定的熄屏后台连续播放与曲目导航。
+ * 在起播、加载元数据、seek 以及切歌时调用，告知系统当前曲目时长与进度起点。
+ * iOS 会以此为基准由系统时钟平滑推算前进，绝不会出现旧曲目时间凝固残留。
  */
-export function updateMediaSessionPosition(_audioEl: HTMLAudioElement | null) {
-  // 保持完全空实现：彻底杜绝锁屏假走针、后台断流静音以及退化为 15s 跳秒
-  // 原始实现保留备查（供非 iOS 平台或未来系统策略更新时参考）：
-  // if (typeof window === 'undefined' || !('mediaSession' in navigator) || !_audioEl) return;
-  // if (!('setPositionState' in navigator.mediaSession)) return;
-  // try {
-  //   const duration = _audioEl.duration;
-  //   if (duration && !isNaN(duration) && isFinite(duration) && duration > 0) {
-  //     const position = Math.min(Math.max(0, _audioEl.currentTime || 0), duration);
-  //     navigator.mediaSession.setPositionState({
-  //       duration,
-  //       playbackRate: _audioEl.playbackRate || 1.0,
-  //       position
-  //     });
-  //   }
-  // } catch (e) {
-  //   console.warn('[MediaSession] 同步进度状态失败:', e);
-  // }
-  return;
+export function updateMediaSessionPosition(
+  audioEl: HTMLAudioElement | null,
+  overridePosition?: number,
+  overrideDuration?: number
+) {
+  if (typeof window === 'undefined' || !('mediaSession' in navigator) || !audioEl) return;
+  if (!('setPositionState' in navigator.mediaSession)) return;
+
+  try {
+    const dur = overrideDuration ?? audioEl.duration;
+    if (dur && !isNaN(dur) && isFinite(dur) && dur > 0) {
+      const cur = overridePosition ?? (audioEl.currentTime || 0);
+      const position = Math.min(Math.max(0, cur), dur);
+      navigator.mediaSession.setPositionState({
+        duration: dur,
+        playbackRate: audioEl.playbackRate || 1.0,
+        position
+      });
+      lastPositionSyncedKey = currentTrackKey;
+    }
+  } catch (e) {
+    console.warn('[MediaSession] 同步进度状态失败:', e);
+  }
 }

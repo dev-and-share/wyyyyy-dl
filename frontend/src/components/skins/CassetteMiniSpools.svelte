@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
   import { calculateTapeRadii } from './cassetteHelper';
+  import { t } from '../../lib/i18n/index.svelte';
 
   let {
     cover = DEFAULT_VINYL_COVER,
@@ -25,7 +26,7 @@
 <div
   class="relative shrink-0 flex items-center justify-between px-1.5 rounded-lg bg-[#0e1014] border border-white/15 shadow-inner cursor-pointer select-none transition-transform hover:scale-102 active:scale-97 {size === 'sm' ? 'w-16 h-10' : 'w-20 h-11'}"
   {onclick}
-  title="点击展开全屏复古磁带随身听"
+  title={t('player.expandLyric')}
 >
   <!-- 左轴轮 -->
   <div class="relative flex items-center justify-center">
@@ -44,7 +45,7 @@
   <div class="w-4 h-4 rounded-xs overflow-hidden shadow-xs border border-white/20">
     <img
       src={formattedCover}
-      alt="磁带标签"
+      alt={t('player.cover')}
       class="w-full h-full object-cover"
       referrerpolicy="no-referrer"
       onerror={(e) => {

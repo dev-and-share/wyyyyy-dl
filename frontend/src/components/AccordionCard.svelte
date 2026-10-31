@@ -52,9 +52,10 @@
     if (b === '1') return 'red';
     if (b === '2') return 'blue';
     if (b === '3') {
-      if (parsed.cleanTitle.includes('推荐')) return 'amber';
-      if (parsed.cleanTitle.includes('歌手')) return 'purple';
-      if (parsed.cleanTitle.includes('缓存')) return 'emerald';
+      const titleLower = parsed.cleanTitle.toLowerCase();
+      if (titleLower.includes('推荐') || titleLower.includes('recommend') || titleLower.includes('おすすめ') || titleLower.includes('추천')) return 'amber'; // i18n-ignore
+      if (titleLower.includes('歌手') || titleLower.includes('artist') || titleLower.includes('アーティスト') || titleLower.includes('아티스트')) return 'purple'; // i18n-ignore
+      if (titleLower.includes('缓存') || titleLower.includes('快取') || titleLower.includes('cache') || titleLower.includes('キャッシュ') || titleLower.includes('캐시')) return 'emerald'; // i18n-ignore
       return 'purple';
     }
     return 'default';

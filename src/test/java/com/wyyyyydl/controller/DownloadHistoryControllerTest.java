@@ -120,14 +120,14 @@ public class DownloadHistoryControllerTest {
 
         Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(18915L), any(), any())).thenReturn(mockItem);
         Mockito.when(downloadHistoryDAO.resolveFile(anyString())).thenReturn(mockFile);
-        Mockito.when(downloadHistoryDAO.toHostPath(any())).thenReturn("/Users/houtokki/Downloads/fast_sr/周杰伦 - 晴天.flac");
+        Mockito.when(downloadHistoryDAO.toHostPath(any())).thenReturn("/Users/testuser/Downloads/fast_sr/周杰伦 - 晴天.flac");
 
         mockMvc.perform(get("/v3/reveal")
                 .param("id", "18915")
                 .param("name", "晴天"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
-                .andExpect(jsonPath("$.data").value("/Users/houtokki/Downloads/fast_sr/周杰伦 - 晴天.flac"));
+                .andExpect(jsonPath("$.data").value("/Users/testuser/Downloads/fast_sr/周杰伦 - 晴天.flac"));
     }
 
     @Test

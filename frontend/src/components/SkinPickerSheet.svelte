@@ -2,6 +2,7 @@
   import { skin } from '../lib/skinStore.svelte';
   import { SKIN_LIST, type SkinId } from './skins/skinTypes';
   import PlayerIcon from './PlayerIcon.svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let { onClose } = $props<{ onClose: () => void }>();
 
@@ -39,7 +40,7 @@
 <div
   role="dialog"
   aria-modal="true"
-  aria-label="选择播放器皮肤"
+  aria-label={t('player.skin')}
   data-testid="skin-picker-sheet"
   class="fixed z-[100011] inset-x-0 bottom-0 max-w-[720px] mx-auto rounded-t-[28px] border-t border-[var(--border-color)] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] shadow-2xl p-5 flex flex-col gap-4 transition-transform duration-200 ease-out backdrop-blur-xl"
   style="transform: {closing ? 'translateY(100%)' : 'translateY(0)'};"
@@ -48,13 +49,13 @@
   <div class="flex items-center justify-between pb-1">
     <div class="flex items-center gap-2">
       <span class="text-xl leading-none">🎨</span>
-      <h3 class="text-base font-bold text-[var(--text-main)] m-0">播放器皮肤</h3>
+      <h3 class="text-base font-bold text-[var(--text-main)] m-0">{t('player.skin')}</h3>
     </div>
     <button
       type="button"
       class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent"
       onclick={handleClose}
-      title="关闭"
+      title={t('common.close')}
     >
       <PlayerIcon name="close" size={15} />
     </button>
@@ -130,10 +131,10 @@
 
         <div class="text-xs font-bold text-[var(--text-main)] flex items-center gap-1">
           <span>{item.emoji}</span>
-          <span>{item.name}</span>
+          <span>{t(`player.skin.${item.id}.name` as any)}</span>
         </div>
         <div class="text-[10px] text-[var(--text-muted)] text-center line-clamp-1 mt-0.5">
-          {item.desc}
+          {t(`player.skin.${item.id}.desc` as any)}
         </div>
       </button>
     {/each}

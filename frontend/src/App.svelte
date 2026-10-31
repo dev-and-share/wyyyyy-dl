@@ -13,6 +13,7 @@
   import { playPlaylistTracks } from './lib/playerHelper';
   import type { SetQueueOptions } from './lib/playerStore.svelte';
   import type { Track } from './lib/types';
+  import { t } from './lib/i18n';
 
   import TopBar from './components/TopBar.svelte';
   import DesktopSidebar from './components/desktop/DesktopSidebar.svelte';
@@ -54,7 +55,7 @@
     try {
       revealData = await executeReveal(item);
     } catch (e: any) {
-      showToast('定位失败: ' + (e.message || e), 'error');
+      showToast(t('common.locateFailed', { error: e.message || e }), 'error');
     }
   }
 
@@ -75,18 +76,18 @@
       if (j?.code === '000000') repeat = j.data === true;
     }).catch(() => {});
 
-    // 监听全局下载提交事件，立即拉取最新任务
+    // Listen to download submission event to refresh tasks
     const onDownloadSubmit = () => startTaskPolling();
     window.addEventListener('wyyyy:download-submitted', onDownloadSubmit);
 
-    // 监听全局物理文件定位事件 (支持各种组件长按/双击快捷触发)
+    // Listen to global reveal events
     const onGlobalReveal = (e: any) => {
       if (e?.detail) handleReveal(e.detail);
     };
     window.addEventListener('wyyyy:reveal', onGlobalReveal);
 
-    // 监听 PWA 新版本就绪事件
-    const onPwaUpdate = () => showToast('🎉 发现新版本！下拉即可更新', 'info', 6000);
+    // Listen to PWA update available event
+    const onPwaUpdate = () => showToast(t('app.pwaUpdateFound'), 'info', 6000);
     window.addEventListener('wyyyy:pwa-update-available', onPwaUpdate);
 
     return () => {
@@ -99,14 +100,14 @@
   });
 
   async function handleRefresh() {
-    showToast('正在检查更新与刷新数据...', 'info', 1200);
+    showToast(t('app.checkingUpdate'), 'info', 1200);
     try {
       const hasUpdate = await checkForPwaUpdate();
       await initLikeList();
       if (hasUpdate) {
-        showToast('检测到新版本，正在应用更新...', 'success', 1200);
+        showToast(t('app.applyingUpdate'), 'success', 1200);
       } else {
-        showToast('已同步最新数据与应用状态', 'success', 1500);
+        showToast(t('app.syncSuccess'), 'success', 1500);
       }
     } catch {
       window.location.reload();
@@ -231,7 +232,7 @@
 
     <!-- 底部低调版本号 (移动端展示，PC 桌面端已移至左侧边栏底部) -->
     <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity lg:hidden">
-      网易云音乐下载器 · PWA v{__APP_VERSION__}
+      {t('app.name')} · PWA v{__APP_VERSION__}
     </footer>
   </div>
   </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../../lib/i18n/index.svelte';
 
   let {
     disabled = false,
@@ -105,7 +106,7 @@
         🔄
       </span>
       <span>
-        {isRefreshing ? '正在同步应用与数据...' : pullDistance >= THRESHOLD ? '释放立即刷新' : '下拉刷新 PWA'}
+        {isRefreshing ? t('pullRefresh.refreshing') : pullDistance >= THRESHOLD ? t('pullRefresh.release') : t('pullRefresh.pull')}
       </span>
     </div>
   </div>

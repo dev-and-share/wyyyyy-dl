@@ -231,4 +231,75 @@ describe('PlayerStore WYSIWYG shuffle & deterministic queue navigation', () => {
 
     expect(store.getNextTrackIndex()).toBe(-1);
   });
+
+  describe('smart single track playback & queue continuity', () => {
+    it('locates track directly without shrinking queue when single track already in queue', () => {
+      // 初始：队列有 5 首歌（晴天、七里香、夜曲、枫、借口），当前正在播第 3 首「夜曲」(index 2)
+      expect(store.queue).toHaveLength(5);
+      expect(store.qIndex).toBe(2);
+      expect(store.activeTrack?.name).toBe('夜曲');
+
+      // 用户在列表中看中第 4 首「枫」(id: 4)，点击播放单曲
+      store.setQueue([{ id: 4, name: '枫', artist: '周杰伦' }]);
+
+      // 验证：歌单保持 5 首歌，不被冲刷成 1 首，且指针直接定位到「枫」(index 3)
+      expect(store.queue).toHaveLength(5);
+      expect(store.qIndex).toBe(3);
+      expect(store.activeTrack?.name).toBe('枫');
+
+      // 验证下一首：继续播放原歌单第 5 首「借口」
+      expect(store.getNextTrack()?.name).toBe('借口');
+    });
+
+    it('inserts after current track when playing and single track not in queue, then continues original queue', () => {
+      // 正在播放中
+      store.playing = true;
+      store.qIndex = 2; // 当前在播「夜曲」
+      expect(store.activeTrack?.name).toBe('夜曲');
+
+      // 用户从外部搜索点击了一首新歌「稻香」(id: 99)
+      const newTrack: Track = { id: 99, name: '稻香', artist: '周杰伦' };
+      store.setQueue([newTrack]);
+
+      // 验证：新歌插入在「夜曲」后面（原 index 2 后面，即 index 3），总长度变为 6
+      expect(store.queue).toHaveLength(6);
+      expect(store.qIndex).toBe(3);
+      expect(store.activeTrack?.name).toBe('稻香');
+
+      // 验证上一首：是跳过前的「夜曲」
+      expect(store.getPrevTrack()?.name).toBe('夜曲');
+
+      // 验证下一首：顺延原歌单原本剩下的歌曲「枫」
+      expect(store.getNextTrack()?.name).toBe('枫');
+    });
+
+    it('inserts at head (index 0) when not playing and single track not in queue', () => {
+      // 未在播放状态 (paused / stopped)
+      store.playing = false;
+      store.qIndex = 2;
+
+      // 点击播放不在歌单的新歌「青花瓷」(id: 88)
+      const newTrack: Track = { id: 88, name: '青花瓷', artist: '周杰伦' };
+      store.setQueue([newTrack]);
+
+      // 验证：插入到第 0 位，当前指针指向第 0 位，总长度为 6
+      expect(store.queue).toHaveLength(6);
+      expect(store.qIndex).toBe(0);
+      expect(store.activeTrack?.name).toBe('青花瓷');
+
+      // 验证下一首：继续顺延播放原歌单的第一首「晴天」
+      expect(store.getNextTrack()?.name).toBe('晴天');
+    });
+
+    it('replaces entire queue if forceReplace is explicitly specified', () => {
+      expect(store.queue).toHaveLength(5);
+
+      store.setQueue([{ id: 77, name: '告白气球', artist: '周杰伦' }], { forceReplace: true });
+
+      // 显式指定 forceReplace 时，队列被重置为只有 1 首
+      expect(store.queue).toHaveLength(1);
+      expect(store.queue[0].name).toBe('告白气球');
+      expect(store.qIndex).toBe(0);
+    });
+  });
 });

@@ -78,7 +78,7 @@ export function extractPaletteFromPixels(
 
   for (let i = 0; i < pixels.length; i += 4) {
     const a = pixels[i + 3];
-    if (a < 128) continue; // 忽略高透明度像素
+    if (a < 128) continue; // ignore high transparency pixels
 
     const r = pixels[i];
     const g = pixels[i + 1];

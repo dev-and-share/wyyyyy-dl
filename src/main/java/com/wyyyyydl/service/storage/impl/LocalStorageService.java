@@ -27,6 +27,15 @@ public class LocalStorageService implements IStorageService {
     @Value("${download.path:/media/music/}")
     private String downloadPath;
 
+    @Value("${host.download.path:}")
+    private String hostDownloadPath;
+
+    @Value("${external.library.host.path:}")
+    private String externalLibraryHostPath;
+
+    @Value("${external.library.container.path:/media/external}")
+    private String externalLibraryContainerPath;
+
     @Override
     public boolean isCloudStorage() {
         return false;
@@ -120,10 +129,67 @@ public class LocalStorageService implements IStorageService {
     }
 
     private File resolveLocalFile(String path) {
-        File file = new File(path);
-        if (file.isAbsolute()) {
-            return file;
+        if (StringUtils.isBlank(path)) {
+            return new File("");
         }
-        return new File(downloadPath, path);
+        String p = safeUrlDecode(path);
+
+        // 1. 如果路径包含 externalLibraryContainerPath 的子串截断
+        if (StringUtils.isNotBlank(externalLibraryContainerPath)) {
+            int extIdx = p.indexOf(externalLibraryContainerPath);
+            if (extIdx > 0) {
+                p = p.substring(extIdx);
+            }
+        }
+
+        // 2. 宿主机下载目录重映射: 截去宿主机下载目录前缀以获取相对路径
+        if (StringUtils.isNotBlank(hostDownloadPath) && p.startsWith(hostDownloadPath)) {
+            String sub = p.substring(hostDownloadPath.length());
+            if (sub.startsWith("/") || sub.startsWith("\\")) {
+                sub = sub.substring(1);
+            }
+            p = sub;
+        }
+
+        // 3. 宿主机外部曲库目录重映射: host -> container
+        p = remapPathInsideRoot(p, externalLibraryHostPath, externalLibraryContainerPath);
+
+        // 4. 绝对路径优先检查
+        File directFile = new File(p);
+        if (directFile.isAbsolute() && directFile.exists()) {
+            return directFile;
+        }
+
+        // 5. 相对路径与 downloadPath 拼接
+        File relativeFile = new File(downloadPath, p);
+        if (relativeFile.exists()) {
+            return relativeFile;
+        }
+
+        return directFile.isAbsolute() ? directFile : relativeFile;
+    }
+
+    private String safeUrlDecode(String path) {
+        if (path == null) return null;
+        try {
+            if (path.contains("%")) {
+                return java.net.URLDecoder.decode(path, StandardCharsets.UTF_8.name());
+            }
+        } catch (Exception ignored) {}
+        return path;
+    }
+
+    private String remapPathInsideRoot(String path, String sourceRoot, String targetRoot) {
+        if (path == null || StringUtils.isBlank(sourceRoot) || StringUtils.isBlank(targetRoot)) {
+            return path;
+        }
+        if (path.startsWith(sourceRoot)) {
+            String sub = path.substring(sourceRoot.length());
+            if (sub.startsWith("/") || sub.startsWith("\\")) {
+                sub = sub.substring(1);
+            }
+            return new File(targetRoot, sub).getPath();
+        }
+        return path;
     }
 }

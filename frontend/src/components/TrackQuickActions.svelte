@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '../lib/api';
+  import { t } from '../lib/i18n';
   import PlayerIcon from './PlayerIcon.svelte';
 
   let {
@@ -81,7 +82,7 @@
   <!-- 移动端专属（md:hidden）：竖立排列，大拇指舒适热区 -->
   <div class="flex flex-col items-center gap-2 select-none pointer-events-auto">
     {#if track?.isLocal}
-      <span class="audio-source-badge icon-only badge-server shadow-sm" title="🖥️ 本地磁盘">🖥️</span>
+      <span class="audio-source-badge icon-only badge-server shadow-sm" title={t('track.localDisk')}>🖥️</span>
     {/if}
 
     <!-- 喜欢 -->
@@ -89,7 +90,7 @@
       type="button"
       class="flex flex-col items-center justify-center min-w-[42px] h-[46px] px-1 rounded-2xl bg-transparent hover:bg-black/5 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:scale-105 active:scale-92 transition-all cursor-pointer"
       onclick={onToggleLike}
-      title={redCount ? `喜欢（${redCount}人收藏）` : '喜欢'}
+      title={redCount ? t('track.likeWithCount', { count: redCount }) : t('player.like')}
     >
       <PlayerIcon name="heart" liked={isLiked} size={18} />
       {#if statsLoading}
@@ -107,7 +108,7 @@
         type="button"
         class="flex flex-col items-center justify-center min-w-[42px] h-[46px] px-1 rounded-2xl bg-transparent hover:bg-black/5 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:scale-105 active:scale-92 transition-all cursor-pointer"
         onclick={onOpenComments}
-        title={commentCount ? `查看评论（共 ${commentCount} 条）` : '查看评论'}
+        title={commentCount ? t('comment.viewWithCount', { count: commentCount }) : t('comment.view')}
       >
         <span class="text-sm leading-none">💬</span>
         {#if statsLoading}
@@ -125,7 +126,7 @@
       type="button"
       class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-transparent hover:bg-black/5 dark:bg-white/10 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-emerald-400 hover:scale-105 active:scale-92 transition-all cursor-pointer"
       onclick={onAddToPlaylist}
-      title="收藏到歌单"
+      title={t('playlist.collectTo')}
     >
       <PlayerIcon name="plus" size={17} />
     </button>
@@ -134,7 +135,7 @@
   <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排 -->
   <div class="flex items-center justify-center gap-2.5 max-w-full">
     {#if track?.isLocal}
-      <span class="audio-source-badge icon-only badge-server shadow-none" title="🖥️ 本地磁盘">🖥️</span>
+      <span class="audio-source-badge icon-only badge-server shadow-none" title={t('track.localDisk')}>🖥️</span>
     {/if}
 
     <!-- 喜欢 -->
@@ -142,7 +143,7 @@
       type="button"
       class="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all duration-300 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-main)] {hasValidId ? 'min-w-[72px]' : ''}"
       onclick={onToggleLike}
-      title={redCount ? `喜欢（${redCount}人收藏）` : '喜欢'}
+      title={redCount ? t('track.likeWithCount', { count: redCount }) : t('player.like')}
     >
       <PlayerIcon name="heart" liked={isLiked} size={17} />
       {#if hasValidId}
@@ -164,7 +165,7 @@
         type="button"
         class="flex items-center justify-center gap-1.5 px-3 h-8 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all duration-300 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-main)] min-w-[72px]"
         onclick={onOpenComments}
-        title={commentCount ? `查看评论（共 ${commentCount} 条）` : '查看评论'}
+        title={commentCount ? t('comment.viewWithCount', { count: commentCount }) : t('comment.view')}
       >
         <span class="text-xs leading-none">💬</span>
         <div class="min-w-[30px] flex items-center justify-center">
@@ -184,7 +185,7 @@
       type="button"
       class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-secondary)] hover:text-emerald-400 hover:scale-105 active:scale-95 transition-all cursor-pointer"
       onclick={onAddToPlaylist}
-      title="收藏到歌单"
+      title={t('playlist.collectTo')}
     >
       <PlayerIcon name="plus" size={17} />
     </button>

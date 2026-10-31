@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     value = $bindable(''),
-    placeholder = '搜索...',
+    placeholder = '',
     historyKey = '',
     showHistory = true,
     type = 'search',
-    clearTitle = '清空',
+    clearTitle = '',
     debounceMs = 0,
     disabled = false,
     className = '',
@@ -33,6 +34,7 @@
 
   let historyList = $state<string[]>([]);
   let debounceTimer: any = null;
+  let cleanPlaceholder = $derived(placeholder.replace(/^🔍\s*/, ''));
 
   function loadHistory() {
     if (!historyKey || typeof localStorage === 'undefined') return;
@@ -113,7 +115,7 @@
     <input
       {type}
       enterkeyhint="search"
-      {placeholder}
+      placeholder={cleanPlaceholder || (t('common.search') + '...')}
       {disabled}
       class="w-full pl-8 pr-8 py-2 text-xs md:text-sm rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-red-500/70 dark:focus:border-red-500/70 transition-all {inputClassName}"
       value={value}
@@ -133,8 +135,8 @@
         type="button"
         class="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer p-0 bg-transparent border-none"
         onclick={handleClear}
-        title={clearTitle}
-        aria-label={clearTitle}
+        title={clearTitle || t('common.clear')}
+        aria-label={clearTitle || t('common.clear')}
       >
         ✕
       </button>
@@ -144,7 +146,7 @@
   <!-- 🕒 搜索历史小胶囊列表 -->
   {#if showHistory && historyKey && historyList.length > 0}
     <div class="flex items-center flex-wrap gap-1.5 mt-2 text-xs">
-      <span class="text-[var(--text-muted)] text-[11px] shrink-0">🕒 搜索历史:</span>
+      <span class="text-[var(--text-muted)] text-[11px] shrink-0">🕒 {t('search.history')}:</span>
       {#each historyList as item}
         <div
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-black/5 dark:bg-white/10 text-[var(--text-secondary)] border border-black/5 dark:border-white/10 transition-all hover:bg-red-500/10 hover:text-red-400 group"
@@ -167,7 +169,7 @@
               e.stopPropagation();
               removeHistory(item);
             }}
-            title="删除此条历史"
+            title={t('search.deleteHistory')}
           >
             ✕
           </button>
@@ -178,7 +180,7 @@
         class="text-[11px] text-[var(--text-muted)] hover:text-red-400 ml-auto cursor-pointer p-0 bg-transparent border-none transition-colors"
         onclick={clearHistory}
       >
-        清空
+        {t('common.clear')}
       </button>
     </div>
   {/if}

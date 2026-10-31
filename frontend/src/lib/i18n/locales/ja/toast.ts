@@ -1,0 +1,16 @@
+export default {
+  'toast.playlist.created': 'プレイリストを作成しました',
+  'toast.playlist.forked': 'ローカルライブラリに Fork しました',
+  'toast.playlist.removed': 'プレイリストから削除しました',
+  'toast.playlist.added': 'プレイリストに追加しました',
+  'toast.download.added': 'ダウンロードキューに追加しました',
+  'toast.copy.success': 'クリップボードにコピーしました',
+  'toast.copy.failed': 'コピーに失敗しました。手動でコピーしてください',
+  'toast.cache.cleared': 'キャッシュをクリアしました',
+  'toast.peq.reset': 'イコライザーをリセットしました',
+  'toast.locatingFile': '🚀 ローカルファイルを検索中...',
+  'toast.update.available': '新しいバージョンが見つかりました。バックグラウンドで更新中...',
+  'toast.like.removed': 'お気に入りを解除しました',
+  'toast.like.added': '「{name}」をお気に入りに追加しました',
+  'toast.like.failed': 'お気に入り状態の更新に失敗しました',
+} as const;

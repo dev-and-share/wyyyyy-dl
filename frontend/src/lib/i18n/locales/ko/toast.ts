@@ -1,0 +1,16 @@
+export default {
+  'toast.playlist.created': '재생목록이 생성되었습니다',
+  'toast.playlist.forked': '재생목록을 로컬 라이브러리로 가져왔습니다',
+  'toast.playlist.removed': '재생목록에서 제거되었습니다',
+  'toast.playlist.added': '재생목록에 추가되었습니다',
+  'toast.download.added': '다운로드 대기열에 추가되었습니다',
+  'toast.copy.success': '클립보드에 복사되었습니다',
+  'toast.copy.failed': '복사 실패, 직접 복사해 주세요',
+  'toast.cache.cleared': '캐시가 정리되었습니다',
+  'toast.peq.reset': '이퀄라이저가 기본값으로 초기화되었습니다',
+  'toast.locatingFile': '🚀 로컬 파일을 찾는 중...',
+  'toast.update.available': '새 버전 발견, 백그라운드에서 다운로드 중...',
+  'toast.like.removed': '좋아요가 취소되었습니다',
+  'toast.like.added': '「{name}」을(를) 즐겨찾기에 추가했습니다',
+  'toast.like.failed': '좋아요 상태 업데이트에 실패했습니다',
+} as const;

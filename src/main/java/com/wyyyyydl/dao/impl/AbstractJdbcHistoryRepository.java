@@ -616,16 +616,73 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
             for (List<Long> chunk : Lists.partition(songIds, 500)) {
                 List<DownloadHistoryItem> found = getRecordsBySongIds(chunk);
                 for (DownloadHistoryItem item : found) {
-                    hitMap.put(item.getSongId(), item);
+                    if (Boolean.TRUE.equals(item.getFileExists()) && item.getFileSize() != null && item.getFileSize() > 0) {
+                        hitMap.put(item.getSongId(), item);
+                    }
                 }
             }
         }
 
+        List<TrackDTO> unmatched = new ArrayList<>();
         for (TrackDTO track : tracks) {
             if (track == null) continue;
             DownloadHistoryItem item = hitMap.get(track.getId());
-            if (item != null && Boolean.TRUE.equals(item.getFileExists())) {
+            if (item != null) {
                 track.setIsLocal(true);
+            } else if (track.getName() != null && !track.getName().trim().isEmpty()) {
+                unmatched.add(track);
+            }
+        }
+
+        // 🚀 智能跨版本/跨 ID 兜底匹配：按 (歌名 + 歌手) 比对已存在且有效的本地音轨
+        if (!unmatched.isEmpty()) {
+            Set<String> cleanNames = unmatched.stream()
+                    .map(t -> t.getName().trim())
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+
+            if (!cleanNames.isEmpty()) {
+                List<String> nameList = new ArrayList<>(cleanNames);
+                for (List<String> nameChunk : Lists.partition(nameList, 200)) {
+                    String inSql = nameChunk.stream().map(n -> "?").collect(Collectors.joining(","));
+                    String sql = "SELECT * FROM download_history WHERE song_name IN (" + inSql + ") AND status = 'SUCCESS' AND file_size > 0 ORDER BY id DESC";
+                    try (Connection conn = getConnection();
+                         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                        for (int i = 0; i < nameChunk.size(); i++) {
+                            pstmt.setString(i + 1, nameChunk.get(i));
+                        }
+                        List<DownloadHistoryItem> candidateItems = new ArrayList<>();
+                        try (ResultSet rs = pstmt.executeQuery()) {
+                            while (rs.next()) {
+                                DownloadHistoryItem candidate = mapItemFromRs(rs);
+                                if (Boolean.TRUE.equals(candidate.getFileExists())) {
+                                    candidateItems.add(candidate);
+                                }
+                            }
+                        }
+                        for (TrackDTO t : unmatched) {
+                            if (Boolean.TRUE.equals(t.getIsLocal())) continue;
+                            String tName = t.getName().trim();
+                            String tNormName = normalizeTrackName(tName);
+                            String tArtist = t.getArtists() != null ? t.getArtists().trim() : "";
+
+                            for (DownloadHistoryItem cand : candidateItems) {
+                                String candName = cand.getSongName() != null ? cand.getSongName().trim() : "";
+                                String candNormName = normalizeTrackName(candName);
+                                if (tNormName.equals(candNormName)) {
+                                    String candArtist = cand.getArtist() != null ? cand.getArtist().trim() : "";
+                                    if (isArtistMatch(tArtist, candArtist)
+                                            || ((tArtist.isEmpty() || candArtist.isEmpty()) && tName.equalsIgnoreCase(candName) && tNormName.length() >= 4)) {
+                                        t.setIsLocal(true);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.debug("批量按歌名匹配本地音轨异常", e);
+                    }
+                }
             }
         }
     }
@@ -1099,7 +1156,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
     @Override
     public Set<Long> getAllDownloadedSongIds() {
         Set<Long> ids = new HashSet<>();
-        String sql = "SELECT DISTINCT song_id FROM download_history WHERE song_id IS NOT NULL";
+        String sql = "SELECT DISTINCT song_id FROM download_history WHERE song_id IS NOT NULL AND status = 'SUCCESS' AND file_size > 0";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -1115,7 +1172,8 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
     @Override
     public boolean isSongDownloaded(Long songId) {
         if (songId == null || songId <= 0) return false;
-        return findLocalFileBySongId(songId) != null;
+        DownloadHistoryItem item = findLocalFileBySongId(songId);
+        return item != null && Boolean.TRUE.equals(item.getFileExists()) && item.getFileSize() != null && item.getFileSize() > 0;
     }
 
     @Override

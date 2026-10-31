@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '../lib/api';
+  import { t } from '../lib/i18n';
   import SlotBtn from './SlotBtn.svelte';
   import FolderNode from './FolderNode.svelte';
   import { openSheet } from '../lib/ui.svelte';
@@ -26,7 +27,7 @@
   let loaded = $state(false);
   let loading = $state(false);
 
-  // 监听全局展开/折叠信号
+  // Listen to global expand/collapse signals
   $effect(() => {
     if (!expandSignal || !item.directory) return;
     if (expandSignal > 0) {
@@ -102,22 +103,22 @@
 
     if (item.directory) {
       if (item.trackCount > 0) {
-        actions.push({ label: `▶ 连播此文件夹 (${item.trackCount}首)`, style: 'primary', onclick: () => handlePlay() });
+        actions.push({ label: t('folder.playFolderWithCount', { count: item.trackCount }), style: 'primary', onclick: () => handlePlay() });
       }
       if (item.hostPath || item.path) {
-        actions.push({ label: '📂 定位', onclick: () => handleReveal() });
+        actions.push({ label: t('common.reveal'), onclick: () => handleReveal() });
       }
-      actions.push({ label: '🔄 刷新', onclick: () => { loaded = false; toggle(); } });
-      actions.push({ label: '🚫 忽略此文件夹 (.musicignore)', style: 'danger', onclick: () => { if (confirm('忽略 ' + item.name + '?')) alert('忽略'); } });
-      actions.push({ label: '🗑️ 彻底删除 (物理删除)', style: 'danger', onclick: () => { if (confirm('彻底删除 ' + item.name + '?')) alert('删除'); } });
+      actions.push({ label: `🔄 ${t('common.refresh')}`, onclick: () => { loaded = false; toggle(); } });
+      actions.push({ label: t('folder.ignoreFolder'), style: 'danger', onclick: () => { if (confirm('Ignore ' + item.name + '?')) alert('Ignored'); } });
+      actions.push({ label: t('folder.physicalDelete'), style: 'danger', onclick: () => { if (confirm('Delete ' + item.name + '?')) alert('Deleted'); } });
     } else {
-      actions.push({ label: '▶ 播放', style: 'primary', onclick: () => handlePlay() });
+      actions.push({ label: `▶ ${t('player.play')}`, style: 'primary', onclick: () => handlePlay() });
       if (item.hostPath || item.path) {
-        actions.push({ label: '📂 定位', onclick: () => handleReveal() });
+        actions.push({ label: t('common.reveal'), onclick: () => handleReveal() });
       }
     }
 
-    actions.push({ label: '取消', style: 'cancel', onclick: () => {} });
+    actions.push({ label: t('common.cancel'), style: 'cancel', onclick: () => {} });
 
     openSheet({
       title: (item.directory ? '📁 ' : '🎵 ') + (item.songName || item.name),
@@ -137,7 +138,7 @@
     class="group relative flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors cursor-pointer select-none min-w-0 {expanded ? 'bg-black/[0.03] dark:bg-white/[0.03]' : ''}"
     onclick={handleRowClick}
   >
-    <!-- 左侧主信息区域：图标 + 标题 + 补充信息 -->
+    <!-- Left Info Area -->
     <div class="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden pr-1">
       {#if item.directory}
         <span
@@ -152,7 +153,7 @@
         <span class="text-xs shrink-0 text-sky-400 leading-none">🎵</span>
       {/if}
 
-      <!-- 文件夹/歌曲名：独占剩余宽度，支持完整 tooltip -->
+      <!-- Folder / Track Name -->
       <span
         class="flex-1 min-w-0 text-xs truncate {item.directory ? 'font-semibold text-[var(--text-main)]' : 'font-normal text-[var(--text-main)]'}"
         title={item.songName || item.name}
@@ -171,7 +172,7 @@
 
       {#if item.directory && item.trackCount !== undefined && item.trackCount !== null}
         <span class="bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded-full text-[10px] text-[var(--text-muted)] shrink-0 tabular-nums">
-          {item.trackCount}首
+          {t('playlist.trackCount', { count: item.trackCount })}
         </span>
       {/if}
 
@@ -182,26 +183,26 @@
       {/if}
     </div>
 
-    <!-- 移动端常驻操作按钮 (触屏设备) -->
+    <!-- Mobile Action Button -->
     <div class="inline-flex md:hidden shrink-0">
       <button
         type="button"
         class="w-6 h-6 rounded-md flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10"
         onclick={(e) => { e.stopPropagation(); showOptions(); }}
-        title="更多操作"
+        title={t('common.moreActions')}
       >
         ···
       </button>
     </div>
 
-    <!-- 桌面端悬浮微型工具栏：默认绝对定位右浮动且透明，不提前霸占文字宽度；hover 时平滑显现 -->
+    <!-- Desktop Toolbar -->
     <div class="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 items-center gap-1 pl-6 py-0.5 pr-1 bg-gradient-to-l from-[var(--card-bg)] via-[var(--card-bg)]/95 to-transparent transition-opacity duration-150 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
       {#if item.directory}
         {#if item.trackCount > 0}
           <button
             type="button"
             class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] bg-sky-500/15 hover:bg-sky-500 text-sky-400 hover:text-white border border-sky-500/30 transition-all active:scale-95 cursor-pointer shadow-sm"
-            title="连播整目录 ({item.trackCount}首)"
+            title={t('folder.playFolderTooltip', { count: item.trackCount })}
             onclick={(e) => handlePlay(e)}
           >
             ▶
@@ -211,7 +212,7 @@
           <button
             type="button"
             class="w-6 h-6 rounded-md flex items-center justify-center text-xs bg-black/5 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-subtle)] transition-all active:scale-95 cursor-pointer shadow-sm"
-            title="定位文件夹"
+            title={t('folder.revealFolderTooltip')}
             onclick={(e) => handleReveal(e)}
           >
             📁
@@ -220,7 +221,7 @@
         <button
           type="button"
           class="w-6 h-6 rounded-md flex items-center justify-center text-xs bg-black/5 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-subtle)] transition-all active:scale-95 cursor-pointer shadow-sm"
-          title="刷新目录"
+          title={t('folder.refreshFolderTooltip')}
           onclick={(e) => { e.stopPropagation(); loaded = false; toggle(); }}
         >
           🔄
@@ -228,7 +229,7 @@
         <button
           type="button"
           class="w-6 h-6 rounded-md flex items-center justify-center text-xs bg-black/5 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-subtle)] transition-all active:scale-95 cursor-pointer shadow-sm"
-          title="更多选项"
+          title={t('common.moreActions')}
           onclick={(e) => { e.stopPropagation(); showOptions(); }}
         >
           ···
@@ -237,7 +238,7 @@
         <button
           type="button"
           class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] bg-sky-500/15 hover:bg-sky-500 text-sky-400 hover:text-white border border-sky-500/30 transition-all active:scale-95 cursor-pointer shadow-sm"
-          title="播放歌曲"
+          title={t('folder.playTrackTooltip')}
           onclick={(e) => handlePlay(e)}
         >
           ▶
@@ -246,7 +247,7 @@
           <button
             type="button"
             class="w-6 h-6 rounded-md flex items-center justify-center text-xs bg-black/5 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-subtle)] transition-all active:scale-95 cursor-pointer shadow-sm"
-            title="定位文件"
+            title={t('folder.revealFileTooltip')}
             onclick={(e) => handleReveal(e)}
           >
             📁
@@ -255,7 +256,7 @@
         <button
           type="button"
           class="w-6 h-6 rounded-md flex items-center justify-center text-xs bg-black/5 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/20 text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-subtle)] transition-all active:scale-95 cursor-pointer shadow-sm"
-          title="更多选项"
+          title={t('common.moreActions')}
           onclick={(e) => { e.stopPropagation(); showOptions(); }}
         >
           ···
@@ -268,10 +269,10 @@
     <div>
       {#if loading}
         <div class="py-1.5 px-3 text-[var(--text-muted)] text-xs flex items-center gap-1.5">
-          <span class="animate-spin text-[10px]">⏳</span> 加载中...
+          <span class="animate-spin text-[10px]">⏳</span> {t('common.loading')}
         </div>
       {:else if children.length === 0}
-        <div class="py-1 px-3 text-[var(--text-muted)] text-[11px]">(空)</div>
+        <div class="py-1 px-3 text-[var(--text-muted)] text-[11px]">{t('folder.empty')}</div>
       {:else}
         {#each children as child}
           <FolderNode item={child} level={level + 1} {expandSignal} {onPlayFolder} {onPlaySingle} {onReveal} />

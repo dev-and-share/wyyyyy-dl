@@ -44,7 +44,27 @@ export function toggleSidebarCollapse(): void {
   } catch {}
 }
 
+export function scrollToPageTop(): void {
+  if (typeof window !== 'undefined') {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.dispatchEvent(new CustomEvent('wyyyy:scroll-list-top'));
+  }
+  const mainEl = typeof document !== 'undefined' ? document.querySelector('.app-main-container') : null;
+  if (mainEl) {
+    mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  try {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(10);
+    }
+  } catch {}
+}
+
 export function switchTab(n: ActiveTab): void {
+  if (routerState.tab === n) {
+    scrollToPageTop();
+    return;
+  }
   routerState.tab = n;
   if (n === 'playlist' && routerState.playlistId) {
     history.pushState(null, '', `#playlist?id=${routerState.playlistId}`);
