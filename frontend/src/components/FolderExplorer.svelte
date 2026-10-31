@@ -180,7 +180,7 @@
   {/if}
 
   <!-- Recursive Tree List -->
-  <div class="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)] min-w-0">
+  <div class="scrollable-list border border-[var(--border-subtle)] rounded-xl bg-[var(--card-bg)] min-w-0">
     {#each tree.filter((t: any) => !filterKw || matchesKeyword((t.songName || t.name || '') + ' ' + (t.artist || '') + ' ' + t.path, filterKw)) as item}
       <FolderNode {item} level={0} {expandSignal} onPlayFolder={playFolder} onPlaySingle={playSingle} onReveal={revealItem} />
     {:else}

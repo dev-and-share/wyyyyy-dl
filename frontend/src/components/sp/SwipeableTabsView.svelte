@@ -18,9 +18,22 @@
   }: Props = $props();
 
   let viewportEl = $state<HTMLDivElement | null>(null);
+  let trackEl = $state<HTMLDivElement | null>(null);
   let isProgrammatic = false;
   let scrollTimeout: any = null;
   let lastSettledIndex = -1;
+  let viewportHeight = $state<number | null>(null);
+
+  function updateHeight() {
+    if (!trackEl) return;
+    const activeSlide = trackEl.children[activeIndex] as HTMLElement | undefined;
+    if (activeSlide) {
+      const h = Math.max(activeSlide.scrollHeight || 0, activeSlide.offsetHeight || 0);
+      if (h > 0) {
+        viewportHeight = h;
+      }
+    }
+  }
 
   function handleScroll() {
     if (isProgrammatic || !viewportEl) return;
@@ -52,6 +65,17 @@
         lastSettledIndex = target;
       }, 350);
     }
+    // Update container height to match active slide and prevent giant empty space
+    tick().then(() => {
+      updateHeight();
+      if (typeof window !== 'undefined' && viewportEl) {
+        const rect = viewportEl.getBoundingClientRect();
+        if (rect.top < -30) {
+          const scrollTarget = window.scrollY + rect.top - 60;
+          window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+        }
+      }
+    });
   });
 
   onMount(() => {
@@ -60,17 +84,30 @@
         viewportEl.scrollLeft = activeIndex * viewportEl.clientWidth;
         lastSettledIndex = activeIndex;
       }
+      updateHeight();
     });
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && trackEl) {
+      resizeObserver = new ResizeObserver(() => {
+        updateHeight();
+      });
+      Array.from(trackEl.children).forEach((child) => {
+        resizeObserver?.observe(child);
+      });
+    }
 
     const onResize = () => {
       if (viewportEl && viewportEl.clientWidth > 0) {
         viewportEl.scrollTo({ left: activeIndex * viewportEl.clientWidth, behavior: 'auto' });
       }
+      updateHeight();
     };
     window.addEventListener('resize', onResize, { passive: true });
     return () => {
       clearTimeout(scrollTimeout);
       window.removeEventListener('resize', onResize);
+      resizeObserver?.disconnect();
     };
   });
 </script>
@@ -80,9 +117,10 @@
   role="region"
   aria-label="Swipeable tab view"
   class="swipeable-tabs-viewport {disabled ? 'overflow-x-hidden' : 'overflow-x-auto'}"
+  style={viewportHeight ? `height: ${viewportHeight}px;` : ''}
   onscroll={handleScroll}
 >
-  <div class="swipeable-tabs-track">
+  <div bind:this={trackEl} class="swipeable-tabs-track">
     {@render children?.()}
   </div>
 </div>
@@ -97,6 +135,7 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    transition: height 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .swipeable-tabs-viewport::-webkit-scrollbar {
     display: none;

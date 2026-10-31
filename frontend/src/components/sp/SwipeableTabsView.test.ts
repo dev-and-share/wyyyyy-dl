@@ -40,4 +40,18 @@ describe('SwipeableTabsView Component', () => {
     expect(onChange).toHaveBeenCalledWith(1);
     vi.useRealTimers();
   });
+
+  it('handles active tab auto-height updates cleanly without throwing', () => {
+    const { getByRole } = render(SwipeableTabsView, {
+      props: {
+        activeIndex: 1,
+        count: 3,
+        onChange: () => {}
+      }
+    });
+
+    const region = getByRole('region', { name: 'Swipeable tab view' });
+    expect(region).toBeDefined();
+    expect(region.className).toContain('swipeable-tabs-viewport');
+  });
 });
