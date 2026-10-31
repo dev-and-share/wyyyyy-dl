@@ -323,4 +323,6 @@ export default {
   'playlist.noMatchingPlaylists': 'No matching playlists found',
   'playlist.noPlaylistsData': 'No playlist data available',
   'playlist.syncFromCloudBtn': '🔄 Sync from NetEase',
+  'playlist.pullToTopHint': 'Pull down to top',
+  'playlist.releaseToTopHint': 'Release to scroll to top',
 } as const;

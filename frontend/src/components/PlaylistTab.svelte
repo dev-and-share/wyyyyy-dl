@@ -10,6 +10,7 @@
   import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import SwipeableTabsView from './sp/SwipeableTabsView.svelte';
   import { layoutState } from '../lib/layout.svelte';
+  import { scrollToPageTop } from '../lib/router.svelte';
   import { t } from '../lib/i18n';
 
   let {
@@ -46,6 +47,10 @@
   }
 
   function setSubtab(id: 'my' | 'detail' | 'recommend') {
+    if (activeSubtab === id) {
+      scrollToPageTop();
+      return;
+    }
     activeSubtab = id;
     saveAccState();
   }

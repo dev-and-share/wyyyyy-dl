@@ -323,4 +323,6 @@ export default {
   'playlist.noMatchingPlaylists': '일치하는 플레이리스트가 없습니다',
   'playlist.noPlaylistsData': '플레이리스트 데이터가 없습니다',
   'playlist.syncFromCloudBtn': '🔄 NetEase에서 동기화',
+  'playlist.pullToTopHint': '당겨서 맨 위로',
+  'playlist.releaseToTopHint': '놓아서 맨 위로',
 } as const;

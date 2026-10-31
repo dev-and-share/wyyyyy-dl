@@ -30,34 +30,15 @@
   let hasMore = $derived(curPage < totalPages);
 
   let {
-    pid = '',
-    open = $bindable(true),
-    curTrack = null,
-    playing = false,
-    likedSet,
-    downloadedSet = new Set<number>(),
-    onToggleLike,
-    onPlayQueue,
-    onAlbum,
-    onReveal,
-    onSong,
-    onViewPlaylist,
-    onToggle,
-    showToast
+    pid = '', open = $bindable(true), curTrack = null, playing = false, likedSet,
+    downloadedSet = new Set<number>(), onToggleLike, onPlayQueue, onAlbum, onReveal,
+    onSong, onViewPlaylist, onToggle, showToast
   } = $props<{
-    pid?: string;
-    open?: boolean;
-    curTrack?: any;
-    playing?: boolean;
-    likedSet: Set<number>;
-    downloadedSet?: Set<number>;
-    onToggleLike: (id: number, name: string) => void;
-    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
-    onAlbum?: (albumId: string) => void;
-    onReveal?: (item: any) => void;
-    onSong?: (id: string) => void;
-    onViewPlaylist: (id: string, force?: boolean) => void;
-    onToggle?: () => void;
+    pid?: string; open?: boolean; curTrack?: any; playing?: boolean; likedSet: Set<number>;
+    downloadedSet?: Set<number>; onToggleLike: (id: number, name: string) => void;
+    onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void; onAlbum?: (albumId: string) => void;
+    onReveal?: (item: any) => void; onSong?: (id: string) => void;
+    onViewPlaylist: (id: string, force?: boolean) => void; onToggle?: () => void;
     showToast: (m: string, t?: string) => void;
   }>();
 
@@ -70,6 +51,89 @@
   let listContainerEl = $state<HTMLElement | null>(null);
   let sentinelEl = $state<HTMLElement | null>(null);
   let isLoadingNext = $state(false);
+
+  let pullDistance = $state(0);
+  let isPullingAtTop = $state(false);
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let canPullAtTop = false;
+  const PULL_THRESHOLD = 36;
+
+  function triggerScrollToTop() {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    const mainEl = typeof document !== 'undefined' ? document.querySelector('.app-main-container') : null;
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (listContainerEl) {
+      listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    try {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(12);
+      }
+    } catch {}
+  }
+
+  function handleTouchStart(e: TouchEvent) {
+    if (!listContainerEl || e.touches.length !== 1) return;
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+    canPullAtTop = listContainerEl.scrollTop <= 0;
+    isPullingAtTop = false;
+    pullDistance = 0;
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!listContainerEl || !canPullAtTop || e.touches.length !== 1) return;
+    const diffY = e.touches[0].clientY - touchStartY;
+    const diffX = e.touches[0].clientX - touchStartX;
+    if (diffY > 6 && Math.abs(diffY) > Math.abs(diffX) * 1.5) {
+      if (listContainerEl.scrollTop <= 0) {
+        isPullingAtTop = true;
+        pullDistance = Math.min(55, Math.pow(diffY, 0.8));
+      }
+    } else if (diffY < 0) {
+      isPullingAtTop = false;
+      pullDistance = 0;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (isPullingAtTop && pullDistance >= PULL_THRESHOLD) {
+      triggerScrollToTop();
+    }
+    isPullingAtTop = false;
+    pullDistance = 0;
+  }
+
+  function handleWheel(e: WheelEvent) {
+    if (!listContainerEl) return;
+    if (listContainerEl.scrollTop <= 0 && e.deltaY < 0) {
+      if (typeof window !== 'undefined' && window.scrollY > 0) {
+        window.scrollBy({ top: e.deltaY, behavior: 'auto' });
+      } else {
+        const mainEl = typeof document !== 'undefined' ? document.querySelector('.app-main-container') : null;
+        if (mainEl && mainEl.scrollTop > 0) {
+          mainEl.scrollBy({ top: e.deltaY, behavior: 'auto' });
+        }
+      }
+    }
+  }
+
+  onMount(() => {
+    const handleScrollListTop = () => {
+      if (listContainerEl) {
+        listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('wyyyy:scroll-list-top', handleScrollListTop);
+    return () => {
+      window.removeEventListener('wyyyy:scroll-list-top', handleScrollListTop);
+    };
+  });
 
   $effect(() => {
     pidInput = pid;
@@ -284,7 +348,29 @@
         <span>{t('playlist.notFoundSong', { kw: getPlaylistSearchKeyword() })}</span>
       </div>
     {:else}
-      <ul bind:this={listContainerEl} class="data-list scrollable-list" onscroll={handleListScroll}>
+      {#if pullDistance > 0}
+        <div
+          class="flex items-center justify-center py-1 transition-all select-none pointer-events-none"
+          style="transform: translateY({Math.min(8, pullDistance * 0.2)}px);"
+        >
+          <div
+            class="px-3 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 shadow-sm border transition-all duration-150 {pullDistance >= PULL_THRESHOLD ? 'bg-blue-600 text-white border-blue-400/50 scale-105 shadow-blue-500/20' : 'bg-[var(--card-bg)] text-[var(--text-secondary)] border-[var(--border-color)]'}"
+          >
+            <span class="transition-transform duration-150 inline-block {pullDistance >= PULL_THRESHOLD ? '-rotate-180 text-white' : ''}">↓</span>
+            <span>{pullDistance >= PULL_THRESHOLD ? t('playlist.releaseToTopHint') : t('playlist.pullToTopHint')}</span>
+          </div>
+        </div>
+      {/if}
+      <ul
+        bind:this={listContainerEl}
+        class="data-list scrollable-list"
+        style={pullDistance > 0 ? `transform: translateY(${pullDistance * 0.35}px); transition: none;` : 'transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);'}
+        onscroll={handleListScroll}
+        ontouchstart={handleTouchStart}
+        ontouchmove={handleTouchMove}
+        ontouchend={handleTouchEnd}
+        onwheel={handleWheel}
+      >
         {#each paged as trackItem, i}
         {@const idx = i + 1}
         {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}

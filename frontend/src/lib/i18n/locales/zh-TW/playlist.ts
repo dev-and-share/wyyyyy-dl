@@ -323,4 +323,6 @@ export default {
   'playlist.noMatchingPlaylists': '沒有找到符合的播放清單',
   'playlist.noPlaylistsData': '暫無播放清單資料',
   'playlist.syncFromCloudBtn': '🔄 從網易雲同步',
+  'playlist.pullToTopHint': '下拉回到頂部',
+  'playlist.releaseToTopHint': '鬆手回到頂部',
 } as const;

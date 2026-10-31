@@ -323,4 +323,6 @@ export default {
   'playlist.noMatchingPlaylists': '一致するプレイリストが見つかりません',
   'playlist.noPlaylistsData': 'プレイリストがありません',
   'playlist.syncFromCloudBtn': '🔄 NetEaseから同期',
+  'playlist.pullToTopHint': '引いて先頭へ戻る',
+  'playlist.releaseToTopHint': '離して先頭へ戻る',
 } as const;

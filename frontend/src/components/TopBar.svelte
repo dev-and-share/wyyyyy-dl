@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../lib/i18n/index.svelte';
+  import { scrollToPageTop } from '../lib/router.svelte';
 
   let {
     tab,
@@ -63,7 +64,17 @@
   <div class="w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer" onclick={onRefresh} title={t('topbar.refresh')}>
+    <div
+      class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer"
+      onclick={() => {
+        if (typeof window !== 'undefined' && window.scrollY > 20) {
+          scrollToPageTop();
+        } else if (onRefresh) {
+          onRefresh();
+        }
+      }}
+      title={t('topbar.refresh')}
+    >
       <span class="text-lg leading-none">🎵</span>
       <span class="font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">{t('topbar.title')}</span>
     </div>

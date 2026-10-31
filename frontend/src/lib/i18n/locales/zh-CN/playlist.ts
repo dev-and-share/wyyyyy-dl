@@ -323,4 +323,6 @@ export default {
   'playlist.noMatchingPlaylists': '没有找到匹配的歌单',
   'playlist.noPlaylistsData': '暂无歌单数据',
   'playlist.syncFromCloudBtn': '🔄 从网易云同步',
+  'playlist.pullToTopHint': '下拉回到顶部',
+  'playlist.releaseToTopHint': '松手回到顶部',
 } as const;
