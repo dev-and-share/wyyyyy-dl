@@ -118,12 +118,11 @@ describe('Service Worker Audio Stream & Range Pass-Through Contracts (sw.js)', (
     for (let i = 0; i < 1000; i++) fullBytes[i] = i % 256;
     const audioBlob = new Blob([fullBytes], { type: 'audio/mpeg' });
 
-    mockCacheMatch.mockResolvedValue(
-      new Response(audioBlob, {
-        status: 200,
-        headers: { 'Content-Type': 'audio/mpeg' }
-      })
-    );
+    mockCacheMatch.mockResolvedValue({
+      status: 200,
+      headers: new Headers({ 'Content-Type': 'audio/mpeg' }),
+      blob: async () => audioBlob
+    });
 
     let capturedPromise: Promise<Response> | null = null;
     fetchListener!({

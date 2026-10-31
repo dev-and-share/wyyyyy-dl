@@ -5,7 +5,7 @@
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
   import { markSongDownloaded } from '../lib/trackStatus.svelte';
   import { resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks } from '../lib/playerHelper';
-  import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
+  import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition, clearMediaSessionPosition, getLastPositionSyncedKey, getCurrentTrackKey } from '../lib/mediaSession';
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
   import { handleTrackPlayback, resetTrackPlayback } from '../lib/pwaCache.svelte';
@@ -93,7 +93,7 @@
     if (!track || !audioEl) return;
     resetIosF3State(audioEl);
     needsReloadOnResume = false;
-    if (resetTime) pendingSeekTime = null;
+    if (resetTime) { pendingSeekTime = null; clearMediaSessionPosition(); }
 
     const existingUrl = track.url;
     if (existingUrl && !isSameAudioSource(audioEl.src, existingUrl)) {
@@ -198,6 +198,7 @@
 
   async function next() {
     resetIosF3State(audioEl);
+    clearMediaSessionPosition();
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
     const nextIdx = playerStore.getNextTrackIndex();
@@ -216,6 +217,7 @@
 
   async function prev() {
     resetIosF3State(audioEl);
+    clearMediaSessionPosition();
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
     playerStore.stepPrev();
@@ -390,7 +392,12 @@
     if (isIosF3Holding()) return;
     const a = e.currentTarget;
     playerStore.curTime = a.currentTime;
-    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
+    if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
+      playerStore.duration = a.duration;
+      if (getLastPositionSyncedKey() !== getCurrentTrackKey() && a.duration > 0) {
+        updateMediaSessionPosition(a);
+      }
+    }
     if (playerStore.curTime > 0) { try { localStorage.setItem('wyyyy_player_time', String(playerStore.curTime)); } catch {} }
     if (parsedLyrics.length > 0 && playerStore.activeTrack) {
       const activeLyric = getActiveLyric(parsedLyrics, a.currentTime);
