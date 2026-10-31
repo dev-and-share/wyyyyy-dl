@@ -29,6 +29,7 @@
   let playlistFilter = $derived(getPlaylistFilter());
 
   let playlistSearchKw = $state('');
+  let showSearch = $state(false);
   let showCreateModal = $state(false);
   let confirmAction = $state<{
     type: 'delete' | 'unsubscribe';
@@ -118,12 +119,11 @@
 
 <!-- Section 1: 我的歌单 -->
 <AccordionCard title={t('myPlaylists.sectionTitle')} bind:open {flat} accent="red" onToggle={onToggle}>
-  <!-- 快捷过滤按钮组与新建快捷入口 -->
-  <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
-    <span class="text-[13px] text-[var(--text-secondary)] font-medium">{t('myPlaylists.quickLoad')}</span>
+  <!-- 快捷过滤按钮组与新建/搜索入口 (整洁紧凑单行设计) -->
+  <div class="flex items-center justify-between gap-1.5 mb-2.5">
     <div class="flex gap-1.5 items-center flex-wrap">
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'created'}
         class:ring-sky-400={playlistFilter === 'created'}
         onclick={() => loadMyPlaylists('created')}
@@ -131,7 +131,7 @@
         {t('myPlaylists.tabCreated')}<span class="hidden sm:inline">{t('myPlaylists.tabCreatedFull')}</span>
       </button>
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-purple-600 to-purple-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-purple-600 to-purple-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'subscribed'}
         class:ring-purple-400={playlistFilter === 'subscribed'}
         onclick={() => loadMyPlaylists('subscribed')}
@@ -139,15 +139,27 @@
         {t('myPlaylists.tabSubscribed')}<span class="hidden sm:inline">{t('myPlaylists.tabSubscribedFull')}</span>
       </button>
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'all'}
         class:ring-slate-400={playlistFilter === 'all'}
         onclick={() => loadMyPlaylists('all')}
       >
         {t('myPlaylists.tabAll')}
       </button>
+    </div>
+
+    <div class="flex items-center gap-1.5 shrink-0">
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-800/50 shadow-sm inline-flex items-center justify-center gap-1 shrink-0 transition-all active:scale-95"
+        type="button"
+        class="btn-secondary rounded-lg px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-color)] bg-black/5 dark:bg-white/5 transition-all active:scale-95 flex items-center gap-1 {showSearch || playlistSearchKw ? '!text-blue-500 !border-blue-500/40 !bg-blue-500/10 font-bold' : ''}"
+        onclick={() => { showSearch = !showSearch; if (!showSearch) playlistSearchKw = ''; }}
+        title={t('common.search')}
+      >
+        <span>🔍</span>
+      </button>
+      <button
+        type="button"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-800/50 shadow-sm inline-flex items-center justify-center gap-1 shrink-0 transition-all active:scale-95"
         onclick={() => showCreateModal = true}
         title={t('playlist.createTitle')}
       >
@@ -156,14 +168,17 @@
     </div>
   </div>
 
-  <!-- 🔍 歌单客户端搜索 / 过滤栏 -->
-  <div class="mb-3">
-    <LocalSearchBox
-      bind:value={playlistSearchKw}
-      placeholder={t('myPlaylists.searchPlaceholder')}
-      historyKey="wyyyy_playlist_search_history"
-    />
-  </div>
+  <!-- 🔍 歌单客户端搜索 / 过滤栏 (点击🔍时才展开) -->
+  {#if showSearch || playlistSearchKw}
+    <div class="mb-2.5">
+      <LocalSearchBox
+        bind:value={playlistSearchKw}
+        placeholder={t('myPlaylists.searchPlaceholder')}
+        historyKey="wyyyy_playlist_search_history"
+        onClear={() => { playlistSearchKw = ''; showSearch = false; }}
+      />
+    </div>
+  {/if}
 
   <ul class="data-list scrollable-list">
     {#each filteredPlaylists as pl, idx}

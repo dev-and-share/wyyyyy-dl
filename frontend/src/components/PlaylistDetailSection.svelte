@@ -43,6 +43,7 @@
   }>();
 
   let pidInput = $state('');
+  let showIdInput = $state(false);
   let showForkModal = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let removingTrack = $state<{ id: string | number; name: string; artist?: string } | null>(null);
@@ -284,23 +285,28 @@
 </script>
 
 <AccordionCard title={t('playlist.sectionDetail')} bind:open flat accent="blue" {onToggle}>
-  <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
-    <input
-      type="text" placeholder={t('playlist.inputIdPlaceholder')} class="flex-1 min-w-0"
-      bind:value={pidInput} disabled={isPlaylistLoading()}
-      onkeydown={(e) => e.key === 'Enter' && !isPlaylistLoading() && onViewPlaylist(pidInput)}
-    />
-    <button
-      class="btn-primary shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[84px] md:min-w-[100px]"
-      disabled={isPlaylistLoading()} onclick={() => onViewPlaylist(pidInput)}
-    >
-      {#if isPlaylistLoading()}
-        <span class="inline-block animate-spin text-xs">⏳</span><span>{t('common.loading')}</span>
-      {:else}
-        <span>{t('playlist.viewDetailBtn')}</span>
+  {#if !playlist || showIdInput}
+    <div class="flex items-center gap-1.5 md:gap-2.5 my-2 w-full">
+      <input
+        type="text" placeholder={t('playlist.inputIdPlaceholder')} class="flex-1 min-w-0"
+        bind:value={pidInput} disabled={isPlaylistLoading()}
+        onkeydown={(e) => e.key === 'Enter' && !isPlaylistLoading() && onViewPlaylist(pidInput)}
+      />
+      <button
+        class="btn-primary shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[84px] md:min-w-[100px]"
+        disabled={isPlaylistLoading()} onclick={() => onViewPlaylist(pidInput)}
+      >
+        {#if isPlaylistLoading()}
+          <span class="inline-block animate-spin text-xs">⏳</span><span>{t('common.loading')}</span>
+        {:else}
+          <span>{t('playlist.viewDetailBtn')}</span>
+        {/if}
+      </button>
+      {#if playlist}
+        <button type="button" class="btn-secondary px-2.5 py-1.5 text-xs rounded-xl cursor-pointer" onclick={() => showIdInput = false} title={t('common.close')}>✕</button>
       {/if}
-    </button>
-  </div>
+    </div>
+  {/if}
 
   {#if isPlaylistLoading() && (!playlist || String(playlist.id) !== pid)}
     <div class="py-8 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm">
@@ -330,6 +336,14 @@
       >
         <span>▶️</span><span>{t('playlist.playAll')}</span>
       </button>
+      <button
+        type="button"
+        class="btn-secondary !text-blue-400 !border-blue-500/30"
+        onclick={() => showIdInput = !showIdInput}
+        title={t('playlist.parseDetail')}
+      >
+        <span>🔗</span><span class="hidden sm:inline">{t('playlist.parseDetail')}</span>
+      </button>
       {#if playlist && !playlist.isCreator}
         <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title={t('playlist.forkTooltip')}>
           <span>📦</span><span>{t('playlist.forkBtn')}</span>
@@ -349,10 +363,7 @@
       </div>
     {:else}
       {#if pullDistance > 0}
-        <div
-          class="flex items-center justify-center py-1 transition-all select-none pointer-events-none"
-          style="transform: translateY({Math.min(8, pullDistance * 0.2)}px);"
-        >
+        <div class="flex items-center justify-center py-1 transition-all select-none pointer-events-none">
           <div
             class="px-3 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 shadow-sm border transition-all duration-150 {pullDistance >= PULL_THRESHOLD ? 'bg-blue-600 text-white border-blue-400/50 scale-105 shadow-blue-500/20' : 'bg-[var(--card-bg)] text-[var(--text-secondary)] border-[var(--border-color)]'}"
           >
@@ -364,7 +375,6 @@
       <ul
         bind:this={listContainerEl}
         class="data-list scrollable-list"
-        style={pullDistance > 0 ? `transform: translateY(${pullDistance * 0.35}px); transition: none;` : 'transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);'}
         onscroll={handleListScroll}
         ontouchstart={handleTouchStart}
         ontouchmove={handleTouchMove}

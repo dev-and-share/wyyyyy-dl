@@ -34,6 +34,7 @@
 
   let historyList = $state<string[]>([]);
   let debounceTimer: any = null;
+  let cleanPlaceholder = $derived(placeholder.replace(/^🔍\s*/, ''));
 
   function loadHistory() {
     if (!historyKey || typeof localStorage === 'undefined') return;
@@ -114,7 +115,7 @@
     <input
       {type}
       enterkeyhint="search"
-      placeholder={placeholder || (t('common.search') + '...')}
+      placeholder={cleanPlaceholder || (t('common.search') + '...')}
       {disabled}
       class="w-full pl-8 pr-8 py-2 text-xs md:text-sm rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-red-500/70 dark:focus:border-red-500/70 transition-all {inputClassName}"
       value={value}
