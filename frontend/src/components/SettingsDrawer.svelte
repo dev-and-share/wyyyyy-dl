@@ -190,15 +190,16 @@
         <span>{t('settings.playerSkin')}</span>
         <span class="text-[11px] text-[var(--text-muted)] font-medium">{t(`player.skin.${skin.current}.name` as any)}</span>
       </div>
-      <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-3 sm:grid-cols-5 gap-1">
+      <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {#each SKIN_LIST as s}
           <button
             type="button"
             data-testid="settings-skin-{s.id}"
-            class="py-2 px-1 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1 whitespace-nowrap {skin.current === s.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            class="py-2 px-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 text-center {skin.current === s.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => skin.set(s.id)}
           >
-            <span>{s.emoji}</span> {t(`player.skin.${s.id}.name` as any)}
+            <span class="shrink-0">{s.emoji}</span>
+            <span class="break-words leading-tight">{t(`player.skin.${s.id}.name` as any)}</span>
           </button>
         {/each}
       </div>
@@ -257,14 +258,14 @@
               <button
                 type="button"
                 data-testid="btn-ios-keepalive-{opt.val}"
-                class="py-2 px-1 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center text-center {iosKeepAliveMin === opt.val ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+                class="py-2 px-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center text-center {iosKeepAliveMin === opt.val ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
                 onclick={() => {
                   iosKeepAliveMin = opt.val;
                   setF3TimeoutMinutes(opt.val);
                   showToast(`${t('settings.iosKeepAliveTitle')}: ${opt.label}`, 'success', 2000);
                 }}
               >
-                {opt.label}
+                <span class="break-words leading-tight">{opt.label}</span>
               </button>
             {/each}
           </div>
