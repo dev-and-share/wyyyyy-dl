@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.wyyyyydl'
-version = '5.2.30'
+version = '5.2.32'
 sourceCompatibility = '21'
 targetCompatibility = '21'
 
