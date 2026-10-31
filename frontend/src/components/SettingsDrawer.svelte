@@ -7,6 +7,7 @@
   import SettingsAccountSection from './settings/SettingsAccountSection.svelte';
   import SettingsMaintenanceSection from './settings/SettingsMaintenanceSection.svelte';
   import SettingsLanguageSection from './settings/SettingsLanguageSection.svelte';
+  import SettingsSleepTimerSection from './settings/SettingsSleepTimerSection.svelte';
   import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
   import { t } from '../lib/i18n';
 
@@ -273,6 +274,9 @@
         </div>
       {/if}
     </section>
+
+    <!-- Section 3.5: Sleep Timer -->
+    <SettingsSleepTimerSection {showToast} />
 
     <!-- Section 4: Mobile Offline Cache -->
     <SettingsCacheSection {showToast} />

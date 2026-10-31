@@ -13,6 +13,7 @@
   import { t } from '../lib/i18n';
   import { platform } from '../lib/platform';
   import { isIosF3Holding, handleIosF3Pause, handleIosF3Resume, resetIosF3State, updateIosF3SavedTime } from '../lib/iosF3KeepAlive';
+  import { sleepTimer } from '../lib/sleepTimer.svelte';
 
   import PlayerBar from './PlayerBar.svelte';
   import PlaylistDrawer from './PlaylistDrawer.svelte';
@@ -38,8 +39,6 @@
     curTrack = playerStore.activeTrack;
     playing = playerStore.playing;
     isOverlayOpen = showDrawer || showLyric || showPeq;
-  });
-  $effect(() => {
     if (audioEl && platform.canAdjustVolume) audioEl.volume = playerStore.vol;
     try { localStorage.setItem('wyyyy_player_vol', String(playerStore.vol)); } catch {}
   });
@@ -143,9 +142,16 @@
     }
   }
 
-  function pauseAudio() {
+  function pauseAudio(isSleepTimer = false) {
     if (!audioEl) return;
     if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
+    if (isSleepTimer) {
+      resetIosF3State(audioEl);
+      playerStore.playing = false;
+      updateMediaSessionPlaybackState(false);
+      audioEl.pause();
+      return;
+    }
     if (platform.isIOS) {
       if (handleIosF3Pause(audioEl, playerStore.activeTrack, playerStore.curTime, playerStore.duration, audioEl.src, () => {
         playerStore.playing = true;
@@ -158,6 +164,11 @@
       needsReloadOnResume = true;
     }
     audioEl.pause();
+  }
+
+  function handleSleepTimerTrigger() {
+    pauseAudio(true);
+    showToast(t('settings.sleepTimerTriggered'), 'info', 4000);
   }
 
   function handleTogglePlay() {
@@ -202,13 +213,11 @@
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
     const nextIdx = playerStore.getNextTrackIndex();
-    if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
-      if (playerStore.autoSkipTrial && (playerStore.activeTrack as any)?.freeTrial === true) {
-        playerStore.playing = false;
-        if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
-        showToast(t('player.noMoreCompleteTracksToPlay'), 'info', 2000);
-        return;
-      }
+    if ((nextIdx < 0 || nextIdx === playerStore.qIndex) && playerStore.autoSkipTrial && (playerStore.activeTrack as any)?.freeTrial === true) {
+      playerStore.playing = false;
+      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
+      showToast(t('player.noMoreCompleteTracksToPlay'), 'info', 2000);
+      return;
     }
     playerStore.stepNext();
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
@@ -255,12 +264,7 @@
   function handleSetQueue(tracks: Track[], optionsOrIdx: number | SetQueueOptions = 0, maybePlaylistId?: string | number | null) {
     resetIosF3State(audioEl);
     if (!tracks || !tracks.length) return;
-    let targetPlaylistId: string | number | null = null;
-    if (typeof optionsOrIdx === 'number') {
-      if (maybePlaylistId !== undefined) targetPlaylistId = maybePlaylistId;
-    } else if (optionsOrIdx && typeof optionsOrIdx === 'object') {
-      targetPlaylistId = optionsOrIdx.playlistId ?? null;
-    }
+    const targetPlaylistId = typeof optionsOrIdx === 'number' ? (maybePlaylistId ?? null) : (optionsOrIdx?.playlistId ?? null);
 
     if (targetPlaylistId != null && playerStore.playlistId && String(playerStore.playlistId) === String(targetPlaylistId) && playerStore.queue.length > 0) {
       showToast(playerStore.playing ? t('player.playingThisPlaylistNow') : t('player.continuePlayingThisPlaylist'), 'info', 1500);
@@ -357,9 +361,12 @@
     };
 
     window.addEventListener('svelte:playFolder', onPlayFolder as EventListener);
+    const onSleepTrigger = () => handleSleepTimerTrigger();
+    window.addEventListener('wyyyy:sleep-timer-trigger', onSleepTrigger);
     return () => {
       window.removeEventListener('beforeunload', () => playerStore.save());
       window.removeEventListener('svelte:playFolder', onPlayFolder as EventListener);
+      window.removeEventListener('wyyyy:sleep-timer-trigger', onSleepTrigger);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   });
@@ -390,13 +397,12 @@
   }}
   ontimeupdate={(e) => {
     if (isIosF3Holding()) return;
+    if (sleepTimer.checkTick(() => handleSleepTimerTrigger())) return;
     const a = e.currentTarget;
     playerStore.curTime = a.currentTime;
     if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) {
       playerStore.duration = a.duration;
-      if (getLastPositionSyncedKey() !== getCurrentTrackKey() && a.duration > 0) {
-        updateMediaSessionPosition(a);
-      }
+      if (getLastPositionSyncedKey() !== getCurrentTrackKey() && a.duration > 0) updateMediaSessionPosition(a);
     }
     if (playerStore.curTime > 0) { try { localStorage.setItem('wyyyy_player_time', String(playerStore.curTime)); } catch {} }
     if (parsedLyrics.length > 0 && playerStore.activeTrack) {
@@ -436,6 +442,11 @@
   }}
   onended={(e) => {
     if (isIosF3Holding()) return;
+    if (sleepTimer.isEndOfTrack()) {
+      sleepTimer.cancelTimer();
+      handleSleepTimerTrigger();
+      return;
+    }
     resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
     if (a.currentTime < 3 && a.duration > 10) {
@@ -455,8 +466,7 @@
   curTime={playerStore.curTime} duration={playerStore.duration} playMode={playerStore.playMode}
   bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next}
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
-  onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
-  onClearQueue={handleClearQueue}
+  onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer} onClearQueue={handleClearQueue}
   {likedSet} onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
 />
 
@@ -464,14 +474,11 @@
 {#if showDrawer}
   <PlaylistDrawer
     queue={playerStore.queue} qIndex={playerStore.qIndex} tasks={taskState.tasks} {likedSet}
-    autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly}
-    downloadedSet={taskState.downloadedSet}
+    autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly} downloadedSet={taskState.downloadedSet}
     onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
-    onClearQueue={handleClearQueue}
-    onRemoveItem={(realIdx) => playerStore.removeItem(realIdx)}
-    onToggleLike={onToggleLike} onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
-    onToggleServerOnly={(val) => playerStore.toggleServerOnly(val)} onToggleOfflineOnly={(val) => playerStore.toggleOfflineOnly(val)}
-    onClearTasks={clearTasks} onShuffle={handleShuffleAction} {onReveal} onClose={() => showDrawer = false}
+    onClearQueue={handleClearQueue} onRemoveItem={(realIdx) => playerStore.removeItem(realIdx)} onToggleLike={onToggleLike}
+    onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)} onToggleServerOnly={(val) => playerStore.toggleServerOnly(val)}
+    onToggleOfflineOnly={(val) => playerStore.toggleOfflineOnly(val)} onClearTasks={clearTasks} onShuffle={handleShuffleAction} {onReveal} onClose={() => showDrawer = false}
   />
 {/if}
 
@@ -479,10 +486,8 @@
 {#if showLyric && playerStore.activeTrack}
   <LyricModal
     track={playerStore.activeTrack} currentTime={playerStore.curTime} duration={playerStore.duration}
-    playing={playerStore.playing} playMode={playerStore.playMode} bind:vol={playerStore.vol}
-    isLiked={likedSet.has(Number(playerStore.activeTrack.id))}
-    onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek}
-    onSeekTime={(t) => applyTargetSeek(t)}
+    playing={playerStore.playing} playMode={playerStore.playMode} bind:vol={playerStore.vol} isLiked={likedSet.has(Number(playerStore.activeTrack.id))}
+    onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek} onSeekTime={(t) => applyTargetSeek(t)}
     onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
     onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer} onClose={() => showLyric = false}
   />
