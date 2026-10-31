@@ -12,7 +12,7 @@
   import type { Track } from '../lib/types';
   import { t } from '../lib/i18n';
   import { platform } from '../lib/platform';
-  import { isIosF3Holding, handleIosF3Pause, handleIosF3Resume, resetIosF3State } from '../lib/iosF3KeepAlive';
+  import { isIosF3Holding, handleIosF3Pause, handleIosF3Resume, resetIosF3State, updateIosF3SavedTime } from '../lib/iosF3KeepAlive';
 
   import PlayerBar from './PlayerBar.svelte';
   import PlaylistDrawer from './PlaylistDrawer.svelte';
@@ -91,6 +91,7 @@
   async function ensurePlay(resetTime = false) {
     const track = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
     if (!track || !audioEl) return;
+    resetIosF3State(audioEl);
     needsReloadOnResume = false;
     if (resetTime) pendingSeekTime = null;
 
@@ -222,13 +223,31 @@
     await ensurePlay(true);
   }
 
+  function applyTargetSeek(targetTime: number) {
+    if (!audioEl) return;
+    if (isIosF3Holding()) {
+      playerStore.curTime = targetTime;
+      updateIosF3SavedTime(targetTime);
+      playerStore.save();
+      return;
+    }
+    audioEl.currentTime = targetTime;
+    playerStore.curTime = audioEl.currentTime;
+    playerStore.save();
+  }
+
   function seek(e: MouseEvent) {
     if (!audioEl || !playerStore.duration) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const p = (e.clientX - rect.left) / rect.width;
-    audioEl.currentTime = p * playerStore.duration;
-    playerStore.curTime = audioEl.currentTime;
-    playerStore.save();
+    applyTargetSeek(p * playerStore.duration);
+  }
+
+  function handleClearQueue() {
+    resetIosF3State(audioEl);
+    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; }
+    playerStore.clearQueue();
+    showToast(t('player.queueCleared'), 'info');
   }
 
   function handleSetQueue(tracks: Track[], optionsOrIdx: number | SetQueueOptions = 0, maybePlaylistId?: string | number | null) {
@@ -382,12 +401,14 @@
     }
   }}
   onloadedmetadata={(e) => {
+    if (isIosF3Holding()) return;
     const a = e.currentTarget as HTMLAudioElement;
     if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
     bindMediaSessionHandlers();
     updateMediaSessionPosition(a);
   }}
   onseeked={(e) => {
+    if (isIosF3Holding()) return;
     const a = e.currentTarget as HTMLAudioElement;
     bindMediaSessionHandlers();
     updateMediaSessionPosition(a);
@@ -428,7 +449,7 @@
   bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next}
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer}
-  onClearQueue={() => { playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info'); }}
+  onClearQueue={handleClearQueue}
   {likedSet} onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
 />
 
@@ -439,7 +460,7 @@
     autoSkipTrial={playerStore.autoSkipTrial} serverOnly={playerStore.serverOnly} offlineOnly={playerStore.offlineOnly}
     downloadedSet={taskState.downloadedSet}
     onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
-    onClearQueue={() => { playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info'); }}
+    onClearQueue={handleClearQueue}
     onRemoveItem={(realIdx) => playerStore.removeItem(realIdx)}
     onToggleLike={onToggleLike} onToggleAutoSkip={(val) => playerStore.toggleAutoSkipTrial(val)}
     onToggleServerOnly={(val) => playerStore.toggleServerOnly(val)} onToggleOfflineOnly={(val) => playerStore.toggleOfflineOnly(val)}
@@ -454,7 +475,7 @@
     playing={playerStore.playing} playMode={playerStore.playMode} bind:vol={playerStore.vol}
     isLiked={likedSet.has(Number(playerStore.activeTrack.id))}
     onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek}
-    onSeekTime={(t) => { if (audioEl) { audioEl.currentTime = t; playerStore.curTime = t; } }}
+    onSeekTime={(t) => applyTargetSeek(t)}
     onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
     onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer} onClose={() => showLyric = false}
   />

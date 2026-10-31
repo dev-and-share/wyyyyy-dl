@@ -241,6 +241,13 @@ export function handleIosF3Resume(
   return true;
 }
 
+/** 在 F3 保活暂停期间同步更新用户拖动进度条的目标断点时间 */
+export function updateIosF3SavedTime(newTime: number): void {
+  if (!isF3Holding) return;
+  savedPauseTime = Math.max(0, savedDuration > 0 ? Math.min(newTime, savedDuration) : newTime);
+  applyTripleInvisibleLock(savedTrack, savedDuration, savedPauseTime);
+}
+
 /** 切歌、清空队列或退出时强制重置保活状态 */
 export function resetIosF3State(audioEl?: HTMLAudioElement | null): void {
   if (f3TimeoutTimer) {
@@ -256,3 +263,4 @@ export function resetIosF3State(audioEl?: HTMLAudioElement | null): void {
     audioEl.loop = false;
   }
 }
+
