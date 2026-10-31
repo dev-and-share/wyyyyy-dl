@@ -435,7 +435,7 @@
     } else { playerStore.playing = false; }
   }}
   onended={(e) => {
-    if (isIosF3Holding() || !playerStore.playing) return;
+    if (isIosF3Holding()) return;
     resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
     if (a.currentTime < 3 && a.duration > 10) {

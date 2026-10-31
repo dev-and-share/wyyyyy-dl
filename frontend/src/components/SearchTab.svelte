@@ -146,11 +146,16 @@
 
   onMount(() => {
     if (currentAlbumId) {
-      const cached = getApiCache('album_' + currentAlbumId);
-      if (cached?.data) {
-        album = cached.data;
+      if (!/^\d+$/.test(currentAlbumId.trim())) {
+        try { localStorage.removeItem(STORAGE_KEY_ALBUM_ID); } catch {}
+        currentAlbumId = '';
       } else {
-        loadAlbum(currentAlbumId).catch(() => {});
+        const cached = getApiCache('album_' + currentAlbumId);
+        if (cached?.data) {
+          album = cached.data;
+        } else {
+          loadAlbum(currentAlbumId, true).catch(() => {});
+        }
       }
     }
     if (kw.trim()) {
@@ -220,10 +225,16 @@
     await playPlaylistTracks(id, name, onPlayQueue, showToast);
   }
 
-  async function loadAlbum(id?: string) {
-    const targetId = id || currentAlbumId;
+  async function loadAlbum(id?: string, silent = false) {
+    const rawTarget = id || currentAlbumId;
+    const targetId = (rawTarget || '').trim();
     if (!targetId) {
-      showToast(t('album.enterId'), 'warning');
+      if (!silent) showToast(t('album.enterId'), 'warning');
+      return;
+    }
+    if (!/^\d+$/.test(targetId)) {
+      try { localStorage.removeItem(STORAGE_KEY_ALBUM_ID); } catch {}
+      currentAlbumId = '';
       return;
     }
     currentAlbumId = targetId;
@@ -246,7 +257,7 @@
       const j = await api.album(targetId);
       albumLoading = false;
       if (j?.code && j.code !== '000000') {
-        showToast(j.msg || t('album.fetchFailed'), 'warning');
+        if (!silent) showToast(j.msg || t('album.fetchFailed'), 'warning');
         return;
       }
       const raw = j?.data || j;
@@ -259,7 +270,7 @@
       setApiCache('album_' + targetId, album);
     } catch (e: any) {
       albumLoading = false;
-      showToast(t('album.fetchFailedWithMsg', { message: e.message }), 'error');
+      if (!silent) showToast(t('album.fetchFailedWithMsg', { message: e.message }), 'error');
     }
   }
 

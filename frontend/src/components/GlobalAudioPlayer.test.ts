@@ -94,4 +94,31 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     expect(isIosF3Holding()).toBe(false);
     expect(audioEl.loop).toBe(false);
   });
+
+  it('automatically advances to the next track when audio ends naturally (even if pause fired first)', async () => {
+    const tracks = [
+      { id: 101, name: '歌曲1', artist: '歌手A', url: '/v3/stream?id=101', isLocal: true },
+      { id: 102, name: '歌曲2', artist: '歌手B', url: '/v3/stream?id=102', isLocal: true }
+    ];
+    playerStore.setQueue(tracks, 0);
+    playerStore.duration = 200;
+    playerStore.curTime = 200;
+    playerStore.playing = true;
+
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=101';
+    Object.defineProperty(audioEl, 'duration', { value: 200, writable: true });
+    Object.defineProperty(audioEl, 'currentTime', { value: 200, writable: true });
+
+    // In WebKit / HTML5, pause fires immediately before ended
+    await fireEvent(audioEl, new Event('pause'));
+    expect(playerStore.playing).toBe(false);
+
+    // ended event fires
+    await fireEvent(audioEl, new Event('ended'));
+
+    // Should advance queue index to 1 (next track)
+    expect(playerStore.qIndex).toBe(1);
+  });
 });

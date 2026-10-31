@@ -57,7 +57,11 @@ public class AnalysisController {
 	}
 
 	@RequestMapping(value = "/album", method = {RequestMethod.GET, RequestMethod.POST})
-    public RespEntity<?> album(@RequestParam(required = true) Long id) {
+    public RespEntity<?> album(@RequestParam(value = "id", required = false) String idStr) {
+		Long id = parseSafeLong(idStr);
+		if (id == null || id <= 0) {
+			return RespEntity.apply(CommonRespInfo.NOT_LEGAL_PARAM, "专辑ID无效");
+		}
 		AlbumAnalysisRespDTO result = analysisService.analyzeAlbum(id);
 		if (result != null && result.getAlbum() != null && result.getAlbum().getSongs() != null) {
 			downloadHistoryDAO.markLocalStatusBatch(result.getAlbum().getSongs());

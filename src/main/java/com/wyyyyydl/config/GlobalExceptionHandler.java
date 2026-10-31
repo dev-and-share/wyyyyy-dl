@@ -31,6 +31,20 @@ public class GlobalExceptionHandler {
     // add other exception handler
     
     /**
+     * 拦截参数类型不匹配异常
+     */
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public RespEntity<String> handleMethodArgumentTypeMismatchException(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException e,
+            HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        log.warn("请求地址'{}', 参数类型不匹配: param={}, val={}", requestUri, e.getName(), e.getValue());
+        RespEntity<String> entity = RespEntity.<String>applyRespCodeMsg(CommonRespInfo.NOT_LEGAL_PARAM);
+        entity.setMsg("参数类型错误: " + e.getName());
+        return entity;
+    }
+
+    /**
      * 拦截非法参数异常
      */
     @ExceptionHandler(IllegalArgumentException.class)

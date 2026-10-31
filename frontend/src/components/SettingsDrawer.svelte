@@ -114,6 +114,7 @@
     <div class="flex items-center gap-2">
       <span class="text-xl leading-none">⚙️</span>
       <h2 class="text-base font-bold text-[var(--text-main)] m-0">{t('settings.title')}</h2>
+      <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--text-muted)]/10 text-[var(--text-muted)] border border-[var(--border-color)] leading-none select-none">v{__APP_VERSION__}</span>
     </div>
     <button
       type="button"

@@ -31,7 +31,7 @@
 
   onMount(() => {
     if (myPlaylists.length === 0) {
-      handleRefresh();
+      loadMyPlaylists().catch(() => {});
     }
   });
 
