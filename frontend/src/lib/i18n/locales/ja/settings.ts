@@ -93,5 +93,13 @@ export default {
   'settings.iosShortcutCopy': '起動URLをコピー',
   'settings.iosShortcutCopied': '起動URLをコピーしました: {url}',
   'settings.iosShortcutDoc': 'ガイドを見る',
+  'settings.iosKeepAliveTitle': 'iOS ロック画面一時停止の維持時間',
+  'settings.iosKeepAliveDesc': '一時停止中に音声ハードウェアを維持して復帰時の無音を防ぎ、タイムアウト後にスリープしてバッテリーを節約します',
+  'settings.iosKeepAliveMin3': '3 分',
+  'settings.iosKeepAliveMin5': '5 分 (推奨)',
+  'settings.iosKeepAliveMin10': '10 分',
+  'settings.iosKeepAliveMin15': '15 分',
+  'settings.iosKeepAliveMin30': '30 分',
+  'settings.iosKeepAliveNever': '無制限 (常時維持)',
   'skin.name.vinyl': 'クラシックレコード',
 } as const;

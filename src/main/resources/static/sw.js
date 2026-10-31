@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wyyyyy-dl-v5.2.7';
+const CACHE_NAME = 'wyyyyy-dl-v5.2.30';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const IMAGE_CACHE_NAME = 'netease-music-image-v1';
 const MAX_IMAGE_CACHE_ITEMS = 2000;
@@ -25,8 +25,7 @@ async function syncAudioCacheIndex() {
         const u = new URL(req.url);
         const songId = u.searchParams.get('id');
         if (songId) newKeys.add(songId);
-        newKeys.add(u.pathname + u.search);
-        newKeys.add(u.pathname);
+        if (u.search) newKeys.add(u.pathname + u.search);
       } catch {}
     }
     cachedAudioKeys = newKeys;
@@ -113,29 +112,38 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
 
+  // 🧪 极简锁屏播放测试页直接放行，零 Service Worker 介入
+  if (requestUrl.pathname === '/minimal-player.html') {
+    return;
+  }
+
   // 🎵 分支 A：区分音视频流 API 请求 (/v3/stream, /v3/history/stream)
   const isAudioStream = requestUrl.origin === location.origin &&
                         (requestUrl.pathname.includes('/v3/stream') || requestUrl.pathname.includes('/v3/history/stream'));
 
   if (isAudioStream) {
-    const hasRange = event.request.headers.has('Range');
-    const songId = requestUrl.searchParams.get('id');
-    const isCachedLocally = (songId && cachedAudioKeys.has(songId)) ||
-                            cachedAudioKeys.has(requestUrl.pathname + requestUrl.search) ||
-                            cachedAudioKeys.has(requestUrl.pathname);
+    const isOnline = typeof self.navigator === 'undefined' || self.navigator.onLine !== false;
 
-    // 🛡️ iOS 关键防御：未在本地离线缓存中的音频流，且带有 Range 续传请求时，
-    // 严禁使用 event.respondWith 拦截！直接 return 放行交由浏览器原生网络栈直连。
-    // 杜绝 iOS 熄屏后台深度节流导致 SW fetch() 挂起，彻底解决音频断流静音、锁屏假走针与播放器卡死。
-    if (hasRange && !isCachedLocally && self.navigator?.onLine !== false) {
+    // 🛡️ 大道至简（Pitfall #08 & #10）：
+    // 在线状态下，所有音频流请求（含初始 GET 与锁屏暂停恢复的 Range 206 续传请求）
+    // 100% 直接 return 放行，完全交由 iOS AVPlayer 原生网络栈 (mediaserverd) 直连服务端，
+    // 仅在断网离线状态 (!isOnline) 下才由 Service Worker 读取离线 Cache 响应。
+    if (isOnline) {
       return;
     }
 
-    // 🎵 音频流处理：优先检查离线 Cache，命中则构造 Range 206 切片响应秒播；未命中回退网络
+    const songId = requestUrl.searchParams.get('id') || requestUrl.searchParams.get('songId');
+    const isCachedLocally = (songId && cachedAudioKeys.has(songId)) ||
+                            cachedAudioKeys.has(requestUrl.pathname + requestUrl.search);
+
+    if (!isCachedLocally) {
+      return;
+    }
+
+    // 🎵 离线缓存音频流处理：优先检查离线 Cache，使用零拷贝 Blob.slice 构造 Range 206 响应
     event.respondWith((async () => {
       try {
         const cache = await caches.open(AUDIO_CACHE_NAME);
-        const songId = requestUrl.searchParams.get('id');
         const canonicalKey = songId ? `/v3/stream?id=${songId}` : null;
 
         let cachedResponse = await cache.match(event.request);
@@ -146,15 +154,15 @@ self.addEventListener('fetch', (event) => {
           cachedResponse = await cache.match(canonicalKey);
         }
 
-        // 🎯 本地缓存命中：支持完整的 Range 206 Partial Content 切片，保障 iOS/Safari 拖拽进度条与离线秒播
+        // 🎯 本地缓存命中：使用零拷贝 Blob.slice 支持完整的 Range 206 Partial Content 切片
         if (cachedResponse) {
           const rangeHeader = event.request.headers.get('Range');
           if (!rangeHeader) {
             return cachedResponse;
           }
 
-          const arrayBuffer = await cachedResponse.arrayBuffer();
-          const total = arrayBuffer.byteLength;
+          const blob = await cachedResponse.blob();
+          const total = blob.size;
           const parts = rangeHeader.replace(/bytes=/, '').split('-');
           const startStr = parts[0];
           const endStr = parts[1];
@@ -169,10 +177,10 @@ self.addEventListener('fetch', (event) => {
           start = Math.max(0, Math.min(start, total - 1));
           end = Math.max(start, Math.min(end, total - 1));
 
-          const chunk = arrayBuffer.slice(start, end + 1);
+          const chunk = blob.slice(start, end + 1);
           const headers = new Headers(cachedResponse.headers);
           headers.set('Content-Range', `bytes ${start}-${end}/${total}`);
-          headers.set('Content-Length', String(chunk.byteLength));
+          headers.set('Content-Length', String(chunk.size));
           headers.set('Accept-Ranges', 'bytes');
           if (!headers.get('Content-Type')) {
             headers.set('Content-Type', 'audio/mpeg');

@@ -295,21 +295,22 @@ public class AnalysisController {
             musicDownloadService.asyncDownloadOnPlay(id, playlistName, albumName, name);
         }
 
-        // 存储层统一流媒体服务：若已归档则直接播放已有媒体，否则播放当前在线音频流
-        if (id != null && id > 0) {
-            com.wyyyyydl.models.dtos.DownloadHistoryItem item = downloadHistoryDAO.findLocalFileBySongId(id);
-            if (item != null && org.apache.commons.lang3.StringUtils.isNotBlank(item.getRelativePath())) {
-                try {
-                    storageService.serveMedia(item.getRelativePath(), request, response);
-                    return;
-                } catch (Exception ignored) {}
-            }
-        }
-
+        // 存储层统一流媒体服务：凡已携带在线源流 url 的 /v3/stream/online 请求，全程保持原在线流通道（仅在在线流异常时回退本地），
+        // 避免 bytes=0-1 初始探测命中本地已写标签文件、后续 bytes=N- 切回在线流（或反之）引发 Content-Range 总长突变导致 iOS AVPlayer 断流
         try {
             storageService.serveOnlineStream(id, url, request, response);
+            return;
         } catch (Exception e) {
-            log.error("在线流媒体服务异常: id={}, url={}, error={}", id, url, e.getMessage());
+            log.warn("在线流媒体服务异常，尝试回退本地归档: id={}, url={}, error={}", id, url, e.getMessage());
+            if (id != null && id > 0) {
+                com.wyyyyydl.models.dtos.DownloadHistoryItem item = downloadHistoryDAO.findLocalFileBySongId(id);
+                if (item != null && org.apache.commons.lang3.StringUtils.isNotBlank(item.getRelativePath())) {
+                    try {
+                        storageService.serveMedia(item.getRelativePath(), request, response);
+                        return;
+                    } catch (Exception ignored) {}
+                }
+            }
             response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
@@ -318,12 +319,17 @@ public class AnalysisController {
      * 📁 本地/在线音频播放/流传输接口（支持 /v3/stream 与 /v3/stream/local 双路由别名）
      * 支持传参：id (网易云歌曲ID)、historyId (下载历史主键ID)、path (物理文件绝对或相对路径)
      */
-    @RequestMapping(value = {"/stream", "/stream/local"}, method = {RequestMethod.GET})
+    @RequestMapping(value = {"/stream", "/stream/local"}, method = {RequestMethod.GET, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public void streamAudio(@RequestParam(value = "id", required = false) String idStr,
                             @RequestParam(value = "historyId", required = false) String historyIdStr,
                             @RequestParam(value = "path", required = false) String path,
                             jakarta.servlet.http.HttpServletRequest request,
                             jakarta.servlet.http.HttpServletResponse response) {
+        com.wyyyyydl.utils.AudioStreamUtil.applyCorsHeaders(response);
+        if (com.wyyyyydl.utils.AudioStreamUtil.isPreflight(request)) {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_OK);
+            return;
+        }
         Long id = parseSafeLong(idStr);
         Long historyId = parseSafeLong(historyIdStr);
 

@@ -29,6 +29,14 @@
   <!-- 💻 PC 桌面侧边栏模式：右上角极简控制图标 (只有 icon，hover 悬停时才有反馈) -->
   <header class="hidden lg:flex absolute right-4 top-4 z-20 items-center justify-end select-none pointer-events-auto wco-no-drag" data-testid="desktop-top-bar">
     <div class="flex items-center gap-1">
+      <a
+        href="/minimal-player.html"
+        class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200 no-underline"
+        title="极简锁屏播放测试"
+      >
+        🧪
+      </a>
+
       <button
         data-testid="btn-toggle-theme"
         class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"
@@ -74,6 +82,14 @@
         onclick={() => onSwitchTab('download-mgr')}>📥 {t('topbar.local')}</button>
     </div>
     <div class="shrink-0 flex items-center gap-1 pr-0.5 ml-auto">
+      <a
+        href="/minimal-player.html"
+        class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200 no-underline"
+        title="极简锁屏播放测试"
+      >
+        🧪
+      </a>
+
       <button
         data-testid="btn-toggle-theme"
         class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"

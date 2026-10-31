@@ -93,5 +93,13 @@ export default {
   'settings.iosShortcutCopy': '复制唤醒 URL',
   'settings.iosShortcutCopied': '已复制唤醒 URL: {url}',
   'settings.iosShortcutDoc': '查看教程',
+  'settings.iosKeepAliveTitle': 'iOS 锁屏暂停保活时长',
+  'settings.iosKeepAliveDesc': '锁屏或耳机暂停时维持硬件活跃防断音，超时后深度休眠节电',
+  'settings.iosKeepAliveMin3': '3 分钟',
+  'settings.iosKeepAliveMin5': '5 分钟 (推荐)',
+  'settings.iosKeepAliveMin10': '10 分钟',
+  'settings.iosKeepAliveMin15': '15 分钟',
+  'settings.iosKeepAliveMin30': '30 分钟',
+  'settings.iosKeepAliveNever': '不限时 (常驻保活)',
   'skin.name.vinyl': '经典黑胶',
 } as const;

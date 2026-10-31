@@ -342,6 +342,7 @@ export function handleTrackPlayback(track: any, isStillPlaying?: () => boolean) 
   if (cachedSongIdSet.has(Number(songId))) return;
 
   autoCacheTimer = setTimeout(async () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     if (isStillPlaying && !isStillPlaying()) return;
     if (currentPlayingTrackId !== songId) return;
     if (track.freeTrial === true) return;

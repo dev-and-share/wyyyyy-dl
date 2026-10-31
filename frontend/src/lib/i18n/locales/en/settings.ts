@@ -93,5 +93,13 @@ export default {
   'settings.iosShortcutCopy': 'Copy Wake URL',
   'settings.iosShortcutCopied': 'Copied wake URL: {url}',
   'settings.iosShortcutDoc': 'View Guide',
+  'settings.iosKeepAliveTitle': 'iOS Lock Screen Keep-Alive Duration',
+  'settings.iosKeepAliveDesc': 'Keeps audio hardware active during pause to prevent silence on resume, entering sleep after timeout to save battery',
+  'settings.iosKeepAliveMin3': '3 mins',
+  'settings.iosKeepAliveMin5': '5 mins (Recommended)',
+  'settings.iosKeepAliveMin10': '10 mins',
+  'settings.iosKeepAliveMin15': '15 mins',
+  'settings.iosKeepAliveMin30': '30 mins',
+  'settings.iosKeepAliveNever': 'No limit (Persistent)',
   'skin.name.vinyl': 'Classic Vinyl',
 } as const;

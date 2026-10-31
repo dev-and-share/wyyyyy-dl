@@ -93,5 +93,13 @@ export default {
   'settings.iosShortcutCopy': '실행 URL 복사',
   'settings.iosShortcutCopied': '실행 URL 복사됨: {url}',
   'settings.iosShortcutDoc': '가이드 보기',
+  'settings.iosKeepAliveTitle': 'iOS 잠금화면 일시정지 유지 시간',
+  'settings.iosKeepAliveDesc': '일시정지 중 오디오 하드웨어를 활성 상태로 유지하여 재개 시 무음을 방지하고, 시간 초과 후 배터리를 절약합니다',
+  'settings.iosKeepAliveMin3': '3분',
+  'settings.iosKeepAliveMin5': '5분 (권장)',
+  'settings.iosKeepAliveMin10': '10분',
+  'settings.iosKeepAliveMin15': '15분',
+  'settings.iosKeepAliveMin30': '30분',
+  'settings.iosKeepAliveNever': '제한 없음 (상시 유지)',
   'skin.name.vinyl': '클래식 바이닐',
 } as const;

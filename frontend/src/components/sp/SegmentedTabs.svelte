@@ -28,7 +28,7 @@
   };
 </script>
 
-<div class="px-2 md:px-0 mb-2.5 w-full">
+<div class="px-2 md:px-0 mb-2.5 w-full select-none">
   <div
     class="flex items-center p-1 bg-[var(--card-header-bg)]/90 backdrop-blur-xl border border-[var(--border-color)] rounded-xl gap-1 shadow-xs"
     role="tablist"

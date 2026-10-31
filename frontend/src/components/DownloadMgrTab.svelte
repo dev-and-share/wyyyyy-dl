@@ -7,7 +7,9 @@
   import SlotBtn from './SlotBtn.svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import BrowserCacheSection from './BrowserCacheSection.svelte';
-  import Modal from './Modal.svelte';
+  import SegmentedTabs, { type SegmentItem } from './sp/SegmentedTabs.svelte';
+  import SwipeableTabsView from './sp/SwipeableTabsView.svelte';
+  import DownloadAuditModal from './DownloadAuditModal.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
   import { t } from '../lib/i18n';
@@ -28,6 +30,17 @@
   }>();
 
   let mobileTab = $state<'folder' | 'history' | 'cache'>('history');
+  const SUBTABS: ('folder' | 'history' | 'cache')[] = ['folder', 'history', 'cache'];
+  let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(mobileTab)));
+
+  function setMobileTab(id: 'folder' | 'history' | 'cache') {
+    mobileTab = id;
+  }
+
+  function handleSwipeIndexChange(newIndex: number) {
+    const nextTab = SUBTABS[newIndex] || 'folder';
+    setMobileTab(nextTab);
+  }
 
   let histKw = $state('');
   let histPage = $state(1);
@@ -243,7 +256,7 @@
     });
   }
 
-  const mobileTabs = $derived([
+  const mobileTabs: SegmentItem[] = $derived([
     { id: 'folder', label: t('download.tabLocal'), icon: '📁', accent: 'red' },
     { id: 'history', label: t('download.tabHistory'), icon: '📥', accent: 'blue' },
     { id: 'cache', label: t('download.tabCache'), icon: '📲', accent: 'emerald' }
@@ -252,27 +265,25 @@
 
 <div class="flex flex-col gap-2.5">
   <!-- Mobile Tab Segmented Switcher -->
-  <div class="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-xs select-none">
-    {#each mobileTabs as tb}
-      <button
-        type="button"
-        class="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold cursor-pointer transition-all border-none {mobileTab === tb.id ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
-        onclick={() => mobileTab = tb.id as any}
-      >
-        <span>{tb.icon}</span>
-        <span>{tb.label}</span>
-      </button>
-    {/each}
-  </div>
+  <SegmentedTabs
+    items={mobileTabs}
+    activeId={mobileTab}
+    onChange={(id) => setMobileTab(id as any)}
+  />
 
-  {#if mobileTab === 'folder'}
-    <AccordionCard title={t('download.accordionLocalTree')} flat open={true} accent="red">
-      <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
-    </AccordionCard>
-  {/if}
+  <SwipeableTabsView
+    activeIndex={activeTabIndex}
+    count={3}
+    onChange={handleSwipeIndexChange}
+  >
+    <div class="w-full">
+      <AccordionCard title={t('download.accordionLocalTree')} flat open={true} accent="red">
+        <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
+      </AccordionCard>
+    </div>
 
-  {#if mobileTab === 'history'}
-    <AccordionCard title={t('download.accordionHistoryShort')} flat open={true} accent="blue">
+    <div class="w-full">
+      <AccordionCard title={t('download.accordionHistoryShort')} flat open={true} accent="blue">
       <div class="flex flex-wrap gap-2.5 bg-[var(--stat-bar-bg)] border border-[var(--border-subtle)] p-2.5 px-3.5 rounded-xl mb-2.5 items-center text-xs">
         <span class="text-[var(--text-secondary)]">{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
         <span class="text-[var(--text-secondary)]">{t('download.diskSpaceUsed', { size: histStats?.totalSize ? formatBytes(histStats.totalSize) : '-' })}</span>
@@ -439,49 +450,19 @@
         <button class="btn-secondary px-3 py-1 text-xs" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>{t('download.nextPage')}</button>
       </div>
     </AccordionCard>
-  {/if}
+  </div>
 
-  {#if mobileTab === 'cache'}
+  <div class="w-full">
     <BrowserCacheSection flat open={true} {onPlayQueue} {showToast} />
-  {/if}
+  </div>
+</SwipeableTabsView>
 </div>
 
-<!-- Modal: Missing Files or Non-MP3 -->
-{#if modalType}
-  <Modal
-    title="{modalType === 'missing' ? t('download.modalTitleMissing') : t('download.modalTitleNonMp3')} ({modalList.length})"
-    maxWidth="max-w-[580px]"
-    onClose={() => modalType = null}
-  >
-    {#if modalLoading}
-      <div class="py-5 text-center text-[var(--text-muted)] text-xs">{t('download.loadingList')}</div>
-    {:else if modalList.length > 0}
-      <div class="text-xs text-[var(--text-secondary)] mb-2">
-        {modalType === 'missing' ? t('download.missingNotice') : t('download.nonMp3Notice')}
-      </div>
-      <ul class="max-h-60 overflow-y-auto divide-y divide-black/5 dark:divide-white/5 border border-[var(--border-subtle)] rounded-xl p-0 m-0 list-none text-xs">
-        {#each modalList as it}
-          <li class="py-1.5 px-3 flex justify-between items-center gap-2">
-            <span class="truncate font-medium">{it.songName || it.name}</span>
-            <span class="text-[11px] text-[var(--text-muted)] truncate max-w-[200px]">{it.filePath || it.format || ''}</span>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <div class="py-8 text-center text-emerald-500 font-medium text-xs">{t('download.noAbnormalRecords')}</div>
-    {/if}
-
-    {#snippet footer()}
-      <div class="flex justify-between items-center w-full gap-2">
-        {#if modalType === 'missing' && modalList.length > 0}
-          <button class="btn-secondary text-xs text-red-400" onclick={cleanMissingRecords}>{t('download.cleanAllMissingBtn')}</button>
-        {:else if modalType === 'nonMp3' && modalList.length > 0}
-          <button class="btn-secondary text-xs text-amber-400" onclick={cleanNonMp3Records}>{t('download.cleanAllNonMp3Btn')}</button>
-        {:else}
-          <span></span>
-        {/if}
-        <button class="btn-secondary text-xs" onclick={() => modalType = null}>{t('common.close')}</button>
-      </div>
-    {/snippet}
-  </Modal>
-{/if}
+<DownloadAuditModal
+  {modalType}
+  {modalList}
+  {modalLoading}
+  onClose={() => modalType = null}
+  onCleanMissing={cleanMissingRecords}
+  onCleanNonMp3={cleanNonMp3Records}
+/>

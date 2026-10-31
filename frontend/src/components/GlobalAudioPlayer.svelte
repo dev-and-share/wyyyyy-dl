@@ -4,15 +4,15 @@
   import { showToast } from '../lib/toast.svelte';
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
   import { markSongDownloaded } from '../lib/trackStatus.svelte';
-  import { resolveTrackUrl, preloadSurroundingTracks } from '../lib/playerHelper';
+  import { resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition } from '../lib/mediaSession';
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
   import { handleTrackPlayback, resetTrackPlayback } from '../lib/pwaCache.svelte';
   import type { Track } from '../lib/types';
   import { t } from '../lib/i18n';
-
   import { platform } from '../lib/platform';
+  import { isIosF3Holding, handleIosF3Pause, handleIosF3Resume, resetIosF3State } from '../lib/iosF3KeepAlive';
 
   import PlayerBar from './PlayerBar.svelte';
   import PlaylistDrawer from './PlaylistDrawer.svelte';
@@ -31,43 +31,31 @@
     showPeq?: boolean; isPlayerMinimized?: boolean;
   }>();
 
-  // ---------- 视图与 DOM 状态 ----------
-  let showDrawer = $state(false), showLyric = $state(false), showPeqLocal = $state(false);
-  let pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
-  let parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2);
+  let showDrawer = $state(false), showLyric = $state(false), pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
+  let needsReloadOnResume = false, parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2);
 
-  // 状态同步
   $effect(() => {
     curTrack = playerStore.activeTrack;
     playing = playerStore.playing;
     isOverlayOpen = showDrawer || showLyric || showPeq;
-    updateMediaSessionPlaybackState(playerStore.playing);
-    if (audioEl) audioEl.volume = playerStore.vol;
+  });
+  $effect(() => {
+    if (audioEl && platform.canAdjustVolume) audioEl.volume = playerStore.vol;
     try { localStorage.setItem('wyyyy_player_vol', String(playerStore.vol)); } catch {}
   });
   $effect(() => {
-    const t = playerStore.activeTrack;
+    const tr = playerStore.activeTrack;
     lastLyricIndex = -2;
-    updateMediaSessionMetadata(t);
-    if (t?.id && !t.lyric) {
-      api.songV1(String(t.id), 'lossless').then((j: any) => {
-        if (j?.data?.lyric && playerStore.activeTrack?.id === t.id) {
-          t.lyric = j.data.lyric;
+    updateMediaSessionMetadata(tr);
+    if (tr?.id && !tr.lyric) {
+      api.songV1(String(tr.id), 'lossless').then((j: any) => {
+        if (j?.data?.lyric && playerStore.activeTrack?.id === tr.id) {
+          tr.lyric = j.data.lyric;
           playerStore.activeTrack.lyric = j.data.lyric;
         }
       }).catch(() => {});
     }
   });
-
-  function isSameAudioSource(src: string, url: string): boolean {
-    if (!src || !url) return false;
-    if (src === url) return true;
-    try {
-      return new URL(src, window.location.href).href === new URL(url, window.location.href).href;
-    } catch {
-      return src.endsWith(url);
-    }
-  }
 
   async function prepareTrackInUI(track: Track) {
     if (track.isLocal && track.id) markSongDownloaded(track.id);
@@ -80,49 +68,20 @@
 
   function applyPendingSeek() {
     if (!pendingSeekTime || pendingSeekTime <= 0 || !audioEl) return;
-    const target = pendingSeekTime;
+    applySeekToAudio(audioEl, pendingSeekTime);
     pendingSeekTime = null;
-
-    const doSeek = () => {
-      if (!audioEl) return;
-      try {
-        if (audioEl.duration && !isNaN(audioEl.duration) && isFinite(audioEl.duration)) {
-          if (target < audioEl.duration) audioEl.currentTime = target;
-        } else {
-          const onMeta = () => {
-            try {
-              if (audioEl && audioEl.duration && target < audioEl.duration) audioEl.currentTime = target;
-            } catch {}
-            audioEl?.removeEventListener('loadedmetadata', onMeta);
-          };
-          audioEl.addEventListener('loadedmetadata', onMeta);
-        }
-      } catch (e) {
-        console.warn('[Player] Failed to restore playback position:', e);
-      }
-    };
-    setTimeout(doSeek, 60);
   }
 
   async function handleSkipTrack(track: Track, reason: string, isTrial = false) {
-    if (audioEl) {
-      audioEl.pause();
-      try { audioEl.currentTime = 0; } catch {}
-      audioEl.src = '';
-    }
+    resetIosF3State(audioEl);
+    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; }
     const nextIdx = playerStore.getNextTrackIndex();
     if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
       playerStore.playing = false;
-      const noMoreMsg = isTrial
-        ? t('player.trialNoMoreCompleteTracks', { name: track.name })
-        : t('player.noMorePlayableTracks');
-      showToast(noMoreMsg, 'warning', 2500);
+      showToast(isTrial ? t('player.trialNoMoreCompleteTracks', { name: track.name }) : t('player.noMorePlayableTracks'), 'warning', 2500);
       return;
     }
-    const toastMsg = isTrial
-      ? t('player.skippedTrialTrack', { name: track.name })
-      : t('player.autoPlayNextReason', { name: track.name, reason });
-    showToast(toastMsg, isTrial ? 'info' : 'warning', 2000);
+    showToast(isTrial ? t('player.skippedTrialTrack', { name: track.name }) : t('player.autoPlayNextReason', { name: track.name, reason }), isTrial ? 'info' : 'warning', 2000);
     playerStore.qIndex = nextIdx;
     playerStore.curTime = 0;
     playerStore.save();
@@ -130,9 +89,9 @@
   }
 
   async function ensurePlay(resetTime = false) {
-    const track = playerStore.activeTrack;
+    const track = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
     if (!track || !audioEl) return;
-
+    needsReloadOnResume = false;
     if (resetTime) pendingSeekTime = null;
 
     const existingUrl = track.url;
@@ -140,68 +99,40 @@
       audioEl.src = existingUrl;
       if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
     }
-
-    if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      return handleSkipTrack(track, t('player.isTrialClip'), true);
-    }
-    if (track.unplayable === true) {
-      return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
-    }
+    if (playerStore.autoSkipTrial && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
+    if (track.unplayable === true) return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
 
     const startAudio = () => {
       const p = audioEl?.play();
       if (p !== undefined) {
         p.then(() => {
-          if (resetTime && audioEl) {
-            try { audioEl.currentTime = 0; } catch {}
-            playerStore.curTime = 0;
-          } else {
-            applyPendingSeek();
-          }
+          if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} playerStore.curTime = 0; } else { applyPendingSeek(); }
           preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-        }).catch(() => { playerStore.playing = false; });
+        }).catch(() => { playerStore.playing = false; updateMediaSessionPlaybackState(false); });
       }
     };
 
-    // ① 已有 URL：同步触发播放，保留 iOS 手势令牌
     if (existingUrl) {
       if (resetTime) {
         playerStore.curTime = 0;
-        const onMeta = () => {
-          try { if (audioEl) audioEl.currentTime = 0; } catch {}
-          audioEl?.removeEventListener('loadedmetadata', onMeta);
-        };
+        const onMeta = () => { try { if (audioEl) audioEl.currentTime = 0; } catch {} audioEl?.removeEventListener('loadedmetadata', onMeta); };
         audioEl.addEventListener('loadedmetadata', onMeta);
       }
       startAudio();
       return;
     }
 
-    // ② URL 尚未解析：仅在 iOS Safari/PWA 下使用静音占位保住手势令牌；桌面端严禁空转 play/mute 防 CoreAudio 竞争假死
     if (resetTime) playerStore.curTime = 0;
-    const prevMuted = audioEl.muted;
-    if (platform.isIOS) {
-      try { audioEl.muted = true; audioEl.play().catch(() => {}); } catch {}
-    }
-
     const url = await resolveTrackUrl(track);
-    if (platform.isIOS) { audioEl.muted = prevMuted; }
 
-    if (playerStore.autoSkipTrial && track.freeTrial === true) {
-      return handleSkipTrack(track, t('player.isTrialClip'), true);
-    }
-
+    if (playerStore.autoSkipTrial && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
     if (!url || track.unplayable) {
       track.unplayable = true;
-      if (audioEl) {
-        audioEl.pause();
-        try { audioEl.currentTime = 0; } catch {}
-        audioEl.src = '';
-      }
+      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; }
       return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
     }
-
-    if (url && audioEl && playerStore.activeTrack === track) {
+    const active = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
+    if (url && audioEl && active === track) {
       if (!isSameAudioSource(audioEl.src, url)) {
         updateMediaSessionMetadata(track);
         audioEl.src = url;
@@ -211,26 +142,61 @@
     }
   }
 
+  function pauseAudio() {
+    if (!audioEl) return;
+    if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
+    if (platform.isIOS) {
+      if (handleIosF3Pause(audioEl, playerStore.activeTrack, playerStore.curTime, playerStore.duration, audioEl.src, () => {
+        playerStore.playing = true;
+      })) {
+        playerStore.playing = false;
+        return;
+      }
+    }
+    if (platform.isIOS && (typeof document === 'undefined' || document.visibilityState === 'hidden')) {
+      needsReloadOnResume = true;
+    }
+    audioEl.pause();
+  }
+
   function handleTogglePlay() {
     if (!audioEl) return;
+    if (isIosF3Holding()) {
+      if (handleIosF3Resume(audioEl, () => {
+        playerStore.playing = true;
+        preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
+      })) {
+        playerStore.playing = true;
+        return;
+      }
+    }
     if (audioEl.paused) {
-      if (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:')) {
+      const currentSrc = audioEl.src;
+      if (!currentSrc || currentSrc === window.location.href || currentSrc.startsWith('blob:')) {
         ensurePlay(false);
-      } else {
-        const p = audioEl.play();
-        if (p !== undefined) {
-          p.then(() => {
-            applyPendingSeek();
-            preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-          }).catch(() => { playerStore.playing = false; ensurePlay(false); });
-        }
+        return;
+      }
+      const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      if (platform.isIOS && (needsReloadOnResume || isHidden || audioEl.readyState < 3)) {
+        needsReloadOnResume = false;
+        const resumeTime = audioEl.currentTime || playerStore.curTime || 0;
+        if (resumeTime > 0) pendingSeekTime = resumeTime;
+        audioEl.src = currentSrc;
+      }
+      const p = audioEl.play();
+      if (p !== undefined) {
+        p.then(() => {
+          applyPendingSeek();
+          preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
+        }).catch(() => { playerStore.playing = false; });
       }
     } else {
-      audioEl.pause();
+      pauseAudio();
     }
   }
 
   async function next() {
+    resetIosF3State(audioEl);
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
     const nextIdx = playerStore.getNextTrackIndex();
@@ -248,6 +214,7 @@
   }
 
   async function prev() {
+    resetIosF3State(audioEl);
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
     playerStore.stepPrev();
@@ -265,6 +232,7 @@
   }
 
   function handleSetQueue(tracks: Track[], optionsOrIdx: number | SetQueueOptions = 0, maybePlaylistId?: string | number | null) {
+    resetIosF3State(audioEl);
     if (!tracks || !tracks.length) return;
     let targetPlaylistId: string | number | null = null;
     if (typeof optionsOrIdx === 'number') {
@@ -274,12 +242,8 @@
     }
 
     if (targetPlaylistId != null && playerStore.playlistId && String(playerStore.playlistId) === String(targetPlaylistId) && playerStore.queue.length > 0) {
-      if (playerStore.playing) {
-        showToast(t('player.playingThisPlaylistNow'), 'info', 1500);
-      } else {
-        showToast(t('player.continuePlayingThisPlaylist'), 'info', 1500);
-        ensurePlay(false);
-      }
+      showToast(playerStore.playing ? t('player.playingThisPlaylistNow') : t('player.continuePlayingThisPlaylist'), 'info', 1500);
+      if (!playerStore.playing) handleTogglePlay();
       return;
     }
 
@@ -288,7 +252,7 @@
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
     ensurePlay(true);
 
-    const targetTrack = playerStore.activeTrack;
+    const targetTrack = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
     if (targetTrack?.id) {
       if (targetTrack.isLocal) {
         markSongDownloaded(targetTrack.id);
@@ -317,58 +281,56 @@
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
   }
 
+  function bindMediaSessionHandlers() {
+    setupMediaSession({
+      onPlay: () => {
+        if (isIosF3Holding()) {
+          handleTogglePlay();
+          return;
+        }
+        if (audioEl?.paused) handleTogglePlay();
+      },
+      onPause: () => {
+        pauseAudio();
+      },
+      onPrev: () => {
+        resetIosF3State(audioEl);
+        prev();
+      },
+      onNext: () => {
+        resetIosF3State(audioEl);
+        next();
+      }
+    });
+  }
+
   onMount(() => {
     playerStore.restore();
     if (playerStore.curTime > 0) pendingSeekTime = playerStore.curTime;
     const currentTrack = playerStore.activeTrack;
     if (currentTrack) prepareTrackInUI(currentTrack);
-
-    setupMediaSession({
-      onPlay: () => {
-        if (!audioEl) return;
-        if (audioEl.paused) {
-          if (audioEl.src && audioEl.src !== window.location.href && !audioEl.src.startsWith('blob:')) {
-            const p = audioEl.play();
-            if (p !== undefined) p.catch(() => handleTogglePlay());
-          } else {
-            handleTogglePlay();
-          }
-        }
-      },
-      onPause: () => { if (audioEl && !audioEl.paused) audioEl.pause(); },
-      onPrev: prev, onNext: next
-    });
-    if (typeof navigator !== 'undefined' && 'audioSession' in navigator) {
-      try { (navigator as any).audioSession.type = 'playback'; } catch {}
-    }
-
+    bindMediaSessionHandlers();
     window.addEventListener('beforeunload', () => playerStore.save());
 
-    // 📱 iOS 熄屏返回前台：若状态为播放中但音频流已暂停/断裂，原地续播
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible' || !audioEl) return;
-      if (playerStore.playing && audioEl.paused) { audioEl.play().catch(() => {}); return; }
+      if (!audioEl || isIosF3Holding()) return;
+      if (document.visibilityState === 'hidden') {
+        if (platform.isIOS && audioEl.paused) needsReloadOnResume = true;
+        return;
+      }
       if (audioEl.paused || audioEl.readyState >= 3) return;
-      const time = audioEl.currentTime || 0;
-      const onMeta = () => {
-        try { if (audioEl && audioEl.duration && time < audioEl.duration) audioEl.currentTime = time; } catch {}
-        audioEl?.removeEventListener('loadedmetadata', onMeta);
-        audioEl?.play().catch(() => {});
-      };
-      audioEl.addEventListener('loadedmetadata', onMeta);
-      try { audioEl.load(); } catch {}
+      const time = audioEl.currentTime || playerStore.curTime || 0;
+      if (time > 0) pendingSeekTime = time;
+      const currentSrc = audioEl.src;
+      if (currentSrc) audioEl.src = currentSrc;
+      audioEl.play().then(() => applyPendingSeek()).catch(() => {});
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const onPlayFolder = (e: CustomEvent) => {
       const { tracks, name } = e.detail;
-      if (!tracks?.length) return showToast(t('folder.noPlayableFiles'), 'warning');
-      const q = tracks.map((item: any, i: number) => ({
-        id: item.songId || item.id || `local_${Date.now()}_${i}`,
-        name: item.songName || item.name || t('common.unknownTrack'), artist: item.artist || t('common.unknownArtist'),
-        cover: item.cover || '/favicon.png', isLocal: true,
-        url: item.url || (item.relativePath ? `/v3/history/stream?path=${encodeURIComponent(item.relativePath)}` : item.filePath ? `/v3/history/stream?path=${encodeURIComponent(item.filePath)}` : item.streamUrl || '')
-      }));
+      const q = parseFolderTracks(tracks);
+      if (!q.length) return showToast(t('folder.noPlayableFiles'), 'warning');
       handleSetQueue(q, 0);
       showToast(t('folder.playingFolderStats', { name, count: q.length }), 'success', 3000);
     };
@@ -388,7 +350,9 @@
   playsinline
   preload="auto"
   onplay={() => {
+    if (isIosF3Holding()) return;
     playerStore.playing = true;
+    bindMediaSessionHandlers();
     updateMediaSessionPlaybackState(true);
     if (playerStore.activeTrack) {
       updateMediaSessionMetadata(playerStore.activeTrack);
@@ -397,13 +361,18 @@
     updateMediaSessionPosition(audioEl);
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
   }}
-  onpause={() => { playerStore.playing = false; updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); }}
+  onpause={() => {
+    if (isIosF3Holding()) return;
+    playerStore.playing = false;
+    updateMediaSessionPlaybackState(false);
+    updateMediaSessionPosition(audioEl);
+  }}
   ontimeupdate={(e) => {
+    if (isIosF3Holding()) return;
     const a = e.currentTarget;
     playerStore.curTime = a.currentTime;
     if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
     if (playerStore.curTime > 0) { try { localStorage.setItem('wyyyy_player_time', String(playerStore.curTime)); } catch {} }
-    // 🎵 锁屏歌词增量比对：仅在歌词行实际切换瞬间（数秒才发生一次）低频更新 MediaSession
     if (parsedLyrics.length > 0 && playerStore.activeTrack) {
       const activeLyric = getActiveLyric(parsedLyrics, a.currentTime);
       if (activeLyric.index !== lastLyricIndex) {
@@ -415,10 +384,12 @@
   onloadedmetadata={(e) => {
     const a = e.currentTarget as HTMLAudioElement;
     if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
+    bindMediaSessionHandlers();
     updateMediaSessionPosition(a);
   }}
   onseeked={(e) => {
     const a = e.currentTarget as HTMLAudioElement;
+    bindMediaSessionHandlers();
     updateMediaSessionPosition(a);
     if (parsedLyrics.length > 0 && playerStore.activeTrack) {
       const activeLyric = getActiveLyric(parsedLyrics, a.currentTime);
@@ -427,6 +398,7 @@
     }
   }}
   onerror={() => {
+    if (isIosF3Holding()) return;
     console.warn('[Player] Native audio stream load failed:', audioEl?.error);
     const cur = playerStore.activeTrack;
     if (audioEl?.src && audioEl.src !== window.location.href && cur && playerStore.playing) {
@@ -435,6 +407,7 @@
     } else { playerStore.playing = false; }
   }}
   onended={(e) => {
+    if (isIosF3Holding() || !playerStore.playing) return;
     resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
     if (a.currentTime < 3 && a.duration > 10) {

@@ -7,6 +7,7 @@
   import SettingsAccountSection from './settings/SettingsAccountSection.svelte';
   import SettingsMaintenanceSection from './settings/SettingsMaintenanceSection.svelte';
   import SettingsLanguageSection from './settings/SettingsLanguageSection.svelte';
+  import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
   import { t } from '../lib/i18n';
 
   let {
@@ -32,6 +33,7 @@
   let dragStartY = $state(0);
   let dragOffset = $state(0);
   let isDragging = $state(false);
+  let iosKeepAliveMin = $state(getF3TimeoutMinutes());
 
   function handleClose() {
     if (closing) return;
@@ -235,6 +237,39 @@
           <span class="shrink-0 text-xs px-2.5 py-1 rounded-lg bg-slate-500/10 text-[var(--text-muted)]">{t('settings.unavailable')}</span>
         {/if}
       </div>
+
+      <!-- iOS 锁屏暂停保活时长 (仅 iOS 平台展示) -->
+      {#if platform.isIOS}
+        <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-2.5">
+          <div class="flex flex-col gap-0.5 min-w-0">
+            <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.iosKeepAliveTitle')}</span>
+            <span class="text-xs text-[var(--text-secondary)]">{t('settings.iosKeepAliveDesc')}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 pt-1">
+            {#each [
+              { val: 3, label: t('settings.iosKeepAliveMin3') },
+              { val: 5, label: t('settings.iosKeepAliveMin5') },
+              { val: 10, label: t('settings.iosKeepAliveMin10') },
+              { val: 15, label: t('settings.iosKeepAliveMin15') },
+              { val: 30, label: t('settings.iosKeepAliveMin30') },
+              { val: 0, label: t('settings.iosKeepAliveNever') }
+            ] as opt}
+              <button
+                type="button"
+                data-testid="btn-ios-keepalive-{opt.val}"
+                class="py-2 px-1 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center text-center {iosKeepAliveMin === opt.val ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+                onclick={() => {
+                  iosKeepAliveMin = opt.val;
+                  setF3TimeoutMinutes(opt.val);
+                  showToast(`${t('settings.iosKeepAliveTitle')}: ${opt.label}`, 'success', 2000);
+                }}
+              >
+                {opt.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </section>
 
     <!-- Section 4: Mobile Offline Cache -->

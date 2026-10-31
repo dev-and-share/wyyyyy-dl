@@ -16,14 +16,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     track.url = track.id ? `/v3/stream?id=${track.id}` : '';
   }
 
-  // 1. 如果已在手机/浏览器离线缓存中，直接使用标准离线流地址 (由 SW 拦截 Cache 206 秒播，跨天永不失效)
-  if (track.id && cachedSongIdSet.has(Number(track.id))) {
-    track.url = `/v3/stream?id=${track.id}`;
-    track.isLocal = true;
-    return track.url;
-  }
-
-  // 2. 如果已有本地/历史流地址，仅在缺失封面/歌词时静默后台补齐
+  // 1. 如果已有本地/历史流地址，保留原完整地址（含 historyId 等参数），仅在缺失封面/歌词时静默后台补齐
   if (track.url && track.url.includes('/stream')) {
     track.isLocal = true;
     if (track.id) markSongDownloaded(track.id);
@@ -40,8 +33,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     return track.url;
   }
 
-  // 2. 如果已在手机浏览器离线缓存中，直接使用标准离线流地址秒播 (无需联网)
-  if (track.id && cachedSongIdSet.has(Number(track.id))) {
+  // 2. 断网离线状态下，若已在手机浏览器离线缓存中，直接使用标准离线流地址由 SW 拦截秒播
+  const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  if (isOffline && track.id && cachedSongIdSet.has(Number(track.id))) {
     track.url = `/v3/stream?id=${track.id}`;
     track.isLocal = true;
     return track.url;
@@ -199,6 +193,55 @@ export function toPlayerTrack(item: any, overrides?: Partial<Track>): Track {
     freeTrialDuration: item.freeTrialDuration,
     ...overrides
   };
+}
+
+/**
+ * 校验 DOM audio 当前 src 与目标 url 是否指代同一音频源
+ */
+export function isSameAudioSource(src: string, url: string): boolean {
+  if (!src || !url) return false;
+  if (src === url) return true;
+  try {
+    return new URL(src, window.location.href).href === new URL(url, window.location.href).href;
+  } catch {
+    return src.endsWith(url);
+  }
+}
+
+/**
+ * 延时或等待元数据加载后安全应用音频 seek
+ */
+export function applySeekToAudio(audioEl: HTMLAudioElement | null, target: number) {
+  if (!audioEl || target <= 0) return;
+  setTimeout(() => {
+    if (!audioEl) return;
+    try {
+      if (audioEl.duration && !isNaN(audioEl.duration) && isFinite(audioEl.duration)) {
+        if (target < audioEl.duration) audioEl.currentTime = target;
+      } else {
+        const onMeta = () => {
+          try { if (audioEl && audioEl.duration && target < audioEl.duration) audioEl.currentTime = target; } catch {}
+          audioEl?.removeEventListener('loadedmetadata', onMeta);
+        };
+        audioEl.addEventListener('loadedmetadata', onMeta);
+      }
+    } catch {}
+  }, 60);
+}
+
+/**
+ * 将文件夹自定义事件中的原生文件列表转换为标准 Track 数组
+ */
+export function parseFolderTracks(tracks: any[]): Track[] {
+  if (!tracks?.length) return [];
+  return tracks.map((item: any, i: number) => ({
+    id: item.songId || item.id || `local_${Date.now()}_${i}`,
+    name: item.songName || item.name || t('common.unknownTrack'),
+    artist: item.artist || t('common.unknownArtist'),
+    cover: item.cover || '/favicon.png',
+    isLocal: true,
+    url: item.url || (item.relativePath ? `/v3/history/stream?path=${encodeURIComponent(item.relativePath)}` : item.filePath ? `/v3/history/stream?path=${encodeURIComponent(item.filePath)}` : item.streamUrl || '')
+  }));
 }
 
 
