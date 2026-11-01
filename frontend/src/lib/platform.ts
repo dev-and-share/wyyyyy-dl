@@ -1,14 +1,12 @@
 /**
  * 平台与设备能力守卫系统 (Platform Capabilities System)
- * 遵循 DRY 原则，统一收敛管理全平台兼容性、硬件控制与环境差异检测。
+ * 依托 pwa-audio-player core 统一收敛管理全平台兼容性、硬件控制与环境差异检测。
  */
 
+import { detectPlatform, platform as pwaPlatform } from 'pwa-audio-player';
+
 export function checkIsIOS(): boolean {
-  if (typeof window === 'undefined' || !window.navigator) return false;
-  return (
-    /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
-    (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
-  );
+  return detectPlatform().isIOS;
 }
 
 export function checkSupportsCache(): boolean {
@@ -16,7 +14,7 @@ export function checkSupportsCache(): boolean {
 }
 
 export function checkSupportsMediaSession(): boolean {
-  return typeof window !== 'undefined' && 'mediaSession' in navigator;
+  return detectPlatform().supportsMediaSession;
 }
 
 export interface PlatformCapabilities {
@@ -36,13 +34,13 @@ export interface PlatformCapabilities {
 }
 
 export function getPlatformCapabilities(): PlatformCapabilities {
-  const isIOS = checkIsIOS();
+  const p = detectPlatform();
   return {
-    isIOS,
-    canAdjustVolume: !isIOS,
-    canUseAudioProcessing: !isIOS,
+    isIOS: p.isIOS,
+    canAdjustVolume: !p.isIOS,
+    canUseAudioProcessing: !p.isIOS,
     supportsCache: checkSupportsCache(),
-    supportsMediaSession: checkSupportsMediaSession()
+    supportsMediaSession: p.supportsMediaSession
   };
 }
 
