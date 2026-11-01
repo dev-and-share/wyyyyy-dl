@@ -34,6 +34,8 @@
 
   let showDrawer = $state(false), showLyric = $state(false), pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
   let needsReloadOnResume = false, parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2);
+  let isSkippingTrack = false, consecutiveSkipCount = 0;
+  const MAX_CONSECUTIVE_SKIPS = 15;
 
   $effect(() => {
     curTrack = playerStore.activeTrack;
@@ -72,19 +74,27 @@
   }
 
   async function handleSkipTrack(track: Track, reason: string, isTrial = false) {
-    resetIosF3State(audioEl);
-    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; }
-    const nextIdx = playerStore.getNextTrackIndex();
-    if (nextIdx < 0 || nextIdx === playerStore.qIndex) {
-      playerStore.playing = false;
-      showToast(isTrial ? t('player.trialNoMoreCompleteTracks', { name: track.name }) : t('player.noMorePlayableTracks'), 'warning', 2500);
-      return;
+    if (isSkippingTrack) return;
+    isSkippingTrack = true;
+    try {
+      resetIosF3State(audioEl);
+      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
+      consecutiveSkipCount++;
+      const nextIdx = playerStore.getNextTrackIndex();
+      if (nextIdx < 0 || nextIdx === playerStore.qIndex || consecutiveSkipCount > MAX_CONSECUTIVE_SKIPS) {
+        playerStore.playing = false;
+        consecutiveSkipCount = 0;
+        showToast(isTrial ? t('player.trialNoMoreCompleteTracks', { name: track.name }) : t('player.noMorePlayableTracks'), 'warning', 2500);
+        return;
+      }
+      showToast(isTrial ? t('player.skippedTrialTrack', { name: track.name }) : t('player.autoPlayNextReason', { name: track.name, reason }), isTrial ? 'info' : 'warning', 2000);
+      playerStore.qIndex = nextIdx;
+      playerStore.curTime = 0;
+      playerStore.save();
+      await ensurePlay(true);
+    } finally {
+      isSkippingTrack = false;
     }
-    showToast(isTrial ? t('player.skippedTrialTrack', { name: track.name }) : t('player.autoPlayNextReason', { name: track.name, reason }), isTrial ? 'info' : 'warning', 2000);
-    playerStore.qIndex = nextIdx;
-    playerStore.curTime = 0;
-    playerStore.save();
-    await ensurePlay(true);
   }
 
   async function ensurePlay(resetTime = false) {
@@ -99,13 +109,14 @@
       audioEl.src = existingUrl;
       if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
     }
-    if (playerStore.autoSkipTrial && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
+    if (playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
     if (track.unplayable === true) return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
 
     const startAudio = () => {
       const p = audioEl?.play();
       if (p !== undefined) {
         p.then(() => {
+          consecutiveSkipCount = 0;
           if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} playerStore.curTime = 0; } else { applyPendingSeek(); }
           preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
         }).catch(() => { playerStore.playing = false; updateMediaSessionPlaybackState(false); });
@@ -125,10 +136,10 @@
     if (resetTime) playerStore.curTime = 0;
     const url = await resolveTrackUrl(track);
 
-    if (playerStore.autoSkipTrial && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
+    if (playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
     if (!url || track.unplayable) {
       track.unplayable = true;
-      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; }
+      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
       return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
     }
     const active = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
@@ -146,48 +157,31 @@
     if (!audioEl) return;
     if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
     if (isSleepTimer) {
-      resetIosF3State(audioEl);
-      playerStore.playing = false;
-      updateMediaSessionPlaybackState(false);
-      audioEl.pause();
-      return;
+      resetIosF3State(audioEl); playerStore.playing = false; updateMediaSessionPlaybackState(false); audioEl.pause(); return;
     }
     if (platform.isIOS) {
-      if (handleIosF3Pause(audioEl, playerStore.activeTrack, playerStore.curTime, playerStore.duration, audioEl.src, () => {
-        playerStore.playing = true;
-      })) {
-        playerStore.playing = false;
-        return;
+      if (handleIosF3Pause(audioEl, playerStore.activeTrack, playerStore.curTime, playerStore.duration, audioEl.src, () => { playerStore.playing = true; })) {
+        playerStore.playing = false; return;
       }
-    }
-    if (platform.isIOS && (typeof document === 'undefined' || document.visibilityState === 'hidden')) {
-      needsReloadOnResume = true;
+      if (typeof document === 'undefined' || document.visibilityState === 'hidden') needsReloadOnResume = true;
     }
     audioEl.pause();
   }
 
   function handleSleepTimerTrigger() {
-    pauseAudio(true);
-    showToast(t('settings.sleepTimerTriggered'), 'info', 4000);
+    pauseAudio(true); showToast(t('settings.sleepTimerTriggered'), 'info', 4000);
   }
 
   function handleTogglePlay() {
     if (!audioEl) return;
     if (isIosF3Holding()) {
       if (handleIosF3Resume(audioEl, () => {
-        playerStore.playing = true;
-        preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-      })) {
-        playerStore.playing = true;
-        return;
-      }
+        playerStore.playing = true; preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
+      })) { playerStore.playing = true; return; }
     }
     if (audioEl.paused) {
       const currentSrc = audioEl.src;
-      if (!currentSrc || currentSrc === window.location.href || currentSrc.startsWith('blob:')) {
-        ensurePlay(false);
-        return;
-      }
+      if (!currentSrc || currentSrc === window.location.href || currentSrc.startsWith('blob:')) { ensurePlay(false); return; }
       const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
       if (platform.isIOS && (needsReloadOnResume || isHidden || audioEl.readyState < 3)) {
         needsReloadOnResume = false;
@@ -198,8 +192,7 @@
       const p = audioEl.play();
       if (p !== undefined) {
         p.then(() => {
-          applyPendingSeek();
-          preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
+          applyPendingSeek(); preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
         }).catch(() => { playerStore.playing = false; });
       }
     } else {
@@ -208,16 +201,13 @@
   }
 
   async function next() {
-    resetIosF3State(audioEl);
-    clearMediaSessionPosition();
+    resetIosF3State(audioEl); clearMediaSessionPosition();
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
     const nextIdx = playerStore.getNextTrackIndex();
-    if ((nextIdx < 0 || nextIdx === playerStore.qIndex) && playerStore.autoSkipTrial && (playerStore.activeTrack as any)?.freeTrial === true) {
-      playerStore.playing = false;
-      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
-      showToast(t('player.noMoreCompleteTracksToPlay'), 'info', 2000);
-      return;
+    if ((nextIdx < 0 || nextIdx === playerStore.qIndex) && playerStore.autoSkipTrial && !playerStore.activeTrack?.isLocal && (playerStore.activeTrack as any)?.freeTrial === true) {
+      playerStore.playing = false; if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
+      showToast(t('player.noMoreCompleteTracksToPlay'), 'info', 2000); return;
     }
     playerStore.stepNext();
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
@@ -225,40 +215,29 @@
   }
 
   async function prev() {
-    resetIosF3State(audioEl);
-    clearMediaSessionPosition();
+    resetIosF3State(audioEl); clearMediaSessionPosition();
     if (playerStore.queue.length === 0) return;
-    resetTrackPlayback();
-    playerStore.stepPrev();
+    resetTrackPlayback(); playerStore.stepPrev();
     if (audioEl) { try { audioEl.currentTime = 0; } catch {} }
     await ensurePlay(true);
   }
 
   function applyTargetSeek(targetTime: number) {
     if (!audioEl) return;
-    if (isIosF3Holding()) {
-      playerStore.curTime = targetTime;
-      updateIosF3SavedTime(targetTime);
-      playerStore.save();
-      return;
-    }
-    audioEl.currentTime = targetTime;
-    playerStore.curTime = audioEl.currentTime;
-    playerStore.save();
+    if (isIosF3Holding()) { playerStore.curTime = targetTime; updateIosF3SavedTime(targetTime); playerStore.save(); return; }
+    audioEl.currentTime = targetTime; playerStore.curTime = audioEl.currentTime; playerStore.save();
   }
 
   function seek(e: MouseEvent) {
     if (!audioEl || !playerStore.duration) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const p = (e.clientX - rect.left) / rect.width;
-    applyTargetSeek(p * playerStore.duration);
+    applyTargetSeek(((e.clientX - rect.left) / rect.width) * playerStore.duration);
   }
 
   function handleClearQueue() {
     resetIosF3State(audioEl);
-    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.src = ''; }
-    playerStore.clearQueue();
-    showToast(t('player.queueCleared'), 'info');
+    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
+    playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info');
   }
 
   function handleSetQueue(tracks: Track[], optionsOrIdx: number | SetQueueOptions = 0, maybePlaylistId?: string | number | null) {
@@ -435,10 +414,13 @@
     if (isIosF3Holding()) return;
     console.warn('[Player] Native audio stream load failed:', audioEl?.error);
     const cur = playerStore.activeTrack;
-    if (audioEl?.src && audioEl.src !== window.location.href && cur && playerStore.playing) {
+    const isMatchingSource = cur?.url && audioEl?.src && isSameAudioSource(audioEl.src, cur.url);
+    if (isMatchingSource && cur && playerStore.playing) {
       cur.unplayable = true; cur.unplayableReason = t('player.audioStreamFailed');
       handleSkipTrack(cur, t('player.audioStreamFailed'), false);
-    } else { playerStore.playing = false; }
+    } else {
+      if (!cur || !playerStore.playing) playerStore.playing = false;
+    }
   }}
   onended={(e) => {
     if (isIosF3Holding()) return;

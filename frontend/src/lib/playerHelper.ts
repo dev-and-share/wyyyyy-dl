@@ -57,9 +57,12 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v3/stream'));
       if (isServerLocal) {
         track.isLocal = true;
+        track.freeTrial = false;
+        track.unplayable = false;
         markSongDownloaded(track.id);
+      } else {
+        track.freeTrial = song.freeTrial === true;
       }
-      track.freeTrial = song.freeTrial === true;
       track.freeTrialDuration = song.freeTrialDuration;
       const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
       if (newPic) track.cover = newPic;

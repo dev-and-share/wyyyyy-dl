@@ -80,7 +80,8 @@ export class PlayerStore {
     const status = getTrackSourceStatus(track.id, track.isLocal);
     if (this.offlineOnly && !status.isPhone) return false;
     if (this.serverOnly && !status.isServer) return false;
-    if (this.autoSkipTrial && track.freeTrial === true) return false;
+    // 🛡️ 本地文件永远是完整音频，无需作为截断试听曲跳过
+    if (this.autoSkipTrial && !status.isLocal && track.freeTrial === true) return false;
     return true;
   }
 
@@ -250,8 +251,8 @@ export class PlayerStore {
       const existingIndex = this.queue.findIndex((t) => isSameTrackEntity(t, target));
 
       if (existingIndex !== -1) {
-        // 场景 1：如果歌在歌单里面，不切歌单，直接定位并更新可能有变动的信息（如 isLocal、url）
-        this.queue[existingIndex] = { ...this.queue[existingIndex], ...target };
+        // 场景 1：如果歌在歌单里面，不切歌单，直接定位并更新可能有变动的信息（如 isLocal、url），重置不可播标记允许重试
+        this.queue[existingIndex] = { ...this.queue[existingIndex], ...target, unplayable: false };
         this.qIndex = existingIndex;
         this.curTime = 0;
         this.save();
@@ -259,14 +260,15 @@ export class PlayerStore {
       }
 
       // 场景 2：歌不在歌单里面，append 到当前正在播放的歌单
+      const cleanTarget = { ...target, unplayable: false };
       if (this.playing && this.activeTrack) {
         // 场景 2.1：当前正在播放，插入到当前曲目的后一位，跳过当前歌立即播放插播曲，播完继续播原歌单剩下歌曲
         const insertIndex = this.qIndex + 1;
-        this.queue.splice(insertIndex, 0, target);
+        this.queue.splice(insertIndex, 0, cleanTarget);
         this.qIndex = insertIndex;
       } else {
         // 场景 2.2：没有处于播放状态，插入到第一位，开始播放，形成播完后继续播放后面歌单的效果
-        this.queue = [target, ...this.queue];
+        this.queue = [cleanTarget, ...this.queue];
         this.qIndex = 0;
       }
 

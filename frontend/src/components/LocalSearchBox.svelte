@@ -11,6 +11,7 @@
     clearTitle = '',
     debounceMs = 0,
     disabled = false,
+    hideIcon = false,
     className = '',
     inputClassName = '',
     onSearch,
@@ -25,6 +26,7 @@
     showHistory?: boolean;
     debounceMs?: number;
     disabled?: boolean;
+    hideIcon?: boolean;
     className?: string;
     inputClassName?: string;
     onSearch?: (kw: string) => void;
@@ -109,15 +111,17 @@
 <div class="local-search-container w-full {className}">
   <!-- 输入框容器 (使用 type="text" 彻底根除 WebKit 浏览器双重 ✕ 问题) -->
   <div class="relative w-full flex items-center">
-    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-50 pointer-events-none select-none">
-      🔍
-    </span>
+    {#if !hideIcon}
+      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-50 pointer-events-none select-none">
+        🔍
+      </span>
+    {/if}
     <input
       {type}
       enterkeyhint="search"
       placeholder={cleanPlaceholder || (t('common.search') + '...')}
       {disabled}
-      class="w-full pl-8 pr-8 py-2 text-xs md:text-sm rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-red-500/70 dark:focus:border-red-500/70 transition-all {inputClassName}"
+      class="w-full {hideIcon ? 'pl-3' : 'pl-8'} pr-8 py-2 text-xs md:text-sm rounded-xl bg-black/5 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-red-500/70 dark:focus:border-red-500/70 transition-all {inputClassName}"
       value={value}
       oninput={(e) => handleInputChange((e.currentTarget as HTMLInputElement).value)}
       onkeydown={(e) => {

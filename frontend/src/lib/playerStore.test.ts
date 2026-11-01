@@ -149,6 +149,16 @@ describe('PlayerStore WYSIWYG shuffle & deterministic queue navigation', () => {
     expect(trialStore.getPrevTrack()).toBeNull();
   });
 
+  it('keeps local track playable even if freeTrial is true when autoSkipTrial is enabled', () => {
+    const storeWithLocal = new PlayerStore();
+    storeWithLocal.autoSkipTrial = true;
+    const localTrack = { id: 301, name: '本地已落盘试听原曲', artist: '歌手', isLocal: true, freeTrial: true };
+    storeWithLocal.setQueue([localTrack], 0);
+
+    expect(storeWithLocal.isValidTrack(localTrack)).toBe(true);
+    expect(storeWithLocal.getNextTrackIndex()).toBe(0);
+  });
+
   it('setQueue in shuffle mode shuffles entire queue and starts at index 0 for whole playlist', () => {
     store.playMode = 'shuffle';
     store.playlistId = null;

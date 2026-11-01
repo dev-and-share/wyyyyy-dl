@@ -247,33 +247,21 @@
     showToast(t('playlist.caching', { name: tItem.name }), 'info', 1500);
     try {
       const res = await cacheTrackToBrowser({
-        id: tItem.id,
-        name: tItem.name,
-        artist: formatArtist(tItem),
-        cover: tItem.al?.picUrl || tItem.picUrl || DEFAULT_VINYL_COVER,
-        album: tItem.al?.name || tItem.album
+        id: tItem.id, name: tItem.name, artist: formatArtist(tItem),
+        cover: tItem.al?.picUrl || tItem.picUrl || DEFAULT_VINYL_COVER, album: tItem.al?.name || tItem.album
       });
-      if (res.success) {
-        showToast(res.isTrial ? t('playlist.cachedTrial', { name: tItem.name }) : t('playlist.cached', { name: tItem.name }), res.isTrial ? 'warning' : 'success');
-      } else {
-        showToast(res.msg || t('playlist.cacheFailed', { error: t('common.failed') }), 'error');
-      }
+      showToast(res.success ? (res.isTrial ? t('playlist.cachedTrial', { name: tItem.name }) : t('playlist.cached', { name: tItem.name })) : (res.msg || t('playlist.cacheFailed', { error: t('common.failed') })), res.success ? (res.isTrial ? 'warning' : 'success') : 'error');
     } catch (e: any) {
       showToast(t('playlist.cacheFailed', { error: e.message || e }), 'error');
-    } finally {
-      cachingTrackId = null;
-    }
+    } finally { cachingTrackId = null; }
   }
 
   function openTrackSheet(tItem: any, isLocal: boolean, isPhone: boolean, isServer: boolean, artist: string, isPlayingThis: boolean) {
     openSheet({
-      title: tItem.name,
-      subtitle: artist || t('player.unknownArtist'),
+      title: tItem.name, subtitle: artist || t('player.unknownArtist'),
       actions: [
         { label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }), style: 'primary', onclick: () => onPlayQueue([toPlayerTrack(tItem, { artist, isLocal })]) },
-        isServer
-          ? { label: t('playlist.locateInDisk'), style: 'default', onclick: () => onReveal && onReveal({ id: tItem.id, name: tItem.name, artist }) }
-          : { label: t('playlist.downloadToServer'), style: 'default', onclick: () => downloadSingleTrack(String(tItem.id), tItem.name) },
+        isServer ? { label: t('playlist.locateInDisk'), style: 'default', onclick: () => onReveal && onReveal({ id: tItem.id, name: tItem.name, artist }) } : { label: t('playlist.downloadToServer'), style: 'default', onclick: () => downloadSingleTrack(String(tItem.id), tItem.name) },
         { label: cachingTrackId === tItem.id ? t('playlist.cachingOffline') : (isPhone ? t('playlist.recachePhone') : t('playlist.cachePhonePwa')), style: 'default', onclick: () => handleCacheTrack(tItem) },
         { label: t('playlist.addTo'), style: 'default', onclick: () => { addToPlaylistSong = { id: tItem.id, name: tItem.name, artist }; } },
         ...(playlist && (playlist.isCreator || !playlist.subscribed) ? [{ label: t('playlist.removeThisTrack'), style: 'danger' as const, onclick: () => { removingTrack = { id: tItem.id, name: tItem.name, artist }; } }] : []),
@@ -285,26 +273,45 @@
 </script>
 
 <AccordionCard title={t('playlist.sectionDetail')} bind:open flat accent="blue" {onToggle}>
-  {#if !playlist || showIdInput}
-    <div class="flex items-center gap-1.5 md:gap-2.5 my-2 w-full">
+  {#if showIdInput}
+    <div class="flex items-center gap-1.5 md:gap-2.5 my-2 w-full animate-fade-in p-2 rounded-xl bg-black/5 dark:bg-white/[0.04] border border-[var(--border-subtle)]">
       <input
-        type="text" placeholder={t('playlist.inputIdPlaceholder')} class="flex-1 min-w-0"
+        type="text" placeholder={t('playlist.inputIdPlaceholder')} class="flex-1 min-w-0 !py-1.5 text-xs"
         bind:value={pidInput} disabled={isPlaylistLoading()}
-        onkeydown={(e) => e.key === 'Enter' && !isPlaylistLoading() && onViewPlaylist(pidInput)}
+        onkeydown={(e) => {
+          if (e.key === 'Enter' && !isPlaylistLoading()) {
+            onViewPlaylist(pidInput);
+            showIdInput = false;
+          }
+        }}
       />
       <button
-        class="btn-primary shrink-0 whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[84px] md:min-w-[100px]"
-        disabled={isPlaylistLoading()} onclick={() => onViewPlaylist(pidInput)}
+        class="btn-primary shrink-0 whitespace-nowrap !py-1.5 !px-3 text-xs flex items-center justify-center gap-1"
+        disabled={isPlaylistLoading()}
+        onclick={() => {
+          onViewPlaylist(pidInput);
+          showIdInput = false;
+        }}
       >
         {#if isPlaylistLoading()}
-          <span class="inline-block animate-spin text-xs">⏳</span><span>{t('common.loading')}</span>
+          <span class="inline-block animate-spin text-xs">⏳</span>
         {:else}
           <span>{t('playlist.viewDetailBtn')}</span>
         {/if}
       </button>
-      {#if playlist}
-        <button type="button" class="btn-secondary px-2.5 py-1.5 text-xs rounded-xl cursor-pointer" onclick={() => showIdInput = false} title={t('common.close')}>✕</button>
-      {/if}
+      <button type="button" class="btn-secondary !p-1.5 text-xs rounded-lg cursor-pointer" onclick={() => showIdInput = false} title={t('common.close')}>✕</button>
+    </div>
+  {:else if !playlist && !isPlaylistLoading()}
+    <div class="py-6 px-4 flex flex-col items-center justify-center gap-2 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2">
+      <div class="text-2xl opacity-60">🎼</div>
+      <div class="text-xs text-[var(--text-muted)] text-center">{t('playlist.emptyTabPrompt')}</div>
+      <button
+        type="button"
+        class="mt-1 px-3 py-1.5 rounded-xl text-xs font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+        onclick={() => showIdInput = true}
+      >
+        <span>🔗</span><span>{t('playlist.parseDetail')}</span>
+      </button>
     </div>
   {/if}
 

@@ -121,4 +121,27 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     // Should advance queue index to 1 (next track)
     expect(playerStore.qIndex).toBe(1);
   });
+
+  it('ignores obsolete audio onerror event if audioEl.src does not match activeTrack url', async () => {
+    const track1: any = { id: 201, name: '旧歌曲', artist: '歌手A', url: '/v3/stream?id=201', isLocal: true };
+    const track2: any = { id: 202, name: '新曲目', artist: '歌手B', url: '/v3/stream?id=202', isLocal: true };
+    playerStore.setQueue([track1, track2], 1); // 当前处于 track2
+    playerStore.playing = true;
+
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+
+    // 模拟残留的旧音轨源报错（例如上一首歌被 abort）
+    audioEl.src = 'http://localhost/v3/stream?id=201';
+    Object.defineProperty(audioEl, 'error', {
+      value: { code: 4, message: 'MEDIA_ELEMENT_ERROR' },
+      configurable: true
+    });
+
+    await fireEvent(audioEl, new Event('error'));
+
+    // 活跃曲目 track2 绝不能被冤枉判为 unplayable
+    expect(track2.unplayable).toBeFalsy();
+    expect(playerStore.qIndex).toBe(1);
+  });
 });
