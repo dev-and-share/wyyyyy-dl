@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createPartialResponse, createPartialResponseFromBlob, parseRangeHeader } from 'pwa-audio-player';
 
 describe('Service Worker Audio Stream & Range Pass-Through Contracts (sw.js)', () => {
   const swPath = path.resolve(__dirname, '../../../src/main/resources/static/sw.js');
@@ -142,5 +143,19 @@ describe('Service Worker Audio Stream & Range Pass-Through Contracts (sw.js)', (
     expect(res.headers.get('Content-Range')).toBe('bytes 100-499/1000');
     expect(res.headers.get('Content-Length')).toBe('400');
     expect(res.headers.get('Accept-Ranges')).toBe('bytes');
+  });
+
+  it('aligns with pwa-audio-player createPartialResponse contract for Range 206', async () => {
+    const fullBytes = new Uint8Array(1000);
+    for (let i = 0; i < 1000; i++) fullBytes[i] = i % 256;
+    const audioBlob = new Blob([fullBytes], { type: 'audio/mpeg' });
+
+    // In browser/SW environments, cachedResponse.blob() returns the raw audio Blob
+    const partialRes = createPartialResponseFromBlob(audioBlob, 'bytes=100-499');
+    expect(partialRes.status).toBe(206);
+    expect(partialRes.headers.get('Content-Range')).toBe('bytes 100-499/1000');
+    expect(partialRes.headers.get('Content-Length')).toBe('400');
+    expect(partialRes.headers.get('Accept-Ranges')).toBe('bytes');
+    expect(partialRes.headers.get('Content-Type')).toBe('audio/mpeg');
   });
 });

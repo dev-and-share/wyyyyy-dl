@@ -1,6 +1,9 @@
 import type { Track } from './types';
 import { getTrackSourceStatus } from './trackStatus.svelte';
 import { savePlayerStateToStorage, loadPlayerStateFromStorage } from './playerStorage';
+import { shuffleArray, PlaylistManager } from 'pwa-audio-player';
+
+export { shuffleArray };
 
 export type PlayMode = 'list' | 'single' | 'shuffle';
 
@@ -20,20 +23,6 @@ export function isSameTrackEntity(a: Track | null | undefined, b: Track | null |
   if (a.filePath && b.filePath && a.filePath === b.filePath) return true;
   if (a.name && b.name && a.name === b.name && a.artist === b.artist) return true;
   return false;
-}
-
-/**
- * 🎵 Fisher-Yates 原地数组洗牌算法
- */
-export function shuffleArray<T>(arr: T[]): T[] {
-  const result = [...arr];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = result[i];
-    result[i] = result[j];
-    result[j] = temp;
-  }
-  return result;
 }
 
 /**
@@ -307,15 +296,17 @@ export class PlayerStore {
   }
 
   /**
-   * 从队列移除指定索引曲目
+   * 从队列移除指定索引曲目 (委托 pwa-audio-player PlaylistManager 保证游标安全)
    */
   removeItem(realIndex: number) {
     if (realIndex < 0 || realIndex >= this.queue.length) return;
-    this.queue = this.queue.filter((_, i) => i !== realIndex);
-    if (this.qIndex >= this.queue.length) {
-      this.qIndex = Math.max(0, this.queue.length - 1);
+    const pm = new PlaylistManager(this.queue, this.qIndex);
+    const removed = pm.remove(realIndex);
+    if (removed) {
+      this.queue = pm.getQueue();
+      this.qIndex = pm.getCurrentIndex();
+      this.save();
     }
-    this.save();
   }
 
   /**
