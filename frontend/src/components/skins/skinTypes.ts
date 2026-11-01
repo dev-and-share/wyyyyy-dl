@@ -1,3 +1,6 @@
+import { DEFAULT_PALETTE, type CoverPalette } from 'pwa-audio-player';
+
+export { DEFAULT_PALETTE, type CoverPalette };
 export type SkinId = 'vinyl' | 'aurora' | 'cassette' | 'winamp' | 'spring';
 
 export interface SkinMeta {
@@ -5,13 +8,6 @@ export interface SkinMeta {
   name: string;
   emoji: string;
   desc: string;
-}
-
-export interface CoverPalette {
-  dominant: string; // rgb(r, g, b)
-  accent: string;   // rgb(r, g, b)
-  muted: string;    // rgb(r, g, b)
-  glow: string;     // rgba(r, g, b, a)
 }
 
 export interface SkinStageProps {
@@ -25,13 +21,6 @@ export interface SkinStageProps {
   onOpenComments?: () => void;
   onAddToPlaylist?: () => void;
 }
-
-export const DEFAULT_PALETTE: CoverPalette = {
-  dominant: 'rgb(30, 41, 59)',
-  accent: 'rgb(239, 68, 68)',
-  muted: 'rgb(148, 163, 184)',
-  glow: 'rgba(239, 68, 68, 0.45)'
-};
 
 export const SKINS: Record<SkinId, SkinMeta> = {
   vinyl: {

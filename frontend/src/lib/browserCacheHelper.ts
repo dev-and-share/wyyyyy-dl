@@ -1,5 +1,8 @@
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
+import { formatCacheDate } from 'pwa-audio-player';
 import type { Track } from './types';
+
+export { formatCacheDate };
 import { t } from './i18n';
 import {
   PWA_CACHE_NAME,
@@ -34,15 +37,6 @@ export function readCachedTrackMeta(): Record<string, any> {
   }
 }
 
-export function formatCacheDate(ts: number): string {
-  if (!ts) return '';
-  const d = new Date(ts);
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${m}-${day} ${h}:${min}`;
-}
 
 /**
  * 扫描并获取所有手机离线音乐缓存，按「播放次数 ↓ > 缓存时间 ↓」复合排序
