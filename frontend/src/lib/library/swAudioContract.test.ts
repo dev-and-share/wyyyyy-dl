@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createPartialResponse, createPartialResponseFromBlob, parseRangeHeader } from 'pwa-audio-player';
 
 describe('Service Worker Audio Stream & Range Pass-Through Contracts (sw.js)', () => {
-  const swPath = path.resolve(__dirname, '../../../src/main/resources/static/sw.js');
+  const swPath = path.resolve(__dirname, '../../../../src/main/resources/static/sw.js');
   const swSource = fs.readFileSync(swPath, 'utf-8');
 
   let fetchListener: ((event: any) => void) | null = null;

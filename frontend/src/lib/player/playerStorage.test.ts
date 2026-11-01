@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { savePlayerStateToStorage, loadPlayerStateFromStorage } from './playerStorage';
-import type { Track } from './types';
+import type { Track } from '../types';
 
 describe('playerStorage persistence contracts', () => {
   beforeEach(() => {

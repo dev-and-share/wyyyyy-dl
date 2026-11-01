@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PlayerStore, shuffleArray } from './playerStore.svelte';
-import type { Track } from './types';
+import type { Track } from '../types';
 
 // Mock localStorage
 const localStorageMock = (() => {

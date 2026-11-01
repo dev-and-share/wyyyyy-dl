@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolveTrackUrl, preloadNextTrack } from './playerHelper';
-import { api } from './api';
-import type { Track } from './types';
+import { api } from '../api';
+import type { Track } from '../types';
 
-vi.mock('./api', () => ({
+vi.mock('../api', () => ({
   api: {
     songV1: vi.fn().mockResolvedValue({ code: '000000', data: {} })
   }
