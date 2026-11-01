@@ -1,10 +1,10 @@
 import { api } from '../api';
 import type { Track } from '../types';
 import { cachedSongIdSet } from '../library/pwaCache.svelte';
-import { markSongDownloaded, getTrackSourceStatus } from './trackStatus.svelte';
-import { formatArtist, DEFAULT_VINYL_COVER } from '../utils';
+import { markSongDownloaded } from './trackStatus.svelte';
 import { recordPlaylistPlay } from '../playlist.svelte';
 import { playerStore, type SetQueueOptions } from './playerStore.svelte';
+import { platformAdapter } from '../adapters';
 import { t } from '../i18n';
 
 /**
@@ -21,13 +21,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     track.isLocal = true;
     if (track.id) markSongDownloaded(track.id);
     if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
-      api.songV1(String(track.id), 'lossless', track.name, track.artist).then((j: any) => {
-        const song = j?.data;
-        if (song) {
-          const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
-          if (newPic) track.cover = newPic;
-          if (song.lyric && !track.lyric) track.lyric = song.lyric;
-        }
+      platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
+        if (resolved.cover) track.cover = resolved.cover;
+        if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
       }).catch(() => {});
     }
     return track.url;
@@ -44,33 +40,25 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   // 3. 在线歌曲：合并为单次请求，一次性拿齐播放 URL、高清封面与歌词
   if (!track.id) return track.url || '';
   try {
-    const j = await api.songV1(String(track.id), 'lossless', track.name, track.artist);
-    const song = j?.data;
-    if (song) {
-      if (song.url) {
-        track.url = song.url;
-        track.unplayable = false;
-      } else {
-        track.unplayable = true;
-        track.unplayableReason = song.unplayableReason || (song.status === 404 ? t('player.regionOrCopyrightRestricted') : t('player.noPlayableSource'));
-      }
-      const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v3/stream'));
-      if (isServerLocal) {
+    const resolved = await platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist });
+    if (!resolved.unplayable && resolved.url) {
+      track.url = resolved.url;
+      track.unplayable = false;
+      if (resolved.isLocal) {
         track.isLocal = true;
         track.freeTrial = false;
         track.unplayable = false;
         markSongDownloaded(track.id);
       } else {
-        track.freeTrial = song.freeTrial === true;
+        track.freeTrial = resolved.freeTrial === true;
       }
-      track.freeTrialDuration = song.freeTrialDuration;
-      const newPic = song.pic || song.picUrl || song.al?.picUrl || song.cover;
-      if (newPic) track.cover = newPic;
-      if (song.lyric && !track.lyric) track.lyric = song.lyric;
-      return song.url || track.url || '';
+      track.freeTrialDuration = resolved.freeTrialDuration;
+      if (resolved.cover) track.cover = resolved.cover;
+      if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+      return track.url;
     } else {
       track.unplayable = true;
-      track.unplayableReason = t('player.getInfoFailed');
+      track.unplayableReason = resolved.unplayableReason || t('player.getInfoFailed');
     }
   } catch {
     track.unplayable = true;
@@ -141,7 +129,7 @@ export async function playPlaylistTracks(
 
   try {
     showToast(t('player.loadingPlaylist', { name: playlistName }), 'info', 1500);
-    const res = await api.playlist(playlistId);
+    const res = await (platformAdapter.getPlaylist ? platformAdapter.getPlaylist(playlistId) : api.playlist(playlistId));
     const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
     if (tracks && tracks.length > 0) {
       recordPlaylistPlay(playlistId);
@@ -160,42 +148,10 @@ export async function playPlaylistTracks(
 }
 
 /**
- * Normalize raw metadata into Player Track (DRY)
+ * Normalize raw metadata into Player Track (delegated to Platform Adapter)
  */
 export function toPlayerTrack(item: any, overrides?: Partial<Track>): Track {
-  if (!item) {
-    return {
-      id: 0,
-      name: t('common.unknownTrack'),
-      artist: t('common.unknownArtist'),
-      cover: DEFAULT_VINYL_COVER,
-      ...overrides
-    };
-  }
-
-  const id = item.id || item.songId || 0;
-  const name = item.name || item.songName || t('common.unknownTrack');
-  const artist = formatArtist(item) || item.artist || item.ar_name || '';
-  const cover = item.pic || item.picUrl || item.al?.picUrl || item.cover || DEFAULT_VINYL_COVER;
-  const isLocal = Boolean(
-    item.isLocal ||
-    (item.url && item.url.includes('/stream')) ||
-    getTrackSourceStatus(id, item.isLocal).isLocal
-  );
-  const freeTrial = Boolean(item.freeTrial);
-
-  return {
-    id,
-    name,
-    artist,
-    cover,
-    url: item.url,
-    lyric: item.lyric,
-    isLocal,
-    freeTrial,
-    freeTrialDuration: item.freeTrialDuration,
-    ...overrides
-  };
+  return platformAdapter.normalizeTrack(item, overrides);
 }
 
 /**
