@@ -1,10 +1,17 @@
 import { api } from './api';
 import { t } from './i18n';
+import { AudioCacheStorage } from 'pwa-audio-player';
 
 export const PWA_CACHE_NAME = 'netease-music-audio-v1';
 export const PWA_TRACK_META_KEY = 'pwa_cached_tracks_meta_v1';
 export const PWA_AUTO_CACHE_KEY = 'wyyyy_auto_cache_while_listening';
 export const PWA_SONG_PLAY_COUNTS_KEY = 'wyyyy_song_play_counts';
+
+export const audioCacheStorage = new AudioCacheStorage({
+  cacheName: PWA_CACHE_NAME,
+  metaStorageKey: PWA_TRACK_META_KEY,
+  playCountsStorageKey: PWA_SONG_PLAY_COUNTS_KEY
+});
 
 /**
  * 获取边听边存开关配置（默认开启）
@@ -35,73 +42,35 @@ export function setAutoCacheEnabled(val: boolean) {
  * 获取指定歌曲的累计播放次数
  */
 export function getSongPlayCount(idOrKey: string | number): number {
-  if (!idOrKey || typeof localStorage === 'undefined') return 0;
-  try {
-    const counts = JSON.parse(localStorage.getItem(PWA_SONG_PLAY_COUNTS_KEY) || '{}');
-    return counts[String(idOrKey)] || 0;
-  } catch {
-    return 0;
-  }
+  return audioCacheStorage.getPlayCount(idOrKey);
 }
 
 /**
  * 记录并增加歌曲的播放次数
  */
 export function recordSongPlay(idOrKey: string | number): number {
-  if (!idOrKey || typeof localStorage === 'undefined') return 0;
-  const key = String(idOrKey);
-  try {
-    const counts = JSON.parse(localStorage.getItem(PWA_SONG_PLAY_COUNTS_KEY) || '{}');
-    counts[key] = (counts[key] || 0) + 1;
-    localStorage.setItem(PWA_SONG_PLAY_COUNTS_KEY, JSON.stringify(counts));
-
-    // 同步更新离线元数据中的播放次数
-    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    let metaChanged = false;
-    for (const url of Object.keys(metaMap)) {
-      const item = metaMap[url];
-      if (item?.id === key || url.includes(`id=${key}`) || url === key) {
-        item.playCount = counts[key];
-        metaChanged = true;
-      }
-    }
-    if (metaChanged) {
-      localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
-    }
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wyyyy:song-play-updated', {
-        detail: { id: key, playCount: counts[key] }
-      }));
-    }
-    return counts[key];
-  } catch {
-    return 0;
+  const count = audioCacheStorage.recordPlayCount(idOrKey);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('wyyyy:song-play-updated', {
+        detail: { id: String(idOrKey), playCount: count }
+      })
+    );
   }
+  return count;
 }
 
 /**
  * 从本地存储加载所有已缓存歌曲的 ID 集合
  */
 export function loadCachedSongIds(): Set<number> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const set = new Set<number>();
-    for (const key of Object.keys(metaMap)) {
-      const item = metaMap[key];
-      if (item?.id) {
-        set.add(Number(item.id));
-      }
-      const match = key.match(/[?&]id=(\d+)/);
-      if (match && match[1]) {
-        set.add(Number(match[1]));
-      }
-    }
-    return set;
-  } catch {
-    return new Set();
+  const ids = audioCacheStorage.getCachedIds();
+  const set = new Set<number>();
+  for (const id of ids) {
+    const num = Number(id);
+    if (!isNaN(num) && num > 0) set.add(num);
   }
+  return set;
 }
 
 /**
@@ -140,17 +109,7 @@ if (typeof window !== 'undefined') {
  */
 export async function isSongCached(id: string | number): Promise<boolean> {
   if (cachedSongIdSet.has(Number(id))) return true;
-  if (typeof window === 'undefined' || !('caches' in window)) return false;
-  try {
-    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const canonicalUrl = `/v3/stream?id=${id}`;
-    if (metaMap[canonicalUrl]) return true;
-    const cache = await caches.open(PWA_CACHE_NAME);
-    const match = await cache.match(canonicalUrl);
-    return !!match;
-  } catch {
-    return false;
-  }
+  return audioCacheStorage.isCached(id);
 }
 
 /**

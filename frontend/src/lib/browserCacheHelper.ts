@@ -7,6 +7,7 @@ import { t } from './i18n';
 import {
   PWA_CACHE_NAME,
   PWA_TRACK_META_KEY,
+  audioCacheStorage,
   getSongPlayCount,
   refreshCachedSongIds
 } from './pwaCache.svelte';
@@ -137,20 +138,7 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
  * 删除单首离线歌曲缓存
  */
 export async function deleteBrowserCacheEntry(item: BrowserCacheItem): Promise<void> {
-  const metaMap = readCachedTrackMeta();
-  for (const cacheName of await caches.keys()) {
-    const cache = await caches.open(cacheName);
-    for (const url of item.urls) {
-      await cache.delete(url).catch(() => {});
-    }
-  }
-  for (const rUrl of item.relUrls) {
-    delete metaMap[rUrl];
-  }
-  for (const fUrl of item.urls) {
-    delete metaMap[fUrl];
-  }
-  localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
+  await audioCacheStorage.delete([...item.urls, ...item.relUrls]);
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
