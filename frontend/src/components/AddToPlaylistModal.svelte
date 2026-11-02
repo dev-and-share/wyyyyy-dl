@@ -5,6 +5,7 @@
   import { deleteApiCache } from '../lib/utils';
   import Modal from './Modal.svelte';
   import CreatePlaylistModal from './CreatePlaylistModal.svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     song,
@@ -47,14 +48,14 @@
           updatePlaylistTrackCount(pl.id, addedCount);
         }
         setLastBackupPlaylist(pl.id, pl.name);
-        showToast(j.msg || `已成功将《${song.name}》添加到歌单「${pl.name}」`, 'success');
+        showToast(j.msg || t('playlist.addSongSuccess', { song: song.name, playlist: pl.name }), 'success');
         deleteApiCache('playlist_' + pl.id);
         onClose();
       } else {
-        showToast(j.msg || '添加到歌单失败', 'warning');
+        showToast(j.msg || t('playlist.addToFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('操作异常: ' + (e.message || e), 'error');
+      showToast(t('playlist.addSongException', { error: e.message || e }), 'error');
     } finally {
       addingId = null;
     }
@@ -62,7 +63,7 @@
 </script>
 
 {#if song}
-  <Modal title="添加歌曲到歌单" icon="📂" maxWidth="max-w-[480px]" {zIndex} {onClose}>
+  <Modal title={t('playlist.addToTitle')} icon="📂" maxWidth="max-w-[480px]" {zIndex} {onClose}>
     <!-- 目标曲目提示卡片 -->
     <div class="flex items-center gap-2 p-2.5 rounded-xl bg-black/5 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 mb-3">
       <span class="text-base">🎵</span>
@@ -76,13 +77,13 @@
 
     <!-- 顶部操作栏 -->
     <div class="flex justify-between items-center mb-2 px-0.5">
-      <span class="text-xs font-medium text-[var(--text-secondary)]">选择我的自建歌单：</span>
+      <span class="text-xs font-medium text-[var(--text-secondary)]">{t('playlist.selectCreated')}</span>
       <button
         type="button"
         class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-transparent border-none cursor-pointer flex items-center gap-1"
         onclick={() => showCreate = true}
       >
-        ➕ 新建歌单
+        ➕ {t('playlist.create')}
       </button>
     </div>
 
@@ -90,7 +91,7 @@
     <div class="max-h-[48vh] sm:max-h-[320px] overflow-y-auto space-y-1.5 pr-1">
       {#if loading}
         <div class="py-8 text-center text-xs text-[var(--text-muted)]">
-          🔄 正在读取我的歌单...
+          🔄 {t('playlist.loadingMine')}
         </div>
       {:else}
         {#each createdPlaylists as pl}
@@ -104,7 +105,7 @@
               <span class="text-sm">📁</span>
               <div class="flex-1 min-w-0">
                 <div class="text-xs font-semibold text-[var(--text-main)] truncate">{pl.name}</div>
-                <div class="text-[10px] text-[var(--text-muted)]">{pl.trackCount || 0} 首曲目</div>
+                <div class="text-[10px] text-[var(--text-muted)]">{t('playlist.trackItemCount', { count: pl.trackCount || 0 })}</div>
               </div>
             </div>
             <button
@@ -113,12 +114,12 @@
               class="btn-primary text-xs px-3 py-1 rounded-lg font-medium shrink-0 cursor-pointer disabled:opacity-50 pointer-events-auto"
               onclick={(e) => { e.stopPropagation(); handleAddTo(pl); }}
             >
-              {addingId === String(pl.id) ? '添加中...' : '➕ 添加'}
+              {addingId === String(pl.id) ? t('playlist.adding') : `➕ ${t('playlist.add')}`}
             </button>
           </div>
         {:else}
           <div class="py-8 text-center text-xs text-[var(--text-muted)]">
-            暂无自建歌单，可点击右上角「新建歌单」
+            {t('playlist.noCreatedPrompt')}
           </div>
         {/each}
       {/if}
@@ -132,7 +133,7 @@
     zIndex="z-[100030]"
     onClose={() => showCreate = false}
     onSuccess={(newId) => {
-      showToast('歌单创建成功', 'success');
+      showToast(t('toast.playlist.created'), 'success');
       loadMyPlaylists('created').catch(() => {});
     }}
   />

@@ -1,0 +1,16 @@
+export default {
+  'toast.playlist.created': '歌单创建成功',
+  'toast.playlist.forked': '歌单已成功 Fork 到本地',
+  'toast.playlist.removed': '已从歌单移除',
+  'toast.playlist.added': '已添加到歌单',
+  'toast.download.added': '已加入下载队列',
+  'toast.copy.success': '复制成功',
+  'toast.copy.failed': '复制失败，请手动长按复制',
+  'toast.cache.cleared': '缓存清理完成',
+  'toast.peq.reset': '均衡器已重置为默认曲线',
+  'toast.locatingFile': '🚀 正在定位本地物理文件...',
+  'toast.update.available': '发现新版本，正在后台更新...',
+  'toast.like.removed': '已取消红心',
+  'toast.like.added': '已收藏 {name}',
+  'toast.like.failed': '收藏状态更新失败',
+} as const;

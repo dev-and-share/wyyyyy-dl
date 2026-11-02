@@ -6,6 +6,7 @@
   import { myPlaylists, loadMyPlaylists, getLastBackupPlaylist, setLastBackupPlaylist, updatePlaylistTrackCount } from '../lib/playlist.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
+  import { t, formatDate } from '../lib/i18n';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
@@ -52,13 +53,8 @@
   let showCreateModal = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
 
-  // 今日日期格式化 (如 09月17日)
-  const todayText = (() => {
-    const d = new Date();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${m}月${day}日`;
-  })();
+  // 今日日期格式化
+  const todayText = $derived(formatDate(Date.now(), { month: '2-digit', day: '2-digit' }));
 
   async function loadRecommend(force = false) {
     if (recommendTracks.length > 0 && !force) return;
@@ -69,10 +65,10 @@
       if (res?.code === '000000' && Array.isArray(res.data)) {
         recommendTracks = res.data;
       } else {
-        errorMsg = res?.msg || '获取每日推荐失败，请先在系统中配置网易云 Cookie';
+        errorMsg = res?.msg || t('recommend.failedCookie');
       }
     } catch (e: any) {
-      errorMsg = e?.message || '网络连接异常，无法获取每日推荐';
+      errorMsg = e?.message || t('recommend.failedNetwork');
     } finally {
       loading = false;
     }
@@ -100,14 +96,14 @@
       })
     );
     onPlayQueue(list, 0);
-    showToast(`已开始连播今日推荐 (${list.length} 首)`, 'success');
+    showToast(t('recommend.playingAll', { count: list.length }), 'success');
   }
 
   // 批量下载今日推荐
   async function handleDownloadAll() {
     if (!recommendTracks.length || isDownloadingAll) return;
     isDownloadingAll = true;
-    showToast(`正在批量提交今日推荐下载任务 (${recommendTracks.length} 首)...`, 'info');
+    showToast(t('recommend.batchSubmitting', { count: recommendTracks.length }), 'info');
     let successCount = 0;
     try {
       for (const t of recommendTracks) {
@@ -116,10 +112,10 @@
           successCount++;
         } catch {}
       }
-      showToast(`已成功将 ${successCount} 首今日推荐加入下载队列`, 'success');
+      showToast(t('recommend.batchSuccess', { count: successCount }), 'success');
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
-      showToast('批量下载异常: ' + (e.message || e), 'error');
+      showToast(t('recommend.batchFailed', { error: e.message || e }), 'error');
     } finally {
       isDownloadingAll = false;
     }
@@ -141,16 +137,16 @@
         if (addedCount > 0) {
           updatePlaylistTrackCount(lastBackup.id, addedCount);
         }
-        const toastMsg = (res.msg && res.msg !== 'success' && res.msg !== '成功')
+        const toastMsg = (res.msg && res.msg !== 'success' && res.msg !== '成功') // i18n-ignore: backend raw success message
           ? res.msg
-          : `🎉 已成功将今日推荐 (${recommendTracks.length} 首) 备份到「${lastBackup.name}」`;
+          : t('recommend.backupSuccess', { count: recommendTracks.length, name: lastBackup.name });
         showToast(toastMsg, 'success');
         deleteApiCache('playlist_' + lastBackup.id);
       } else {
-        showToast(res?.msg || '备份到歌单失败', 'warning');
+        showToast(res?.msg || t('recommend.backupFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('一键备份异常: ' + (e.message || e), 'error');
+      showToast(t('recommend.backupError', { error: e.message || e }), 'error');
     } finally {
       isBackingUp = false;
     }
@@ -165,28 +161,28 @@
   }
 
   // 移动端更多操作
-  function openRecommendTrackSheet(t: any, isPlayingThis: boolean) {
-    const artistName = typeof t.artists === 'string' ? t.artists : formatArtist(t.artists || t.ar);
-    const status = getTrackSourceStatus(t.id, t.isLocal, curTrack);
+  function openRecommendTrackSheet(tItem: any, isPlayingThis: boolean) {
+    const artistName = typeof tItem.artists === 'string' ? tItem.artists : formatArtist(tItem.artists || tItem.ar);
+    const status = getTrackSourceStatus(tItem.id, tItem.isLocal, curTrack);
     openSheet({
-      title: t.name,
-      subtitle: artistName || '未知歌手',
+      title: tItem.name,
+      subtitle: artistName || t('player.unknownArtist'),
       actions: [
         ...(onPlayQueue ? [{
           label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'full' }),
           style: 'primary' as const,
-          onclick: () => onPlayQueue([toPlayerTrack(t, { artist: artistName, isLocal: status.isLocal })])
+          onclick: () => onPlayQueue([toPlayerTrack(tItem, { artist: artistName, isLocal: status.isLocal })])
         }] : []),
-        { label: '📥 下载到电脑服务器', style: 'default' as const, onclick: () => api.downloadSingle(String(t.id)).then(() => showToast(`已提交下载: 《${t.name}》`, 'success')) },
-        { label: '➕ 收藏到歌单', style: 'default' as const, onclick: () => { addToPlaylistSong = { id: t.id, name: t.name, artist: artistName }; } },
-        ...(onSong ? [{ label: '🎧 查看单曲详情 / 音质', style: 'default' as const, onclick: () => onSong(String(t.id)) }] : []),
-        ...(onToggleLike ? [{ label: likedSet.has(Number(t.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢', style: 'default' as const, onclick: () => onToggleLike(Number(t.id), t.name, artistName) }] : [])
+        { label: t('recommend.actionDownload'), style: 'default' as const, onclick: () => api.downloadSingle(String(tItem.id)).then(() => showToast(t('drawer.downloadSubmitted', { name: tItem.name }), 'success')) },
+        { label: t('recommend.actionPlaylist'), style: 'default' as const, onclick: () => { addToPlaylistSong = { id: tItem.id, name: tItem.name, artist: artistName }; } },
+        ...(onSong ? [{ label: t('recommend.actionDetail'), style: 'default' as const, onclick: () => onSong(String(tItem.id)) }] : []),
+        ...(onToggleLike ? [{ label: likedSet.has(Number(tItem.id)) ? t('recommend.actionUnlike') : t('recommend.actionLike'), style: 'default' as const, onclick: () => onToggleLike(Number(tItem.id), tItem.name, artistName) }] : [])
       ]
     });
   }
 </script>
 
-<AccordionCard title="📅 3. 每日专属推荐" bind:open {flat} accent="amber" onToggle={onToggle}>
+<AccordionCard title={t('recommend.title')} bind:open {flat} accent="amber" onToggle={onToggle}>
   <!-- 头部控制栏：日期 + 核心快捷动作组 -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 py-1 mb-3 border-b border-[var(--border-subtle)] pb-3">
     <div class="flex items-center gap-2 flex-wrap">
@@ -196,11 +192,11 @@
       </span>
       <span class="text-xs text-[var(--text-muted)] font-medium">
         {#if loading}
-          正在更新每日推荐...
+          {t('recommend.updating')}
         {:else if recommendTracks.length}
-          专属私房歌 · 共 {recommendTracks.length} 首
+          {t('recommend.subtitle', { count: recommendTracks.length })}
         {:else}
-          每天 6:00 定制更新
+          {t('recommend.updateTime')}
         {/if}
       </span>
     </div>
@@ -214,7 +210,7 @@
           onclick={handlePlayAll}
         >
           <span>▶️</span>
-          <span>播放全部</span>
+          <span>{t('recommend.playAll')}</span>
         </button>
 
         <button
@@ -224,7 +220,7 @@
           onclick={handleDownloadAll}
         >
           <span>{isDownloadingAll ? '🔄' : '📥'}</span>
-          <span>{isDownloadingAll ? '提交中...' : '下载全部'}</span>
+          <span>{isDownloadingAll ? t('common.submitting') : t('recommend.downloadAll')}</span>
         </button>
 
         <!-- 真·一键备份今日推荐 -->
@@ -235,18 +231,18 @@
               disabled={isBackingUp}
               class="text-xs py-1.5 px-2.5 font-medium text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1 border-none bg-transparent disabled:opacity-50"
               onclick={handleOneClickBackup}
-              title="一键备份全部曲目到「{lastBackup.name}」"
+              title={t('recommend.backupToTooltip', { name: lastBackup.name })}
             >
               <span>{isBackingUp ? '⏳' : '➕'}</span>
-              <span class="truncate max-w-[130px] sm:max-w-[180px]">{isBackingUp ? '备份中...' : `备份到「${lastBackup.name}」`}</span>
+              <span class="truncate max-w-[130px] sm:max-w-[180px]">{isBackingUp ? t('recommend.backingUp') : t('recommend.backupTo', { name: lastBackup.name })}</span>
             </button>
             <button
               type="button"
               class="text-[11px] px-2 text-emerald-300 hover:text-white border-l border-emerald-500/30 hover:bg-emerald-500/25 cursor-pointer bg-transparent transition-all"
               onclick={() => showSelectModal = true}
-              title="更换备份目标歌单"
+              title={t('recommend.backupChangeTooltip')}
             >
-              更换
+              {t('recommend.backupChange')}
             </button>
           </div>
         {:else}
@@ -256,7 +252,7 @@
             onclick={() => showSelectModal = true}
           >
             <span>➕</span>
-            <span>一键备份到歌单</span>
+            <span>{t('recommend.backupBtn')}</span>
           </button>
         {/if}
       {/if}
@@ -265,10 +261,10 @@
         type="button"
         class="text-xs py-1.5 px-2 text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none cursor-pointer flex items-center gap-1 ml-auto sm:ml-0"
         onclick={() => loadRecommend(true)}
-        title="重新获取今日推荐"
+        title={t('recommend.refreshTooltip')}
       >
         <span>🔄</span>
-        <span class="hidden sm:inline">刷新</span>
+        <span class="hidden sm:inline">{t('common.refresh')}</span>
       </button>
     </div>
   </div>
@@ -277,31 +273,31 @@
   {#if loading}
     <div class="py-12 text-center text-xs text-[var(--text-secondary)] flex flex-col items-center gap-3">
       <div class="w-7 h-7 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin"></div>
-      <span>正在根据您的音乐品味同步今日推荐...</span>
+      <span>{t('recommend.syncing')}</span>
     </div>
   {:else if errorMsg}
     <div class="py-10 px-4 text-center flex flex-col items-center gap-2.5 bg-black/5 dark:bg-white/[0.02] rounded-xl border border-dashed border-black/10 dark:border-white/10 my-2">
       <span class="text-2xl">🔒</span>
       <div class="text-xs text-[var(--text-main)] font-semibold">{errorMsg}</div>
       <div class="text-[11px] text-[var(--text-muted)] max-w-sm leading-relaxed">
-        每日推荐为网易云账号私人定制数据。若您已配置 Cookie，请检查 Cookie 有效期；点击下方按钮可重新拉取。
+        {t('recommend.cookieTip')}
       </div>
       <button
         type="button"
         class="btn-primary text-xs py-1.5 px-4 rounded-lg mt-1 cursor-pointer"
         onclick={() => loadRecommend(true)}
       >
-        🔄 重新获取
+        {t('recommend.reFetch')}
       </button>
     </div>
   {:else if recommendTracks.length > 0}
     <ul class="data-list scrollable-list max-h-[520px]">
-      {#each recommendTracks as t, idx}
-        {@const artistName = typeof t.artists === 'string' ? t.artists : formatArtist(t.artists || t.ar)}
-        {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
-        {@const isPlayingThis = isSameTrack(curTrack, t)}
+      {#each recommendTracks as trackItem, idx}
+        {@const artistName = typeof trackItem.artists === 'string' ? trackItem.artists : formatArtist(trackItem.artists || trackItem.ar)}
+        {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}
+        {@const isPlayingThis = isSameTrack(curTrack, trackItem)}
         {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
-        {@const coverUrl = t.picUrl || t.al?.picUrl || ''}
+        {@const coverUrl = trackItem.picUrl || trackItem.al?.picUrl || ''}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <!-- 封面与曲名 -->
           <div class="flex items-center gap-2.5 min-w-0 flex-1">
@@ -309,7 +305,7 @@
               <div class="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-lg overflow-hidden bg-black/10 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-xs">
                 <img
                   src={formatCoverUrl(coverUrl, 120)}
-                  alt={t.name}
+                  alt={trackItem.name}
                   class="w-full h-full object-cover"
                   loading="lazy"
                   onerror={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_VINYL_COVER; }}
@@ -322,14 +318,14 @@
                 <button
                   type="button"
                   class="clickable-track-title cursor-pointer truncate font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors text-xs sm:text-sm leading-snug"
-                  onclick={() => onSong ? onSong(String(t.id)) : (onPlayQueue && onPlayQueue([toPlayerTrack(t, { artist: artistName, isLocal: status.isLocal })]))}
+                  onclick={() => onSong ? onSong(String(trackItem.id)) : (onPlayQueue && onPlayQueue([toPlayerTrack(trackItem, { artist: artistName, isLocal: status.isLocal })]))}
                 >
-                  <span class="text-[var(--text-muted)] font-mono mr-1 text-[11px]">{idx + 1}.</span>{t.name}
+                  <span class="text-[var(--text-muted)] font-mono mr-1 text-[11px]">{idx + 1}.</span>{trackItem.name}
                 </button>
-                <TrackSourceBadge id={t.id} isLocal={t.isLocal} {curTrack} class="shrink-0" />
-                {#if t.reason}
+                <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="shrink-0" />
+                {#if trackItem.reason}
                   <span class="text-[10px] text-amber-500 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20 shrink-0 font-normal">
-                    {t.reason}
+                    {trackItem.reason}
                   </span>
                 {/if}
               </div>
@@ -339,11 +335,11 @@
                   <span class="text-[var(--text-secondary)] truncate">{artistName}</span>
                   <span class="opacity-40">·</span>
                 {/if}
-                {#if t.album}
-                  <span class="text-[var(--text-muted)] truncate">{t.album}</span>
+                {#if trackItem.album}
+                  <span class="text-[var(--text-muted)] truncate">{trackItem.album}</span>
                   <span class="opacity-40">·</span>
                 {/if}
-                <span class="font-mono opacity-80 shrink-0">ID:{t.id}</span>
+                <span class="font-mono opacity-80 shrink-0">ID:{trackItem.id}</span>
               </div>
             </div>
           </div>
@@ -353,24 +349,24 @@
             <!-- 💻 PC 桌面端快捷按钮 -->
             <div class="hidden md:inline-flex items-center gap-1.5">
               {#if onToggleLike}
-                <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name, artistName)} />
+                <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike(Number(trackItem.id), trackItem.name, artistName)} />
               {/if}
               {#if onPlayQueue}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([toPlayerTrack(t, { artist: artistName, isLocal: status.isLocal })])}
+                  onclick={() => onPlayQueue([toPlayerTrack(trackItem, { artist: artistName, isLocal: status.isLocal })])}
                 >
                   {playLabel}
                 </SlotBtn>
               {/if}
-              <SlotBtn onclick={() => api.downloadSingle(String(t.id)).then(() => showToast(`已提交下载: 《${t.name}》`, 'success'))}>
-                📥 下载
+              <SlotBtn onclick={() => api.downloadSingle(String(trackItem.id)).then(() => showToast(t('drawer.downloadSubmitted', { name: trackItem.name }), 'success'))}>
+                {t('recommend.btnDownload')}
               </SlotBtn>
-              <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist: artistName }}>
-                ➕ 歌单
+              <SlotBtn onclick={() => addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist: artistName }}>
+                {t('recommend.btnPlaylist')}
               </SlotBtn>
               {#if onSong}
-                <SlotBtn onclick={() => onSong(String(t.id))}>👉 详情</SlotBtn>
+                <SlotBtn onclick={() => onSong(String(trackItem.id))}>{t('recommend.btnDetail')}</SlotBtn>
               {/if}
             </div>
 
@@ -379,7 +375,7 @@
               {#if onPlayQueue}
                 <SlotBtn
                   playing={isPlayingThis && playing}
-                  onclick={() => onPlayQueue([toPlayerTrack(t, { artist: artistName, isLocal: status.isLocal })])}
+                  onclick={() => onPlayQueue([toPlayerTrack(trackItem, { artist: artistName, isLocal: status.isLocal })])}
                 >
                   {playLabel}
                 </SlotBtn>
@@ -387,9 +383,9 @@
               <button
                 type="button"
                 class="btn-more-actions"
-                onclick={() => openRecommendTrackSheet(t, isPlayingThis)}
-                title="更多操作"
-                aria-label="更多操作"
+                onclick={() => openRecommendTrackSheet(trackItem, isPlayingThis)}
+                title={t('recommend.moreActions')}
+                aria-label={t('recommend.moreActions')}
               >
                 ···
               </button>
@@ -400,26 +396,26 @@
     </ul>
   {:else}
     <div class="py-12 text-center text-xs text-[var(--text-muted)]">
-      暂无推荐歌曲数据，点击右上角刷新重试
+      {t('recommend.empty')}
     </div>
   {/if}
 </AccordionCard>
 
 <!-- 选择/更换备份目标歌单 Modal -->
 {#if showSelectModal}
-  <Modal title="选择备份目标自建歌单" icon="📂" maxWidth="max-w-[480px]" onClose={() => showSelectModal = false}>
+  <Modal title={t('recommend.selectBackupTitle')} icon="📂" maxWidth="max-w-[480px]" onClose={() => showSelectModal = false}>
     <div class="text-xs text-[var(--text-secondary)] mb-3">
-      选择您想将今日推荐一键备份到的自建歌单（选定后系统将自动记住）：
+      {t('recommend.selectBackupTip')}
     </div>
 
     <div class="flex justify-between items-center mb-2">
-      <span class="text-xs font-semibold text-[var(--text-main)]">我的自建歌单列表：</span>
+      <span class="text-xs font-semibold text-[var(--text-main)]">{t('recommend.myCreatedList')}</span>
       <button
         type="button"
         class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-transparent border-none cursor-pointer flex items-center gap-1"
         onclick={() => showCreateModal = true}
       >
-        ➕ 新建歌单
+        ➕ {t('playlist.create')}
       </button>
     </div>
 
@@ -432,7 +428,7 @@
             <span class="text-sm">📁</span>
             <div class="flex-1 min-w-0">
               <div class="text-xs font-semibold text-[var(--text-main)] truncate">{pl.name}</div>
-              <div class="text-[10px] text-[var(--text-muted)]">{pl.trackCount || 0} 首曲目</div>
+              <div class="text-[10px] text-[var(--text-muted)]">{pl.trackCount || 0} {t('common.unit.tracks')}</div>
             </div>
           </div>
           <button
@@ -440,12 +436,12 @@
             class="btn-primary text-xs px-3 py-1 rounded-lg font-medium shrink-0 cursor-pointer"
             onclick={() => handleSelectPlaylistAndBackup(pl)}
           >
-            备份至此歌单
+            {t('recommend.backupToThis')}
           </button>
         </div>
       {:else}
         <div class="py-8 text-center text-xs text-[var(--text-muted)]">
-          暂无自建歌单，可点击右上角「新建歌单」
+          {t('playlist.noCreatedPrompt')}
         </div>
       {/each}
     </div>
@@ -458,7 +454,7 @@
   <CreatePlaylistModal
     onClose={() => showCreateModal = false}
     onSuccess={(newId) => {
-      showToast('歌单创建成功', 'success');
+      showToast(t('toast.playlist.created'), 'success');
       loadMyPlaylists('created').catch(() => {});
     }}
   />

@@ -611,7 +611,8 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
         Set<Long> ids = new HashSet<>();
         List<DownloadHistoryItem> all = getRecords(null, 1, 10000);
         for (DownloadHistoryItem item : all) {
-            if (item != null && item.getSongId() != null) {
+            if (item != null && item.getSongId() != null && "SUCCESS".equalsIgnoreCase(item.getStatus())
+                    && item.getFileSize() != null && item.getFileSize() > 0) {
                 ids.add(item.getSongId());
             }
         }
@@ -620,7 +621,9 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
 
     @Override
     public boolean isSongDownloaded(Long songId) {
-        return findLocalFileBySongId(songId) != null;
+        if (songId == null || songId <= 0) return false;
+        DownloadHistoryItem item = findLocalFileBySongId(songId);
+        return item != null && Boolean.TRUE.equals(item.getFileExists()) && item.getFileSize() != null && item.getFileSize() > 0;
     }
 
     @Override

@@ -4,6 +4,7 @@
   import { formatArtist, matchesKeyword } from '../lib/utils';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
+  import { t } from '../lib/i18n';
   import TaskQueueView from './TaskQueueView.svelte';
   import LocalSearchBox from './LocalSearchBox.svelte';
   import TrackLikeBtn from './TrackLikeBtn.svelte';
@@ -100,20 +101,20 @@
       const task = res?.data;
       if (task?.status === 'SKIP') {
         const msg = task.errorMsg || '';
-        if (msg.includes('已存在') || msg.includes('磁盘中')) {
+        if (msg.includes('已存在') || msg.includes('磁盘中')) { // i18n-ignore: backend raw error string
           markSongDownloaded(track.id);
-          showToast(`《${track.name}》已存在于本地磁盘，已同步状态`, 'info', 3000);
+          showToast(t('drawer.alreadyInDisk', { name: track.name }), 'info', 3000);
         } else {
-          showToast(`已跳过《${track.name}》: ${msg || '试听片段或已存在'}`, 'warning', 3000);
+          showToast(t('download.skippedWithName', { name: track.name, reason: msg || t('download.skipReasonPreviewOrExist') }), 'warning', 3000);
         }
       } else if (task?.status === 'FAILED') {
-        showToast(`下载失败《${track.name}》: ${task.errorMsg || '无法下载'}`, 'error', 3000);
+        showToast(t('download.failedWithName', { name: track.name, reason: task.errorMsg || t('common.failed') }), 'error', 3000);
       } else {
-        showToast(`已提交下载: 《${track.name}》`, 'info', 2000);
+        showToast(t('drawer.downloadSubmitted', { name: track.name }), 'info', 2000);
       }
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (err: any) {
-      showToast('下载异常: ' + (err?.message || err), 'error', 3000);
+      showToast(t('drawer.downloadError', { error: err?.message || err }), 'error', 3000);
     } finally {
       const nextSet = new Set(downloadingIds);
       nextSet.delete(idStr);
@@ -125,7 +126,7 @@
     const pendingTracks = queue.filter((t: Track) => !getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer);
     if (!pendingTracks.length) return;
 
-    showToast(`正在批量提交 ${pendingTracks.length} 首待下载歌曲...`, 'info', 2000);
+    showToast(t('drawer.batchSubmitting', { count: pendingTracks.length }), 'info', 2000);
     const newIds = new Set(downloadingIds);
     for (const t of pendingTracks) {
       newIds.add(String(t.id));
@@ -135,7 +136,7 @@
     for (const t of pendingTracks) {
       api.downloadSingle(String(t.id)).then((res) => {
         const msg = res?.data?.errorMsg || '';
-        if (res?.data?.status === 'SKIP' && (msg.includes('已存在') || msg.includes('磁盘中'))) {
+        if (res?.data?.status === 'SKIP' && (msg.includes('已存在') || msg.includes('磁盘中'))) { // i18n-ignore: backend raw error string
           markSongDownloaded(t.id);
         }
       }).catch(() => {}).finally(() => {
@@ -145,7 +146,7 @@
       });
     }
     window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
-    showToast(`已将 ${pendingTracks.length} 首待下载歌曲加入后台队列`, 'success', 2500);
+    showToast(t('drawer.batchSubmitted', { count: pendingTracks.length }), 'success', 2500);
   }
 
   // 退出动画与手势下拉状态
@@ -319,7 +320,7 @@
       localStorage.removeItem('wyyyy_drawer_pos');
       localStorage.removeItem('wyyyy_drawer_size');
     } catch {}
-    showToast('已重置播放列表窗口位置与大小', 'info', 1500);
+    showToast(t('drawer.resetPosToast'), 'info', 1500);
   }
 
   // ↔️ PC 边缘及角落八向拉伸尺寸调节
@@ -488,7 +489,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100010] flex items-end justify-center md:justify-end md:items-end box-border overscroll-none touch-none {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
+  class="fixed inset-0 bg-black/40 dark:bg-gradient-to-b dark:from-[var(--bg-color)]/95 dark:via-[var(--bg-color)]/70 dark:to-black/80 backdrop-blur-md z-[100010] flex items-end justify-center md:justify-end md:items-end box-border overscroll-none touch-none {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
   onclick={handleClose}
   ontouchmove={(e) => { if (e.target === e.currentTarget && e.cancelable) e.preventDefault(); }}
 >
@@ -506,25 +507,25 @@
       <div
         class="absolute top-0 left-3 right-3 h-2 cursor-ns-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('n', e)}
-        aria-label="拉伸窗口顶部"
+        aria-label={t('drawer.resizeTop')}
         role="separator"
       ></div>
       <div
         class="absolute bottom-0 left-3 right-3 h-2 cursor-ns-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('s', e)}
-        aria-label="拉伸窗口底部"
+        aria-label={t('drawer.resizeBottom')}
         role="separator"
       ></div>
       <div
         class="absolute left-0 top-3 bottom-3 w-2 cursor-ew-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('w', e)}
-        aria-label="拉伸窗口左侧"
+        aria-label={t('drawer.resizeLeft')}
         role="separator"
       ></div>
       <div
         class="absolute right-0 top-3 bottom-3 w-2 cursor-ew-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('e', e)}
-        aria-label="拉伸窗口右侧"
+        aria-label={t('drawer.resizeRight')}
         role="separator"
       ></div>
 
@@ -532,25 +533,25 @@
       <div
         class="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('nw', e)}
-        aria-label="拉伸左上角"
+        aria-label={t('drawer.resizeTopLeft')}
         role="separator"
       ></div>
       <div
         class="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('ne', e)}
-        aria-label="拉伸右上角"
+        aria-label={t('drawer.resizeTopRight')}
         role="separator"
       ></div>
       <div
         class="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('sw', e)}
-        aria-label="拉伸左下角"
+        aria-label={t('drawer.resizeBottomLeft')}
         role="separator"
       ></div>
       <div
         class="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-50 select-none touch-none"
         onmousedown={(e) => handleResizeMouseDown('se', e)}
-        aria-label="拉伸右下角"
+        aria-label={t('drawer.resizeBottomRight')}
         role="separator"
       ></div>
 
@@ -582,7 +583,7 @@
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
       ontouchend={handleTouchEnd}
-      title="💡 PC端按住此处可自由拖拽窗口，双击恢复默认位置"
+      title={t('drawer.titleTooltip')}
     >
       <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
         <button
@@ -590,14 +591,14 @@
           class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer {activeTab === 'queue' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'queue'}
         >
-          📜 <span class="hidden sm:inline">播放</span>队列 {displayedCount < countAll ? `(${displayedCount}/${countAll})` : `(${countAll})`}
+          📜 <span class="hidden sm:inline">{t('player.play')}</span>{t('drawer.queue')} {displayedCount < countAll ? `(${displayedCount}/${countAll})` : `(${countAll})`}
         </button>
         <button
           type="button"
           class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-1 {activeTab === 'tasks' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'tasks'}
         >
-          📥 <span class="hidden sm:inline">下载</span>任务
+          📥 <span class="hidden sm:inline">{t('download.title').slice(0, 2)}</span>{t('drawer.tasks')}
           {#if tasks.length > 0}
             <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full leading-tight">
               {tasks.length}
@@ -612,11 +613,11 @@
             class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium"
             onclick={() => {
               onShuffle();
-              showToast('🎲 已随机洗牌！当前曲目置顶，后续顺序播放', 'info', 2000);
+              showToast(t('drawer.shuffleToast'), 'info', 2000);
             }}
-            title="WYSIWYG 洗牌：当前歌曲置顶，剩余曲目随机重排"
+            title={t('drawer.shuffleTooltip')}
           >
-            🎲 洗牌
+            🎲 {t('drawer.shuffle')}
           </button>
         {/if}
         {#if activeTab === 'queue' && queue.length > 0}
@@ -624,9 +625,9 @@
             type="button"
             class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium"
             onclick={() => showForkModal = true}
-            title="将当前播放队列全部歌曲存为新歌单"
+            title={t('drawer.saveAsPlaylistTooltip')}
           >
-            💾 <span class="hidden sm:inline">存为</span>歌单
+            💾 <span class="hidden sm:inline">{t('common.save')}</span>{t('topbar.playlist')}
           </button>
         {/if}
         <button
@@ -636,16 +637,16 @@
             if (activeTab === 'queue') onClearQueue();
             else onClearTasks();
           }}
-          title={activeTab === 'queue' ? '清空播放队列' : '清空下载历史任务'}
+          title={activeTab === 'queue' ? t('drawer.clearQueue') : t('drawer.clearTasks')}
         >
-          清空
+          {t('common.clear')}
         </button>
         <!-- 💻 PC 桌面端保留 X 按钮；📱 SP 移动端去除 X 按钮（靠遮罩层点击与下拉手势关闭） -->
         <button
           type="button"
           class="hidden md:flex w-7 h-7 rounded-lg items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all cursor-pointer text-sm"
           onclick={handleClose}
-          title="关闭"
+          title={t('common.close')}
         >
           ✕
         </button>
@@ -660,7 +661,7 @@
           <!-- 搜索过滤输入框 -->
           <LocalSearchBox
             bind:value={filterText}
-            placeholder="搜索当前队列歌曲 / 歌手 (支持拼音)..."
+            placeholder={t('drawer.searchPlaceholder')}
             inputClassName="!py-1"
           />
 
@@ -672,25 +673,25 @@
                 type="button"
                 class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {!serverOnly && !offlineOnly && !pendingOnly ? 'bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
                 onclick={() => { pendingOnly = false; onToggleServerOnly(false); onToggleOfflineOnly(false); }}
-                title="浏览并播放当前队列全部歌曲"
+                title={t('drawer.allTooltip')}
               >
-                全部 {countAll}
+                {t('drawer.all')} {countAll}
               </button>
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {serverOnly ? 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
                 onclick={() => { pendingOnly = false; onToggleServerOnly(!serverOnly); }}
-                title="仅播已下载到服务器磁盘的曲目（💻）"
+                title={t('drawer.serverTooltip')}
               >
-                💻 服务器 {countServer}
+                💻 {t('drawer.server')} {countServer}
               </button>
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {offlineOnly ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
                 onclick={() => { pendingOnly = false; onToggleOfflineOnly(!offlineOnly); }}
-                title="手机纯离线模式（仅播手机浏览器本地缓存，绝不消耗手机流量）"
+                title={t('drawer.offlineTooltip')}
               >
-                📴 纯离线 {countPhone}
+                📴 {t('drawer.offline')} {countPhone}
               </button>
               <button
                 type="button"
@@ -702,21 +703,21 @@
                     onToggleOfflineOnly(false);
                   }
                 }}
-                title="搜集癖专区：仅展示尚未下载到服务器磁盘的歌曲"
+                title={t('drawer.pendingTooltip')}
               >
-                待下载 {countPending}
+                {t('drawer.pending')} {countPending}
               </button>
             </div>
 
             <!-- 右侧：通用跳过试听策略开关 -->
-            <label class="flex items-center gap-1.5 cursor-pointer shrink-0 text-[var(--text-secondary)] hover:text-[var(--text-main)] transition-colors pl-1" title="遇到 30 秒试听曲目自动切下一首完整歌曲">
+            <label class="flex items-center gap-1.5 cursor-pointer shrink-0 text-[var(--text-secondary)] hover:text-[var(--text-main)] transition-colors pl-1" title={t('drawer.skipTrialTooltip')}>
               <input
                 type="checkbox"
                 checked={autoSkipTrial}
                 onchange={(e) => onToggleAutoSkip((e.currentTarget as HTMLInputElement).checked)}
                 class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
               />
-              <span class="whitespace-nowrap {autoSkipTrial ? 'font-medium text-[var(--text-main)]' : ''}">跳过试听</span>
+              <span class="whitespace-nowrap {autoSkipTrial ? 'font-medium text-[var(--text-main)]' : ''}">{t('drawer.skipTrial')}</span>
             </label>
           </div>
         </div>
@@ -724,14 +725,14 @@
         <!-- 搜集癖待下载提示与一键批量补齐横幅 -->
         {#if pendingOnly && countPending > 0}
           <div class="px-3 py-1.5 bg-rose-500/10 border-b border-rose-500/20 flex items-center justify-between text-xs text-rose-600 dark:text-rose-300 shrink-0">
-            <span class="truncate pr-2">💡 搜集癖专区：发现 <strong>{countPending}</strong> 首待下载</span>
+            <span class="truncate pr-2">💡 {t('drawer.collectorBanner', { count: countPending })}</span>
             <button
               type="button"
               class="px-2.5 py-0.5 rounded-lg bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-medium text-[11px] cursor-pointer transition-all shadow-xs shrink-0"
               onclick={handleDownloadAllPending}
-              title="一键将所有待下载歌曲提交到服务器后台任务"
+              title={t('drawer.batchDownloadPendingTooltip')}
             >
-              ⬇️ 批量补齐下载
+              {t('drawer.batchDownloadPending')}
             </button>
           </div>
         {/if}
@@ -742,8 +743,8 @@
           style="-webkit-overflow-scrolling: touch; touch-action: pan-y;"
         >
           <ul class="divide-y divide-black/5 dark:divide-white/5 m-0 p-0 list-none">
-            {#each filteredQueueWithIndex as { t, realIdx }}
-              {@const status = getTrackSourceStatus(t.id, t.isLocal, queue[qIndex])}
+            {#each filteredQueueWithIndex as { t: trackItem, realIdx }}
+              {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, queue[qIndex])}
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
               <li
@@ -753,22 +754,22 @@
               >
                 <div class="flex-1 overflow-hidden flex items-center gap-1.5 min-w-0 pr-2">
                   <span class="text-xs truncate {realIdx === qIndex ? 'font-bold text-red-500 dark:text-red-400' : 'text-[var(--text-main)]'}">
-                    {realIdx + 1}. {t.name}
+                    {realIdx + 1}. {trackItem.name}
                   </span>
-                  {#if formatArtist(t.artist)}
+                  {#if formatArtist(trackItem.artist)}
                     <span class="text-[11px] text-[var(--text-muted)] truncate shrink-0">
-                      - {formatArtist(t.artist)}
+                      - {formatArtist(trackItem.artist)}
                     </span>
                   {/if}
-                  <TrackSourceBadge id={t.id} isLocal={t.isLocal} curTrack={queue[qIndex]} />
+                  <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} curTrack={queue[qIndex]} />
                   {#if !status.isServer}
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/15 hover:bg-blue-500/25 active:scale-95 text-blue-500 dark:text-blue-400 border border-blue-500/30 text-[10px] shrink-0 transition-all cursor-pointer shadow-2xs {downloadingIds.has(String(t.id)) ? 'animate-pulse' : ''}"
-                      onclick={(e) => handleDownloadSingle(e, t)}
-                      title="快速下载到服务器磁盘"
+                      class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/15 hover:bg-blue-500/25 active:scale-95 text-blue-500 dark:text-blue-400 border border-blue-500/30 text-[10px] shrink-0 transition-all cursor-pointer shadow-2xs {downloadingIds.has(String(trackItem.id)) ? 'animate-pulse' : ''}"
+                      onclick={(e) => handleDownloadSingle(e, trackItem)}
+                      title={t('drawer.fastDownloadTooltip')}
                     >
-                      {#if downloadingIds.has(String(t.id))}
+                      {#if downloadingIds.has(String(trackItem.id))}
                         <span class="animate-spin inline-block text-[9px]">⏳</span>
                       {:else}
                         <span>⬇️</span>
@@ -776,22 +777,22 @@
                     </button>
                   {/if}
                   {#if realIdx === qIndex}
-                    <span class="text-[11px] font-semibold text-emerald-500 shrink-0 ml-1">▶ 播放中</span>
+                    <span class="text-[11px] font-semibold text-emerald-500 shrink-0 ml-1">{t('drawer.playingBadge')}</span>
                   {/if}
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                   <TrackLikeBtn
-                    liked={likedSet.has(Number(t.id))}
-                    onclick={() => onToggleLike(Number(t.id), t.name)}
+                    liked={likedSet.has(Number(trackItem.id))}
+                    onclick={() => onToggleLike(Number(trackItem.id), trackItem.name)}
                   />
                   <button
                     type="button"
                     class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-95 transition-all cursor-pointer opacity-70 group-hover:opacity-100"
                     onclick={(e) => {
                       e.stopPropagation();
-                      addToPlaylistSong = { id: t.id, name: t.name, artist: formatArtist(t.artist) };
+                      addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist: formatArtist(trackItem.artist) };
                     }}
-                    title="收藏到歌单"
+                    title={t('playlist.collectTo')}
                   >
                     ➕
                   </button>
@@ -799,7 +800,7 @@
                     type="button"
                     class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 active:scale-95 transition-all cursor-pointer opacity-70 group-hover:opacity-100"
                     onclick={(e) => { e.stopPropagation(); onRemoveItem(realIdx); }}
-                    title="从列表中移除"
+                    title={t('drawer.removeTrack')}
                   >
                     ✕
                   </button>
@@ -807,7 +808,7 @@
               </li>
             {:else}
               <li class="py-8 px-4 text-center text-[var(--text-muted)] text-xs list-none">
-                {pendingOnly ? '🎉 太棒了！当前播放列表的所有歌曲已全部下载到服务器！' : (filterText ? '未找到匹配曲目' : '播放队列为空，请先在歌单或搜索中点播歌曲')}
+                {pendingOnly ? t('drawer.allDownloaded') : (filterText ? t('drawer.noMatching') : t('drawer.queueEmptyPrompt'))}
               </li>
             {/each}
           </ul>
@@ -830,12 +831,12 @@
 
 {#if showForkModal}
   <ForkPlaylistModal
-    playlistName="当前播放队列"
+    playlistName={t('drawer.currentQueue')}
     trackCount={queue.length}
     trackIds={queue.map((t: any) => t.id)}
     onClose={() => showForkModal = false}
     onSuccess={() => {
-      showToast('已成功将当前播放列表保存为新歌单', 'success');
+      showToast(t('drawer.savedQueueToast'), 'success');
     }}
     {showToast}
   />

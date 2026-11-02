@@ -3,6 +3,7 @@
   import type { SkinStageProps } from './skinTypes';
   import { calculateTapeRadii } from './cassetteHelper';
   import TrackQuickActions from '../TrackQuickActions.svelte';
+  import { t } from '../../lib/i18n/index.svelte';
 
   let {
     track,
@@ -49,7 +50,7 @@
         <!-- 迷你封面印花 -->
         <img
           src={formatCoverUrl(track?.cover, 100)}
-          alt="贴纸封面"
+          alt={t('player.cover')}
           class="w-6 h-6 rounded object-cover shrink-0 border border-neutral-400 shadow-xs"
           referrerpolicy="no-referrer"
           onerror={(e) => {
@@ -151,12 +152,12 @@
   <div class="flex flex-col items-center text-center max-w-[340px] w-full">
     <!-- 歌名 -->
     <h4 class="text-base md:text-lg font-bold text-[var(--text-main)] truncate max-w-full px-2" title={track?.name}>
-      {track?.name || '未在播放'}
+      {track?.name || t('player.noTrackPlaying')}
     </h4>
 
     <!-- 歌手名 -->
     <div class="text-xs md:text-sm text-[var(--text-secondary)] truncate max-w-full mt-1 px-2" title={formatArtist(track?.artist)}>
-      {formatArtist(track?.artist) || '未知歌手'}
+      {formatArtist(track?.artist) || t('player.unknownArtist')}
     </div>
 
     <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排 -->

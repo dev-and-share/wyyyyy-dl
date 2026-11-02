@@ -113,7 +113,7 @@ public class FolderExplorerControllerTest {
         check.setTotalFiles(8);
         check.setTotalDirs(1);
         check.setSampleFiles(java.util.Arrays.asList("老男孩.flac", "cover.jpg"));
-        check.setHostPath("/Users/houtokki/Music/2023.08DJ");
+        check.setHostPath("/Users/testuser/Music/2023.08DJ");
 
         Mockito.when(downloadHistoryDAO.checkFolder(anyString())).thenReturn(check);
 

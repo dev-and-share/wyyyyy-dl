@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setupMediaSession, updateMediaSessionPosition, updateMediaSessionMetadata } from './mediaSession';
+import { setupMediaSession, updateMediaSessionPosition, clearMediaSessionPosition, updateMediaSessionMetadata } from './mediaSession';
 import type { Track } from './types';
 
 // Mock MediaMetadata for jsdom environment
@@ -77,7 +77,7 @@ describe('mediaSession iOS contracts', () => {
     Object.defineProperty(navigator, 'userAgent', { value: originalUA, configurable: true });
   });
 
-  it('updateMediaSessionPosition is a no-op to prevent iOS lockscreen fake ticking and 15s fallback', () => {
+  it('updateMediaSessionPosition correctly syncs duration and position to navigator.mediaSession.setPositionState', () => {
     const mockAudio = {
       duration: 200,
       currentTime: 45,
@@ -85,7 +85,23 @@ describe('mediaSession iOS contracts', () => {
     } as unknown as HTMLAudioElement;
 
     updateMediaSessionPosition(mockAudio);
-    expect(mockSetPositionState).not.toHaveBeenCalled();
+    expect(mockSetPositionState).toHaveBeenCalledWith({
+      duration: 200,
+      playbackRate: 1.25,
+      position: 45
+    });
+
+    updateMediaSessionPosition(mockAudio, 10, 200);
+    expect(mockSetPositionState).toHaveBeenCalledWith({
+      duration: 200,
+      playbackRate: 1.25,
+      position: 10
+    });
+  });
+
+  it('clearMediaSessionPosition resets MediaSession positionState on track changes', () => {
+    clearMediaSessionPosition();
+    expect(mockSetPositionState).toHaveBeenCalled();
   });
 
   it('updateMediaSessionMetadata formats artist and sets fallback artwork safely', () => {

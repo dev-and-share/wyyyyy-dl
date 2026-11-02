@@ -2,10 +2,14 @@
   import { platform } from '../lib/platform';
   import type { ThemeMode } from '../lib/theme';
   import { skin } from '../lib/skinStore.svelte';
-  import { SKIN_LIST, SKINS } from './skins/skinTypes';
+  import { SKIN_LIST } from './skins/skinTypes';
   import SettingsCacheSection from './settings/SettingsCacheSection.svelte';
   import SettingsAccountSection from './settings/SettingsAccountSection.svelte';
   import SettingsMaintenanceSection from './settings/SettingsMaintenanceSection.svelte';
+  import SettingsLanguageSection from './settings/SettingsLanguageSection.svelte';
+  import SettingsSleepTimerSection from './settings/SettingsSleepTimerSection.svelte';
+  import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
+  import { t } from '../lib/i18n';
 
   let {
     repeat,
@@ -25,54 +29,47 @@
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
   }>();
 
-  // 动画与手势下拉状态
+  // Animation and drag state
   let closing = $state(false);
+  let dragStartY = $state(0);
   let dragOffset = $state(0);
   let isDragging = $state(false);
-  let startY = 0;
+  let iosKeepAliveMin = $state(getF3TimeoutMinutes());
 
   function handleClose() {
     if (closing) return;
     closing = true;
     setTimeout(() => {
-      closing = false;
       onClose();
     }, 200);
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') handleClose();
-  }
-
-  // 手势拖拽关闭
-  function handleTouchStart(e: TouchEvent) {
-    if (e.touches.length === 1) {
-      startY = e.touches[0].clientY;
-      isDragging = true;
+    if (e.key === 'Escape') {
+      handleClose();
     }
   }
 
+  function handleTouchStart(e: TouchEvent) {
+    dragStartY = e.touches[0].clientY;
+    dragOffset = 0;
+    isDragging = true;
+  }
+
   function handleTouchMove(e: TouchEvent) {
-    if (!isDragging || closing) return;
-    const diff = e.touches[0].clientY - startY;
+    if (!isDragging) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - dragStartY;
     if (diff > 0) {
       dragOffset = diff;
-    } else {
-      dragOffset = 0;
     }
   }
 
   function handleTouchEnd() {
     if (!isDragging) return;
     isDragging = false;
-    if (dragOffset > 75) {
-      dragOffset = 500;
-      closing = true;
-      setTimeout(() => {
-        closing = false;
-        dragOffset = 0;
-        onClose();
-      }, 200);
+    if (dragOffset > 100) {
+      handleClose();
     } else {
       dragOffset = 0;
     }
@@ -81,70 +78,74 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- 全局遮罩背景 -->
+<!-- Global Backdrop (融入皮肤色彩与顶部状态栏，深浅色自适应) -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-200 {closing ? 'opacity-0' : 'opacity-100'}"
+  class="fixed inset-0 z-[100049] transition-opacity duration-200 backdrop-blur-md {closing ? 'opacity-0' : 'opacity-100'}
+    bg-black/40 dark:bg-gradient-to-b dark:from-[var(--bg-color)]/95 dark:via-[var(--bg-color)]/70 dark:to-black/80"
   onclick={handleClose}
 ></div>
 
-<!-- 设置抽屉面板 -->
+<!-- Settings Drawer Panel -->
 <div
   role="dialog"
   aria-modal="true"
-  aria-label="系统偏好设置"
-  class="fixed z-50 bg-[var(--card-bg)] text-[var(--text-main)] shadow-2xl transition-transform duration-200 ease-out border-[var(--border-color)] flex flex-col
-    inset-x-0 bottom-0 max-h-[85vh] rounded-t-[28px] border-t
-    lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[420px] lg:max-h-full lg:rounded-none lg:border-l lg:border-t-0"
-  style="transform: {closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`};"
+  aria-label={t('settings.title')}
+  class="fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-transform duration-200 ease-out flex flex-col
+    inset-x-0 bottom-0 max-h-[88vh] rounded-t-[28px] border-t border-[var(--border-color)] backdrop-blur-2xl
+    pb-[calc(16px+env(safe-area-inset-bottom,0px))]
+    lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[420px] lg:max-h-full lg:rounded-none lg:border-l lg:border-t-0 lg:pb-0"
+  style="transform: {closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`};
+         box-shadow: 0 -12px 40px var(--primary-glow, rgba(0, 0, 0, 0.5)), 0 -1px 0 0 var(--border-color);"
 >
-  <!-- 移动端手势拖拽把手 -->
+  <!-- Mobile Drag Handle -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="lg:hidden flex justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing select-none"
+    class="lg:hidden flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing select-none"
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
     ontouchend={handleTouchEnd}
   >
-    <div class="w-10 h-1 bg-[var(--text-muted)] opacity-30 rounded-full"></div>
+    <div class="w-10 h-1.2 rounded-full bg-[var(--primary-color)] opacity-40 shadow-[0_0_8px_var(--primary-glow)]"></div>
   </div>
 
-  <!-- 抽屉头部标题栏 -->
+  <!-- Header -->
   <div class="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border-color)] shrink-0 select-none">
     <div class="flex items-center gap-2">
       <span class="text-xl leading-none">⚙️</span>
-      <h2 class="text-base font-bold text-[var(--text-main)] m-0">系统偏好设置</h2>
+      <h2 class="text-base font-bold text-[var(--text-main)] m-0">{t('settings.title')}</h2>
+      <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--text-muted)]/10 text-[var(--text-muted)] border border-[var(--border-color)] leading-none select-none">v{__APP_VERSION__}</span>
     </div>
     <button
       type="button"
       data-testid="btn-close-settings"
       class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent"
       onclick={handleClose}
-      aria-label="关闭设置"
+      aria-label={t('settings.close')}
     >
       ✕
     </button>
   </div>
 
-  <!-- 设置内容区域 (纵向可滚动) -->
-  <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col gap-6 custom-scrollbar text-sm">
-    <!-- 板块 1: 下载偏好 -->
+  <!-- Content -->
+  <div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-8 flex flex-col gap-6 custom-scrollbar text-sm">
+    <!-- Section 1: Download Preferences -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
         <span>📥</span>
-        <span>下载偏好</span>
+        <span>{t('settings.downloadPreference')}</span>
       </div>
       <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
         <div class="flex flex-col gap-0.5 min-w-0">
-          <span class="font-semibold text-sm text-[var(--text-main)]">允许重复下载</span>
-          <span class="text-xs text-[var(--text-secondary)]">关闭时跳过已有歌曲，开启后强制重新下载覆盖</span>
+          <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.allowDuplicateDownload')}</span>
+          <span class="text-xs text-[var(--text-secondary)]">{t('settings.allowDuplicateDownloadDesc')}</span>
         </div>
         <button
           type="button"
           role="switch"
           aria-checked={repeat}
-          aria-label="允许重复下载开关"
+          aria-label={t('settings.allowDuplicateAria')}
           data-testid="switch-repeat"
           class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {repeat ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
           onclick={onToggleRepeat}
@@ -156,11 +157,11 @@
       </div>
     </section>
 
-    <!-- 板块 2: 外观与个性化 -->
+    <!-- Section 2: Appearance -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
         <span>🎨</span>
-        <span>界面外观</span>
+        <span>{t('settings.interfaceAppearance')}</span>
       </div>
       <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-3 gap-1">
         <button
@@ -168,57 +169,61 @@
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'light' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('light')}
         >
-          <span>☀️</span> 浅色
+          <span>☀️</span> {t('settings.themeLight')}
         </button>
         <button
           type="button"
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'dark' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('dark')}
         >
-          <span>🌙</span> 深色
+          <span>🌙</span> {t('settings.themeDark')}
         </button>
         <button
           type="button"
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'auto' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('auto')}
         >
-          <span>🌓</span> 自动
+          <span>🌓</span> {t('settings.themeAuto')}
         </button>
       </div>
 
-      <!-- 播放器皮肤选择 -->
+      <!-- Player Skin Selection -->
       <div class="flex items-center justify-between text-xs text-[var(--text-secondary)] mt-1 px-1">
-        <span>播放器皮肤</span>
-        <span class="text-[11px] text-[var(--text-muted)] font-medium">{SKINS[skin.current]?.name || '经典黑胶'}</span>
+        <span>{t('settings.playerSkin')}</span>
+        <span class="text-[11px] text-[var(--text-muted)] font-medium">{t(`player.skin.${skin.current}.name` as any)}</span>
       </div>
-      <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-3 sm:grid-cols-5 gap-1">
+      <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {#each SKIN_LIST as s}
           <button
             type="button"
             data-testid="settings-skin-{s.id}"
-            class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {skin.current === s.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            class="py-2 px-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 text-center {skin.current === s.id ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => skin.set(s.id)}
           >
-            <span>{s.emoji}</span> {s.name}
+            <span class="shrink-0">{s.emoji}</span>
+            <span class="break-words leading-tight">{t(`player.skin.${s.id}.name` as any)}</span>
           </button>
         {/each}
       </div>
     </section>
 
-    <!-- 板块 3: 音频与音质体验 -->
+    <!-- Section 2.5: Language -->
+    <SettingsLanguageSection />
+
+    <!-- Section 3: Audio Experience -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
         <span>🎛️</span>
-        <span>音频体验</span>
+        <span>{t('settings.audioExperience')}</span>
       </div>
       <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
         <div class="flex flex-col gap-0.5 min-w-0">
-          <span class="font-semibold text-sm text-[var(--text-main)]">5 段参量均衡器 (PEQ)</span>
+          <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.peqTitle')}</span>
           <span class="text-xs text-[var(--text-secondary)]">
             {#if platform.canUseAudioProcessing}
-              定制人声、低音增强与各频段声学校准
+              {t('settings.peqDesc')}
             {:else}
-              ⚠️ iOS 锁屏保活机制限制，均衡器暂不可用（防熄屏断音）
+              {t('settings.peqIosWarning')}
             {/if}
           </span>
         </div>
@@ -229,21 +234,57 @@
             class="shrink-0 px-3 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold cursor-pointer border-none transition-all shadow-sm active:scale-95"
             onclick={() => { handleClose(); onOpenPeq(); }}
           >
-            调节
+            {t('settings.adjust')}
           </button>
         {:else}
-          <span class="shrink-0 text-xs px-2.5 py-1 rounded-lg bg-slate-500/10 text-[var(--text-muted)]">不可用</span>
+          <span class="shrink-0 text-xs px-2.5 py-1 rounded-lg bg-slate-500/10 text-[var(--text-muted)]">{t('settings.unavailable')}</span>
         {/if}
       </div>
+
+      <!-- iOS 锁屏暂停保活时长 (仅 iOS 平台展示) -->
+      {#if platform.isIOS}
+        <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-2.5">
+          <div class="flex flex-col gap-0.5 min-w-0">
+            <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.iosKeepAliveTitle')}</span>
+            <span class="text-xs text-[var(--text-secondary)]">{t('settings.iosKeepAliveDesc')}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 pt-1">
+            {#each [
+              { val: 3, label: t('settings.iosKeepAliveMin3') },
+              { val: 5, label: t('settings.iosKeepAliveMin5') },
+              { val: 10, label: t('settings.iosKeepAliveMin10') },
+              { val: 15, label: t('settings.iosKeepAliveMin15') },
+              { val: 30, label: t('settings.iosKeepAliveMin30') },
+              { val: 0, label: t('settings.iosKeepAliveNever') }
+            ] as opt}
+              <button
+                type="button"
+                data-testid="btn-ios-keepalive-{opt.val}"
+                class="py-2 px-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center text-center {iosKeepAliveMin === opt.val ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+                onclick={() => {
+                  iosKeepAliveMin = opt.val;
+                  setF3TimeoutMinutes(opt.val);
+                  showToast(`${t('settings.iosKeepAliveTitle')}: ${opt.label}`, 'success', 2000);
+                }}
+              >
+                <span class="break-words leading-tight">{opt.label}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </section>
 
-    <!-- 板块 4: 手机离线缓存模块 -->
+    <!-- Section 3.5: Sleep Timer -->
+    <SettingsSleepTimerSection {showToast} />
+
+    <!-- Section 4: Mobile Offline Cache -->
     <SettingsCacheSection {showToast} />
 
-    <!-- 板块 5: 网易云账号与授权模块 -->
+    <!-- Section 5: Account & Auth -->
     <SettingsAccountSection {showToast} />
 
-    <!-- 板块 6: 本地曲库与磁盘维护模块 -->
+    <!-- Section 6: Maintenance -->
     <SettingsMaintenanceSection {showToast} />
   </div>
 </div>

@@ -18,7 +18,7 @@
 
 <div
   class="flex items-end gap-[1.5px] h-6 px-1.5 py-1 bg-[#061008] border border-[#1b3d22] rounded shadow-inner select-none pointer-events-none"
-  title="Winamp 实时频谱示波器"
+  title="Winamp Spectrum Visualizer"
 >
   {#each barConfigs.slice(0, barCount) as cfg}
     <div

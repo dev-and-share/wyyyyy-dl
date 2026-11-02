@@ -291,4 +291,34 @@ public class AnalysisControllerTest {
                 .andExpect(jsonPath("$.data.total").value(88888))
                 .andExpect(jsonPath("$.data.hotComments[0].content").value("这首歌陪伴了我的整个青春"));
     }
+
+    @Test
+    @DisplayName("测试 /v3/stream: 传入 id=null 字符串与 historyId 时安全容错并正常流传输")
+    public void testStreamAudioWithNullStringIdAndHistoryId() throws Exception {
+        DownloadHistoryDAO.DownloadHistoryItem mockItem = new DownloadHistoryDAO.DownloadHistoryItem();
+        mockItem.setId(88L);
+        mockItem.setSongId(null);
+        mockItem.setSongName("有没有人告诉你");
+        mockItem.setFilePath("/media/music/陈楚生/陈楚生 - 有没有人告诉你.mp3");
+        mockItem.setRelativePath("陈楚生/陈楚生 - 有没有人告诉你.mp3");
+
+        Mockito.when(downloadHistoryDAO.getRecordById(eq(88L))).thenReturn(mockItem);
+
+        mockMvc.perform(get("/v3/stream")
+                .param("id", "null")
+                .param("historyId", "88"))
+                .andExpect(status().isOk());
+
+        Mockito.verify(storageService, Mockito.atLeastOnce()).serveMedia(eq("陈楚生/陈楚生 - 有没有人告诉你.mp3"), any(), any());
+    }
+
+    @Test
+    @DisplayName("测试 /v3/stream: 直接通过 path 参数播放本地音频")
+    public void testStreamAudioWithPathParameter() throws Exception {
+        mockMvc.perform(get("/v3/stream")
+                .param("path", "陈楚生/陈楚生 - 有没有人告诉你.mp3"))
+                .andExpect(status().isOk());
+
+        Mockito.verify(storageService, Mockito.atLeastOnce()).serveMedia(eq("陈楚生/陈楚生 - 有没有人告诉你.mp3"), any(), any());
+    }
 }

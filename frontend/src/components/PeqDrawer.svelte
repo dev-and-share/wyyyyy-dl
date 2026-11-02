@@ -1,5 +1,6 @@
 <script lang="ts">
   import { INITIAL_BANDS, BUILTIN_PRESETS, type Band } from '../lib/peq';
+  import { t } from '../lib/i18n/index.svelte';
 
   const PEQ_STORAGE_KEY = 'wyyyy_peq_settings';
 
@@ -149,7 +150,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100010] flex items-end justify-center md:justify-end md:items-end box-border {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
+  class="fixed inset-0 bg-black/40 dark:bg-gradient-to-b dark:from-[var(--bg-color)]/95 dark:via-[var(--bg-color)]/70 dark:to-black/80 backdrop-blur-md z-[100010] flex items-end justify-center md:justify-end md:items-end box-border {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
   onclick={handleClose}
 >
   <div
@@ -176,13 +177,13 @@
     >
       <div class="flex items-center gap-2">
         <span class="text-lg">🎛️</span>
-        <h3 class="m-0 text-base font-bold text-[var(--text-main)]">5 段参量均衡器 (PEQ)</h3>
+        <h3 class="m-0 text-base font-bold text-[var(--text-main)]">{t('peq.title')}</h3>
       </div>
       <button
         type="button"
         class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={handleClose}
-        title="关闭均衡器"
+        title={t('common.close')}
       >
         ✕
       </button>
@@ -198,7 +199,7 @@
             onchange={(e) => (enabled = (e.target as HTMLInputElement).checked)}
             class="w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer"
           />
-          <span>⚡ 启用</span>
+          <span>⚡ {t('peq.enable')}</span>
         </label>
 
         <select
@@ -207,17 +208,17 @@
           onchange={(e) => applyPreset((e.target as HTMLSelectElement).value)}
         >
           {#each Object.entries(BUILTIN_PRESETS) as [k, item]}
-            <option value={k}>{item.name}</option>
+            <option value={k}>{t(`peq.preset.${k}.name` as any) || item.name}</option>
           {/each}
         </select>
 
-        <span class="text-[11px] text-[var(--text-muted)] ml-auto">5段频率/增益/Q全可调</span>
+        <span class="text-[11px] text-[var(--text-muted)] ml-auto">{t('peq.adjustable')}</span>
       </div>
 
       {#if BUILTIN_PRESETS[preset]}
         <div class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] bg-black/5 dark:bg-white/[0.03] px-2.5 py-1 rounded-lg">
           <span class="text-xs">💡</span>
-          <span class="text-[11px]">{BUILTIN_PRESETS[preset].desc}</span>
+          <span class="text-[11px]">{t(`peq.preset.${preset}.desc` as any) || BUILTIN_PRESETS[preset].desc}</span>
         </div>
       {/if}
     </div>
@@ -231,7 +232,7 @@
     <div class="grid grid-cols-5 gap-2 mb-4">
       {#each bands as b, i}
         <div class="flex flex-col items-center bg-black/5 dark:bg-white/[0.03] p-2.5 rounded-xl border border-black/5 dark:border-white/5 gap-1.5">
-          <div class="text-xs font-bold text-[var(--text-main)]">{b.label}</div>
+          <div class="text-xs font-bold text-[var(--text-main)]">{t(`peq.band.${i}.label` as any) || b.label}</div>
           <div class="text-[10px] text-[var(--text-muted)] font-mono">{b.freq}Hz</div>
           <input
             type="range"
@@ -269,8 +270,8 @@
 
     <!-- 底部操作按钮栏 -->
     <div class="flex justify-end gap-2.5 pt-2 border-t border-black/5 dark:border-white/5">
-      <button type="button" onclick={reset} class="btn-secondary text-xs px-3.5 py-1.5">🔄 重置原音</button>
-      <button type="button" onclick={onClose} class="btn-primary bg-gradient-to-br from-emerald-500 to-teal-600 text-xs px-4 py-1.5 font-semibold">✕ 完成关闭</button>
+      <button type="button" onclick={reset} class="btn-secondary text-xs px-3.5 py-1.5">🔄 {t('peq.reset')}</button>
+      <button type="button" onclick={onClose} class="btn-primary bg-gradient-to-br from-emerald-500 to-teal-600 text-xs px-4 py-1.5 font-semibold">✕ {t('common.close')}</button>
     </div>
   </div>
 </div>

@@ -20,7 +20,8 @@
   import ForkPlaylistModal from '../ForkPlaylistModal.svelte';
   import RemoveFromPlaylistModal from '../RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
-  import { getTrackSourceStatus, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { t } from '../../lib/i18n';
 
   let {
     playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
@@ -139,7 +140,7 @@
     try {
       await loadPlaylistDetail(id, force);
     } catch (e: any) {
-      loadError = e?.message || '获取歌单详情失败';
+      loadError = e?.message || t('playlist.getDetailFailed');
       showToast(loadError, 'error');
     }
   }
@@ -147,28 +148,28 @@
   async function handlePlayAll() {
     if (!allTracks.length) return;
     if (playlist?.id) recordPlaylistPlay(playlist.id);
-    const queue = allTracks.map((t: any) => {
-      const status = getTrackSourceStatus(t.id, t.isLocal, curTrack);
+    const queue = allTracks.map((item: any) => {
+      const status = getTrackSourceStatus(item.id, item.isLocal, curTrack);
       return {
-        id: t.id,
-        name: t.name,
-        artist: formatArtist(t),
-        cover: t.al?.picUrl || DEFAULT_VINYL_COVER,
+        id: item.id,
+        name: item.name,
+        artist: formatArtist(item),
+        cover: item.al?.picUrl || DEFAULT_VINYL_COVER,
         isLocal: status.isLocal
       };
     });
     onPlayQueue(queue, { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false });
-    showToast(`已开始播放《${playlist?.name || '歌单'}》(${queue.length} 首)`, 'success', 2000);
+    showToast(t('playlist.playingPlaylistToast', { name: playlist?.name || t('playlist.title'), count: queue.length }), 'success', 2000);
   }
 
   async function handleDownloadAll() {
     if (!playlistId) return;
     try {
       await api.downloadPlaylist(playlistId);
-      showToast('已提交批量下载任务', 'success', 2000);
+      showToast(t('playlist.submittedBatchDownload'), 'success', 2000);
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
-      showToast('下载请求失败: ' + (e?.message || e), 'error');
+      showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
   }
 
@@ -176,38 +177,39 @@
     try {
       const res = await api.downloadSingle(id);
       const task = res?.data;
+      const songName = task?.name || name || t('common.unknownSong');
       if (task?.status === 'SKIP') {
         const msg = task.errorMsg || '';
-        if (msg.includes('已存在') || msg.includes('磁盘中')) {
+        if (msg.includes('已存在') || msg.includes('磁盘中')) { // i18n-ignore: backend status check
           markSongDownloaded(id);
-          showToast(`《${task.name || name || '歌曲'}》已在本地磁盘中，已同步状态`, 'info', 3000);
+          showToast(t('download.alreadyInDiskSynced', { name: songName }), 'info', 3000);
         } else {
-          showToast(`已跳过《${task.name || name || '歌曲'}》: ${msg || '试听片段或已存在'}`, 'warning', 4000);
+          showToast(t('download.skippedWithName', { name: songName, reason: msg || t('download.skipReasonPreviewOrExist') }), 'warning', 4000);
         }
       } else if (task?.status === 'FAILED') {
-        showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '下载失败'}`, 'error', 4000);
+        showToast(t('download.failedWithName', { name: songName, reason: task.errorMsg || t('download.failReasonExecuteError') }), 'error', 4000);
       } else {
-        showToast(`已提交下载: 《${task?.name || name || '歌曲'}》`, 'info', 2000);
+        showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
       }
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
     } catch (e: any) {
-      showToast('下载异常: ' + (e?.message || e), 'error');
+      showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
   }
 
-  async function handleCache(t: any) {
-    cachingTrackId = t.id;
+  async function handleCache(item: any) {
+    cachingTrackId = item.id;
     try {
       const res = await cacheTrackToBrowser({
-        id: t.id,
-        name: t.name,
-        artist: formatArtist(t),
-        cover: t.al?.picUrl || DEFAULT_VINYL_COVER,
-        album: t.al?.name || t.album
+        id: item.id,
+        name: item.name,
+        artist: formatArtist(item),
+        cover: item.al?.picUrl || DEFAULT_VINYL_COVER,
+        album: item.al?.name || item.album
       });
-      showToast(res.msg || (res.success ? '已缓存到浏览器' : '缓存失败'), res.success ? 'success' : 'error');
+      showToast(res.msg || (res.success ? t('search.cachedToBrowser') : t('common.failed')), res.success ? 'success' : 'error');
     } catch (e: any) {
-      showToast('缓存失败: ' + (e?.message || e), 'error');
+      showToast(t('search.cacheFailedWithMsg', { message: e?.message || e }), 'error');
     } finally {
       cachingTrackId = null;
     }
@@ -219,14 +221,14 @@
     try {
       const res = await api.playlistSubscribe(String(playlist.id), nextSub);
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || (nextSub ? '收藏失败：网易云官方有设备风控限制，推荐使用「转存为自建歌单」' : '取消收藏失败'), 'warning', 5000);
+        showToast(res.msg || (nextSub ? t('playlist.subscribeFailedRiskPrompt') : t('playlist.unsubscribeFailed')), 'warning', 5000);
         return;
       }
       playlist.subscribed = nextSub;
-      showToast(nextSub ? `已收藏歌单《${playlist.name}》` : `已取消收藏歌单《${playlist.name}》`, 'success');
+      showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
       window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
     } catch (e: any) {
-      showToast('操作异常，推荐使用「转存为自建歌单」', 'warning', 4000);
+      showToast(t('playlist.operateExceptionPrompt'), 'warning', 4000);
     }
   }
 
@@ -248,10 +250,10 @@
       onclick={onBackToGallery}
     >
       <span>←</span>
-      <span>返回歌单画廊</span>
+      <span>{t('playlist.backToGallery')}</span>
     </button>
     <span class="opacity-40 shrink-0">/</span>
-    <span class="truncate font-semibold text-[var(--text-main)]">{isCurrentPlaylistLoaded ? playlist.name : (loadError ? '获取失败' : '正在加载...')}</span>
+    <span class="truncate font-semibold text-[var(--text-main)]">{isCurrentPlaylistLoaded ? playlist.name : (loadError ? t('common.failed') : t('common.loading'))}</span>
   </div>
 
   {#if isCurrentPlaylistLoaded}
@@ -265,7 +267,7 @@
       <div class="flex-1 min-w-0 flex flex-col gap-1.5">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
-            歌单
+            {t('playlist.title')}
           </span>
           <span class="text-xs text-[var(--text-muted)]">ID: {playlist.id}</span>
         </div>
@@ -273,13 +275,11 @@
           {playlist.name}
         </h1>
         <p class="text-xs text-[var(--text-secondary)] flex items-center gap-2 flex-wrap">
-          <span>创建者: <strong class="text-[var(--text-main)]">{playlist.creator || '网易云音乐'}</strong></span>
-          <span>共 <strong class="text-red-400">{allTracks.length}</strong> 首歌曲</span>
+          <span>{t('playlist.creatorLabel', { creator: playlist.creator || t('playlist.defaultCreator') })}</span>
+          <span>{t('playlist.songCountTotal', { count: allTracks.length })}</span>
           {#if allTracks.length > 0}
             <span class="text-[11px] opacity-85 flex items-center gap-1.5 ml-1">
-              <span>(💻 已下 <strong class="text-emerald-500 dark:text-emerald-400">{downloadedCount}</strong></span>
-              <span>·</span>
-              <span>📥 待下 <strong class="text-purple-500 dark:text-purple-400">{pendingCount}</strong>)</span>
+              <span>{t('playlist.diskStats', { downloaded: downloadedCount, pending: pendingCount })}</span>
             </span>
           {/if}
         </p>
@@ -293,7 +293,7 @@
             onclick={handlePlayAll}
           >
             <span>▶️</span>
-            <span>播放全部</span>
+            <span>{t('playlist.playAll')}</span>
           </button>
           <button
             type="button"
@@ -302,7 +302,7 @@
             onclick={handleDownloadAll}
           >
             <span>🖥️</span>
-            <span>全部下载到电脑</span>
+            <span>{t('playlist.downloadAllToPc')}</span>
           </button>
           {#if playlist && !playlist.isCreator}
             <button
@@ -310,20 +310,20 @@
               data-testid="btn-detail-fork"
               class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer text-purple-400 hover:text-purple-300 border-purple-500/30 hover:border-purple-500/50"
               onclick={() => showForkModal = true}
-              title="在我的网易云账号下新建为自建歌单，并批量导入所有歌曲 (曲线收藏)"
+              title={t('playlist.forkDesc')}
             >
               <span>📦</span>
-              <span>转存为自建歌单</span>
+              <span>{t('playlist.forkTitle')}</span>
             </button>
             <button
               type="button"
               data-testid="btn-detail-subscribe"
               class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer {playlist.subscribed ? 'text-red-400 border-red-500/30' : ''}"
               onclick={handleToggleSubscribe}
-              title={playlist.subscribed ? '取消收藏该歌单' : '收藏到我的网易云账号'}
+              title={playlist.subscribed ? t('playlist.unsubscribeTooltip') : t('playlist.subscribeTooltip')}
             >
               <span>{playlist.subscribed ? '💔' : '⭐'}</span>
-              <span>{playlist.subscribed ? '取消收藏' : '收藏歌单'}</span>
+              <span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
             </button>
           {/if}
         </div>
@@ -337,7 +337,7 @@
     {#if filteredTracks.length === 0}
       <div class="py-16 text-center text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-dashed border-[var(--border-color)] p-8">
         <span class="text-3xl block mb-2">🔍</span>
-        <span>未找到包含 "{getPlaylistSearchKeyword()}" 的歌曲或歌手</span>
+        <span>{t('playlist.notFoundSong', { kw: getPlaylistSearchKeyword() })}</span>
       </div>
     {:else}
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
@@ -346,18 +346,18 @@
             <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
               <tr>
                 <th class="w-12 py-3 pl-4 font-semibold">#</th>
-                <th class="py-3 px-3 font-semibold">标题</th>
-                <th class="py-3 px-3 font-semibold w-40">歌手</th>
-                <th class="py-3 px-3 font-semibold w-44 hidden md:table-cell">专辑</th>
-                <th class="py-3 pr-4 text-right font-semibold w-56">快捷操作</th>
+                <th class="py-3 px-3 font-semibold">{t('search.tableTitle')}</th>
+                <th class="py-3 px-3 font-semibold w-40">{t('common.artist')}</th>
+                <th class="py-3 px-3 font-semibold w-44 hidden md:table-cell">{t('common.album')}</th>
+                <th class="py-3 pr-4 text-right font-semibold w-56">{t('search.tableActions')}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--border-subtle)]">
-              {#each paged as t, i (t.id)}
+              {#each paged as trackItem, i (trackItem.id)}
                 {@const idx = i + 1}
-                {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
-                {@const artist = formatArtist(t)}
-                {@const isPlayingThis = isSameTrack(curTrack, t)}
+                {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}
+                {@const artist = formatArtist(trackItem)}
+                {@const isPlayingThis = isSameTrack(curTrack, trackItem)}
                 <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
                   <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
                     {#if isPlayingThis && playing}
@@ -369,47 +369,47 @@
                   <td class="py-2.5 px-3 min-w-0">
                     <div class="flex items-center gap-2 min-w-0">
                       <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
-                        {t.name}
+                        {trackItem.name}
                       </span>
-                      <TrackSourceBadge id={t.id} isLocal={t.isLocal} {curTrack} class="shrink-0" />
-                      <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike(Number(t.id), t.name)} />
+                      <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="shrink-0" />
+                      <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike(Number(trackItem.id), trackItem.name)} />
                     </div>
                   </td>
                   <td class="py-2.5 px-3 text-[var(--text-secondary)] truncate">
-                    {artist || '群星'}
+                    {artist || t('common.variousArtists')}
                   </td>
                   <td class="py-2.5 px-3 text-[var(--text-muted)] truncate hidden md:table-cell">
-                    {#if t.al?.id && onAlbum}
+                    {#if trackItem.al?.id && onAlbum}
                       <button
                         type="button"
                         class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
-                        onclick={() => onAlbum?.(String(t.al.id))}
+                        onclick={() => onAlbum?.(String(trackItem.al.id))}
                       >
-                        {t.al.name || '单曲'}
+                        {trackItem.al.name || t('search.tab.song')}
                       </button>
                     {:else}
-                      <span>{t.al?.name || '单曲'}</span>
+                      <span>{trackItem.al?.name || t('search.tab.song')}</span>
                     {/if}
                   </td>
                   <td class="py-2.5 pr-4 text-right whitespace-nowrap">
                     <div class="inline-flex items-center justify-end gap-1.5">
                       <SlotBtn
                         playing={isPlayingThis && playing}
-                        onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: t.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                        onclick={() => onPlayQueue([{ id: trackItem.id, name: trackItem.name, artist, cover: trackItem.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                       >
-                        {isPlayingThis && playing ? '⏸ 暂停' : (status.isLocal ? '▶ 本地' : '▶ 试听')}
+                        {getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'desktop' })}
                       </SlotBtn>
                       {#if status.isServer}
-                        <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>📂 定位</SlotBtn>
+                        <SlotBtn onclick={() => onReveal && onReveal({ id: trackItem.id, name: trackItem.name, artist })}>{t('common.reveal')}</SlotBtn>
                       {:else}
-                        <SlotBtn onclick={() => handleDownloadSingle(String(t.id), t.name)}>📥 下载</SlotBtn>
+                        <SlotBtn onclick={() => handleDownloadSingle(String(trackItem.id), trackItem.name)}>{t('download.downloadSingle')}</SlotBtn>
                       {/if}
-                      <SlotBtn onclick={() => handleCache(t)}>
-                        {status.isPhone ? '✅ 已缓存' : cachingTrackId === t.id ? '⏳ 缓存中' : '📲 缓存'}
+                      <SlotBtn onclick={() => handleCache(trackItem)}>
+                        {status.isPhone ? t('search.cachedShort') : cachingTrackId === trackItem.id ? t('playlist.cachingBadge') : t('search.cacheShort')}
                       </SlotBtn>
-                      <SlotBtn onclick={() => addToPlaylistSong = { id: t.id, name: t.name, artist }}>➕</SlotBtn>
+                      <SlotBtn onclick={() => addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist }}>➕</SlotBtn>
                       {#if playlist && (playlist.isCreator || !playlist.subscribed)}
-                        <SlotBtn onclick={() => removingTrack = { id: t.id, name: t.name, artist }}>🗑️</SlotBtn>
+                        <SlotBtn onclick={() => removingTrack = { id: trackItem.id, name: trackItem.name, artist }}>🗑️</SlotBtn>
                       {/if}
                     </div>
                   </td>
@@ -428,12 +428,12 @@
           {#if hasMore}
             <div class="flex items-center gap-2 text-[var(--text-secondary)] py-1">
               <span class="inline-block animate-spin text-red-500 text-sm">⏳</span>
-              <span>正在加载更多曲目 (已显示 {paged.length} / {filteredTracks.length} 首)...</span>
+              <span>{t('playlist.loadingMoreTracks', { loaded: paged.length, total: filteredTracks.length })}</span>
             </div>
           {:else}
             <div class="flex items-center gap-2 text-[var(--text-muted)] text-[11px] py-1">
               <span>✨</span>
-              <span>已加载全部 {filteredTracks.length} 首曲目{#if getPlaylistSearchKeyword()} (筛选自 {allTracks.length} 首){/if}</span>
+              <span>{t('playlist.loadedAllTracks', { count: filteredTracks.length })}{#if getPlaylistSearchKeyword()}{t('playlist.filteredFromTotal', { count: allTracks.length })}{/if}</span>
             </div>
           {/if}
         </div>
@@ -449,22 +449,22 @@
           class="btn-primary text-xs px-4 py-1.5 rounded-xl cursor-pointer"
           onclick={() => loadData(playlistId, true)}
         >
-          重试
+          {t('common.retry')}
         </button>
         <button
           type="button"
           class="btn-secondary text-xs px-4 py-1.5 rounded-xl cursor-pointer"
           onclick={onBackToGallery}
         >
-          返回画廊
+          {t('playlist.backToGallery')}
         </button>
       </div>
     </div>
   {:else}
     <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
       <span class="text-3xl animate-spin text-red-500">⏳</span>
-      <span class="text-sm font-semibold text-[var(--text-main)]">正在加载歌单内容...</span>
-      <span class="text-xs text-[var(--text-muted)] max-w-sm">若为包含上千首曲目的超大歌单，系统正在并发补全完整曲目详情，请稍候</span>
+      <span class="text-sm font-semibold text-[var(--text-main)]">{t('playlist.loadingContent')}</span>
+      <span class="text-xs text-[var(--text-muted)] max-w-sm">{t('playlist.loadingLargeNotice')}</span>
     </div>
   {/if}
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     title = '',
@@ -91,7 +92,7 @@
     role="dialog"
     tabindex="-1"
     aria-modal="true"
-    aria-label={title || '弹出窗口'}
+    aria-label={title || t('common.popup')}
     class="modal-dialog-box bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border-color)]
       w-full max-sm:rounded-t-[28px] max-sm:rounded-b-none max-sm:border-t max-sm:border-b-0 max-sm:max-h-[88vh]
       sm:rounded-2xl sm:max-h-[85vh] sm:border sm:mx-auto
@@ -128,8 +129,8 @@
         type="button"
         class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent text-sm"
         onclick={handleClose}
-        title="关闭"
-        aria-label="关闭"
+        title={t('common.close')}
+        aria-label={t('common.close')}
       >
         ✕
       </button>

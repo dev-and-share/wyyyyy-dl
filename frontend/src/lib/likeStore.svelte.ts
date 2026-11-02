@@ -1,6 +1,7 @@
 import { api } from './api';
 import { getApiCache, setApiCache } from './utils';
 import { showToast } from './toast.svelte';
+import { t } from './i18n';
 
 export const likeState = $state<{ likedSet: Set<number> }>({
   likedSet: new Set<number>()
@@ -39,12 +40,12 @@ export async function toggleLike(id: number, name: string): Promise<void> {
 
   try {
     await api.like(sid, !isLiked);
-    showToast(isLiked ? '已取消红心' : `已收藏 ${name}`, 'success');
+    showToast(isLiked ? t('toast.like.removed') : t('toast.like.added', { name }), 'success');
   } catch {
     const rollback = new Set(likeState.likedSet);
     if (!isLiked) rollback.delete(sid);
     else rollback.add(sid);
     likeState.likedSet = rollback;
-    showToast('收藏状态更新失败', 'error');
+    showToast(t('toast.like.failed'), 'error');
   }
 }

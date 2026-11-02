@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
+  import { t } from '../../lib/i18n';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -26,22 +27,22 @@
 
   async function saveCookie() {
     if (!cookieText.trim()) {
-      showToast('请输入有效 Cookie 内容', 'warning');
+      showToast(t('settings.inputValidCookiePrompt'), 'warning');
       return;
     }
     isSavingCookie = true;
     try {
       const res = await api.setCookie(cookieText.trim());
       if (res?.code === '000000') {
-        showToast('Cookie 保存成功！', 'success');
+        showToast(t('settings.cookieSavedSuccess'), 'success');
         cookieText = '';
         showCookieInput = false;
         checkLogin();
       } else {
-        showToast(res?.msg || '保存 Cookie 失败', 'warning');
+        showToast(res?.msg || t('settings.cookieSaveFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('保存异常: ' + (e?.message || e), 'error');
+      showToast(t('settings.cookieSaveException', { error: e?.message || e }), 'error');
     } finally {
       isSavingCookie = false;
     }
@@ -56,29 +57,29 @@
   <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
     <div class="flex items-center gap-1.5">
       <span>👤</span>
-      <span>网易云账号与 Cookie</span>
+      <span>{t('settings.accountSectionTitle')}</span>
     </div>
     <button
       type="button"
       class="text-[11px] text-red-500 hover:underline cursor-pointer bg-transparent border-none p-0"
       onclick={checkLogin}
     >
-      {isCheckingLogin ? '检测中...' : '检测状态'}
+      {isCheckingLogin ? t('settings.checkingStatus') : t('settings.checkStatusBtn')}
     </button>
   </div>
 
   <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-3">
     <div class="flex items-center justify-between">
-      <span class="text-xs text-[var(--text-secondary)]">授权状态：</span>
+      <span class="text-xs text-[var(--text-secondary)]">{t('settings.authStatusLabel')}</span>
       {#if isCheckingLogin}
-        <span class="text-xs text-[var(--text-muted)]">检测中...</span>
+        <span class="text-xs text-[var(--text-muted)]">{t('settings.checkingStatus')}</span>
       {:else if isLoggedIn}
         <span class="text-xs font-semibold text-emerald-500 flex items-center gap-1">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 已配置账号 / VIP 活跃
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> {t('settings.statusVipActive')}
         </span>
       {:else}
         <span class="text-xs font-semibold text-amber-500 flex items-center gap-1">
-          <span class="w-2 h-2 rounded-full bg-amber-500"></span> 游客模式 / Cookie 未登录
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span> {t('settings.statusGuestNotLogin')}
         </span>
       {/if}
     </div>
@@ -89,7 +90,7 @@
         class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all"
         onclick={() => showCookieInput = !showCookieInput}
       >
-        {showCookieInput ? '收起 Cookie 录入' : '配置 Cookie'}
+        {showCookieInput ? t('settings.collapseCookieInput') : t('settings.configCookieBtn')}
       </button>
       <a
         href="/login"
@@ -97,7 +98,7 @@
         rel="noreferrer"
         class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all text-center no-underline shrink-0"
       >
-        扫码登录
+        {t('settings.account.qrLogin')}
       </a>
     </div>
 
@@ -106,7 +107,7 @@
         <textarea
           bind:value={cookieText}
           rows="3"
-          placeholder="在此粘贴 MUSIC_U 或完整 Cookie 字符串..."
+          placeholder={t('settings.cookiePlaceholder')}
           class="w-full p-2 text-xs rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] text-[var(--text-main)] outline-none focus:border-red-500 resize-none font-mono"
         ></textarea>
         <div class="flex justify-end gap-2">
@@ -115,7 +116,7 @@
             class="px-3 py-1 text-xs rounded-lg border border-[var(--border-color)] bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer"
             onclick={() => { showCookieInput = false; cookieText = ''; }}
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -123,7 +124,7 @@
             class="px-3 py-1 text-xs rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold cursor-pointer border-none disabled:opacity-50"
             onclick={saveCookie}
           >
-            {isSavingCookie ? '保存中...' : '保存'}
+            {isSavingCookie ? t('common.loading') : t('common.save')}
           </button>
         </div>
       </div>

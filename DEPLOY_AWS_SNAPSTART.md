@@ -28,7 +28,7 @@
 2. **Terraform CLI (>= 1.5.0)**：运行 `terraform -version`。
 3. **AWS CLI**：运行 `aws sts get-caller-identity`。
 4. **Supabase 数据库准备**：
-   - 已获取到你的 Host：`db.iqnggtdrcgxuyvblbjbw.supabase.co`
+   - 已获取到你的 Host：`db.your-project-ref.supabase.co`
    - 已记住你的数据库密码。
 
 ---
@@ -38,7 +38,7 @@
 无论采用哪种方案，编译与打包只需在项目根目录下执行一次：
 
 ```bash
-cd /Users/houtokki/Downloads/fast_sr/wyyyyy-dl
+cd wyyyyy-dl
 
 # 执行打包任务 (生成包含 Java 21 class 与所有第三方依赖的标准 Zip)
 ./gradlew buildAwsZip
@@ -63,7 +63,7 @@ project_name = "wyyyyy-dl"
 environment  = "prod"
 
 # Supabase 连接信息 (已自动为你预填)
-supabase_db_host     = "db.iqnggtdrcgxuyvblbjbw.supabase.co"
+supabase_db_host     = "db.your-project-ref.supabase.co"
 supabase_db_port     = 5432
 supabase_db_name     = "postgres"
 supabase_db_user     = "postgres"

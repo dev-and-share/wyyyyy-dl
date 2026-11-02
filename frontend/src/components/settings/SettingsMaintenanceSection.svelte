@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '../../lib/api';
+  import { t } from '../../lib/i18n';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -8,18 +9,19 @@
   let maintenanceLoading = $state(false);
   let maintenanceMsg = $state('');
 
-  async function runMaintenance(actionName: string, fn: () => Promise<any>) {
+  async function runMaintenance(actionKey: 'actionDiskAlign' | 'actionExternalScan' | 'actionImportUntracked' | 'actionCleanMissing', fn: () => Promise<any>) {
+    const actionName = t(`settings.${actionKey}` as any);
     maintenanceLoading = true;
-    maintenanceMsg = `正在执行${actionName}...`;
+    maintenanceMsg = t('settings.maintenanceRunning', { name: actionName });
     try {
       const res = await fn();
       if (res?.code === '000000') {
-        showToast(`${actionName}成功！`, 'success');
+        showToast(t('settings.maintenanceSuccess', { name: actionName }), 'success');
       } else {
-        showToast(res?.msg || `${actionName}完成`, 'info');
+        showToast(res?.msg || t('settings.maintenanceCompleted', { name: actionName }), 'info');
       }
     } catch (e: any) {
-      showToast(`${actionName}失败: ` + (e?.message || e), 'error');
+      showToast(t('settings.maintenanceFailed', { name: actionName, error: e?.message || e }), 'error');
     } finally {
       maintenanceLoading = false;
       maintenanceMsg = '';
@@ -30,11 +32,11 @@
 <section class="flex flex-col gap-2.5">
   <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
     <span>💽</span>
-    <span>本地曲库与磁盘维护</span>
+    <span>{t('settings.maintenanceSectionTitle')}</span>
   </div>
   <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-2">
     <span class="text-xs text-[var(--text-secondary)] leading-relaxed">
-      服务器端物理音频文件同步与 SQLite 数据库维护：
+      {t('settings.maintenanceSectionDesc')}
     </span>
     {#if maintenanceMsg}
       <div class="text-xs text-amber-500 font-medium py-1">{maintenanceMsg}</div>
@@ -44,33 +46,33 @@
         type="button"
         disabled={maintenanceLoading}
         class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
-        onclick={() => runMaintenance('磁盘对齐扫描', api.historyScan)}
+        onclick={() => runMaintenance('actionDiskAlign', api.historyScan)}
       >
-        🔍 对齐磁盘扫描
+        {t('settings.btnDiskAlign')}
       </button>
       <button
         type="button"
         disabled={maintenanceLoading}
         class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
-        onclick={() => runMaintenance('外部曲库扫描', api.historyScanExternal)}
+        onclick={() => runMaintenance('actionExternalScan', api.historyScanExternal)}
       >
-        📁 扫描外部曲库
+        {t('settings.btnExternalScan')}
       </button>
       <button
         type="button"
         disabled={maintenanceLoading}
         class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
-        onclick={() => runMaintenance('导入未录入物理音频', api.historyImportUntracked)}
+        onclick={() => runMaintenance('actionImportUntracked', api.historyImportUntracked)}
       >
-        📥 导入物理音频
+        {t('settings.btnImportUntracked')}
       </button>
       <button
         type="button"
         disabled={maintenanceLoading}
         class="py-2 px-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all disabled:opacity-50"
-        onclick={() => runMaintenance('清理失效记录', api.historyCleanMissing)}
+        onclick={() => runMaintenance('actionCleanMissing', api.historyCleanMissing)}
       >
-        🧹 清理失效记录
+        {t('settings.btnCleanMissing')}
       </button>
     </div>
   </div>

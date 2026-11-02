@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { showToast } from '../lib/toast.svelte';
+  import { t } from '../lib/i18n';
   import type { Track } from '../lib/types';
 
   let {
@@ -45,7 +46,7 @@
       artist,
       path
     };
-    showToast('🚀 正在定位本地物理文件...', 'info', 1200);
+    showToast(t('toast.locatingFile'), 'info', 1200);
     if (onReveal) {
       onReveal(targetItem);
     }
@@ -112,7 +113,7 @@
     role="button"
     tabindex="0"
     class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform {customClass}"
-    title="✨ 本机手机与服务器均已下载/缓存 (电脑双击 / 手机长按可定位本地文件)"
+    title={t('track.badgeBoth')}
     ondblclick={handleDblClick}
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
@@ -129,7 +130,7 @@
     role="button"
     tabindex="0"
     class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform {customClass}"
-    title="🖥️ 已下载到本地服务器磁盘 (电脑双击 / 手机长按可定位本地文件)"
+    title={t('track.badgeServer')}
     ondblclick={handleDblClick}
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
@@ -142,7 +143,7 @@
 {:else if status.isPhone}
   <span
     class="audio-source-badge icon-only badge-browser {customClass}"
-    title="📲 已离线缓存到当前手机/浏览器"
+    title={t('track.badgePhone')}
   >
     📲
   </span>

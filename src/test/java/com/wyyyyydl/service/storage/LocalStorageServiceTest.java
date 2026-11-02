@@ -83,4 +83,34 @@ public class LocalStorageServiceTest {
         service.serveMedia("not_existing_file.flac", request, response);
         assertEquals(404, response.getStatus());
     }
+
+    @Test
+    @DisplayName("测试 LocalStorageService: 宿主机与容器外部路径自动重映射及 URL 解码播放")
+    public void testServeMediaHostPathRemap(@TempDir Path tempDir) throws IOException {
+        LocalStorageService service = new LocalStorageService();
+        Path containerMusicDir = tempDir.resolve("music");
+        java.nio.file.Files.createDirectories(containerMusicDir);
+        ReflectionTestUtils.setField(service, "downloadPath", containerMusicDir.toString());
+        ReflectionTestUtils.setField(service, "hostDownloadPath", "/Users/testhost/MusicDownloads");
+
+        // 模拟在容器内部音乐目录写入歌曲
+        File songFile = containerMusicDir.resolve("周杰伦 - 晴天.mp3").toFile();
+        java.nio.file.Files.write(songFile.toPath(), "mock mp3 audio content".getBytes());
+
+        // 1. 模拟前端以宿主机路径请求播放
+        String hostPath = "/Users/testhost/MusicDownloads/周杰伦 - 晴天.mp3";
+        MockHttpServletRequest req1 = new MockHttpServletRequest();
+        MockHttpServletResponse res1 = new MockHttpServletResponse();
+        service.serveMedia(hostPath, req1, res1);
+        assertEquals(200, res1.getStatus());
+        assertEquals("audio/mpeg", res1.getContentType());
+
+        // 2. 模拟前端以 URL 编码过的宿主机路径请求播放
+        String encodedHostPath = "/Users/testhost/MusicDownloads/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E6%99%B4%E5%A4%A9.mp3";
+        MockHttpServletRequest req2 = new MockHttpServletRequest();
+        MockHttpServletResponse res2 = new MockHttpServletResponse();
+        service.serveMedia(encodedHostPath, req2, res2);
+        assertEquals(200, res2.getStatus());
+        assertEquals("audio/mpeg", res2.getContentType());
+    }
 }

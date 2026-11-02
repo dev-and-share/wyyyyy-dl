@@ -13,11 +13,6 @@ output "s3_bucket_name" {
   value       = aws_s3_bucket.music_bucket.id
 }
 
-output "supabase_host" {
-  description = "绑定的 Supabase Host"
-  value       = var.supabase_db_host
-}
-
 output "auth_protection" {
   description = "CloudFront 边缘访问保护状态"
   value       = nonsensitive(var.auth_password != "") ? "Enabled (Username: ${var.auth_username})" : "Disabled (Public)"

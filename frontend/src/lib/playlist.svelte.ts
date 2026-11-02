@@ -1,5 +1,6 @@
 import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
+import { t } from './i18n';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
@@ -174,7 +175,7 @@ export function resetActiveTargetPlaylist(): void {
 }
 
 export async function loadPlaylistDetail(playlistId: string, force = false){
-  if(!playlistId) throw new Error('请输入歌单 ID');
+  if(!playlistId) throw new Error(t('playlist.enterPlaylistId'));
   const pidStr = String(playlistId).trim();
   if (pidStr === 'daily-recommend') {
     return null;
@@ -213,9 +214,9 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
       allTracks.length = 0;
     }
     const j = await api.playlist(pidStr);
-    if(j?.code && j.code!=='000000') throw new Error(j.msg || '获取失败');
+    if(j?.code && j.code!=='000000') throw new Error(j.msg || t('common.failed'));
     const pl = j?.data?.playlist;
-    if(!pl?.tracks?.length) throw new Error('未找到歌单或为空');
+    if(!pl?.tracks?.length) throw new Error(t('playlist.emptyOrNotFound'));
     setApiCache(key, j.data);
     if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
       renderPlaylist(pl);

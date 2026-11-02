@@ -1,9 +1,17 @@
 import { api } from './api';
+import { t } from './i18n';
+import { AudioCacheStorage } from 'pwa-audio-player';
 
 export const PWA_CACHE_NAME = 'netease-music-audio-v1';
 export const PWA_TRACK_META_KEY = 'pwa_cached_tracks_meta_v1';
 export const PWA_AUTO_CACHE_KEY = 'wyyyy_auto_cache_while_listening';
 export const PWA_SONG_PLAY_COUNTS_KEY = 'wyyyy_song_play_counts';
+
+export const audioCacheStorage = new AudioCacheStorage({
+  cacheName: PWA_CACHE_NAME,
+  metaStorageKey: PWA_TRACK_META_KEY,
+  playCountsStorageKey: PWA_SONG_PLAY_COUNTS_KEY
+});
 
 /**
  * 获取边听边存开关配置（默认开启）
@@ -34,73 +42,35 @@ export function setAutoCacheEnabled(val: boolean) {
  * 获取指定歌曲的累计播放次数
  */
 export function getSongPlayCount(idOrKey: string | number): number {
-  if (!idOrKey || typeof localStorage === 'undefined') return 0;
-  try {
-    const counts = JSON.parse(localStorage.getItem(PWA_SONG_PLAY_COUNTS_KEY) || '{}');
-    return counts[String(idOrKey)] || 0;
-  } catch {
-    return 0;
-  }
+  return audioCacheStorage.getPlayCount(idOrKey);
 }
 
 /**
  * 记录并增加歌曲的播放次数
  */
 export function recordSongPlay(idOrKey: string | number): number {
-  if (!idOrKey || typeof localStorage === 'undefined') return 0;
-  const key = String(idOrKey);
-  try {
-    const counts = JSON.parse(localStorage.getItem(PWA_SONG_PLAY_COUNTS_KEY) || '{}');
-    counts[key] = (counts[key] || 0) + 1;
-    localStorage.setItem(PWA_SONG_PLAY_COUNTS_KEY, JSON.stringify(counts));
-
-    // 同步更新离线元数据中的播放次数
-    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    let metaChanged = false;
-    for (const url of Object.keys(metaMap)) {
-      const item = metaMap[url];
-      if (item?.id === key || url.includes(`id=${key}`) || url === key) {
-        item.playCount = counts[key];
-        metaChanged = true;
-      }
-    }
-    if (metaChanged) {
-      localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
-    }
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wyyyy:song-play-updated', {
-        detail: { id: key, playCount: counts[key] }
-      }));
-    }
-    return counts[key];
-  } catch {
-    return 0;
+  const count = audioCacheStorage.recordPlayCount(idOrKey);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('wyyyy:song-play-updated', {
+        detail: { id: String(idOrKey), playCount: count }
+      })
+    );
   }
+  return count;
 }
 
 /**
  * 从本地存储加载所有已缓存歌曲的 ID 集合
  */
 export function loadCachedSongIds(): Set<number> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const set = new Set<number>();
-    for (const key of Object.keys(metaMap)) {
-      const item = metaMap[key];
-      if (item?.id) {
-        set.add(Number(item.id));
-      }
-      const match = key.match(/[?&]id=(\d+)/);
-      if (match && match[1]) {
-        set.add(Number(match[1]));
-      }
-    }
-    return set;
-  } catch {
-    return new Set();
+  const ids = audioCacheStorage.getCachedIds();
+  const set = new Set<number>();
+  for (const id of ids) {
+    const num = Number(id);
+    if (!isNaN(num) && num > 0) set.add(num);
   }
+  return set;
 }
 
 /**
@@ -128,6 +98,9 @@ if (typeof window !== 'undefined') {
     } else {
       refreshCachedSongIds();
     }
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'REFRESH_AUDIO_CACHE' });
+    }
   }) as EventListener);
 }
 
@@ -136,17 +109,7 @@ if (typeof window !== 'undefined') {
  */
 export async function isSongCached(id: string | number): Promise<boolean> {
   if (cachedSongIdSet.has(Number(id))) return true;
-  if (typeof window === 'undefined' || !('caches' in window)) return false;
-  try {
-    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const canonicalUrl = `/v3/stream?id=${id}`;
-    if (metaMap[canonicalUrl]) return true;
-    const cache = await caches.open(PWA_CACHE_NAME);
-    const match = await cache.match(canonicalUrl);
-    return !!match;
-  } catch {
-    return false;
-  }
+  return audioCacheStorage.isCached(id);
 }
 
 /**
@@ -164,13 +127,13 @@ export async function cacheTrackToBrowser(
   },
   options?: { skipTrial?: boolean; silent?: boolean }
 ): Promise<{ success: boolean; msg: string; isTrial?: boolean }> {
-  // 1. 若开启跳过试听且曲目已确认为试听，直接拦截不存
+  // 1. Skip trial if configured
   if (options?.skipTrial && track.freeTrial === true) {
-    return { success: false, isTrial: true, msg: '此曲为 VIP 试听片段，跳过手机离线缓存' };
+    return { success: false, isTrial: true, msg: t('cache.vipTrialSkip') };
   }
 
   if (typeof window === 'undefined' || !('caches' in window)) {
-    return { success: false, msg: '当前浏览器不支持 Cache API 或未在安全环境(HTTPS/Localhost)运行' };
+    return { success: false, msg: t('cache.unsupportedEnv') };
   }
 
   const id = String(track.id);
@@ -184,7 +147,7 @@ export async function cacheTrackToBrowser(
       songData = resp?.data || {};
 
       if (!audioUrl) {
-        // 触发一次服务端兜底解析
+        // trigger fallback download
         await api.downloadSingle(id).catch(() => {});
         const retry = await api.songV1(id, 'lossless');
         audioUrl = retry?.data?.url;
@@ -193,20 +156,19 @@ export async function cacheTrackToBrowser(
     }
 
     if (!audioUrl) {
-      return { success: false, msg: '无法获取歌曲音频播放流（可能需要网易云 VIP 或当前无版权）' };
+      return { success: false, msg: t('cache.cannotGetAudioStream') };
     }
 
     const streamResp = await fetch(audioUrl);
     if (!streamResp.ok) {
-      return { success: false, msg: `音频流拉取失败 (HTTP ${streamResp.status})` };
+      return { success: false, msg: t('cache.streamFetchFailed', { status: streamResp.status }) };
     }
 
     const blob = await streamResp.blob();
     const isTrial = blob.size < 1250000 || Boolean(songData.freeTrial) || Boolean(track.freeTrial);
 
-    // 🛡️ 边听边存严格策略：只要是试听片段，绝不写入手机 Cache
     if (options?.skipTrial && isTrial) {
-      return { success: false, isTrial: true, msg: '检测到为试听片段，跳过自动缓存' };
+      return { success: false, isTrial: true, msg: t('cache.detectedTrialSkip') };
     }
 
     const cache = await caches.open(PWA_CACHE_NAME);
@@ -225,8 +187,8 @@ export async function cacheTrackToBrowser(
 
     // 写入本地离线曲库元数据供断网渲染与播放器读取
     const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const sName = songData.name || track.name || '未知歌曲';
-    const sArtist = songData.ar_name || track.artist || '未知歌手';
+    const sName = songData.name || track.name || t('common.unknownSong');
+    const sArtist = songData.ar_name || track.artist || t('common.unknownArtist');
     const sCover = songData.al_pic_url || track.cover || '/favicon.png';
     const sAlbum = songData.al_name || track.album || '';
     const currentPlayCount = getSongPlayCount(id);
@@ -247,15 +209,15 @@ export async function cacheTrackToBrowser(
     }
     localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
 
-    // 派发全局缓存变更事件，通知离线曲库列表实时刷新
+    // Dispatch global event to notify offline track list
     window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id, meta } }));
 
     if (isTrial) {
-      return { success: true, isTrial: true, msg: `已缓存《${sName}》(⚠️ 提示: 此曲为 VIP 试听片段)` };
+      return { success: true, isTrial: true, msg: t('cache.cachedTrialNotice', { name: sName }) };
     }
-    return { success: true, msg: `已成功离线缓存《${sName}》，断网可直接秒播！` };
+    return { success: true, msg: t('cache.cachedSuccessOfflineReady', { name: sName }) };
   } catch (e: any) {
-    return { success: false, msg: '离线缓存异常: ' + (e.message || e) };
+    return { success: false, msg: t('cache.cacheException', { error: e.message || e }) };
   }
 }
 
@@ -299,7 +261,7 @@ export async function getCachedAudioBlobUrl(idOrUrl: string | number): Promise<s
       }
     }
   } catch (err) {
-    console.warn('[PWA] 提取离线音频 BlobUrl 失败:', err);
+    console.warn('[PWA] Failed to extract offline audio blob url:', err);
   }
   return null;
 }
@@ -339,6 +301,7 @@ export function handleTrackPlayback(track: any, isStillPlaying?: () => boolean) 
   if (cachedSongIdSet.has(Number(songId))) return;
 
   autoCacheTimer = setTimeout(async () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     if (isStillPlaying && !isStillPlaying()) return;
     if (currentPlayingTrackId !== songId) return;
     if (track.freeTrial === true) return;
@@ -347,7 +310,7 @@ export function handleTrackPlayback(track: any, isStillPlaying?: () => boolean) 
     try {
       await cacheTrackToBrowser(track, { skipTrial: true, silent: true });
     } catch (err) {
-      console.warn('[AutoCache] 边听边存失败:', err);
+      console.warn('[AutoCache] Failed to auto cache track:', err);
     }
   }, 2500);
 }

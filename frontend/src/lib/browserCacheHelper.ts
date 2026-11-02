@@ -1,8 +1,13 @@
 import { formatArtist, DEFAULT_VINYL_COVER } from './utils';
+import { formatCacheDate } from 'pwa-audio-player';
 import type { Track } from './types';
+
+export { formatCacheDate };
+import { t } from './i18n';
 import {
   PWA_CACHE_NAME,
   PWA_TRACK_META_KEY,
+  audioCacheStorage,
   getSongPlayCount,
   refreshCachedSongIds
 } from './pwaCache.svelte';
@@ -33,15 +38,6 @@ export function readCachedTrackMeta(): Record<string, any> {
   }
 }
 
-export function formatCacheDate(ts: number): string {
-  if (!ts) return '';
-  const d = new Date(ts);
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${m}-${day} ${h}:${min}`;
-}
 
 /**
  * 扫描并获取所有手机离线音乐缓存，按「播放次数 ↓ > 缓存时间 ↓」复合排序
@@ -112,8 +108,8 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
           urls: [request.url],
           relUrls: [relUrl],
           relUrl,
-          name: songName || (songId ? `离线音轨 #${songId}` : (urlHistMatch ? `本地音轨 #${urlHistMatch[1]}` : '本地缓存音频')),
-          artist: songArtist || '浏览器已离线',
+          name: songName || (songId ? t('cache.offlineTrackWithId', { id: songId }) : (urlHistMatch ? t('cache.localTrackWithId', { id: urlHistMatch[1] }) : t('cache.localCachedAudio'))),
+          artist: songArtist || t('cache.browserOffline'),
           cover: meta.cover || DEFAULT_VINYL_COVER,
           size,
           time: itemTime,
@@ -142,20 +138,7 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
  * 删除单首离线歌曲缓存
  */
 export async function deleteBrowserCacheEntry(item: BrowserCacheItem): Promise<void> {
-  const metaMap = readCachedTrackMeta();
-  for (const cacheName of await caches.keys()) {
-    const cache = await caches.open(cacheName);
-    for (const url of item.urls) {
-      await cache.delete(url).catch(() => {});
-    }
-  }
-  for (const rUrl of item.relUrls) {
-    delete metaMap[rUrl];
-  }
-  for (const fUrl of item.urls) {
-    delete metaMap[fUrl];
-  }
-  localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
+  await audioCacheStorage.delete([...item.urls, ...item.relUrls]);
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
@@ -197,7 +180,7 @@ export async function removeTrackBrowserCache(songId: string | number): Promise<
     window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
     return deleted;
   } catch (err) {
-    console.warn('清除单曲浏览器离线缓存异常:', err);
+    console.warn('[PWA] Failed to remove single track cache:', err);
     return false;
   }
 }
@@ -316,7 +299,7 @@ export async function clearAllImageCache(): Promise<void> {
       navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_IMAGE_CACHE' });
     }
   } catch (err) {
-    console.warn('清空图片缓存失败:', err);
+    console.warn('[PWA] Failed to clear image cache:', err);
   }
 }
 

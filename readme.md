@@ -83,6 +83,62 @@ docker compose up -d
 
 ---
 
+## 📱 iOS 快捷指令自动唤醒独立 PWA (iOS Shortcuts & Standalone PWA)
+
+利用 iOS 快捷指令（Shortcuts）自动化与私有 `webapp://` 协议，可在 **连接蓝牙耳机 (AirPods) 或车载蓝牙时，自动全屏唤醒独立 PWA 播放器**（无 Safari 地址栏/底部栏，原生 App 级沉浸体验）。
+
+> [!TIP]
+> **为什么不直接选「打开 App」？**
+> iOS 快捷指令的 App 选择列表不包含桌面 PWA WebClip；而使用「打开 URL」填入普通 `http(s)://` 会强制打开 Safari 普通标签页带白边与地址栏。
+> **只需在快捷指令「打开 URL」中输入 `webapp://你的域名或IP:端口`**，系统即会直接以**独立全屏模式**呼起已添加到主屏幕的 PWA！
+
+<details open>
+<summary><b>🇨🇳 快速配置 (简体中文)</b></summary>
+
+1. **添加至主屏幕**：在 iPhone Safari 打开播放器网站 -> 点击底部「分享」->「添加到主屏幕」；
+2. **创建自动化**：打开系统「快捷指令」App ->「自动化」->「+」-> 触发条件选择「蓝牙」（例如 AirPods 或车载蓝牙）-> 勾选「立即运行」并关闭「运行前询问」；
+3. **添加动作**：搜索并添加「打开 URL」，填入 `webapp://` + 域名或内网 IP（**切勿带 `http://` 或 `https://`**，例如 `webapp://music.yourdomain.com` 或 `webapp://192.168.1.100:8080`）；
+4. 详细图文与进阶玩法请参阅完整文档：[📱 iOS 快捷指令独立 PWA 指南](docs/ios-shortcuts-pwa.md)。
+</details>
+
+<details>
+<summary><b>🇺🇸 Quick Setup (English)</b></summary>
+
+1. **Add to Home Screen**: Open the web app in Safari on iPhone -> tap "Share" -> "Add to Home Screen".
+2. **Create Automation**: Open Apple "Shortcuts" -> "Automation" -> "+" -> Trigger: "Bluetooth" (e.g. AirPods or Car Bluetooth) -> Select "Run Immediately" & disable "Notify When Run".
+3. **Add Action**: Add "Open URL" and enter `webapp://` + your domain or IP (e.g. `webapp://music.yourdomain.com`, **omit `http://` / `https://`**).
+4. For detailed guides and troubleshooting, see: [📱 Full iOS Shortcuts PWA Guide](docs/ios-shortcuts-pwa.md).
+</details>
+
+<details>
+<summary><b>🇯🇵 クイック設定 (日本語)</b></summary>
+
+1. **ホーム画面に追加**: iPhoneのSafariでプレイヤーを開き、下部「共有」→「ホーム画面に追加」をタップ。
+2. **オートメーション作成**: 「ショートカット」アプリ→「オートメーション」→「+」→「Bluetooth」（AirPodsやカーナビ等）を選択→「すぐに実行」に設定。
+3. **アクション追加**: 「URLを開く」アクションを追加し、`webapp://` + ドメインまたはIPを入力（例: `webapp://music.yourdomain.com`、**`http://` や `https://` は不要**）。
+4. 詳細ガイドはこちら: [📱 iOS ショートカット PWA ガイド](docs/ios-shortcuts-pwa.md)。
+</details>
+
+<details>
+<summary><b>🇰🇷 빠른 설정 (한국어)</b></summary>
+
+1. **홈 화면에 추가**: iPhone Safari에서 접속 -> 하단 '공유' -> '홈 화면에 추가' 선택.
+2. **자동화 생성**: '단축어' 앱 -> '자동화' -> '+' -> 트리거로 'Bluetooth'(AirPods 또는 차량 블루투스) 선택 -> '확인하지 않고 실행' 체크.
+3. **동작 추가**: 'URL 열기' 동작 추가 후 `webapp://` + 도메인/IP 입력 (예: `webapp://music.yourdomain.com`, **`http://` 및 `https://` 제외**).
+4. 전체 가이드 및 FAQ: [📱 iOS 단축어 PWA 가이드](docs/ios-shortcuts-pwa.md).
+</details>
+
+<details>
+<summary><b>🇹🇼 快速設定 (繁體中文)</b></summary>
+
+1. **加入主畫面**：在 iPhone Safari 開啟網頁 -> 點擊下方「分享」->「加入主畫面」；
+2. **建立自動化**：開啟「捷徑」App ->「自動化」->「+」-> 觸發條件選擇「藍牙」（如 AirPods 或車用藍牙）-> 勾選「立即執行」並關閉「執行前先詢問」；
+3. **加入動作**：新增「打開 URL」動作，填入 `webapp://` + 網域名稱或 IP（**請勿包含 `http://` 或 `https://`**，例如 `webapp://music.yourdomain.com`）；
+4. 完整詳細手冊請參閱：[📱 iOS 捷徑獨立 PWA 指南](docs/ios-shortcuts-pwa.md)。
+</details>
+
+---
+
 ## 🛠️ 本地开发与贡献
 
 ### 环境要求

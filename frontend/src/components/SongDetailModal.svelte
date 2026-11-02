@@ -5,6 +5,7 @@
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { toPlayerTrack } from '../lib/playerHelper';
   import { playerStore } from '../lib/playerStore.svelte';
+  import { t } from '../lib/i18n';
   import Modal from './Modal.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
 
@@ -35,7 +36,7 @@
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
 
   let alId = $derived(songInfo?.al_id || songInfo?.albumId || songInfo?.al?.id || '');
-  let alText = $derived(songInfo?.al_name || songInfo?.album || songInfo?.al?.name || '暂无专辑');
+  let alText = $derived(songInfo?.al_name || songInfo?.album || songInfo?.al?.name || t('common.noAlbum'));
 
   async function loadDetail(id: string, level: string) {
     if (!id) return;
@@ -43,15 +44,15 @@
     try {
       const j = await api.songV1(id, level);
       if (j?.code && j.code !== '000000') {
-        showToast(j.msg || '获取单曲详情失败', 'warning');
+        showToast(j.msg || t('song.getDetailFailed'), 'warning');
         return;
       }
       songInfo = j?.data || null;
       if (!songInfo) {
-        showToast('未检索到该单曲详情数据', 'warning');
+        showToast(t('song.notFoundData'), 'warning');
       }
     } catch (e: any) {
-      showToast('获取单曲失败: ' + (e.message || e), 'error');
+      showToast(t('song.getFailed', { error: e.message || e }), 'error');
     } finally {
       loading = false;
     }
@@ -74,17 +75,17 @@
       const task = res?.data;
       if (task && typeof task === 'object') {
         if (task.status === 'SKIP') {
-          showToast(`已跳过《${task.name || name || '歌曲'}》: ${task.errorMsg || '试听片段或已存在'}`, 'warning', 4000);
+          showToast(t('download.skippedWithName', { name: task.name || name || t('comment.defaultSong'), reason: task.errorMsg || t('download.skipReasonPreviewOrExist') }), 'warning', 4000);
         } else if (task.status === 'FAILED') {
-          showToast(`下载失败《${task.name || name || '歌曲'}》: ${task.errorMsg || '任务执行异常'}`, 'error', 5000);
+          showToast(t('download.failedWithName', { name: task.name || name || t('comment.defaultSong'), reason: task.errorMsg || t('download.failReasonExecuteError') }), 'error', 5000);
         } else {
-          showToast(`已提交单曲下载: 《${task.name || name || '歌曲'}》`, 'success');
+          showToast(t('download.submittedSingle', { name: task.name || name || t('comment.defaultSong') }), 'success');
         }
       } else {
-        showToast(`已提交下载任务`, 'success');
+        showToast(t('download.submittedTask'), 'success');
       }
     } catch (e: any) {
-      showToast('下载请求失败: ' + (e.message || e), 'error');
+      showToast(t('download.requestFailed', { error: e.message || e }), 'error');
     } finally {
       downloading = false;
     }
@@ -93,15 +94,15 @@
   async function copyText(text: string, label: string) {
     try {
       await navigator.clipboard.writeText(text);
-      showToast(`已复制${label}: ${text}`, 'success');
+      showToast(t('common.copiedWithLabel', { label, text }), 'success');
     } catch {
-      showToast(`复制失败: ${text}`, 'warning');
+      showToast(t('common.copyFailedWithText', { text }), 'warning');
     }
   }
 </script>
 
 <Modal
-  title="单曲详情与音质"
+  title={t('song.detailTitle')}
   icon="🎧"
   maxWidth="max-w-[580px]"
   height="max-sm:h-[82vh] sm:h-[620px]"
@@ -140,11 +141,11 @@
         <div class="mb-3">
           <div class="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1">
             <span>📜</span>
-            <span>歌词内容</span>
+            <span>{t('song.lyricsContent')}</span>
           </div>
           <div class="h-[140px] bg-black/5 dark:bg-black/20 p-4 rounded-xl border border-black/5 dark:border-white/5 flex flex-col gap-2.5 justify-center items-center text-xs text-[var(--text-secondary)]">
             <div class="w-6 h-6 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin"></div>
-            <span class="text-xs text-[var(--text-muted)] animate-pulse">正在解析单曲信息与高规格音频...</span>
+            <span class="text-xs text-[var(--text-muted)] animate-pulse">{t('song.parsingAudio')}</span>
           </div>
         </div>
 
@@ -158,10 +159,10 @@
       {@const status = getTrackSourceStatus(targetId, songInfo.isLocal, playerStore.activeTrack)}
       {@const isPlayingThis = playerStore.activeTrack && String(playerStore.activeTrack.id) === String(targetId)}
       {@const isPlaying = Boolean(isPlayingThis && playerStore.playing)}
-      {@const arText = formatArtist(songInfo) || '群星 / 未知'}
-      {@const alText = songInfo.al_name || songInfo.album || '暂无专辑'}
+      {@const arText = formatArtist(songInfo) || t('common.variousArtists')}
+      {@const alText = songInfo.al_name || songInfo.album || t('common.noAlbum')}
       {@const alId = songInfo.al_id || songInfo.albumId || songInfo.al?.id}
-      {@const sizeText = songInfo.size || '未知大小'}
+      {@const sizeText = songInfo.size || t('common.unknown')}
       {@const levelText = songInfo.level || songLevel}
       {@const imgSrc = formatCoverUrl(songInfo.pic || songInfo.picUrl, 300)}
       {@const isLiked = likedSet.has(Number(targetId))}
@@ -172,7 +173,7 @@
           <div class="relative group mx-auto sm:mx-0 shrink-0">
             <img
               src={imgSrc}
-              alt={songInfo.name || '歌曲封面'}
+              alt={songInfo.name || t('player.cover')}
               class="w-24 h-24 sm:w-28 sm:h-28 rounded-xl object-cover shadow-lg border border-black/10 dark:border-white/10"
               referrerpolicy="no-referrer"
               onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.includes('favicon.png')) img.src = DEFAULT_VINYL_COVER; }}
@@ -187,21 +188,21 @@
           <div class="flex-1 min-w-0 w-full">
             <div class="flex items-center gap-2 mb-1">
               <h3 class="text-base sm:text-lg font-bold text-[var(--text-main)] truncate m-0" title={songInfo.name}>
-                {songInfo.name || songInfo.songName || '未知歌曲'}
+                {songInfo.name || songInfo.songName || t('common.unknownSong')}
               </h3>
               {#if status.isLocal}
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 shrink-0">
-                  本地
+                  {t('common.local')}
                 </span>
               {/if}
             </div>
 
             <div class="text-xs text-[var(--text-secondary)] truncate mb-1">
-              歌手：<span class="font-medium text-[var(--text-main)]">{arText}</span>
+              {t('common.artistColon')}<span class="font-medium text-[var(--text-main)]">{arText}</span>
             </div>
 
             <div class="text-xs text-[var(--text-secondary)] truncate mb-2 flex items-center gap-1.5">
-              <span>专辑：</span>
+              <span>{t('common.albumColon')}</span>
               {#if alId && onAlbum}
                 <button
                   type="button"
@@ -225,16 +226,16 @@
             <!-- 音质选择与文件大小 -->
             <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-black/5 dark:border-white/5">
               <div class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                <span>音质:</span>
+                <span>{t('common.qualityColon')}</span>
                 <select
                   value={songLevel}
                   onchange={(e) => handleLevelChange((e.currentTarget as HTMLSelectElement).value)}
                   class="text-xs py-1 px-2 rounded-lg bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15 text-[var(--text-main)] cursor-pointer outline-none font-medium"
                 >
-                  <option value="standard">标准 (128k)</option>
-                  <option value="exhigh">极高 (320k)</option>
-                  <option value="lossless">无损 (FLAC)</option>
-                  <option value="hires">Hi-Res</option>
+                  <option value="standard">{t('quality.standard')}</option>
+                  <option value="exhigh">{t('quality.exhigh')}</option>
+                  <option value="lossless">{t('quality.lossless')}</option>
+                  <option value="hires">{t('quality.hires')}</option>
                 </select>
               </div>
               <span class="text-xs text-[var(--text-muted)] font-mono">
@@ -262,7 +263,7 @@
             }}
           >
             <span>{isPlaying ? '⏸️' : '▶️'}</span>
-            <span>{isPlaying ? '暂停播放' : '立即试听'}</span>
+            <span>{isPlaying ? t('player.pausePlay') : t('song.previewNow')}</span>
           </button>
 
           <!-- 下载单曲 -->
@@ -273,7 +274,7 @@
             onclick={() => handleDownloadSingle(String(targetId), songInfo.name)}
           >
             <span>{downloading ? '🔄' : '📥'}</span>
-            <span>{downloading ? '提交中...' : '下载单曲'}</span>
+            <span>{downloading ? t('common.submitting') : t('download.downloadSingle')}</span>
           </button>
 
           <!-- 收藏到歌单 -->
@@ -285,7 +286,7 @@
             }}
           >
             <span>➕</span>
-            <span>收藏到歌单</span>
+            <span>{t('playlist.collectTo')}</span>
           </button>
 
           <!-- 收藏到我喜欢 -->
@@ -296,7 +297,7 @@
               onclick={() => onToggleLike(Number(targetId), songInfo.name, arText)}
             >
               <span>{isLiked ? '❤️' : '🤍'}</span>
-              <span>{isLiked ? '已设喜欢' : '我的喜欢'}</span>
+              <span>{isLiked ? t('player.alreadyLiked') : t('player.myFavorite')}</span>
             </button>
           {/if}
         </div>
@@ -305,10 +306,10 @@
         <div class="mb-3">
           <div class="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1">
             <span>📜</span>
-            <span>歌词内容</span>
+            <span>{t('song.lyricsContent')}</span>
           </div>
           <div class="max-h-[140px] overflow-y-auto bg-black/5 dark:bg-black/20 p-3 rounded-xl border border-black/5 dark:border-white/5 text-xs text-[var(--text-secondary)] font-mono leading-relaxed select-text">
-            <pre class="m-0 font-inherit whitespace-pre-wrap">{songInfo.lyric || '暂无滚动歌词数据'}</pre>
+            <pre class="m-0 font-inherit whitespace-pre-wrap">{songInfo.lyric || t('player.noLyricsData')}</pre>
           </div>
         </div>
 
@@ -316,7 +317,7 @@
         <div>
           <details class="border border-black/10 dark:border-white/10 rounded-xl p-2.5 bg-black/5 dark:bg-white/[0.02]">
             <summary class="text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer select-none">
-              📄 查看接口 Raw JSON 详情
+              {t('song.viewRawJson')}
             </summary>
             <pre class="bg-black/30 dark:bg-[#0b101b] text-sky-400 p-3 rounded-lg text-[11px] max-h-[180px] overflow-y-auto mt-2 font-mono border border-white/5 whitespace-pre-wrap select-all">{JSON.stringify(songInfo.rawData || songInfo, null, 2)}</pre>
           </details>
@@ -324,7 +325,7 @@
       </div>
     {:else}
       <div class="py-12 text-center text-xs text-[var(--text-muted)]">
-        未找到该歌曲详情信息
+        {t('song.notFound')}
       </div>
     {/if}
   </div>
@@ -335,17 +336,17 @@
         <button
           type="button"
           class="text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
-          onclick={() => copyText(String(songId), '歌曲 ID')}
+          onclick={() => copyText(String(songId), t('common.songId'))}
         >
-          📋 复制歌曲 ID: {songId}
+          {t('song.copySongId', { id: songId })}
         </button>
         {#if alId}
           <button
             type="button"
             class="text-xs text-[var(--text-muted)] hover:text-blue-400 bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
-            onclick={() => copyText(String(alId), '专辑 ID')}
+            onclick={() => copyText(String(alId), t('common.albumId'))}
           >
-            📋 复制专辑 ID: {alId}
+            {t('song.copyAlbumId', { id: alId })}
           </button>
         {/if}
       </div>
@@ -354,7 +355,7 @@
         class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer ml-auto"
         onclick={onClose}
       >
-        关闭
+        {t('common.close')}
       </button>
     </div>
   {/snippet}

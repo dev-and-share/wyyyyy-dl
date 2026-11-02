@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount } from '../../lib/playlist.svelte';
   import { matchesKeyword } from '../../lib/utils';
 
@@ -29,11 +30,11 @@
   const isRecommendActive = $derived(tab === 'playlist' && currentPlaylistId === 'daily-recommend');
   const isPlaylistActive = $derived(tab === 'playlist' && currentPlaylistId !== 'daily-recommend');
 
-  // 歌单分类：创建 vs 收藏，按播放频率排序（喜欢的音乐始终置顶）
+  // Categorize playlists: created vs subscribed, sorted by play count
   const createdPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => !p.subscribed)));
   const subscribedPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => p.subscribed)));
 
-  // 侧栏歌单搜索过滤（支持全拼与简拼）
+  // Sidebar playlist search filter
   let sidebarSearchKw = $state('');
   const filteredCreated = $derived(
     sidebarSearchKw.trim()
@@ -54,26 +55,25 @@
   }
 </script>
 
-<!-- 🖥️ PC 桌面级左侧常驻/折叠边栏 (仅在 >= 1024px 显示) -->
+<!-- PC Desktop Left Sidebar (Visible >= 1024px) -->
 <aside
   data-testid="desktop-sidebar"
   class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width,height] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
   style="height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'}; max-height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'};"
 >
-  <!-- 1. 顶栏：Logo 与折叠切换按钮 (支持 macOS WCO 避让与窗口拖拽) -->
+  <!-- 1. Top Bar: Logo & Collapse Button -->
   <div class="flex flex-col border-b border-[var(--border-color)] shrink-0 wco-drag-region">
-    <!-- macOS WCO 红绿灯避让占位区 (仅在 Chrome/Edge WCO 模式下生效，默认 0px) -->
     <div class="w-full shrink-0" style="height: env(titlebar-area-height, 0px);"></div>
     <div class="h-12 flex items-center px-3 justify-between gap-1 overflow-hidden shrink-0">
       {#if !collapsed}
         <div class="flex items-center gap-2 min-w-0 pl-0.5">
           <span class="text-lg leading-none shrink-0">🎵</span>
           <span class="font-bold text-sm text-[var(--text-main)] tracking-tight truncate">
-            网易云下载器
+            {t('topbar.title')}
           </span>
         </div>
       {:else}
-        <div class="w-full flex justify-center" title="网易云下载器">
+        <div class="w-full flex justify-center" title={t('topbar.title')}>
           <span class="text-lg leading-none">🎵</span>
         </div>
       {/if}
@@ -83,17 +83,17 @@
         data-testid="btn-toggle-sidebar"
         class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0"
         onclick={onToggleCollapse}
-        title={collapsed ? '展开边栏 (宽屏展开)' : '收起边栏 (紧凑纯图标)'}
-        aria-label={collapsed ? '展开边栏' : '收起边栏'}
+        title={collapsed ? t('sidebar.expandTooltip') : t('sidebar.collapseTooltip')}
+        aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
       >
         {collapsed ? '»' : '«'}
       </button>
     </div>
   </div>
 
-  <!-- 2. 主导航区 (紧凑利落) -->
+  <!-- 2. Main Navigation Area -->
   <nav class="p-1.5 flex flex-col gap-1 border-b border-[var(--border-color)] shrink-0">
-    <!-- 歌单 -->
+    <!-- Playlists -->
     <button
       type="button"
       data-testid="sidebar-tab-playlist"
@@ -105,15 +105,15 @@
           onSwitchTab('playlist');
         }
       }}
-      title="歌单"
+      title={t('topbar.playlist')}
     >
       <span class="text-[15px] leading-none shrink-0">📁</span>
       {#if !collapsed}
-        <span class="truncate flex-1 text-left">歌单</span>
+        <span class="truncate flex-1 text-left">{t('topbar.playlist')}</span>
       {/if}
     </button>
 
-    <!-- 每日推荐 -->
+    <!-- Daily Recommend -->
     <button
       type="button"
       data-testid="sidebar-tab-recommend"
@@ -125,39 +125,39 @@
           onSwitchTab('playlist');
         }
       }}
-      title="每日专属推荐"
+      title={t('recommend.dailyExclusive')}
     >
       <span class="text-[15px] leading-none shrink-0">📅</span>
       {#if !collapsed}
-        <span class="truncate flex-1 text-left">每日推荐</span>
+        <span class="truncate flex-1 text-left">{t('recommend.dailyRecommendShort')}</span>
       {/if}
     </button>
 
-    <!-- 搜索 -->
+    <!-- Search -->
     <button
       type="button"
       data-testid="sidebar-tab-search"
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {tab === 'search' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('search')}
-      title="搜索"
+      title={t('topbar.search')}
     >
       <span class="text-[15px] leading-none shrink-0">🔍</span>
       {#if !collapsed}
-        <span class="truncate flex-1 text-left">搜索</span>
+        <span class="truncate flex-1 text-left">{t('topbar.search')}</span>
       {/if}
     </button>
 
-    <!-- 本地 -->
+    <!-- Local & Downloads -->
     <button
       type="button"
       data-testid="sidebar-tab-download-mgr"
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 relative {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('download-mgr')}
-      title="本地与下载"
+      title={t('sidebar.localAndDownload')}
     >
       <span class="text-[15px] leading-none shrink-0">📥</span>
       {#if !collapsed}
-        <span class="truncate flex-1 text-left">本地</span>
+        <span class="truncate flex-1 text-left">{t('topbar.local')}</span>
         {#if downloadingCount > 0}
           <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-none animate-pulse">
             {downloadingCount}
@@ -169,14 +169,13 @@
     </button>
   </nav>
 
-  <!-- 3. 歌单快速导航列表：搜索框 + 各占 50% 的两个独立滚动区 -->
+  <!-- 3. Playlist Quick Navigation -->
   <div class="flex-1 min-h-0 flex flex-col px-2 py-2 gap-0 overflow-hidden">
     {#if !collapsed}
-      <!-- 搜索过滤框（固定高度，不滚动）-->
       <div class="relative mb-1.5 shrink-0">
         <input
           type="text"
-          placeholder="搜索歌单..."
+          placeholder={t('playlist.filterPlaceholder')}
           class="w-full pl-6 pr-2 py-1 rounded-lg text-[11px] bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-400/60 transition-colors"
           bind:value={sidebarSearchKw}
         />
@@ -190,11 +189,11 @@
         {/if}
       </div>
 
-      <!-- 我的歌单：占 50% 高度，独立滚动 -->
+      <!-- Created Playlists -->
       <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar border-b border-[var(--border-subtle)] pb-1 mb-1">
         {#if filteredCreated.length > 0}
           <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-            <span>我的歌单</span>
+            <span>{t('playlist.myPlaylists')}</span>
             <span class="text-[10px] opacity-70">{filteredCreated.length}</span>
           </div>
           {#each filteredCreated as pl (pl.id)}
@@ -218,23 +217,23 @@
                   type="button"
                   class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
                   onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
-                  title="立即播放此歌单"
+                  title={t('playlist.playWholePlaylistTooltip')}
                 >▶</button>
               {/if}
             </div>
           {/each}
         {:else}
           <div class="px-2 py-3 text-center text-xs text-[var(--text-muted)]">
-            {sidebarSearchKw ? '无匹配' : '暂无歌单'}
+            {sidebarSearchKw ? t('sidebar.noMatch') : t('playlist.noPlaylistsData')}
           </div>
         {/if}
       </div>
 
-      <!-- 收藏歌单：占 50% 高度，独立滚动 -->
+      <!-- Subscribed Playlists -->
       <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar pt-0.5">
         {#if filteredSubscribed.length > 0}
           <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-            <span>收藏歌单</span>
+            <span>{t('sidebar.subscribedPlaylists')}</span>
             <span class="text-[10px] opacity-70">{filteredSubscribed.length}</span>
           </div>
           {#each filteredSubscribed as pl (pl.id)}
@@ -256,24 +255,24 @@
                   type="button"
                   class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
                   onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
-                  title="立即播放此歌单"
+                  title={t('playlist.playWholePlaylistTooltip')}
                 >▶</button>
               {/if}
             </div>
           {/each}
         {:else}
           <div class="px-2 py-3 text-center text-xs text-[var(--text-muted)]">
-            {sidebarSearchKw ? '无匹配' : '暂无收藏歌单'}
+            {sidebarSearchKw ? t('sidebar.noMatch') : t('sidebar.noSubscribedPlaylists')}
           </div>
         {/if}
       </div>
     {:else}
-      <!-- 折叠态下的紧凑快捷方式 -->
+      <!-- Compact shortcuts in collapsed state -->
       <div class="flex flex-col items-center gap-2 pt-2">
         <button
           type="button"
           class="w-9 h-9 flex items-center justify-center rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs cursor-pointer border-none text-[var(--text-secondary)] hover:text-[var(--text-main)]"
-          title="我的歌单"
+          title={t('playlist.myPlaylists')}
           onclick={() => onSwitchTab('playlist')}
         >
           📂
@@ -282,22 +281,21 @@
     {/if}
   </div>
 
-  <!-- 4. 底部版本信息区 (紧凑微型化) -->
+  <!-- 4. Bottom Version Info -->
   <div
     class="px-3 py-1.5 border-t border-[var(--border-color)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] opacity-60 hover:opacity-100 transition-opacity shrink-0 select-none {collapsed ? 'justify-center py-1' : ''}"
     data-testid="sidebar-version-info"
   >
     {#if !collapsed}
-      <span class="truncate">网易云下载器</span>
+      <span class="truncate">{t('topbar.title')}</span>
       <span class="text-[9px] px-1.5 py-0.5 rounded bg-[var(--btn-secondary-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] leading-none">v{__APP_VERSION__}</span>
     {:else}
-      <span class="text-[9px] cursor-default font-semibold" title="网易云下载器 v{__APP_VERSION__}">v{__APP_VERSION__}</span>
+      <span class="text-[9px] cursor-default font-semibold" title="{t('topbar.title')} v{__APP_VERSION__}">v{__APP_VERSION__}</span>
     {/if}
   </div>
 </aside>
 
 <style>
-  /* 优雅边栏微滚动条 */
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: var(--border-color, rgba(255, 255, 255, 0.15)) transparent;

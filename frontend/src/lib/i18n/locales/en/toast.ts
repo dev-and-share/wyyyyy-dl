@@ -1,0 +1,16 @@
+export default {
+  'toast.playlist.created': 'Playlist created successfully',
+  'toast.playlist.forked': 'Playlist forked to local library',
+  'toast.playlist.removed': 'Removed from playlist',
+  'toast.playlist.added': 'Added to playlist',
+  'toast.download.added': 'Added to download queue',
+  'toast.copy.success': 'Copied to clipboard',
+  'toast.copy.failed': 'Failed to copy, please copy manually',
+  'toast.cache.cleared': 'Cache cleared',
+  'toast.peq.reset': 'Equalizer reset to default curve',
+  'toast.locatingFile': '🚀 Locating local file...',
+  'toast.update.available': 'New update available, downloading in background...',
+  'toast.like.removed': 'Removed from favorites',
+  'toast.like.added': 'Added "{name}" to favorites',
+  'toast.like.failed': 'Failed to update favorite status',
+} as const;

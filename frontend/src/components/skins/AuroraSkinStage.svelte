@@ -2,6 +2,7 @@
   import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
   import type { SkinStageProps } from './skinTypes';
   import TrackQuickActions from '../TrackQuickActions.svelte';
+  import { t } from '../../lib/i18n/index.svelte';
 
   let {
     track,
@@ -58,7 +59,7 @@
       <img
         src={formatCoverUrl(track?.cover, 400)}
         class="w-full h-full object-cover transition-all duration-700 {playing ? 'contrast-105' : 'brightness-90'}"
-        alt="灵动极光封面"
+        alt={t('player.cover')}
         referrerpolicy="no-referrer"
         onerror={(e) => {
           const img = e.currentTarget as HTMLImageElement;
@@ -72,12 +73,12 @@
   <div class="flex flex-col items-center text-center max-w-[340px] w-full">
     <!-- 歌名 -->
     <h4 class="text-base md:text-lg font-bold text-[var(--text-main)] truncate max-w-full px-2" title={track?.name}>
-      {track?.name || '未在播放'}
+      {track?.name || t('player.noTrackPlaying')}
     </h4>
 
     <!-- 歌手名 -->
     <div class="text-xs md:text-sm text-[var(--text-secondary)] truncate max-w-full mt-1 px-2" title={formatArtist(track?.artist)}>
-      {formatArtist(track?.artist) || '未知歌手'}
+      {formatArtist(track?.artist) || t('player.unknownArtist')}
     </div>
 
     <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排 -->

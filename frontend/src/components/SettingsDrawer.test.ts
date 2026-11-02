@@ -129,4 +129,24 @@ describe('TopBar & SettingsDrawer Integration', () => {
     await fireEvent.click(springBtn);
     expect(localStorage.getItem('player_skin')).toBe('spring');
   });
+
+  it('SettingsDrawer has top priority z-index and safe area padding to prevent player occlusion', () => {
+    const { container } = render(SettingsDrawer, {
+      repeat: false,
+      themeMode: 'dark',
+      onToggleRepeat: vi.fn(),
+      onSelectTheme: vi.fn(),
+      onOpenPeq: vi.fn(),
+      onClose: vi.fn()
+    });
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.className).toContain('z-[100050]');
+    expect(dialog.className).toContain('pb-[calc(16px+env(safe-area-inset-bottom,0px))]');
+
+    // Backdrop should be z-[100049] and support skin gradient backdrop blur
+    const backdrop = container.firstElementChild as HTMLElement;
+    expect(backdrop.className).toContain('z-[100049]');
+    expect(backdrop.className).toContain('backdrop-blur-md');
+  });
 });

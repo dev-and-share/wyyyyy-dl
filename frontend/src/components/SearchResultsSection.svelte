@@ -8,6 +8,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
+  import { t } from '../lib/i18n';
 
   let {
     sResults = [],
@@ -52,16 +53,16 @@
   async function copyText(text: string, label: string) {
     try {
       await navigator.clipboard.writeText(text);
-      showToast(`已复制${label}: ${text}`, 'success');
+      showToast(t('common.copiedWithLabel', { label, text }), 'success');
     } catch {
-      showToast(`复制失败: ${text}`, 'warning');
+      showToast(t('common.copyFailedWithText', { text }), 'warning');
     }
   }
 
   function openSearchTrackSheet(r: any, isLocal: boolean, artistName: string, isPlayingThis: boolean) {
     openSheet({
       title: r.name,
-      subtitle: artistName || '未知歌手',
+      subtitle: artistName || t('common.unknownArtist'),
       actions: [
         ...(onPlayQueue
           ? [
@@ -76,7 +77,7 @@
         ...(isLocal && onReveal
           ? [
               {
-                label: '📂 在服务器磁盘中定位',
+                label: t('player.revealOnDisk'),
                 style: 'default' as const,
                 onclick: () => onReveal({ id: r.id, name: r.name, artist: artistName })
               }
@@ -85,14 +86,14 @@
         ...(onSong
           ? [
               {
-                label: '🎧 查看单曲详情 / 下载',
+                label: t('search.viewDetailDownload'),
                 style: 'default' as const,
                 onclick: () => onSong(String(r.id))
               }
             ]
           : []),
         {
-          label: '➕ 收藏到歌单',
+          label: t('search.actionCollectToPlaylist'),
           style: 'default' as const,
           onclick: () => {
             addToPlaylistSong = { id: r.id, name: r.name, artist: artistName };
@@ -101,16 +102,16 @@
         ...(onToggleLike
           ? [
               {
-                label: likedSet.has(Number(r.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
+                label: likedSet.has(Number(r.id)) ? t('search.actionUnlike') : t('search.actionLike'),
                 style: 'default' as const,
                 onclick: () => onToggleLike(Number(r.id), r.name, artistName)
               }
             ]
           : []),
         {
-          label: '📋 复制歌曲 ID',
+          label: t('search.actionCopySongId'),
           style: 'default' as const,
-          onclick: () => copyText(String(r.id), '歌曲 ID')
+          onclick: () => copyText(String(r.id), t('common.songId'))
         }
       ]
     });
@@ -119,31 +120,31 @@
   function openPlaylistSheet(pl: any) {
     openSheet({
       title: pl.name,
-      subtitle: `歌单 · 共 ${pl.trackCount || 0} 首 · ID: ${pl.id}`,
+      subtitle: t('playlist.playlistSubtitle', { count: pl.trackCount || 0, id: pl.id }),
       actions: [
         ...(onPlayQueue
           ? [
               {
-                label: '▶️ 立即播放整单',
+                label: t('playlist.playAllLong'),
                 style: 'primary' as const,
                 onclick: () => handlePlayPlaylist(String(pl.id), pl.name)
               }
             ]
           : []),
         {
-          label: '📥 下载整单全部歌曲',
+          label: t('playlist.downloadAllSongs'),
           style: 'default' as const,
           onclick: () => handleDownloadPlaylist(String(pl.id), pl.name)
         },
         {
-          label: '👉 查看歌单详情与曲目',
+          label: t('playlist.viewDetailsAndTracks'),
           style: 'default' as const,
           onclick: () => onPlaylist(String(pl.id))
         },
         {
-          label: '📋 复制歌单 ID',
+          label: t('playlist.copyPlaylistId'),
           style: 'default' as const,
-          onclick: () => copyText(String(pl.id), '歌单 ID')
+          onclick: () => copyText(String(pl.id), t('common.playlistId'))
         }
       ]
     });
@@ -152,17 +153,17 @@
   function openAlbumSheet(al: any, artistName: string) {
     openSheet({
       title: al.name,
-      subtitle: `专辑 · ${artistName || '未知歌手'} · ID: ${al.id}`,
+      subtitle: t('album.albumSubtitle', { artist: artistName || t('common.unknownArtist'), id: al.id }),
       actions: [
         {
-          label: '👉 查看专辑详情与曲目',
+          label: t('album.viewAlbumTracks'),
           style: 'primary' as const,
           onclick: () => onAlbum(String(al.id))
         },
         {
-          label: '📋 复制专辑 ID',
+          label: t('album.copyAlbumId'),
           style: 'default' as const,
-          onclick: () => copyText(String(al.id), '专辑 ID')
+          onclick: () => copyText(String(al.id), t('common.albumId'))
         }
       ]
     });
@@ -171,17 +172,17 @@
   function openArtistSheet(ar: any) {
     openSheet({
       title: ar.name,
-      subtitle: `歌手 · ID: ${ar.id}`,
+      subtitle: t('artist.artistSubtitle', { id: ar.id }),
       actions: [
         {
-          label: '🔥 查看热门 50 首',
+          label: t('artist.viewTop50'),
           style: 'primary' as const,
           onclick: () => onViewArtist(String(ar.id))
         },
         {
-          label: '📋 复制歌手 ID',
+          label: t('artist.copyArtistId'),
           style: 'default' as const,
-          onclick: () => copyText(String(ar.id), '歌手 ID')
+          onclick: () => copyText(String(ar.id), t('common.artistId'))
         }
       ]
     });
@@ -190,7 +191,7 @@
 
 <ul class="data-list scrollable-list">
   {#if searchLoading}
-    <li style="justify-content:center; color:var(--text-secondary); padding:20px 0; font-size:13px;">🔄 正在检索，请稍候...</li>
+    <li style="justify-content:center; color:var(--text-secondary); padding:20px 0; font-size:13px;">{t('search.searchingWait')}</li>
   {:else}
     {#each sResults as r, idx}
       {#if sType === '1'}
@@ -250,12 +251,12 @@
                 </SlotBtn>
               {/if}
               {#if status.isServer}
-                <SlotBtn onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>📂 定位</SlotBtn>
+                <SlotBtn onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>{t('common.reveal')}</SlotBtn>
               {/if}
               {#if onSong}
-                <SlotBtn onclick={() => onSong(String(r.id))}>👉 详情</SlotBtn>
+                <SlotBtn onclick={() => onSong(String(r.id))}>{t('common.detailShort')}</SlotBtn>
               {/if}
-              <SlotBtn onclick={() => addToPlaylistSong = { id: r.id, name: r.name, artist: artistName }}>➕ 歌单</SlotBtn>
+              <SlotBtn onclick={() => addToPlaylistSong = { id: r.id, name: r.name, artist: artistName }}>{t('playlist.collectShort')}</SlotBtn>
             </div>
 
             <!-- 📱 SP 移动端常用功能 + ··· 抽屉 -->
@@ -272,8 +273,8 @@
                 type="button"
                 class="btn-more-actions"
                 onclick={() => openSearchTrackSheet(r, status.isLocal, artistName, isPlayingThis)}
-                title="更多操作"
-                aria-label="更多操作"
+                title={t('common.moreActions')}
+                aria-label={t('common.moreActions')}
               >
                 ···
               </button>
@@ -310,7 +311,7 @@
                   <span class="opacity-40">·</span>
                 {/if}
                 {#if r.size}
-                  <span>{r.size} 首歌</span>
+                  <span>{t('search.songCount', { count: r.size })}</span>
                   <span class="opacity-40">·</span>
                 {/if}
                 <span class="font-mono opacity-80 shrink-0">ID:{r.id}</span>
@@ -321,18 +322,18 @@
           <div class="track-action-group">
             <!-- 💻 PC 桌面端 -->
             <div class="hidden md:inline-flex items-center gap-1.5">
-              <SlotBtn onclick={() => onAlbum(String(r.id))}>👉 查看专辑详情</SlotBtn>
+              <SlotBtn onclick={() => onAlbum(String(r.id))}>{t('album.viewDetails')}</SlotBtn>
             </div>
 
             <!-- 📱 SP 移动端 -->
             <div class="inline-flex md:hidden items-center gap-1.5">
-              <SlotBtn onclick={() => onAlbum(String(r.id))}>👉 详情</SlotBtn>
+              <SlotBtn onclick={() => onAlbum(String(r.id))}>{t('common.detailShort')}</SlotBtn>
               <button
                 type="button"
                 class="btn-more-actions"
                 onclick={() => openAlbumSheet(r, albumArtist)}
-                title="更多操作"
-                aria-label="更多操作"
+                title={t('common.moreActions')}
+                aria-label={t('common.moreActions')}
               >
                 ···
               </button>
@@ -364,7 +365,7 @@
               </button>
               <div class="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] truncate mt-0.5">
                 {#if r.trackCount !== undefined}
-                  <span>共 {r.trackCount} 首</span>
+                  <span>{t('search.trackCountTotal', { count: r.trackCount })}</span>
                   <span class="opacity-40">·</span>
                 {/if}
                 {#if r.creator?.nickname}
@@ -379,24 +380,24 @@
           <div class="track-action-group">
             <!-- 💻 PC 桌面端快捷操作 -->
             <div class="hidden md:inline-flex items-center gap-1.5">
-              <SlotBtn onclick={() => handleDownloadPlaylist(String(r.id), r.name)} title="立即下载整张歌单全部歌曲">📥 下载整单</SlotBtn>
+              <SlotBtn onclick={() => handleDownloadPlaylist(String(r.id), r.name)} title={t('playlist.downloadAllSongs')}>{t('playlist.downloadAllShort')}</SlotBtn>
               {#if onPlayQueue}
-                <SlotBtn onclick={() => handlePlayPlaylist(String(r.id), r.name)}>▶ 播放</SlotBtn>
+                <SlotBtn onclick={() => handlePlayPlaylist(String(r.id), r.name)}>{t('search.play')}</SlotBtn>
               {/if}
-              <SlotBtn onclick={() => onPlaylist(String(r.id))}>👉 查看详情</SlotBtn>
+              <SlotBtn onclick={() => onPlaylist(String(r.id))}>{t('common.viewDetails')}</SlotBtn>
             </div>
 
             <!-- 📱 SP 移动端快捷操作 (播放整单 + ··· 抽屉) -->
             <div class="inline-flex md:hidden items-center gap-1.5">
               {#if onPlayQueue}
-                <SlotBtn onclick={() => handlePlayPlaylist(String(r.id), r.name)} title="播放整单">▶ 播放</SlotBtn>
+                <SlotBtn onclick={() => handlePlayPlaylist(String(r.id), r.name)} title={t('playlist.playAllLong')}>{t('search.play')}</SlotBtn>
               {/if}
               <button
                 type="button"
                 class="btn-more-actions"
                 onclick={() => openPlaylistSheet(r)}
-                title="更多操作"
-                aria-label="更多操作"
+                title={t('common.moreActions')}
+                aria-label={t('common.moreActions')}
               >
                 ···
               </button>
@@ -435,18 +436,18 @@
           <div class="track-action-group">
             <!-- 💻 PC 桌面端 -->
             <div class="hidden md:inline-flex items-center gap-1.5">
-              <SlotBtn onclick={() => onViewArtist(String(r.id))}>👉 热门 50 首</SlotBtn>
+              <SlotBtn onclick={() => onViewArtist(String(r.id))}>{t('artist.hotTop50')}</SlotBtn>
             </div>
 
             <!-- 📱 SP 移动端 -->
             <div class="inline-flex md:hidden items-center gap-1.5">
-              <SlotBtn onclick={() => onViewArtist(String(r.id))}>🔥 热门</SlotBtn>
+              <SlotBtn onclick={() => onViewArtist(String(r.id))}>{t('artist.hotShort')}</SlotBtn>
               <button
                 type="button"
                 class="btn-more-actions"
                 onclick={() => openArtistSheet(r)}
-                title="更多操作"
-                aria-label="更多操作"
+                title={t('common.moreActions')}
+                aria-label={t('common.moreActions')}
               >
                 ···
               </button>
@@ -456,9 +457,9 @@
       {/if}
     {:else}
       {#if hasSearched}
-        <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">未搜索到相关结果</li>
+        <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">{t('search.noResults')}</li>
       {:else}
-        <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">输入关键词后按回车搜索</li>
+        <li style="justify-content:center; color:var(--text-muted); padding:24px 0; font-size:13px;">{t('search.enterKeywordPrompt')}</li>
       {/if}
     {/each}
   {/if}

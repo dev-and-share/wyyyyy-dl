@@ -25,7 +25,8 @@ export const api = {
   setCookie: (c: string) => postForm('/v3/cookie', { cookie: c }),
 
   // 🎵 核心解析
-  songV1: (id: string, level: string) => postForm('/v3/song', { id, level, type: 'json' }),
+  songV1: (id: string, level: string, name?: string, artist?: string) =>
+    postForm('/v3/song', { id, level, type: 'json', ...(name ? { name } : {}), ...(artist ? { artist } : {}) }),
   songStats: (id: string | number) => get(`/v3/song/stats?id=${encodeURIComponent(id)}`),
   songComments: (id: string | number, offset = 0, limit = 20) => get(`/v3/song/comments?id=${encodeURIComponent(id)}&offset=${offset}&limit=${limit}`),
   playlist: (id: string) => postForm('/v3/playlist', { id }),

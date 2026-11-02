@@ -3,6 +3,7 @@
   import type { SkinStageProps } from './skinTypes';
   import TrackQuickActions from '../TrackQuickActions.svelte';
   import WinampMiniVisualizer from './WinampMiniVisualizer.svelte';
+  import { t } from '../../lib/i18n/index.svelte';
 
   let {
     track,
@@ -84,7 +85,7 @@
       <div class="w-12 h-12 md:w-14 md:h-14 rounded overflow-hidden shrink-0 border border-white/20 shadow-md">
         <img
           src={formatCoverUrl(track?.cover, 120)}
-          alt="封面"
+          alt={t('player.cover')}
           class="w-full h-full object-cover"
           referrerpolicy="no-referrer"
           onerror={(e) => {
@@ -125,12 +126,12 @@
   <div class="flex flex-col items-center text-center max-w-[340px] w-full">
     <!-- 歌名 -->
     <h4 class="text-base md:text-lg font-bold text-[var(--text-main)] truncate max-w-full px-2" title={track?.name}>
-      {track?.name || '未在播放'}
+      {track?.name || t('player.noTrackPlaying')}
     </h4>
 
     <!-- 歌手名 -->
     <div class="text-xs md:text-sm text-[var(--text-secondary)] truncate max-w-full mt-1 px-2" title={formatArtist(track?.artist)}>
-      {formatArtist(track?.artist) || '未知歌手'}
+      {formatArtist(track?.artist) || t('player.unknownArtist')}
     </div>
 
     <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排 -->

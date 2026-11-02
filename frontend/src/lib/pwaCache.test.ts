@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   isAutoCacheEnabled,
   setAutoCacheEnabled,
@@ -8,7 +8,10 @@ import {
   PWA_AUTO_CACHE_KEY,
   PWA_SONG_PLAY_COUNTS_KEY,
   PWA_TRACK_META_KEY,
-  cacheTrackToBrowser
+  cacheTrackToBrowser,
+  handleTrackPlayback,
+  resetTrackPlayback,
+  cachedSongIdSet
 } from './pwaCache.svelte';
 import {
   formatCacheDate,
@@ -23,6 +26,14 @@ describe('PWA Cache & Auto-cache Contracts', () => {
   beforeEach(() => {
     localStorage.clear();
     setAutoCacheEnabled(true);
+    resetTrackPlayback();
+    cachedSongIdSet.clear();
+  });
+
+  afterEach(() => {
+    resetTrackPlayback();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('isAutoCacheEnabled defaults to true when localStorage is empty', () => {
@@ -53,7 +64,6 @@ describe('PWA Cache & Auto-cache Contracts', () => {
     expect(c2).toBe(2);
     expect(getSongPlayCount('101')).toBe(2);
 
-    // 验证同步到已存在于 metaMap 中的条目
     const metaMap = {
       '/v3/stream?id=101': { id: '101', songName: '测试歌曲', playCount: 0 }
     };
@@ -66,7 +76,7 @@ describe('PWA Cache & Auto-cache Contracts', () => {
 
   it('formatCacheDate formats timestamp correctly', () => {
     expect(formatCacheDate(0)).toBe('');
-    const d = new Date(2026, 8, 9, 17, 30); // 2026-09-09 17:30
+    const d = new Date(2026, 8, 9, 17, 30);
     const str = formatCacheDate(d.getTime());
     expect(str).toBe('09-09 17:30');
   });
@@ -81,8 +91,57 @@ describe('PWA Cache & Auto-cache Contracts', () => {
     expect(res.msg).toContain('试听片段');
   });
 
+  it('handleTrackPlayback blocks background fetch when document.visibilityState is hidden (Lock Screen bandwidth guard)', async () => {
+    vi.useFakeTimers();
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true
+    });
+
+    handleTrackPlayback({ id: 555, name: '后台播放歌曲', url: '/v3/stream?id=555' }, () => true);
+
+    // Play count is recorded immediately
+    expect(getSongPlayCount(555)).toBe(1);
+
+    // Advance past 2.5s auto-cache debounce window
+    await vi.advanceTimersByTimeAsync(3000);
+
+    // Must NOT initiate full-track background fetch while screen is locked/hidden
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true
+    });
+  });
+
+  it('handleTrackPlayback cancels auto-cache timer on fast track skip (< 2.5s) or when paused', async () => {
+    vi.useFakeTimers();
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true
+    });
+
+    // Case 1: Reset before 2.5s
+    handleTrackPlayback({ id: 666, name: '切歌测试', url: '/v3/stream?id=666' }, () => true);
+    await vi.advanceTimersByTimeAsync(1200);
+    resetTrackPlayback();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // Case 2: Paused before 2.5s (isStillPlaying returns false)
+    handleTrackPlayback({ id: 777, name: '暂停测试', url: '/v3/stream?id=777' }, () => false);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('scanBrowserCache sorts by playCount DESC then time DESC', async () => {
-    // 模拟 window.caches
     const mockAudioData = [
       { url: 'http://localhost/v3/stream?id=1', id: '1', name: 'Song 1', count: 1, time: 1000 },
       { url: 'http://localhost/v3/stream?id=2', id: '2', name: 'Song 2', count: 10, time: 2000 },
@@ -122,12 +181,6 @@ describe('PWA Cache & Auto-cache Contracts', () => {
 
     const result = await scanBrowserCache();
     expect(result.list.length).toBe(4);
-
-    // 复合排序断言：
-    // 1. Song 3 (count=10, time=5000)
-    // 2. Song 2 (count=10, time=2000)
-    // 3. Song 1 (count=1, time=1000)
-    // 4. Song 4 (count=0, time=3000)
     expect(result.list[0].id).toBe('3');
     expect(result.list[1].id).toBe('2');
     expect(result.list[2].id).toBe('1');
@@ -211,7 +264,6 @@ describe('PWA Cache & Auto-cache Contracts', () => {
     expect(filterCacheByMinPlayCount(list, 3).map(i => i.id)).toEqual(['3', '4']);
     expect(filterCacheByMinPlayCount(list, 5).map(i => i.id)).toEqual(['4']);
     expect(filterCacheByMinPlayCount(list, 99).length).toBe(0);
-    // 容错兜底
     expect(filterCacheByMinPlayCount(list, -1).length).toBe(4);
     expect(filterCacheByMinPlayCount(list, NaN).length).toBe(4);
   });

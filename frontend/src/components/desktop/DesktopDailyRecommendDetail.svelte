@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
+  import { t } from '../../lib/i18n';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../../lib/utils';
   import { toPlayerTrack } from '../../lib/playerHelper';
   import {
@@ -10,7 +11,7 @@
     setLastBackupPlaylist,
     updatePlaylistTrackCount
   } from '../../lib/playlist.svelte';
-  import { getTrackSourceStatus, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, markSongDownloaded, isSameTrack, getTrackPlayActionLabel } from '../../lib/trackStatus.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
@@ -54,16 +55,16 @@
   let showCreateModal = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
 
-  const dateInfo = (() => {
+  const dateInfo = $derived.by(() => {
     const d = new Date();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return {
-      monthText: `${m}月`,
+      monthText: t('recommend.monthText', { month: m }),
       dayNum: day,
-      fullText: `${m}月${day}日`
+      fullText: t('recommend.fullText', { month: m, day })
     };
-  })();
+  });
 
   async function loadRecommend(force = false) {
     if (recommendTracks.length > 0 && !force) return;
@@ -74,10 +75,10 @@
       if (res?.code === '000000' && Array.isArray(res.data)) {
         recommendTracks = res.data;
       } else {
-        errorMsg = res?.msg || '获取每日推荐失败，请先在系统中配置网易云 Cookie';
+        errorMsg = res?.msg || t('recommend.failedCookie');
       }
     } catch (e: any) {
-      errorMsg = e?.message || '网络连接异常，无法获取每日推荐';
+      errorMsg = e?.message || t('recommend.failedNetwork');
     } finally {
       loading = false;
     }
@@ -89,10 +90,10 @@
 
   function handlePlayAll() {
     if (!recommendTracks.length || !onPlayQueue) return;
-    const list = recommendTracks.map(t =>
-      toPlayerTrack(t, {
-        artist: typeof t.artists === 'string' ? t.artists : formatArtist(t.artists || t.ar),
-        isLocal: t.isLocal
+    const list = recommendTracks.map(trk =>
+      toPlayerTrack(trk, {
+        artist: typeof trk.artists === 'string' ? trk.artists : formatArtist(trk.artists || trk.ar),
+        isLocal: trk.isLocal
       })
     );
     onPlayQueue(list, 0);
@@ -102,13 +103,13 @@
     if (!recommendTracks.length) return;
     isDownloadingAll = true;
     try {
-      for (const t of recommendTracks) {
-        await api.downloadSingle(String(t.id));
-        markSongDownloaded(Number(t.id));
+      for (const trk of recommendTracks) {
+        await api.downloadSingle(String(trk.id));
+        markSongDownloaded(Number(trk.id));
       }
-      showToast(`已提交 ${recommendTracks.length} 首歌曲至下载队列`, 'success');
+      showToast(t('recommend.batchSubmitted', { count: recommendTracks.length }), 'success');
     } catch (e: any) {
-      showToast('批量下载异常: ' + (e?.message || e), 'error');
+      showToast(t('recommend.batchFailed', { error: e?.message || e }), 'error');
     } finally {
       isDownloadingAll = false;
     }
@@ -118,9 +119,9 @@
     try {
       await api.downloadSingle(id);
       markSongDownloaded(Number(id));
-      showToast(`已提交下载: 《${name}》`, 'success');
+      showToast(t('download.submitSuccessWithName', { name }), 'success');
     } catch (e: any) {
-      showToast('下载失败: ' + (e?.message || e), 'error');
+      showToast(t('download.failedWithName', { name, reason: e?.message || e }), 'error');
     }
   }
 
@@ -128,19 +129,19 @@
     if (!recommendTracks.length) return;
     isBackingUp = true;
     try {
-      const trackIds = recommendTracks.map(t => String(t.id)).join(',');
+      const trackIds = recommendTracks.map(trk => String(trk.id)).join(',');
       const res = await api.playlistAdd(targetId, trackIds);
       if (res?.code === '000000') {
         const addedCount = res.data?.count ?? recommendTracks.length;
         setLastBackupPlaylist(targetId, targetName);
         lastBackup = { id: targetId, name: targetName };
         updatePlaylistTrackCount(targetId, addedCount);
-        showToast(`成功将今日推荐导入《${targetName}》`, 'success');
+        showToast(t('recommend.importSuccessWithName', { name: targetName }), 'success');
       } else {
-        showToast(res?.msg || '导入歌单失败', 'error');
+        showToast(res?.msg || t('recommend.importFailed'), 'error');
       }
     } catch (e: any) {
-      showToast('导入歌单异常: ' + (e?.message || e), 'error');
+      showToast(t('recommend.importException', { error: e?.message || e }), 'error');
     } finally {
       isBackingUp = false;
       showSelectModal = false;
@@ -164,10 +165,10 @@
         showCreateModal = false;
         await handleBackupToPlaylist(newId, name);
       } else {
-        showToast(res?.msg || '创建歌单失败', 'error');
+        showToast(res?.msg || t('recommend.createFailed'), 'error');
       }
     } catch (e: any) {
-      showToast('创建歌单异常: ' + (e?.message || e), 'error');
+      showToast(t('recommend.createException', { error: e?.message || e }), 'error');
     }
   }
 
@@ -175,7 +176,7 @@
 </script>
 
 <div class="flex flex-col gap-4 animate-fade-in" data-testid="desktop-daily-recommend-detail">
-  <!-- 1. 顶部面包屑 (右侧预留浮动控制胶囊避让区) -->
+  <!-- 1. Top Breadcrumb Bar -->
   <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)] min-h-[34px] pr-[215px]">
     <button
       type="button"
@@ -184,15 +185,14 @@
       onclick={onBackToGallery}
     >
       <span>←</span>
-      <span>返回歌单画廊</span>
+      <span>{t('playlist.backToGallery')}</span>
     </button>
     <span class="opacity-40 shrink-0">/</span>
-    <span class="truncate font-semibold text-[var(--text-main)]">📅 每日专属推荐</span>
+    <span class="truncate font-semibold text-[var(--text-main)]">{t('recommend.dailyExclusive')}</span>
   </div>
 
-  <!-- 2. Hero 横幅区 -->
+  <!-- 2. Hero Banner -->
   <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 sm:p-5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
-    <!-- 日历卡片拟物封面 -->
     <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shrink-0 flex flex-col overflow-hidden border border-red-400/30 select-none">
       <div class="bg-red-700/80 text-white text-[11px] font-bold text-center py-1 tracking-wider uppercase">
         {dateInfo.monthText}
@@ -201,11 +201,10 @@
         <span class="text-3xl sm:text-4xl font-black text-red-600 dark:text-red-400 tracking-tighter leading-none">
           {dateInfo.dayNum}
         </span>
-        <span class="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">每日推荐</span>
+        <span class="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">{t('recommend.dailyRecommendShort')}</span>
       </div>
     </div>
 
-    <!-- 标题与状态 -->
     <div class="flex-1 min-w-0 flex flex-col gap-2">
       <div class="flex items-center gap-2 flex-wrap">
         <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
@@ -214,23 +213,23 @@
         </span>
         <span class="text-xs text-[var(--text-muted)] font-medium">
           {#if loading}
-            正在获取私房推荐...
+            {t('recommend.fetchingPrivate')}
           {:else if recommendTracks.length}
-            专属私房歌 · 共 <strong class="text-red-400">{recommendTracks.length}</strong> 首
+            {t('recommend.privateTracksTotal', { count: recommendTracks.length })}
           {:else}
-            每天 6:00 定制更新
+            {t('recommend.updateTime')}
           {/if}
         </span>
       </div>
 
       <h1 class="text-xl sm:text-2xl font-bold text-[var(--text-main)] tracking-tight">
-        每日专属推荐
+        {t('recommend.dailyExclusiveText')}
       </h1>
       <p class="text-xs text-[var(--text-secondary)]">
-        根据您的音乐口味精心挑选，每天清晨为您呈现最新最合拍的心动旋律。
+        {t('recommend.tasteIntro')}
       </p>
 
-      <!-- 快捷操作按钮组 -->
+      <!-- Action buttons -->
       <div class="flex items-center gap-2.5 pt-1 flex-wrap">
         <button
           type="button"
@@ -240,7 +239,7 @@
           onclick={handlePlayAll}
         >
           <span>▶️</span>
-          <span>播放全部</span>
+          <span>{t('playlist.playAll')}</span>
         </button>
 
         <button
@@ -251,10 +250,9 @@
           onclick={handleDownloadAll}
         >
           <span>{isDownloadingAll ? '🔄' : '📥'}</span>
-          <span>{isDownloadingAll ? '提交中...' : '全部下载'}</span>
+          <span>{isDownloadingAll ? t('download.status.downloading') : t('playlist.downloadAll')}</span>
         </button>
 
-        <!-- 一键备份到歌单 -->
         {#if lastBackup}
           <div class="inline-flex rounded-xl border border-emerald-500/30 bg-emerald-500/10 overflow-hidden shadow-xs">
             <button
@@ -262,17 +260,17 @@
               disabled={isBackingUp || !recommendTracks.length}
               class="px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 border-none bg-transparent"
               onclick={handleBackupUpdate}
-              title={`更新导入至《${lastBackup.name}》`}
+              title={t('recommend.updateBackupTitle', { name: lastBackup.name })}
             >
               <span>{isBackingUp ? '🔄' : '📦'}</span>
-              <span>更新备份至《{lastBackup.name}》</span>
+              <span>{t('recommend.backupToWithName', { name: lastBackup.name })}</span>
             </button>
             <button
               type="button"
               disabled={isBackingUp}
               class="px-2 py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-l border-emerald-500/20 cursor-pointer bg-transparent"
               onclick={() => showSelectModal = true}
-              title="更改备份目标歌单"
+              title={t('recommend.backupChangeTooltip')}
             >
               ⚙️
             </button>
@@ -285,7 +283,7 @@
             onclick={() => showSelectModal = true}
           >
             <span>📦</span>
-            <span>备份到自建歌单</span>
+            <span>{t('recommend.backupBtn')}</span>
           </button>
         {/if}
 
@@ -294,21 +292,21 @@
           disabled={loading}
           class="btn-secondary flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
           onclick={() => loadRecommend(true)}
-          title="强制重新加载今日推荐"
+          title={t('recommend.refreshTooltip')}
         >
           <span>🔄</span>
-          <span>刷新</span>
+          <span>{t('common.refresh')}</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 3. 宽屏歌曲大表格 -->
+  <!-- 3. Wide Tracks Table -->
   <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
     {#if loading}
       <div class="flex flex-col items-center justify-center p-12 gap-3 text-[var(--text-muted)]">
         <div class="w-8 h-8 border-3 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-        <div class="text-xs font-medium">正在获取今日每日推荐...</div>
+        <div class="text-xs font-medium">{t('recommend.syncing')}</div>
       </div>
     {:else if errorMsg}
       <div class="p-8 text-center flex flex-col items-center gap-3">
@@ -319,12 +317,12 @@
           class="btn-primary text-xs px-4 py-2 rounded-xl mt-2 cursor-pointer"
           onclick={() => loadRecommend(true)}
         >
-          重试
+          {t('common.retry')}
         </button>
       </div>
     {:else if recommendTracks.length === 0}
       <div class="p-12 text-center text-xs text-[var(--text-muted)]">
-        暂无今日推荐歌曲
+        {t('recommend.empty')}
       </div>
     {:else}
       <div class="overflow-x-auto custom-table-scroll">
@@ -332,20 +330,20 @@
           <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
             <tr>
               <th class="w-12 py-3 pl-4 font-semibold">#</th>
-              <th class="py-3 px-3 font-semibold">标题</th>
-              <th class="py-3 px-3 font-semibold w-44">歌手</th>
-              <th class="py-3 px-3 font-semibold w-48 hidden md:table-cell">专辑</th>
-              <th class="py-3 pr-4 text-right font-semibold w-56">快捷操作</th>
+              <th class="py-3 px-3 font-semibold">{t('search.tableTitle')}</th>
+              <th class="py-3 px-3 font-semibold w-44">{t('search.tableArtist')}</th>
+              <th class="py-3 px-3 font-semibold w-48 hidden md:table-cell">{t('search.tableAlbum')}</th>
+              <th class="py-3 pr-4 text-right font-semibold w-56">{t('search.tableActions')}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--border-subtle)]">
-            {#each recommendTracks as t, i (t.id)}
-              {@const status = getTrackSourceStatus(t.id, t.isLocal, curTrack)}
-              {@const artist = typeof t.artists === 'string' ? t.artists : formatArtist(t.artists || t.ar)}
-              {@const albumName = t.album?.name || t.al?.name || '单曲'}
-              {@const albumId = t.album?.id || t.al?.id}
-              {@const coverUrl = t.album?.picUrl || t.al?.picUrl || DEFAULT_VINYL_COVER}
-              {@const isPlayingThis = isSameTrack(curTrack, t)}
+            {#each recommendTracks as trackItem, i (trackItem.id)}
+              {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}
+              {@const artist = typeof trackItem.artists === 'string' ? trackItem.artists : formatArtist(trackItem.artists || trackItem.ar)}
+              {@const albumName = trackItem.album?.name || trackItem.al?.name || t('search.tab.song')}
+              {@const albumId = trackItem.album?.id || trackItem.al?.id}
+              {@const coverUrl = trackItem.album?.picUrl || trackItem.al?.picUrl || DEFAULT_VINYL_COVER}
+              {@const isPlayingThis = isSameTrack(curTrack, trackItem)}
               <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
                 <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
                   {#if isPlayingThis && playing}
@@ -358,17 +356,17 @@
                 <td class="py-2.5 px-3 min-w-0">
                   <div class="flex items-center gap-2 min-w-0">
                     <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
-                      {t.name}
+                      {trackItem.name}
                     </span>
-                    <TrackSourceBadge id={t.id} isLocal={t.isLocal} {curTrack} class="shrink-0" />
+                    <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="shrink-0" />
                     {#if onToggleLike}
-                      <TrackLikeBtn liked={likedSet.has(Number(t.id))} onclick={() => onToggleLike?.(Number(t.id), t.name, artist)} />
+                      <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike?.(Number(trackItem.id), trackItem.name, artist)} />
                     {/if}
                   </div>
                 </td>
 
                 <td class="py-2.5 px-3 text-[var(--text-secondary)] truncate">
-                  {artist || '群星'}
+                  {artist || t('common.variousArtists')}
                 </td>
 
                 <td class="py-2.5 px-3 text-[var(--text-muted)] truncate hidden md:table-cell">
@@ -390,29 +388,29 @@
                     {#if onPlayQueue}
                       <SlotBtn
                         playing={isPlayingThis && playing}
-                        onclick={() => onPlayQueue([{ id: t.id, name: t.name, artist, cover: coverUrl, isLocal: status.isLocal }])}
+                        onclick={() => onPlayQueue([{ id: trackItem.id, name: trackItem.name, artist, cover: coverUrl, isLocal: status.isLocal }])}
                       >
-                        {isPlayingThis && playing ? '⏸ 暂停' : (status.isLocal ? '▶ 本地' : '▶ 试听')}
+                        {getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'desktop' })}
                       </SlotBtn>
                     {/if}
 
                     {#if status.isServer}
-                      <SlotBtn onclick={() => onReveal && onReveal({ id: t.id, name: t.name, artist })}>
-                        📂 定位
+                      <SlotBtn onclick={() => onReveal && onReveal({ id: trackItem.id, name: trackItem.name, artist })}>
+                        {t('common.reveal')}
                       </SlotBtn>
                     {:else}
-                      <SlotBtn onclick={() => handleDownloadSingle(String(t.id), t.name)}>
-                        📥 下载
+                      <SlotBtn onclick={() => handleDownloadSingle(String(trackItem.id), trackItem.name)}>
+                        {t('download.downloadSingle')}
                       </SlotBtn>
                     {/if}
 
-                    <SlotBtn onclick={() => { addToPlaylistSong = { id: t.id, name: t.name, artist }; }}>
-                      ➕ 收藏
+                    <SlotBtn onclick={() => { addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist }; }}>
+                      {t('playlist.collectTo')}
                     </SlotBtn>
 
                     {#if onSong}
-                      <SlotBtn onclick={() => onSong?.(String(t.id))}>
-                        🎧 详情
+                      <SlotBtn onclick={() => onSong?.(String(trackItem.id))}>
+                        {t('playlist.viewSongDetails')}
                       </SlotBtn>
                     {/if}
                   </div>
@@ -426,7 +424,7 @@
   </div>
 </div>
 
-<!-- 模态框：收藏单曲至歌单 -->
+<!-- Modals -->
 {#if addToPlaylistSong}
   <AddToPlaylistModal
     song={addToPlaylistSong}
@@ -435,12 +433,11 @@
   />
 {/if}
 
-<!-- 模态框：选择备份的目标歌单 -->
 {#if showSelectModal}
-  <Modal title="📦 选择备份目标歌单" onClose={() => showSelectModal = false}>
+  <Modal title={t('recommend.selectBackupTitle')} onClose={() => showSelectModal = false}>
     <div class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1 select-none">
       <p class="text-xs text-[var(--text-secondary)]">
-        将今日每日推荐全部歌曲导入到您创建的歌单中：
+        {t('recommend.selectBackupPrompt')}
       </p>
 
       <button
@@ -449,7 +446,7 @@
         onclick={() => { showSelectModal = false; showCreateModal = true; }}
       >
         <span>➕</span>
-        <span>新建专属备份歌单 (如: 日推备份)</span>
+        <span>{t('recommend.createBackupPlaylist')}</span>
       </button>
 
       <div class="flex flex-col gap-1.5">
@@ -462,9 +459,9 @@
             <img src={p.coverImgUrl || DEFAULT_VINYL_COVER} alt="" class="w-9 h-9 rounded-lg object-cover" />
             <div class="flex-1 min-w-0">
               <div class="text-xs font-semibold text-[var(--text-main)] truncate">{p.name}</div>
-              <div class="text-[10px] text-[var(--text-muted)]">{p.trackCount} 首歌曲</div>
+              <div class="text-[10px] text-[var(--text-muted)]">{t('playlist.songCountTotal', { count: p.trackCount })}</div>
             </div>
-            <span class="text-xs text-[var(--text-muted)]">导入 →</span>
+            <span class="text-xs text-[var(--text-muted)]">{t('recommend.importArrow')}</span>
           </button>
         {/each}
       </div>
@@ -472,7 +469,6 @@
   </Modal>
 {/if}
 
-<!-- 模态框：新建歌单 -->
 {#if showCreateModal}
   <CreatePlaylistModal
     onClose={() => showCreateModal = false}
@@ -481,7 +477,7 @@
       if (newId) {
         await loadMyPlaylists();
         const pl = myPlaylists.find(p => String(p.id) === String(newId));
-        await handleBackupToPlaylist(String(newId), pl?.name || '新建歌单');
+        await handleBackupToPlaylist(String(newId), pl?.name || t('playlist.createDefaultName'));
       }
     }}
   />

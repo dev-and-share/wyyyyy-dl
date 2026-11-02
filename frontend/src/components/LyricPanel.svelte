@@ -1,6 +1,7 @@
 <script lang="ts">
   import { parseLrc, type LrcLine } from '../lib/lyricParser';
   import { api } from '../lib/api';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     track,
@@ -94,7 +95,7 @@
         {/if}
       {/each}
     {:else}
-      <div class="py-16 text-[var(--text-muted)] text-sm">暂无歌词</div>
+      <div class="py-16 text-[var(--text-muted)] text-sm">{t('player.lyricEmpty')}</div>
     {/if}
   </div>
 </div>

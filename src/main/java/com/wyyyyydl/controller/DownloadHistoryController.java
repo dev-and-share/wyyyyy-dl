@@ -229,23 +229,61 @@ public class DownloadHistoryController {
     }
 
     /**
-     * 本地已下载音频播放/流传输接口
+     * 本地已下载音频播放/流传输接口 (兼容历史路由，支持 path / historyId / id)
      */
     @GetMapping("/history/stream")
     public void streamLocalAudio(
             @RequestParam(value = "path", required = false) String path,
+            @RequestParam(value = "id", required = false) String idStr,
+            @RequestParam(value = "historyId", required = false) String historyIdStr,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response) {
-        if (StringUtils.isBlank(path)) {
-            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
-            return;
+        if (StringUtils.isNotBlank(path)) {
+            try {
+                storageService.serveMedia(path, request, response);
+                return;
+            } catch (Exception e) {
+                log.error("流媒体服务传输异常: path={}", path, e);
+                response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                return;
+            }
         }
 
+        Long historyId = parseSafeLong(historyIdStr);
+        Long id = parseSafeLong(idStr);
+        DownloadHistoryItem item = null;
+        if (historyId != null && historyId > 0) {
+            item = downloadHistoryDAO.getRecordById(historyId);
+        }
+        if (item == null && id != null && id > 0) {
+            item = downloadHistoryDAO.findLocalFileBySongId(id);
+        }
+        if (item != null) {
+            String targetPath = StringUtils.isNotBlank(item.getRelativePath()) ? item.getRelativePath() : item.getFilePath();
+            if (StringUtils.isNotBlank(targetPath)) {
+                try {
+                    storageService.serveMedia(targetPath, request, response);
+                    return;
+                } catch (Exception e) {
+                    log.error("流媒体服务传输异常: path={}", targetPath, e);
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    return;
+                }
+            }
+        }
+        response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND);
+    }
+
+    private Long parseSafeLong(String val) {
+        if (StringUtils.isBlank(val)
+                || "null".equalsIgnoreCase(val)
+                || "undefined".equalsIgnoreCase(val)) {
+            return null;
+        }
         try {
-            storageService.serveMedia(path, request, response);
+            return Long.parseLong(val.trim());
         } catch (Exception e) {
-            log.error("流媒体服务传输异常: path={}", path, e);
-            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            return null;
         }
     }
 

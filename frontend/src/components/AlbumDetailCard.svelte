@@ -8,7 +8,8 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import { showToast } from '../lib/toast.svelte';
   import { openSheet } from '../lib/ui.svelte';
-  import { getTrackSourceStatus, isSameTrack } from '../lib/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
+  import { t } from '../lib/i18n';
 
   let {
     album,
@@ -70,12 +71,12 @@
   function openTrackSheet(s: any, isLocal: boolean, artistName: string, isPlayingThis: boolean) {
     openSheet({
       title: s.name,
-      subtitle: artistName || '未知歌手',
+      subtitle: artistName || t('common.unknownArtist'),
       actions: [
         ...(onPlayQueue
           ? [
               {
-                label: isPlayingThis && playing ? '⏸ 暂停当前播放' : (isLocal ? '▶️ 播放本地音频' : '▶️ 试听在线歌曲'),
+                label: getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal, variant: 'full' }),
                 style: 'primary' as const,
                 onclick: () =>
                   onPlayQueue([
@@ -93,14 +94,14 @@
         ...(isLocal && onReveal
           ? [
               {
-                label: '📂 在服务器磁盘中定位',
+                label: t('player.revealOnDisk'),
                 style: 'default' as const,
                 onclick: () => onReveal({ id: s.id, name: s.name, artist: artistName })
               }
             ]
           : [
               {
-                label: '📥 下载到电脑服务器',
+                label: t('search.downloadTrackToServer'),
                 style: 'default' as const,
                 onclick: () => onDownloadSingleTrack(String(s.id))
               }
@@ -108,14 +109,14 @@
         ...(onSong
           ? [
               {
-                label: '🎧 查看单曲详情',
+                label: t('search.songDetail'),
                 style: 'default' as const,
                 onclick: () => onSong(String(s.id))
               }
             ]
           : []),
         {
-          label: '➕ 收藏到歌单',
+          label: t('search.actionCollectToPlaylist'),
           style: 'default' as const,
           onclick: () => {
             addToPlaylistSong = { id: s.id, name: s.name, artist: artistName };
@@ -124,7 +125,7 @@
         ...(onToggleLike
           ? [
               {
-                label: likedSet.has(Number(s.id)) ? '💔 取消喜欢' : '❤️ 收藏到我的喜欢',
+                label: likedSet.has(Number(s.id)) ? t('search.actionUnlike') : t('search.actionLike'),
                 style: 'default' as const,
                 onclick: () => onToggleLike(Number(s.id), s.name, artistName)
               }
@@ -135,44 +136,45 @@
   }
 </script>
 
-<AccordionCard title="💽 2. 专辑解析与整辑下载" bind:open {flat} accent="blue">
+<AccordionCard title={t('album.accordionTitle')} bind:open {flat} accent="blue">
   <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
     <input
       type="text"
-      placeholder="输入专辑 ID (如 258535483，按回车解析)"
+      placeholder={t('album.inputIdPlaceholderWithEnter')}
       class="flex-1 min-w-0"
       bind:value={currentAlbumId}
       onkeydown={(e) => e.key === 'Enter' && onLoadAlbum()}
     />
     <button class="btn-primary shrink-0 whitespace-nowrap" onclick={() => onLoadAlbum()}>
-      解析<span class="hidden sm:inline">专辑</span>
+      {t('album.parse')}<span class="hidden sm:inline">{t('album.albumWord')}</span>
     </button>
   </div>
 
   {#if albumLoading}
     <div style="padding:24px; text-align:center; color:var(--text-secondary); font-size:14px;">
-      🔄 正在解析专辑数据，请稍候...
+      {t('album.parsing')}
     </div>
   {:else if curAlbum && (curAlbum.name || curAlbum.id || songs.length > 0)}
-    {@const headerArtist = formatArtist(curAlbum.artist || curAlbum.artists) || '未知歌手'}
+    {@const headerArtist = formatArtist(curAlbum.artist || curAlbum.artists) || t('common.unknownArtist')}
     <DetailHeaderCard
       cover={curAlbum.coverImgUrl || curAlbum.picUrl || DEFAULT_VINYL_COVER}
-      title={curAlbum.name || '未知专辑'}
-      subtitle={`歌手：${headerArtist} | 发行时间：${formatPublishTime(curAlbum.publishTime)}`}
-      subDetail={`共包含 ${songs.length} 首曲目`}
+      title={curAlbum.name || t('album.unknown')}
+      subtitle={`${t('album.artistColon', { artist: headerArtist })} | ${t('album.publishTimeColon', { time: formatPublishTime(curAlbum.publishTime) })}`}
+      subDetail={t('album.containsTracks', { count: songs.length })}
     >
-      <button class="btn-primary" onclick={onDownloadFullAlbum}>🖥️ 下载到电脑</button>
-      <button class="btn-secondary" onclick={onPlayFullAlbum}>▶️ 播放专辑</button>
+      <button class="btn-primary" onclick={onDownloadFullAlbum}>{t('album.downloadToPc')}</button>
+      <button class="btn-secondary" onclick={onPlayFullAlbum}>{t('album.playAlbum')}</button>
     </DetailHeaderCard>
 
     <h4 style="margin:15px 0 8px 0; color:var(--text-main); font-size:15px; font-weight:600;">
-      专辑曲目列表 ({songs.length} 首)：
+      {t('album.trackListHeader', { count: songs.length })}
     </h4>
     <ul class="data-list scrollable-list">
       {#each songs as s, i}
         {@const artistName = formatArtist(s.artist || s.ar || s.artists || curAlbum.artist || '')}
         {@const status = getTrackSourceStatus(s.id, s.isLocal, curTrack)}
         {@const isPlayingThis = isSameTrack(curTrack, s)}
+        {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
           <div class="track-title-row">
             <button
@@ -196,23 +198,23 @@
                   playing={isPlayingThis && playing}
                   onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: curAlbum.coverImgUrl || curAlbum.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {playLabel}
                 </SlotBtn>
               {/if}
               {#if status.isServer}
                 <SlotBtn
                   onclick={() => onReveal && onReveal({ id: s.id, name: s.name, artist: artistName })}
-                  title="在文件管理器中定位"
+                  title={t('player.revealOnDisk')}
                 >
-                  📂 定位
+                  {t('common.reveal')}
                 </SlotBtn>
               {:else}
                 <SlotBtn onclick={() => onDownloadSingleTrack(String(s.id))}>
-                  📥 下载
+                  {t('download.downloadSingle')}
                 </SlotBtn>
               {/if}
               {#if onSong}
-                <SlotBtn onclick={() => onSong(String(s.id))}>🎧 详情</SlotBtn>
+                <SlotBtn onclick={() => onSong(String(s.id))}>{t('common.detailShort')}</SlotBtn>
               {/if}
             </div>
 
@@ -223,15 +225,15 @@
                   playing={isPlayingThis && playing}
                   onclick={() => onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: curAlbum.coverImgUrl || curAlbum.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                 >
-                  {isPlayingThis && playing ? '⏸ 播放中' : (status.isLocal ? '▶️ 播放' : '▶️ 试听')}
+                  {playLabel}
                 </SlotBtn>
               {/if}
               <button
                 type="button"
                 class="btn-more-actions"
                 onclick={() => openTrackSheet(s, status.isLocal, artistName, isPlayingThis)}
-                title="更多操作"
-                aria-label="更多操作"
+                title={t('common.moreActions')}
+                aria-label={t('common.moreActions')}
               >
                 ···
               </button>
@@ -243,7 +245,7 @@
   {:else}
     <div class="empty-placeholder-card">
       <div class="empty-icon">💽</div>
-      <div class="empty-title">在搜索中选择专辑或输入 ID 解析</div>
+      <div class="empty-title">{t('album.emptyPrompt')}</div>
     </div>
   {/if}
 </AccordionCard>

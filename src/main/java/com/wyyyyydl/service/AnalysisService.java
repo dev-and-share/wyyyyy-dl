@@ -591,7 +591,26 @@ public class AnalysisService {
         if (songInfo == null || localItem == null || !Boolean.TRUE.equals(localItem.getFileExists())) {
             return;
         }
-        songInfo.setUrl("/v3/stream?id=" + localItem.getSongId() + "&historyId=" + localItem.getId());
+        StringBuilder urlBuilder = new StringBuilder("/v3/stream?");
+        if (localItem.getSongId() != null && localItem.getSongId() > 0) {
+            urlBuilder.append("id=").append(localItem.getSongId()).append("&");
+        }
+        if (localItem.getId() != null && localItem.getId() > 0) {
+            urlBuilder.append("historyId=").append(localItem.getId()).append("&");
+        }
+        String p = org.apache.commons.lang3.StringUtils.isNotBlank(localItem.getRelativePath())
+                ? localItem.getRelativePath()
+                : localItem.getFilePath();
+        if (org.apache.commons.lang3.StringUtils.isNotBlank(p)) {
+            try {
+                urlBuilder.append("path=").append(java.net.URLEncoder.encode(p, java.nio.charset.StandardCharsets.UTF_8.name())).append("&");
+            } catch (Exception ignored) {}
+        }
+        String streamUrl = urlBuilder.toString();
+        if (streamUrl.endsWith("&") || streamUrl.endsWith("?")) {
+            streamUrl = streamUrl.substring(0, streamUrl.length() - 1);
+        }
+        songInfo.setUrl(streamUrl);
         songInfo.setFreeTrial(false);
         songInfo.setFreeTrialDuration(null);
         songInfo.setUnplayableReason(null);

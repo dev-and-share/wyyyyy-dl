@@ -4,11 +4,12 @@
   import { removeTrackBrowserCache } from '../lib/browserCacheHelper';
   import { unmarkSongDownloaded } from '../lib/trackStatus.svelte';
   import Modal from './Modal.svelte';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     song,
     playlistId,
-    playlistName = '当前歌单',
+    playlistName = '',
     zIndex = 'z-[100020]',
     onClose,
     onSuccess,
@@ -31,27 +32,27 @@
     if (!song || loading) return;
     loading = true;
     try {
-      // 1. 调用云端从歌单移除歌曲接口
+      // 1. Remove track from cloud playlist
       const res = await api.playlistRemove(String(playlistId), String(song.id));
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || '从歌单移除失败', 'warning');
+        showToast(res.msg || t('playlist.removeFailed'), 'warning');
         return;
       }
 
-      // 2. 更新本地前端歌单曲目数组、曲目数与本地 API 缓存
+      // 2. Update local playlist store and count
       removeTrackFromCurrentPlaylist(playlistId, song.id);
 
-      // 3. 若开启“删除浏览器缓存”，执行清理本设备 PWA Cache 与元数据
+      // 3. Clear browser cache if enabled
       let cacheRemoved = false;
       if (deleteBrowserCache) {
         try {
           cacheRemoved = await removeTrackBrowserCache(song.id);
         } catch (e) {
-          console.warn('清理浏览器离线缓存失败:', e);
+          console.warn('[PWA] Failed to remove browser cache:', e);
         }
       }
 
-      // 4. 若开启“删除服务器的文件”，调用物理删除接口并同步取消下载标记
+      // 4. Delete file on server if enabled
       let serverFileRemoved = false;
       if (deleteServerFile) {
         try {
@@ -64,16 +65,17 @@
             }
           }
         } catch (e) {
-          console.warn('删除服务器文件异常:', e);
+          console.warn('[Server] Failed to delete file on server:', e);
         }
       }
 
-      // 5. 组装操作成功提示文案
+      // 5. Success toast message
+      const targetPlName = playlistName || t('playlist.currentPlaylist');
       const notes: string[] = [];
-      if (deleteBrowserCache) notes.push('已清空浏览器离线缓存');
-      if (serverFileRemoved) notes.push('已删除服务器文件');
-      const suffix = notes.length > 0 ? ` (${notes.join('，')})` : '';
-      showToast(`已从歌单「${playlistName}」移除《${song.name}》${suffix}`, 'success');
+      if (deleteBrowserCache) notes.push(t('playlist.clearedBrowserCache'));
+      if (serverFileRemoved) notes.push(t('playlist.deletedServerFile'));
+      const suffix = notes.length > 0 ? ` (${notes.join(', ')})` : '';
+      showToast(t('playlist.removedSongSuccess', { playlist: targetPlName, song: song.name }) + suffix, 'success');
 
       onSuccess?.({
         removedFromPlaylist: true,
@@ -82,7 +84,7 @@
       });
       onClose();
     } catch (e: any) {
-      showToast('操作失败: ' + (e.message || e), 'error');
+      showToast(t('common.failed') + ': ' + (e.message || e), 'error');
     } finally {
       loading = false;
     }
@@ -90,7 +92,7 @@
 </script>
 
 {#if song}
-  <Modal title="从歌单移除歌曲" icon="🗑️" maxWidth="max-w-[460px]" {zIndex} {onClose}>
+  <Modal title={t('playlist.removeTitle')} icon="🗑️" maxWidth="max-w-[460px]" {zIndex} {onClose}>
     <!-- 目标曲目与歌单卡片 -->
     <div class="flex items-center gap-3 p-3 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 mb-3.5">
       <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-lg shrink-0">
@@ -99,13 +101,13 @@
       <div class="flex-1 min-w-0">
         <div class="text-xs font-bold text-[var(--text-main)] truncate" title={song.name}>{song.name}</div>
         <div class="text-[11px] text-[var(--text-secondary)] truncate">
-          {song.artist || '群星'} <span class="opacity-40">·</span> 所属: <strong class="text-[var(--text-main)] font-medium">{playlistName}</strong>
+          {song.artist || t('common.variousArtists')} <span class="opacity-40">·</span> {t('playlist.belongsTo')}: <strong class="text-[var(--text-main)] font-medium">{playlistName || t('playlist.currentPlaylist')}</strong>
         </div>
       </div>
     </div>
 
     <p class="text-xs text-[var(--text-secondary)] mb-3 leading-relaxed">
-      确定要将此歌曲从该歌单中移除吗？此操作将同步更新云端歌单曲目。
+      {t('playlist.removePrompt')}
     </p>
 
     <!-- 高级联动开关选项组 -->
@@ -118,11 +120,11 @@
           <span class="text-sm mt-0.5 shrink-0">📲</span>
           <div class="flex-1 min-w-0">
             <div class="text-xs font-semibold text-[var(--text-main)] flex items-center gap-1.5">
-              <span>删除浏览器离线缓存</span>
-              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">推荐</span>
+              <span>{t('playlist.removeDeleteBrowserCache')}</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">{t('playlist.recommendTag')}</span>
             </div>
             <div class="text-[10px] text-[var(--text-muted)] leading-tight mt-0.5">
-              清理当前设备 (PWA / CacheStorage) 中已缓存的离线音频流与元数据
+              {t('playlist.removeDeleteBrowserCacheDesc')}
             </div>
           </div>
         </div>
@@ -142,11 +144,11 @@
           <span class="text-sm mt-0.5 shrink-0">🖥️</span>
           <div class="flex-1 min-w-0">
             <div class="text-xs font-semibold text-[var(--text-main)] flex items-center gap-1.5">
-              <span>删除电脑服务器上的物理文件</span>
-              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400">永久物理删除</span>
+              <span>{t('playlist.removeDeleteServerFile')}</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400">{t('playlist.permanentTag')}</span>
             </div>
             <div class="text-[10px] text-[var(--text-muted)] leading-tight mt-0.5">
-              物理擦除服务器电脑硬盘已下载的音频文件，并彻底清理历史记录数据库
+              {t('playlist.removeDeleteServerFileDesc')}
             </div>
           </div>
         </div>
@@ -167,7 +169,7 @@
         disabled={loading}
         onclick={onClose}
       >
-        取消
+        {t('common.cancel')}
       </button>
       <button
         type="button"
@@ -178,9 +180,9 @@
       >
         {#if loading}
           <span class="inline-block animate-spin text-xs">⏳</span>
-          <span>正在移除...</span>
+          <span>{t('playlist.removing')}</span>
         {:else}
-          <span>🗑️ 确认移除</span>
+          <span>🗑️ {t('playlist.removeConfirmBtn')}</span>
         {/if}
       </button>
     </div>

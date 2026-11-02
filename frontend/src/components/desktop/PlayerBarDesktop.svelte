@@ -10,6 +10,7 @@
   import { skin } from '../../lib/skinStore.svelte';
   import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
+  import { t } from '../../lib/i18n/index.svelte';
 
   let {
     curTrack,
@@ -76,14 +77,14 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="flex items-center gap-3 flex-1 min-w-[200px] max-w-[360px]">
-      <div class="cursor-pointer select-none flex items-center gap-3 flex-1 min-w-0" onclick={onLyric} title="点击展开全屏播放器">
+      <div class="cursor-pointer select-none flex items-center gap-3 flex-1 min-w-0" onclick={onLyric} title={t('player.expandLyric')}>
         {#if skin.current === 'winamp'}
           <!-- Winamp 风格封面 + 经典示波频谱 -->
           <div class="flex items-center gap-2 shrink-0">
             <div class="w-11 h-11 rounded-xs overflow-hidden border border-white/30 shadow-sm shrink-0">
               <img
                 src={formatCoverUrl(curTrack?.cover, 100)}
-                alt="封面"
+                alt={t('player.cover')}
                 class="w-full h-full object-cover"
                 referrerpolicy="no-referrer"
                 onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
@@ -107,7 +108,7 @@
           >
             <img
               src={formatCoverUrl(curTrack?.cover, 100)}
-              alt="封面"
+              alt={t('player.cover')}
               class="w-full h-full object-cover {playing ? 'scale-105' : 'scale-100'} transition-transform duration-500"
               referrerpolicy="no-referrer"
               onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
@@ -118,7 +119,7 @@
           <div class="relative w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-emerald-600 to-teal-400 shrink-0 shadow-md shadow-emerald-500/20">
             <img
               src={formatCoverUrl(curTrack?.cover, 100)}
-              alt="封面"
+              alt={t('player.cover')}
               class="w-full h-full rounded-full object-cover {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
               referrerpolicy="no-referrer"
               onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
@@ -150,7 +151,7 @@
                     ? 'text-emerald-400 font-semibold'
                     : 'text-[var(--text-main,#0f172a)]'}"
             >
-              {curTrack?.name || '未在播放'}
+              {curTrack?.name || t('player.noTrackPlaying')}
             </span>
             {#if curTrack}
               <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
@@ -165,7 +166,7 @@
                   ? 'text-emerald-300/70'
                   : 'text-[var(--text-secondary,#64748b)]'}"
           >
-            {formatArtist(curTrack?.artist) || '未知歌手'}
+            {formatArtist(curTrack?.artist) || t('player.unknownArtist')}
           </div>
         </div>
       </div>
@@ -203,7 +204,7 @@
         type="button"
         class="w-8.5 h-8.5 rounded-lg flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onLyric}
-        title="全屏歌词与皮肤舞台"
+        title={t('player.lyricsStage')}
       >
         <PlayerIcon name="mic" size={17} />
       </button>
@@ -212,7 +213,7 @@
           type="button"
           class="w-8.5 h-8.5 rounded-lg flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
           onclick={onPeq}
-          title="5段参量均衡器 (PEQ)"
+          title={t('peq.title')}
         >
           <PlayerIcon name="equalizer" size={17} />
         </button>
@@ -222,7 +223,7 @@
         type="button"
         class="relative w-8.5 h-8.5 rounded-lg flex items-center justify-center text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
         onclick={onQueue}
-        title="当前播放列表"
+        title={t('player.playlist')}
       >
         <PlayerIcon name="list" size={17} />
         <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold px-1 py-px rounded-full border border-white/60 leading-none">
@@ -237,7 +238,7 @@
           <span
             class="cursor-pointer select-none text-[var(--text-main)] flex items-center"
             onclick={() => { vol = vol > 0 ? 0 : 0.8; }}
-            title="静音切换"
+            title={t('player.muteToggle')}
           >
             <PlayerIcon name={vol === 0 ? 'volume-mute' : vol < 0.4 ? 'volume-low' : 'volume'} size={18} />
           </span>
@@ -260,7 +261,7 @@
         type="button"
         class="w-7 h-7 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 active:scale-95 transition-all cursor-pointer"
         onclick={onMinimize}
-        title="收起为浮球"
+        title={t('player.minimize')}
       >
         <PlayerIcon name="close" size={13} />
       </button>

@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>🧪 iOS 熄屏锁屏诊断与极简测试</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) 12px calc(24px + env(safe-area-inset-bottom, 0px));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      font-size: 15px;
+      margin: 0;
+    }
+    .btn {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 8px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: #fff;
+    }
+    .btn-Copy {
+      background: #10b981;
+      border-color: #059669;
+      color: #fff;
+      font-size: 13px;
+      padding: 9px 14px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    audio {
+      width: 100%;
+      height: 40px;
+      margin: 4px 0;
+    }
+    .controls-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .controls-row .btn {
+      flex: 1;
+      padding: 10px 6px;
+      font-size: 13px;
+    }
+    .mode-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .mode-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 9px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .mode-item input { margin-top: 3px; }
+    .mode-item.active {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.14);
+    }
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .track-btn {
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .track-btn.active {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.15);
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      background: #0f172a;
+      padding: 7px 9px;
+      border-radius: 8px;
+      margin-top: 6px;
+    }
+    .log-box {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      background: #020617;
+      color: #cbd5e1;
+      padding: 8px;
+      border-radius: 8px;
+      height: 240px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .toast-tip {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 13px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      z-index: 9999;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast-tip">✅ 日志已复制到剪贴板！</div>
+
+  <div class="header">
+    <h1>🧪 iOS 锁屏深度诊断</h1>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-Copy" id="btn-copy-top">📋 一键复制日志</button>
+      <a href="/" class="btn">← 返回</a>
+    </div>
+  </div>
+
+  <!-- 1. 实时日志与一键复制（置顶方便随时复制） -->
+  <div class="card">
+    <div class="card-title">
+      <span>📊 实时底层诊断日志（按时间正序记录）</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" id="btn-snapshot" style="padding:3px 8px;font-size:11px;">📸 记录快照</button>
+        <button class="btn" id="btn-clear-log" style="padding:3px 8px;font-size:11px;">🗑️ 清空</button>
+      </div>
+    </div>
+    <div class="log-box" id="log-box"></div>
+    <div class="controls-row">
+      <button class="btn btn-Copy" id="btn-copy-bottom">📋 复制完整调试信息（发给助手）</button>
+    </div>
+  </div>
+
+  <!-- 2. 原生 Audio 播放器区 -->
+  <div class="card">
+    <div class="card-title">
+      <span>当前曲目：<strong id="cur-title" style="color:#f8fafc;">未选择</strong></span>
+    </div>
+    <audio id="audio" controls playsinline preload="auto"></audio>
+
+    <div class="controls-row">
+      <button class="btn" id="btn-prev">⏮ 上一首</button>
+      <button class="btn btn-primary" id="btn-toggle">▶️ 播放 / 暂停</button>
+      <button class="btn" id="btn-next">⏭ 下一首</button>
+    </div>
+
+    <div class="status-grid">
+      <div>paused: <span id="st-paused">true</span></div>
+      <div>time: <span id="st-time">0.00 / 0.00</span></div>
+      <div>ready/net: <span id="st-ready">0 / 0</span></div>
+      <div>audioSession: <span id="st-as">N/A</span></div>
+      <div>buffered: <span id="st-buf">none</span></div>
+      <div>msState: <span id="st-ms">none</span></div>
+    </div>
+  </div>
+
+  <!-- 3. 模式与音源选择 -->
+  <div class="card">
+    <div class="card-title"><span>1. 锁屏控制模式（含保活实验模式 E/F/G）</span></div>
+    <div class="mode-list" id="mode-list">
+      <label class="mode-item active">
+        <input type="radio" name="ms-mode" value="A" checked />
+        <div><strong>模式 A：100% 纯原生 &lt;audio&gt;（零 MediaSession）</strong></div>
+      </label>
+      <label class="mode-item">
+        <input type="radio" name="ms-mode" value="B" />
+        <div><strong>模式 B：仅注册 ⏮/⏭，play/pause 设为 null 交由系统原生</strong></div>
+      </label>
+      <label class="mode-item">
+        <input type="radio" name="ms-mode" value="C" />
+        <div><strong>模式 C：标准 MediaSession（接管 play/pause，不写 playbackState）</strong></div>
+      </label>
+      <label class="mode-item">
+        <input type="radio" name="ms-mode" value="E" />
+        <div><strong>模式 E：WebAudio 静音振荡器后台保活 + 原生 pause/play</strong><br/>在暂停期间用 WebAudio 维持 iOS AVAudioSession active 状态</div>
+      </label>
+      <label class="mode-item">
+        <input type="radio" name="ms-mode" value="F" />
+        <div><strong>模式 F：副 &lt;audio&gt; 静音 WAV 保活 + 主 &lt;audio&gt; 原生 pause/play</strong><br/>暂停主音轨时启动副音轨播放 0 振幅 WAV 维持后台音频通道不断开</div>
+      </label>
+      <label class="mode-item">
+        <input type="radio" name="ms-mode" value="F2" />
+        <div><strong>模式 F2（推荐·隐形自然）：副轨静音保活 + 三重隐形锁定（锁进度/锁状态/锁封面歌名）</strong><br/>彻底解决模式 F “变成其他音频/2秒跳动”问题！暂停时锁死原曲时长与【▶️播放】按钮，AirPods 按压/摘戴与锁屏 100% 顺滑无感无破绽！</div>
+      </label>
+      <label class="mode-item">
+        <input type="radio" name="ms-mode" value="F3" />
+        <div><strong>模式 F3（终极·单轨换源 + 三重隐形锁）</strong><br/>融合模式 G 硬件保活（单轨永不 pause）+ 模式 F2 隐形 UX（锁歌名/锁进度/锁状态）。2s 静音 WAV loop 保活，短到无 seek 抖动。</div>
+      </label>
+      <label class="mode-item">
+        <input type="radio" name="ms-mode" value="G" />
+        <div><strong>模式 G：单 &lt;audio&gt; 换源 0 振幅静音 WAV 保活（绝不调 pause）</strong><br/>锁屏点暂停时不调 pause()，把同一 &lt;audio&gt; 换为内存 0 振幅静音 WAV 持续播（等价于切歌保活）；点播放再换回原曲并跳回断点</div>
+      </label>
+    </div>
+
+    <div class="card-title" style="margin-top:10px;"><span>2. 音源加载方式</span></div>
+    <div class="mode-list">
+      <label class="mode-item active" id="src-mode-http-label">
+        <input type="radio" name="src-mode" value="http" checked />
+        <div><strong>🌐 HTTP 流直连 (/v3/stream)</strong></div>
+      </label>
+      <label class="mode-item" id="src-mode-blob-label">
+        <input type="radio" name="src-mode" value="blob" />
+        <div><strong>📦 内存 Blob URL（整曲预读入内存，零网络依赖）</strong></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- 4. 歌曲列表 -->
+  <div class="card">
+    <div class="card-title">
+      <span>3. 点击曲目播放</span>
+      <button class="btn" id="btn-unreg-sw" style="padding:3px 8px;font-size:11px;">🧹 卸载 SW</button>
+    </div>
+    <div class="track-list" id="track-list">
+      <div style="color:#94a3b8;font-size:12px;">正在读取本地歌曲列表...</div>
+    </div>
+  </div>
+
+  <script>
+    const audio = document.getElementById('audio');
+    const curTitleEl = document.getElementById('cur-title');
+    const stPausedEl = document.getElementById('st-paused');
+    const stTimeEl = document.getElementById('st-time');
+    const stReadyEl = document.getElementById('st-ready');
+    const stAsEl = document.getElementById('st-as');
+    const stBufEl = document.getElementById('st-buf');
+    const stMsEl = document.getElementById('st-ms');
+    const logBox = document.getElementById('log-box');
+    const trackListEl = document.getElementById('track-list');
+    const toastEl = document.getElementById('toast');
+
+    let tracks = [];
+    let curIdx = 0;
+    let msMode = 'A';
+    let srcMode = 'http';
+    let currentBlobUrl = null;
+    let activeSongSrc = '';
+    let savedPauseTime = 0;
+    let isModeGSilentHold = false;
+    let logLines = [];
+    let probeTimers = [];
+
+    // 模式 E: WebAudio Keep-Alive
+    let audioCtx = null;
+    let keepAliveSource = null;
+
+    // 模式 F & G: 0振幅静音 WAV Keep-Alive
+    let silentAudio = null;
+    let silentShortWavUrl = null;
+    let silentLongWavUrl = null;
+
+    function buildSilentWavBlobUrl(durationSec) {
+      const sampleRate = 8000;
+      const numSamples = sampleRate * durationSec;
+      const buffer = new ArrayBuffer(44 + numSamples * 2);
+      const view = new DataView(buffer);
+      const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + numSamples * 2, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, 'data');
+      view.setUint32(40, numSamples * 2, true);
+      return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+    }
+
+    function getShortSilentWavUrl() {
+      if (!silentShortWavUrl) silentShortWavUrl = buildSilentWavBlobUrl(2);
+      return silentShortWavUrl;
+    }
+
+    function getLongSilentWavUrl() {
+      if (!silentLongWavUrl) silentLongWavUrl = buildSilentWavBlobUrl(180);
+      return silentLongWavUrl;
+    }
+
+    function startWebAudioKeepAlive() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return log('[Mode E] 当前环境不支持 AudioContext');
+        if (!audioCtx) audioCtx = new AC();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (!keepAliveSource) {
+          const buf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+          const src = audioCtx.createBufferSource();
+          src.buffer = buf;
+          src.loop = true;
+          const gain = audioCtx.createGain();
+          gain.gain.value = 0.00001;
+          src.connect(gain);
+          gain.connect(audioCtx.destination);
+          src.start(0);
+          keepAliveSource = src;
+        }
+        log(`[Mode E] WebAudio 保活已激活 (ctxState=${audioCtx.state})`);
+      } catch (e) {
+        log('[Mode E] 启动异常: ' + e.message);
+      }
+    }
+
+    function stopWebAudioKeepAlive() {
+      if (keepAliveSource) {
+        try { keepAliveSource.stop(); keepAliveSource.disconnect(); } catch (e) {}
+        keepAliveSource = null;
+      }
+    }
+
+    function ensureSilentAudioElement() {
+      if (!silentAudio) {
+        silentAudio = document.createElement('audio');
+        silentAudio.playsinline = true;
+        silentAudio.loop = true;
+        silentAudio.src = getShortSilentWavUrl();
+        document.body.appendChild(silentAudio);
+      }
+      return silentAudio;
+    }
+
+    let modeF2TimeoutTimer = null;
+    let isModeF2SilentHold = false;
+
+    // === Mode F3: Single-element source-swap + triple invisible lock ===
+    // States: 'idle' | 'playing_song' | 'silent_hold'
+    let modeF3State = 'idle';
+    let f3SavedPauseTime = 0;
+    let f3SavedDuration = 0;
+    let f3TimeoutTimer = null;
+
+    function enterF3SilentHold(caller) {
+      // Toggle: if already in silent_hold, this is a resume request
+      if (modeF3State === 'silent_hold') {
+        log(`🔄 [Mode F3] 收到动作 [来源: ${caller}]，当前已处于静音保活态，自动触发【智能翻转】恢复播放!`);
+        exitF3SilentHold(caller + '_toggleResume');
+        return;
+      }
+
+      // Save current position before source swap
+      f3SavedPauseTime = audio.currentTime || 0;
+      f3SavedDuration = (audio.duration && isFinite(audio.duration)) ? audio.duration : 0;
+      modeF3State = 'silent_hold';
+
+      if (f3TimeoutTimer) { clearTimeout(f3TimeoutTimer); f3TimeoutTimer = null; }
+
+      const tr = tracks[curIdx];
+
+      // Swap source to short silent WAV loop — element NEVER pauses!
+      audio.loop = true;
+      audio.src = getShortSilentWavUrl();
+      log(`🛡️ [Mode F3] 单轨换源至 2s 静音 WAV loop 保活! 断点=${f3SavedPauseTime.toFixed(2)}s dur=${f3SavedDuration.toFixed(2)}s [来源: ${caller}]`);
+      scheduleProbes(caller);
+
+      audio.play().then(() => {
+        log(`✅ [Mode F3] 静音 WAV loop 播放中 (硬件解码器保活)，施加【三重隐形锁定】`);
+
+        // Triple invisible lock: metadata + positionState + playbackState
+        try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+        if (tr) {
+          try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: tr.name,
+              artist: tr.artist,
+              album: tr.name,
+              artwork: [{ src: new URL('/favicon.png', location.href).href, sizes: '192x192', type: 'image/png' }]
+            });
+          } catch (e) {}
+        }
+        if ('setPositionState' in navigator.mediaSession && f3SavedDuration > 0) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: f3SavedDuration,
+              playbackRate: 1,
+              position: Math.min(f3SavedPauseTime, f3SavedDuration)
+            });
+            log(`[Mode F3] 🔒 进度条钉死: pos=${f3SavedPauseTime.toFixed(2)}s, dur=${f3SavedDuration.toFixed(2)}s`);
+          } catch (e) {
+            log(`[Mode F3] ⚠️ setPositionState 异常: ${e.message}`);
+          }
+        }
+        updateStatusUI();
+      }).catch(err => {
+        log(`❌ [Mode F3] 静音 WAV 播放失败: ${err.name}: ${err.message}`);
+        // Fallback: just pause normally
+        modeF3State = 'idle';
+        audio.loop = false;
+        audio.pause();
+        updateStatusUI();
+      });
+
+      // 5-minute timeout protection
+      f3TimeoutTimer = setTimeout(() => {
+        if (modeF3State === 'silent_hold') {
+          log('[Mode F3] ⏱️ 5分钟超时保护触发，恢复真实暂停以节省电量');
+          modeF3State = 'idle';
+          audio.loop = false;
+          audio.pause();
+          updateStatusUI();
+        }
+      }, 300000);
+    }
+
+    function exitF3SilentHold(caller) {
+      if (modeF3State !== 'silent_hold') return;
+
+      if (f3TimeoutTimer) { clearTimeout(f3TimeoutTimer); f3TimeoutTimer = null; }
+
+      const target = f3SavedPauseTime;
+      modeF3State = 'playing_song';
+
+      // Swap source back to the real song — element STILL never pauses!
+      audio.loop = false;
+      audio.src = activeSongSrc;
+      log(`🔄 [Mode F3] 换源回原曲 ${activeSongSrc}，准备恢复断点=${target.toFixed(2)}s [来源: ${caller}]`);
+      scheduleProbes(caller);
+
+      audio.play().then(() => {
+        log(`✅ [Mode F3] 原曲 play() RESOLVED，跳转至 ${target.toFixed(2)}s`);
+        try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+
+        const doSeek = () => {
+          try {
+            audio.currentTime = target;
+            log(`🎯 [Mode F3] 断点跳转完成: currentTime=${audio.currentTime.toFixed(2)}s`);
+
+            // Restore positionState after seek
+            const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration : f3SavedDuration;
+            if ('setPositionState' in navigator.mediaSession && dur > 0) {
+              try {
+                navigator.mediaSession.setPositionState({
+                  duration: dur,
+                  playbackRate: audio.playbackRate || 1,
+                  position: Math.min(target, dur)
+                });
+              } catch (e) {}
+            }
+          } catch (e) {
+            log(`❌ [Mode F3] 断点跳转异常: ${e.message}`);
+          }
+          updateStatusUI();
+        };
+
+        if (audio.readyState >= 1 && audio.duration > 0) {
+          setTimeout(doSeek, 50);
+        } else {
+          const onMeta = () => {
+            audio.removeEventListener('loadedmetadata', onMeta);
+            setTimeout(doSeek, 50);
+          };
+          audio.addEventListener('loadedmetadata', onMeta);
+        }
+      }).catch(err => {
+        log(`❌ [Mode F3] 原曲 play() REJECTED: ${err.name}: ${err.message}`);
+        modeF3State = 'idle';
+        updateStatusUI();
+      });
+
+      // Restore metadata to show album as "test mode" again
+      const tr = tracks[curIdx];
+      if (tr) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: tr.name,
+            artist: tr.artist,
+            album: `测试模式 F3 (${srcMode})`,
+            artwork: [{ src: new URL('/favicon.png', location.href).href, sizes: '192x192', type: 'image/png' }]
+          });
+        } catch (e) {}
+      }
+    }
+
+    function resetF3State() {
+      modeF3State = 'idle';
+      f3SavedPauseTime = 0;
+      f3SavedDuration = 0;
+      if (f3TimeoutTimer) { clearTimeout(f3TimeoutTimer); f3TimeoutTimer = null; }
+    }
+
+    function startModeF2SilentHold(caller) {
+      // 核心修复：状态机翻转判断！
+      // 当副轨正在静音保活时，AirPods 或系统因检测到底层有音频流，下发的动作必然是 pause（或 toggle）。
+      // 此时若再次收到动作，绝对不能再走暂停，而必须无条件翻转为【恢复主轨播放】！
+      if (isModeF2SilentHold) {
+        log(`🔄 [Mode F2] 收到动作 [来源: ${caller}]，检测到当前已处于副轨保活态，自动触发【智能翻转】恢复主轨播放!`);
+        invokePlayWithDiag(caller + '_toggleResume');
+        return;
+      }
+
+      if (modeF2TimeoutTimer) {
+        clearTimeout(modeF2TimeoutTimer);
+        modeF2TimeoutTimer = null;
+      }
+      isModeF2SilentHold = true;
+      const curTime = audio.currentTime || 0;
+      const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration : 0;
+      const tr = tracks[curIdx];
+
+      audio.pause();
+      log(`⏸️ [Mode F2] 主轨已暂停，断点=${curTime.toFixed(2)}s，启动副轨隐形保活... [来源: ${caller}]`);
+      scheduleProbes(caller);
+
+      // 立即实施第1层同步锁定：在副轨尚未 play() 前即刻冻结系统播控卡片，防止闪烁
+      try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+      if (tr) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: tr.name,
+            artist: tr.artist,
+            album: tr.name,
+            artwork: [{ src: new URL('/favicon.png', location.href).href, sizes: '192x192', type: 'image/png' }]
+          });
+        } catch (e) {}
+      }
+      if ('setPositionState' in navigator.mediaSession && dur > 0) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: dur,
+            playbackRate: 1,
+            position: Math.min(curTime, dur)
+          });
+          log(`[Mode F2] 🔒 进度条已即刻钉死: pos=${curTime.toFixed(2)}s, dur=${dur.toFixed(2)}s`);
+        } catch (e) {
+          log(`[Mode F2] ⚠️ setPositionState 异常: ${e.message}`);
+        }
+      }
+
+      try {
+        const sa = ensureSilentAudioElement();
+        sa.play().then(() => {
+          log('[Mode F2] ✅ 副轨 0振幅静音保活已就绪，加固【三重隐形锁定】');
+
+          try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+
+          if (tr) {
+            try {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title: tr.name,
+                artist: tr.artist,
+                album: tr.name,
+                artwork: [{ src: new URL('/favicon.png', location.href).href, sizes: '192x192', type: 'image/png' }]
+              });
+            } catch (e) {}
+          }
+
+          if ('setPositionState' in navigator.mediaSession && dur > 0) {
+            try {
+              navigator.mediaSession.setPositionState({
+                duration: dur,
+                playbackRate: 1,
+                position: Math.min(curTime, dur)
+              });
+              log(`[Mode F2] 🔒 进度条加固钉死: pos=${curTime.toFixed(2)}s, dur=${dur.toFixed(2)}s`);
+            } catch (e) {
+              log(`[Mode F2] ⚠️ setPositionState 异常: ${e.message}`);
+            }
+          }
+          updateStatusUI();
+        }).catch(err => {
+          log('[Mode F2] ❌ 副轨启动失败: ' + err.message);
+          updateStatusUI();
+        });
+      } catch (e) {
+        log('[Mode F2] ❌ 启动异常: ' + e.message);
+        updateStatusUI();
+      }
+
+      // 5分钟超时保护
+      modeF2TimeoutTimer = setTimeout(() => {
+        if (msMode === 'F2' && silentAudio && !silentAudio.paused) {
+          silentAudio.pause();
+          isModeF2SilentHold = false;
+          log('[Mode F2] ⏱️ 5分钟超时保护触发，已释放副轨保活以节省电量');
+        }
+      }, 300000);
+    }
+
+    function stopModeF2SilentHold() {
+      isModeF2SilentHold = false;
+      if (modeF2TimeoutTimer) {
+        clearTimeout(modeF2TimeoutTimer);
+        modeF2TimeoutTimer = null;
+      }
+      if (silentAudio && !silentAudio.paused) {
+        try { silentAudio.pause(); } catch (e) {}
+        log('[Mode F2] ⏹️ 副轨保活已暂停，交还主轨');
+      }
+    }
+
+    function getBufferedStr() {
+      try {
+        const b = audio.buffered;
+        if (!b || b.length === 0) return 'empty';
+        const parts = [];
+        for (let i = 0; i < b.length; i++) {
+          parts.push(`${b.start(i).toFixed(1)}-${b.end(i).toFixed(1)}`);
+        }
+        return parts.join(',');
+      } catch (e) {
+        return 'err';
+      }
+    }
+
+    function getAudioSessionStr() {
+      try {
+        if ('audioSession' in navigator && navigator.audioSession) {
+          return `${navigator.audioSession.type || '?'}/${navigator.audioSession.state || '?'}`;
+        }
+      } catch (e) {}
+      return 'N/A';
+    }
+
+    function getMediaSessionStateStr() {
+      try {
+        if ('mediaSession' in navigator && navigator.mediaSession) {
+          return navigator.mediaSession.playbackState || 'none';
+        }
+      } catch (e) {}
+      return 'N/A';
+    }
+
+    function formatStateSnapshot() {
+      const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration.toFixed(2) : 'NaN';
+      const errStr = audio.error ? `ERR(${audio.error.code}:${audio.error.message || ''})` : 'none';
+      return `t=${audio.currentTime.toFixed(3)}/${dur} paused=${audio.paused} holdG=${isModeGSilentHold} holdF2=${isModeF2SilentHold} holdF3=${modeF3State} muted=${audio.muted} rate=${audio.playbackRate} ready=${audio.readyState} net=${audio.networkState} seeking=${audio.seeking} buf=[${getBufferedStr()}] ms=${getMediaSessionStateStr()} as=${getAudioSessionStr()} err=${errStr}`;
+    }
+
+    function log(msg) {
+      const now = new Date();
+      const ts = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      const vis = document.visibilityState === 'hidden' ? '🌙熄屏' : '☀️亮屏';
+      const line = `[${ts}] ${vis} [Mode=${msMode}/${srcMode}] ${msg} | ${formatStateSnapshot()}`;
+      logLines.push(line);
+      logBox.textContent = logLines.join('\n');
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function scheduleProbes(tag) {
+      probeTimers.forEach(t => clearTimeout(t));
+      probeTimers = [];
+      [100, 350, 800, 1500, 3000].forEach(delay => {
+        const timer = setTimeout(() => {
+          log(`⏱️ 探针(${tag} +${delay}ms)`);
+          updateStatusUI();
+        }, delay);
+        probeTimers.push(timer);
+      });
+    }
+
+    function updateStatusUI() {
+      stPausedEl.textContent = (isModeGSilentHold || isModeF2SilentHold || modeF3State === 'silent_hold') ? 'SILENT_HOLD' : (audio.paused ? 'true (已暂停)' : 'false (播放中)');
+      stPausedEl.style.color = (audio.paused || isModeGSilentHold || isModeF2SilentHold || modeF3State === 'silent_hold') ? '#f59e0b' : '#10b981';
+      const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration.toFixed(2) : 'NaN';
+      stTimeEl.textContent = `${audio.currentTime.toFixed(2)} / ${dur}`;
+      stReadyEl.textContent = `r=${audio.readyState} / n=${audio.networkState}`;
+      stAsEl.textContent = getAudioSessionStr();
+      stBufEl.textContent = getBufferedStr();
+      stMsEl.textContent = getMediaSessionStateStr();
+    }
+
+    function invokePlayWithDiag(caller) {
+      if (msMode === 'G' && isModeGSilentHold && activeSongSrc) {
+        const target = savedPauseTime;
+        isModeGSilentHold = false;
+        log(`🔄 [Mode G] 从 0振幅静音 WAV 换回原曲流并恢复断点=${target.toFixed(2)}s [来源: ${caller}]`);
+        audio.src = activeSongSrc;
+        scheduleProbes(caller);
+        const p = audio.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            log(`✅ [Mode G] 原曲 play() RESOLVED，准备跳转至 ${target.toFixed(2)}s`);
+            try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+            if (target > 0) {
+              const doSeek = () => {
+                try {
+                  audio.currentTime = target;
+                  log(`🎯 [Mode G] 断点跳转完成: currentTime=${audio.currentTime.toFixed(2)}s`);
+                } catch (e) {
+                  log(`❌ [Mode G] 断点跳转异常: ${e.message}`);
+                }
+              };
+              if (audio.readyState >= 1 && audio.duration > 0) {
+                setTimeout(doSeek, 50);
+              } else {
+                const onMeta = () => {
+                  audio.removeEventListener('loadedmetadata', onMeta);
+                  setTimeout(doSeek, 50);
+                };
+                audio.addEventListener('loadedmetadata', onMeta);
+              }
+            }
+          }).catch(err => {
+            log(`❌ [Mode G] 原曲 play() REJECTED: ${err.name}: ${err.message}`);
+          });
+        }
+        return;
+      }
+
+      if (msMode === 'F2') {
+        stopModeF2SilentHold();
+        const tr = tracks[curIdx];
+        if (tr) {
+          try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: tr.name,
+              artist: tr.artist,
+              album: `测试模式 F2 (${srcMode})`,
+              artwork: [{ src: new URL('/favicon.png', location.href).href, sizes: '192x192', type: 'image/png' }]
+            });
+          } catch (e) {}
+        }
+      } else if (msMode === 'F3' && modeF3State === 'silent_hold') {
+        exitF3SilentHold(caller);
+        return;
+      } else if (msMode === 'F') {
+        if (silentAudio && !silentAudio.paused) {
+          try { silentAudio.pause(); } catch (e) {}
+        }
+      }
+
+      log(`👉 调用 audio.play() [来源: ${caller}]`);
+      scheduleProbes(caller);
+      try {
+        const p = audio.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            log(`✅ audio.play() Promise RESOLVED [来源: ${caller}]`);
+            if (msMode === 'F2') {
+              try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+              const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration : 0;
+              if ('setPositionState' in navigator.mediaSession && dur > 0) {
+                try {
+                  navigator.mediaSession.setPositionState({
+                    duration: dur,
+                    playbackRate: audio.playbackRate || 1,
+                    position: Math.min(audio.currentTime || 0, dur)
+                  });
+                } catch (e) {}
+              }
+            }
+            updateStatusUI();
+          }).catch(err => {
+            log(`❌ audio.play() Promise REJECTED [来源: ${caller}]: ${err.name}: ${err.message}`);
+            updateStatusUI();
+          });
+        } else {
+          log(`ℹ️ audio.play() 未返回 Promise [来源: ${caller}]`);
+        }
+      } catch (e) {
+        log(`❌ audio.play() 同步抛出异常 [来源: ${caller}]: ${e.name}: ${e.message}`);
+      }
+    }
+
+    function invokePauseWithDiag(caller) {
+      if (msMode === 'G') {
+        if (isModeGSilentHold) {
+          log(`ℹ️ [Mode G] 当前已处于静音 WAV 保活态，收到二次点击自动转为恢复原曲播放!`);
+          invokePlayWithDiag(caller + '_toggleResume');
+          return;
+        }
+        savedPauseTime = audio.currentTime || 0;
+        isModeGSilentHold = true;
+        log(`🛡️ [Mode G] 进入单 <audio> 0振幅静音 WAV 换源保活! 记录原曲断点=${savedPauseTime.toFixed(2)}s [来源: ${caller}]`);
+        audio.src = getLongSilentWavUrl();
+        scheduleProbes(caller);
+        audio.play().then(() => {
+          try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+          log(`✅ [Mode G] 0振幅静音 WAV 保活流正在后台播放 (AVAudioSession 保持 active)`);
+          updateStatusUI();
+        }).catch(err => {
+          log(`❌ [Mode G] 静音 WAV 起播失败: ${err.name}: ${err.message}`);
+        });
+        return;
+      }
+
+      if (msMode === 'F2') {
+        startModeF2SilentHold(caller);
+        return;
+      }
+
+      if (msMode === 'F3') {
+        enterF3SilentHold(caller);
+        return;
+      }
+
+      log(`⏸️ 调用 audio.pause() [来源: ${caller}]`);
+      scheduleProbes(caller);
+      if (msMode === 'E') {
+        startWebAudioKeepAlive();
+      } else if (msMode === 'F') {
+        try {
+          const sa = ensureSilentAudioElement();
+          sa.play().then(() => log('[Mode F] 副 <audio> 静音保活已启动')).catch(e => log('[Mode F] 副 <audio> 启动失败: ' + e.message));
+        } catch (e) {}
+      }
+      audio.pause();
+      updateStatusUI();
+    }
+
+    function applyMediaSessionMode() {
+      if (!('mediaSession' in navigator)) {
+        log('当前环境不支持 navigator.mediaSession');
+        return;
+      }
+      stopWebAudioKeepAlive();
+      stopModeF2SilentHold();
+      resetF3State();
+      isModeGSilentHold = false;
+      if (silentAudio && !silentAudio.paused) {
+        try { silentAudio.pause(); } catch (e) {}
+      }
+
+      const tr = tracks[curIdx];
+      try {
+        navigator.mediaSession.setActionHandler('seekbackward', null);
+        navigator.mediaSession.setActionHandler('seekforward', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
+      } catch (e) {}
+
+      if (msMode === 'A') {
+        try {
+          navigator.mediaSession.metadata = null;
+          navigator.mediaSession.playbackState = 'none';
+          navigator.mediaSession.setActionHandler('play', null);
+          navigator.mediaSession.setActionHandler('pause', null);
+          navigator.mediaSession.setActionHandler('previoustrack', null);
+          navigator.mediaSession.setActionHandler('nexttrack', null);
+        } catch (e) {}
+        log('🔧 已应用【模式 A】：100% 纯原生 <audio>（无 MediaSession）');
+        return;
+      }
+
+      if (tr) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: tr.name,
+            artist: tr.artist,
+            album: `测试模式 ${msMode} (${srcMode})`,
+            artwork: [{ src: new URL('/favicon.png', location.href).href, sizes: '192x192', type: 'image/png' }]
+          });
+        } catch (e) {}
+      }
+
+      if (msMode === 'B') {
+        try {
+          navigator.mediaSession.playbackState = 'none';
+          navigator.mediaSession.setActionHandler('play', null);
+          navigator.mediaSession.setActionHandler('pause', null);
+          navigator.mediaSession.setActionHandler('previoustrack', () => {
+            log('🔔 MediaSession Action: [previoustrack]');
+            playIndex((curIdx - 1 + tracks.length) % tracks.length);
+          });
+          navigator.mediaSession.setActionHandler('nexttrack', () => {
+            log('🔔 MediaSession Action: [nexttrack]');
+            playIndex((curIdx + 1) % tracks.length);
+          });
+        } catch (e) {}
+        log('🔧 已应用【模式 B】：play/pause=null 交由系统原生，仅注册 ⏮/⏭');
+        return;
+      }
+
+      if (msMode === 'C' || msMode === 'E' || msMode === 'F' || msMode === 'F2' || msMode === 'F3' || msMode === 'G') {
+        try {
+          navigator.mediaSession.playbackState = 'none';
+          navigator.mediaSession.setActionHandler('play', (details) => {
+            log(`🔔 MediaSession Action: [play] 触发! details=${JSON.stringify(details || {})}`);
+            if ((msMode === 'F' || msMode === 'F2') && silentAudio && !silentAudio.paused) {
+              try { silentAudio.pause(); } catch (e) {}
+            }
+            invokePlayWithDiag(`MediaSession.play(Mode_${msMode})`);
+          });
+          navigator.mediaSession.setActionHandler('pause', (details) => {
+            log(`🔔 MediaSession Action: [pause] 触发! details=${JSON.stringify(details || {})}`);
+            invokePauseWithDiag(`MediaSession.pause(Mode_${msMode})`);
+          });
+          navigator.mediaSession.setActionHandler('previoustrack', () => {
+            log('🔔 MediaSession Action: [previoustrack]');
+            if (msMode === 'F2') stopModeF2SilentHold();
+            if (msMode === 'F3') resetF3State();
+            playIndex((curIdx - 1 + tracks.length) % tracks.length);
+          });
+          navigator.mediaSession.setActionHandler('nexttrack', () => {
+            log('🔔 MediaSession Action: [nexttrack]');
+            if (msMode === 'F2') stopModeF2SilentHold();
+            if (msMode === 'F3') resetF3State();
+            playIndex((curIdx + 1) % tracks.length);
+          });
+        } catch (e) {}
+        log(`🔧 已应用【模式 ${msMode}】`);
+      }
+    }
+
+    async function playIndex(idx) {
+      if (!tracks.length) return;
+      curIdx = idx;
+      isModeGSilentHold = false;
+      if (msMode === 'F2') stopModeF2SilentHold();
+      if (msMode === 'F3') resetF3State();
+      audio.loop = false; // Ensure loop is off for real track playback
+      const tr = tracks[curIdx];
+      curTitleEl.textContent = `${tr.name} - ${tr.artist}`;
+      renderTracks();
+
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
+        currentBlobUrl = null;
+      }
+
+      if (srcMode === 'blob') {
+        log(`📥 开始拉取《${tr.name}》到内存 Blob...`);
+        try {
+          const t0 = performance.now();
+          const res = await fetch(tr.url);
+          const ct = res.headers.get('content-type') || 'unknown';
+          const blob = await res.blob();
+          currentBlobUrl = URL.createObjectURL(blob);
+          activeSongSrc = currentBlobUrl;
+          audio.src = currentBlobUrl;
+          log(`📦 Blob 载入完成: size=${blob.size}B type=${ct} 耗时=${(performance.now() - t0).toFixed(0)}ms`);
+        } catch (e) {
+          log('❌ Blob 载入失败: ' + e.message);
+          activeSongSrc = tr.url;
+          audio.src = tr.url;
+        }
+      } else {
+        activeSongSrc = tr.url;
+        audio.src = tr.url;
+        log(`🌐 设置 HTTP 音频源: ${tr.url}`);
+      }
+
+      applyMediaSessionMode();
+      if (msMode === 'E') startWebAudioKeepAlive();
+      if (msMode === 'F' || msMode === 'F2') {
+        const sa = ensureSilentAudioElement();
+        sa.load();
+      }
+      if (msMode === 'F3') {
+        // Pre-generate the silent WAV URL so it's ready instantly on pause
+        getShortSilentWavUrl();
+        modeF3State = 'playing_song';
+      }
+      invokePlayWithDiag('playIndex');
+    }
+
+    function renderTracks() {
+      if (!tracks.length) {
+        trackListEl.innerHTML = '<div style="color:#94a3b8;font-size:12px;">暂无本地歌曲</div>';
+        return;
+      }
+      trackListEl.innerHTML = '';
+      tracks.forEach((tr, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'track-btn' + (i === curIdx ? ' active' : '');
+        btn.innerHTML = `<span>${i + 1}. <strong>${tr.name}</strong> - ${tr.artist} <small style="color:#94a3b8;">(${tr.format || ''})</small></span><span>▶</span>`;
+        btn.onclick = () => playIndex(i);
+        trackListEl.appendChild(btn);
+      });
+    }
+
+    async function copyDiagnosticReport() {
+      const header = [
+        '=== 🧪 iOS 锁屏播放深度诊断报告 ===',
+        `导出时间: ${new Date().toISOString()}`,
+        `UA: ${navigator.userAgent}`,
+        `Standalone(PWA): ${Boolean(window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches)}`,
+        `SW Controller: ${navigator.serviceWorker && navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : 'none'}`,
+        `当前模式: Mode=${msMode}, SrcMode=${srcMode}`,
+        `当前 Audio src: ${audio.src ? (audio.src.startsWith('blob:') ? 'blob:...' : audio.src) : 'empty'}`,
+        `当前状态快照: ${formatStateSnapshot()}`,
+        '--- 事件时间轴 ---'
+      ].join('\n');
+
+      const fullText = header + '\n' + logLines.join('\n');
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(fullText);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = fullText;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        toastEl.style.display = 'block';
+        setTimeout(() => { toastEl.style.display = 'none'; }, 2000);
+      } catch (e) {
+        alert('复制失败，请长按日志框全选复制: ' + e.message);
+      }
+    }
+
+    document.getElementById('btn-copy-top').onclick = copyDiagnosticReport;
+    document.getElementById('btn-copy-bottom').onclick = copyDiagnosticReport;
+    document.getElementById('btn-snapshot').onclick = () => log('📸 手动状态快照');
+    document.getElementById('btn-clear-log').onclick = () => {
+      logLines = [];
+      logBox.textContent = '';
+      log('🧹 日志已清空');
+    };
+
+    // 模式单选监听
+    document.querySelectorAll('input[name="ms-mode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        msMode = e.target.value;
+        document.querySelectorAll('#mode-list .mode-item').forEach(el => el.classList.remove('active'));
+        e.target.closest('.mode-item').classList.add('active');
+        applyMediaSessionMode();
+      });
+    });
+
+    document.querySelectorAll('input[name="src-mode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        srcMode = e.target.value;
+        document.getElementById('src-mode-http-label').classList.toggle('active', srcMode === 'http');
+        document.getElementById('src-mode-blob-label').classList.toggle('active', srcMode === 'blob');
+        log(`🔄 切换音源方式 -> ${srcMode}`);
+        if (tracks.length) playIndex(curIdx);
+      });
+    });
+
+    document.getElementById('btn-toggle').onclick = () => {
+      if (audio.paused || isModeGSilentHold || isModeF2SilentHold || modeF3State === 'silent_hold') {
+        if (!audio.src && tracks.length) return playIndex(0);
+        invokePlayWithDiag('UI_Button_Play');
+      } else {
+        invokePauseWithDiag('UI_Button_Pause');
+      }
+    };
+    document.getElementById('btn-prev').onclick = () => {
+      if (tracks.length) playIndex((curIdx - 1 + tracks.length) % tracks.length);
+    };
+    document.getElementById('btn-next').onclick = () => {
+      if (tracks.length) playIndex((curIdx + 1) % tracks.length);
+    };
+    document.getElementById('btn-unreg-sw').onclick = async () => {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) await r.unregister();
+        log(`🧹 已注销 ${regs.length} 个 Service Worker`);
+      }
+    };
+
+    // 监听 Audio 全量 DOM 事件
+    [
+      'loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough',
+      'play', 'playing', 'pause', 'waiting', 'stalled', 'suspend', 'abort',
+      'seeking', 'seeked', 'ended', 'error', 'emptied', 'ratechange', 'volumechange'
+    ].forEach(evt => {
+      audio.addEventListener(evt, () => {
+        updateStatusUI();
+        log(`🎵 DOMEvent <${evt}>`);
+        if (evt === 'play' || evt === 'pause' || evt === 'waiting' || evt === 'stalled' || evt === 'error') {
+          scheduleProbes(`DOM_${evt}`);
+        }
+      });
+    });
+
+    let lastLoggedSec = -1;
+    audio.addEventListener('timeupdate', () => {
+      updateStatusUI();
+      const sec = Math.floor(audio.currentTime);
+      // 在熄屏状态下每 2 秒记录一次真实走针证明内部是否在走
+      if (document.visibilityState === 'hidden' && sec !== lastLoggedSec && sec % 2 === 0) {
+        lastLoggedSec = sec;
+        log(`💓 熄屏内部走针心跳`);
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      log(`👁️ visibilitychange -> ${document.visibilityState}`);
+      scheduleProbes(`vis_${document.visibilityState}`);
+    });
+
+    if ('audioSession' in navigator && navigator.audioSession) {
+      try {
+        navigator.audioSession.addEventListener('statechange', () => {
+          log(`🔊 navigator.audioSession statechange -> state=${navigator.audioSession.state} type=${navigator.audioSession.type}`);
+        });
+      } catch (e) {}
+    }
+
+    // 初始化日志与曲目加载
+    log('🚀 诊断页初始化完成');
+    fetch('/v3/history/list?page=1&pageSize=12')
+      .then(r => r.json())
+      .then(res => {
+        const list = (res && res.data && res.data.list) ? res.data.list : [];
+        tracks = list.filter(it => it.fileExists !== false).map(it => {
+          const fp = it.filePath || it.relativePath || '';
+          const ext = fp.includes('.') ? fp.split('.').pop().toUpperCase() : '';
+          return {
+            id: it.songId || it.id,
+            name: it.songName || it.name || '未知歌曲',
+            artist: it.artist || '未知歌手',
+            format: ext,
+            url: `/v3/stream?id=${it.songId || 0}&historyId=${it.id}`
+          };
+        });
+        renderTracks();
+        if (tracks.length > 0) {
+          curTitleEl.textContent = `${tracks[0].name} - ${tracks[0].artist}`;
+          activeSongSrc = tracks[0].url;
+          audio.src = tracks[0].url;
+          log(`📂 已加载 ${tracks.length} 首曲目，首曲 format=${tracks[0].format} url=${tracks[0].url}`);
+        }
+      })
+      .catch(err => {
+        log('❌ 加载曲目列表失败: ' + err.message);
+      });
+  </script>
+</body>
+</html>

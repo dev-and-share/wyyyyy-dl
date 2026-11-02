@@ -1,5 +1,6 @@
 <script lang="ts">
   import { DEFAULT_VINYL_COVER, formatCoverUrl } from '../lib/utils';
+  import { t } from '../lib/i18n/index.svelte';
 
   let {
     cover = DEFAULT_VINYL_COVER,
@@ -25,7 +26,7 @@
 <div
   class="relative shrink-0 flex items-center justify-center cursor-pointer select-none {size === 'sm' ? 'w-11 h-11' : 'w-11.5 h-11.5'}"
   {onclick}
-  title="点击展开全屏歌词与大黑胶"
+  title={t('player.expandLyric')}
 >
   <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none rounded-full" viewBox="0 0 50 50">
     <circle class="fill-none stroke-black/5 dark:stroke-white/10" stroke-width="2.5" cx="25" cy="25" r="23" />
@@ -49,7 +50,7 @@
   </svg>
   <img
     src={formattedCover}
-    alt="封面"
+    alt={t('player.cover')}
     class="rounded-full object-cover shadow-sm transition-transform duration-300 {size === 'sm' ? 'w-9.5 h-9.5' : 'w-10 h-10'} {playing ? 'animate-[spin_16s_linear_infinite]' : ''}"
     referrerpolicy="no-referrer"
     onerror={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== DEFAULT_VINYL_COVER) img.src = DEFAULT_VINYL_COVER; }}
