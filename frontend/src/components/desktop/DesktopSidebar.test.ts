@@ -179,4 +179,53 @@ describe('DesktopSidebar', () => {
     expect(countSpans[0].getAttribute('data-testid')).toBe('sidebar-playcount-201');
     expect(countSpans[1].getAttribute('data-testid')).toBe('sidebar-playcount-202');
   });
+
+  it('renders bottom scroll shadow indicators and responds to scroll overflow', async () => {
+    myPlaylists.push(
+      { id: 301, name: '自建歌单 1', trackCount: 10, subscribed: false },
+      { id: 302, name: '自建歌单 2', trackCount: 10, subscribed: false },
+      { id: 401, name: '收藏歌单 1', trackCount: 15, subscribed: true },
+      { id: 402, name: '收藏歌单 2', trackCount: 15, subscribed: true }
+    );
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const createdShadow = getByTestId('sidebar-created-scroll-shadow');
+    const subscribedShadow = getByTestId('sidebar-subscribed-scroll-shadow');
+
+    expect(createdShadow).toBeDefined();
+    expect(subscribedShadow).toBeDefined();
+
+    // Verify subscribed playlist scroll container does not have pt-0.5 which causes gap bug
+    const subscribedContainer = subscribedShadow.previousElementSibling as HTMLElement;
+    expect(subscribedContainer).toBeDefined();
+    expect(subscribedContainer.className).not.toContain('pt-0.5');
+
+    // Simulate scroll overflow on created playlists
+    const createdContainer = createdShadow.previousElementSibling as HTMLElement;
+    Object.defineProperty(createdContainer, 'scrollHeight', { configurable: true, value: 500 });
+    Object.defineProperty(createdContainer, 'clientHeight', { configurable: true, value: 200 });
+    Object.defineProperty(createdContainer, 'scrollTop', { configurable: true, value: 0 });
+
+    await fireEvent.scroll(createdContainer);
+    await tick();
+
+    // Should show gradient shadow when there is more content below
+    expect(createdShadow.className).toContain('opacity-100');
+
+    // Scroll to the bottom
+    Object.defineProperty(createdContainer, 'scrollTop', { configurable: true, value: 300 });
+    await fireEvent.scroll(createdContainer);
+    await tick();
+
+    // Should fade out shadow when scrolled to bottom
+    expect(createdShadow.className).toContain('opacity-0');
+  });
 });
