@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../../lib/i18n';
-  import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount } from '../../lib/playlist.svelte';
+  import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount, getPlaylistPlayCount } from '../../lib/playlist.svelte';
   import { matchesKeyword } from '../../lib/utils';
 
   let {
@@ -197,6 +197,7 @@
             <span class="text-[10px] opacity-70">{filteredCreated.length}</span>
           </div>
           {#each filteredCreated as pl (pl.id)}
+            {@const playCount = getPlaylistPlayCount(pl.id)}
             <div class="group relative flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
               <button
                 type="button"
@@ -208,13 +209,21 @@
                   {isFavoritePlaylist(pl) ? '❤️' : '📂'}
                 </span>
                 <span class="truncate flex-1 font-medium">{pl.name}</span>
+                {#if playCount > 0}
+                  <span
+                    data-testid="sidebar-playcount-{pl.id}"
+                    class="text-[10px] text-amber-400/90 font-medium shrink-0 flex items-center gap-0.5 group-hover:opacity-0 transition-opacity"
+                    title={t('myPlaylists.historyPlayTooltip', { count: playCount })}
+                  >🔥 {playCount}</span>
+                {/if}
                 {#if typeof pl.trackCount === 'number'}
-                  <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
+                  <span class="text-[10px] text-[var(--text-muted)] shrink-0 group-hover:opacity-0 transition-opacity">{pl.trackCount}</span>
                 {/if}
               </button>
               {#if onPlayPlaylist}
                 <button
                   type="button"
+                  data-testid="sidebar-playbtn-{pl.id}"
                   class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
                   onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
                   title={t('playlist.playWholePlaylistTooltip')}
@@ -237,6 +246,7 @@
             <span class="text-[10px] opacity-70">{filteredSubscribed.length}</span>
           </div>
           {#each filteredSubscribed as pl (pl.id)}
+            {@const playCount = getPlaylistPlayCount(pl.id)}
             <div class="group relative flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
               <button
                 type="button"
@@ -246,13 +256,21 @@
               >
                 <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-amber-400">⭐</span>
                 <span class="truncate flex-1 font-medium">{pl.name}</span>
+                {#if playCount > 0}
+                  <span
+                    data-testid="sidebar-playcount-{pl.id}"
+                    class="text-[10px] text-amber-400/90 font-medium shrink-0 flex items-center gap-0.5 group-hover:opacity-0 transition-opacity"
+                    title={t('myPlaylists.historyPlayTooltip', { count: playCount })}
+                  >🔥 {playCount}</span>
+                {/if}
                 {#if typeof pl.trackCount === 'number'}
-                  <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount}</span>
+                  <span class="text-[10px] text-[var(--text-muted)] shrink-0 group-hover:opacity-0 transition-opacity">{pl.trackCount}</span>
                 {/if}
               </button>
               {#if onPlayPlaylist}
                 <button
                   type="button"
+                  data-testid="sidebar-playbtn-{pl.id}"
                   class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
                   onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
                   title={t('playlist.playWholePlaylistTooltip')}

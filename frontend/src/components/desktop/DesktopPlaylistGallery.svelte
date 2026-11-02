@@ -101,6 +101,7 @@
     <div class="flex items-center gap-1.5 flex-wrap">
       <button
         type="button"
+        data-testid="gallery-tab-all"
         class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'all' ? 'bg-red-500/15 text-red-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
         onclick={() => filter = 'all'}
       >
@@ -108,6 +109,7 @@
       </button>
       <button
         type="button"
+        data-testid="gallery-tab-created"
         class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'created' ? 'bg-red-500/15 text-red-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
         onclick={() => filter = 'created'}
       >
@@ -115,6 +117,7 @@
       </button>
       <button
         type="button"
+        data-testid="gallery-tab-subscribed"
         class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'subscribed' ? 'bg-red-500/15 text-red-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
         onclick={() => filter = 'subscribed'}
       >
@@ -227,7 +230,11 @@
             <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
               <span>{t('playlist.trackCount', { count: pl.trackCount || 0 })}</span>
               {#if playCount > 0}
-                <span class="text-amber-400/80 font-medium">🔥 {playCount}</span>
+                <span
+                  data-testid="gallery-playcount-{pl.id}"
+                  class="text-amber-400/80 font-medium inline-flex items-center gap-0.5"
+                  title={t('myPlaylists.historyPlayTooltip', { count: playCount })}
+                >🔥 {playCount}</span>
               {/if}
             </div>
           </div>

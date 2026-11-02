@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 import { t } from './i18n';
@@ -287,8 +288,10 @@ export function sortPlaylistsByPlayCount(list: any[]): any[] {
       if (isFavA && isFavB) return a.originalIndex - b.originalIndex;
 
       // 其余歌单按播放次数降序排序：播放越多越靠前
-      const countA = getPlaylistPlayCount(a.item.id);
-      const countB = getPlaylistPlayCount(b.item.id);
+      // ⚡ 会话冻结 (Session Freeze)：使用 untrack 读取播放量，确保当前会话期间列表顺序稳定冻结
+      // 点击播放时计数 +1 实时反映在 UI 徽标上，但绝不触发列表同步跳跃抖动
+      const countA = untrack(() => getPlaylistPlayCount(a.item.id));
+      const countB = untrack(() => getPlaylistPlayCount(b.item.id));
 
       if (countB !== countA) {
         return countB - countA;
