@@ -32,7 +32,7 @@ describe('LyricModal Component', () => {
     const onToggleLike = vi.fn();
     const onClose = vi.fn();
 
-    const { getByText, getAllByTitle } = render(LyricModal, {
+    const { getByText, getAllByTitle, getByTestId, getByTitle } = render(LyricModal, {
       props: {
         track: mockTrack,
         currentTime: 0,
@@ -53,7 +53,8 @@ describe('LyricModal Component', () => {
       }
     });
 
-    expect(getByText(/全屏沉浸播放/)).toBeInTheDocument();
+    expect(getByTestId('btn-open-skin-picker')).toBeInTheDocument();
+    expect(getByTitle(/关闭/)).toBeInTheDocument();
     expect(getByText('晴天')).toBeInTheDocument();
     expect(getByText('周杰伦')).toBeInTheDocument();
 

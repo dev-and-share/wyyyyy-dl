@@ -38,10 +38,10 @@
     class="text-[11px] font-mono tabular-nums min-w-[36px] text-center shrink-0 {skinId === 'winamp' || skinId === 'cassette'
       ? 'text-[#10b981] font-bold drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]'
       : skinId === 'aurora'
-        ? 'text-[var(--skin-accent,#ef4444)] font-medium'
+        ? 'text-fuchsia-300 font-medium'
         : skinId === 'spring'
-          ? 'text-emerald-400 font-medium'
-          : 'text-[var(--text-muted)]'}"
+          ? 'text-emerald-300 font-medium'
+          : 'text-white/80 font-medium'}"
   >
     {formatTime(curTime)}
   </span>
@@ -101,10 +101,10 @@
     class="text-[11px] font-mono tabular-nums min-w-[36px] text-center shrink-0 {skinId === 'winamp' || skinId === 'cassette'
       ? 'text-[#10b981]/70 font-bold'
       : skinId === 'aurora'
-        ? 'text-[var(--skin-accent,#ef4444)]/80 font-medium'
+        ? 'text-fuchsia-300/70 font-medium'
         : skinId === 'spring'
-          ? 'text-emerald-400/80 font-medium'
-          : 'text-[var(--text-muted)]'}"
+          ? 'text-emerald-300/70 font-medium'
+          : 'text-white/50 font-medium'}"
   >
     {formatTime(duration)}
   </span>

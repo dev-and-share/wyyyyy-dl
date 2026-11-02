@@ -17,18 +17,7 @@
   }: SkinStageProps = $props();
 </script>
 
-<!-- 春意草木微粒背景 -->
-<div class="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-  <div
-    class="spring-pollen absolute -top-10 left-1/4 w-72 h-72 rounded-full blur-[80px] bg-emerald-500/20 opacity-70 mix-blend-screen"
-    style="animation-play-state: {playing ? 'running' : 'paused'};"
-  ></div>
-  <div
-    class="spring-pollen absolute -bottom-10 right-1/4 w-80 h-80 rounded-full blur-[90px] bg-teal-400/20 opacity-60 mix-blend-screen"
-    style="animation-play-state: {playing ? 'running' : 'paused'};"
-  ></div>
-</div>
-
+<!-- Spring 皮肤：色球效果已提升到 LyricModal 全屏层，此处仅渲染唱盘内容 -->
 <div
   data-testid="skin-stage-spring"
   class="relative z-10 flex flex-col items-center justify-center gap-3 md:gap-4 max-w-[440px] w-full md:w-auto shrink-0 select-none"
@@ -127,12 +116,5 @@
 </div>
 
 <style>
-  @keyframes floatPollen {
-    0% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(30px) scale(1.1); }
-    100% { transform: translateY(0) scale(1); }
-  }
-  .spring-pollen {
-    animation: floatPollen 12s ease-in-out infinite;
-  }
+  /* Spring 皮肤粒子动画已移至 LyricModal 全屏色球层 */
 </style>

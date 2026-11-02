@@ -81,8 +81,8 @@
                     ? 'text-lg md:text-xl font-bold text-[#10b981] scale-105 tracking-widest drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]'
                     : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
             : (skinId === 'winamp'
-                ? 'text-sm md:text-base text-emerald-500/50 hover:text-[#10b981]'
-                : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]')}"
+                ? 'text-sm md:text-base text-emerald-400/50 hover:text-[#10b981]'
+                : 'text-sm md:text-base text-white/45 hover:text-white/90')}"
           onclick={() => { userSeekedAt = Date.now(); onSeekTime(l.time); }}
         >
           {l.text}
@@ -91,11 +91,11 @@
     {:else if rawLyricText}
       {#each rawLyricText.split(/\r?\n/) as lineStr}
         {#if lineStr.trim()}
-          <p class="text-sm md:text-base text-[var(--text-muted)] my-1 leading-relaxed break-words px-2">{lineStr}</p>
+          <p class="text-sm md:text-base text-white/50 my-1 leading-relaxed break-words px-2">{lineStr}</p>
         {/if}
       {/each}
     {:else}
-      <div class="py-16 text-[var(--text-muted)] text-sm">{t('player.lyricEmpty')}</div>
+      <div class="py-16 text-white/40 text-sm">{t('player.lyricEmpty')}</div>
     {/if}
   </div>
 </div>
