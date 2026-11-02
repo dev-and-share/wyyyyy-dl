@@ -4,7 +4,7 @@
   import { showToast } from '../lib/toast.svelte';
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
   import { markSongDownloaded } from '../lib/trackStatus.svelte';
-  import { resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks } from '../lib/playerHelper';
+  import { resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks, computeNextTrackOnSkip } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition, clearMediaSessionPosition, getLastPositionSyncedKey, getCurrentTrackKey } from '../lib/mediaSession';
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
@@ -34,8 +34,7 @@
 
   let showDrawer = $state(false), showLyric = $state(false), pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
   let needsReloadOnResume = false, parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2);
-  let isSkippingTrack = false, consecutiveSkipCount = 0;
-  const MAX_CONSECUTIVE_SKIPS = 15;
+  let playSessionId = 0, consecutiveSkipCount = 0;
 
   $effect(() => {
     curTrack = playerStore.activeTrack;
@@ -73,83 +72,98 @@
     pendingSeekTime = null;
   }
 
-  async function handleSkipTrack(track: Track, reason: string, isTrial = false) {
-    if (isSkippingTrack) return;
-    isSkippingTrack = true;
-    try {
-      resetIosF3State(audioEl);
-      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
-      consecutiveSkipCount++;
-      const nextIdx = playerStore.getNextTrackIndex();
-      if (nextIdx < 0 || nextIdx === playerStore.qIndex || consecutiveSkipCount > MAX_CONSECUTIVE_SKIPS) {
-        playerStore.playing = false;
-        consecutiveSkipCount = 0;
-        showToast(isTrial ? t('player.trialNoMoreCompleteTracks', { name: track.name }) : t('player.noMorePlayableTracks'), 'warning', 2500);
-        return;
-      }
-      showToast(isTrial ? t('player.skippedTrialTrack', { name: track.name }) : t('player.autoPlayNextReason', { name: track.name, reason }), isTrial ? 'info' : 'warning', 2000);
-      playerStore.qIndex = nextIdx;
-      playerStore.curTime = 0;
-      playerStore.save();
-      await ensurePlay(true);
-    } finally {
-      isSkippingTrack = false;
-    }
+  function advanceToNextTrack(track: Track, reason: string, isTrial = false): boolean {
+    resetIosF3State(audioEl);
+    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
+    const res = computeNextTrackOnSkip(track, reason, consecutiveSkipCount, isTrial);
+    consecutiveSkipCount = res.nextCount;
+    return res.hasNext;
   }
 
   async function ensurePlay(resetTime = false) {
-    const track = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
-    if (!track || !audioEl) return;
+    const currentSession = ++playSessionId;
+    if (!audioEl) return;
     resetIosF3State(audioEl);
     needsReloadOnResume = false;
     if (resetTime) { pendingSeekTime = null; clearMediaSessionPosition(); }
 
-    const existingUrl = track.url;
-    if (existingUrl && !isSameAudioSource(audioEl.src, existingUrl)) {
-      audioEl.src = existingUrl;
-      if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
-    }
-    if (playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
-    if (track.unplayable === true) return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
-
-    const startAudio = () => {
+    const startAudio = (session: number) => {
       const p = audioEl?.play();
       if (p !== undefined) {
         p.then(() => {
+          if (session !== playSessionId) return;
           consecutiveSkipCount = 0;
           if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} playerStore.curTime = 0; } else { applyPendingSeek(); }
           preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-        }).catch(() => { playerStore.playing = false; updateMediaSessionPlaybackState(false); });
+        }).catch((err: any) => {
+          if (session !== playSessionId) return;
+          // 🛡️ 方案 2 浏览器限制兜底：若触发浏览器 Autoplay 策略限制（NotAllowedError），尝试切至本地已下载曲目
+          if (err?.name === 'NotAllowedError') {
+            const nextLocalIdx = playerStore.getNextLocalTrackIndex();
+            if (nextLocalIdx >= 0 && nextLocalIdx !== playerStore.qIndex) {
+              playerStore.qIndex = nextLocalIdx; playerStore.curTime = 0; playerStore.save(); ensurePlay(true); return;
+            }
+          }
+          playerStore.playing = false;
+          updateMediaSessionPlaybackState(false);
+        });
       }
     };
 
-    if (existingUrl) {
-      if (resetTime) {
-        playerStore.curTime = 0;
-        const onMeta = () => { try { if (audioEl) audioEl.currentTime = 0; } catch {} audioEl?.removeEventListener('loadedmetadata', onMeta); };
-        audioEl.addEventListener('loadedmetadata', onMeta);
+    while (true) {
+      if (currentSession !== playSessionId) return;
+      const track = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
+      if (!track) return;
+
+      const isTrial = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true;
+      if (isTrial || track.unplayable === true) {
+        const reason = isTrial ? t('player.isTrialClip') : (track.unplayableReason || t('player.regionOrCopyrightRestricted'));
+        const hasNext = advanceToNextTrack(track, reason, isTrial);
+        if (!hasNext) return;
+        resetTime = true;
+        continue;
       }
-      startAudio();
+
+      const existingUrl = track.url;
+      if (existingUrl) {
+        if (!isSameAudioSource(audioEl.src, existingUrl)) {
+          updateMediaSessionMetadata(track);
+          audioEl.src = existingUrl;
+          if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
+        }
+        if (resetTime) {
+          playerStore.curTime = 0;
+          const onMeta = () => { try { if (audioEl) audioEl.currentTime = 0; } catch {} audioEl?.removeEventListener('loadedmetadata', onMeta); };
+          audioEl.addEventListener('loadedmetadata', onMeta);
+        }
+        startAudio(currentSession);
+        return;
+      }
+
+      if (resetTime) playerStore.curTime = 0;
+      const url = await resolveTrackUrl(track);
+      if (currentSession !== playSessionId) return;
+
+      const isTrialAfterResolve = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true;
+      if (isTrialAfterResolve || !url || track.unplayable) {
+        track.unplayable = true;
+        const reason = isTrialAfterResolve ? t('player.isTrialClip') : (track.unplayableReason || t('player.regionOrCopyrightRestricted'));
+        const hasNext = advanceToNextTrack(track, reason, isTrialAfterResolve);
+        if (!hasNext) return;
+        resetTime = true;
+        continue;
+      }
+
+      const active = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
+      if (url && audioEl && active === track) {
+        if (!isSameAudioSource(audioEl.src, url)) {
+          updateMediaSessionMetadata(track);
+          audioEl.src = url;
+          if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
+        }
+        startAudio(currentSession);
+      }
       return;
-    }
-
-    if (resetTime) playerStore.curTime = 0;
-    const url = await resolveTrackUrl(track);
-
-    if (playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true) return handleSkipTrack(track, t('player.isTrialClip'), true);
-    if (!url || track.unplayable) {
-      track.unplayable = true;
-      if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
-      return handleSkipTrack(track, track.unplayableReason || t('player.regionOrCopyrightRestricted'), false);
-    }
-    const active = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
-    if (url && audioEl && active === track) {
-      if (!isSameAudioSource(audioEl.src, url)) {
-        updateMediaSessionMetadata(track);
-        audioEl.src = url;
-        if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
-      }
-      startAudio();
     }
   }
 
@@ -417,7 +431,9 @@
     const isMatchingSource = cur?.url && audioEl?.src && isSameAudioSource(audioEl.src, cur.url);
     if (isMatchingSource && cur && playerStore.playing) {
       cur.unplayable = true; cur.unplayableReason = t('player.audioStreamFailed');
-      handleSkipTrack(cur, t('player.audioStreamFailed'), false);
+      if (advanceToNextTrack(cur, t('player.audioStreamFailed'), false)) {
+        ensurePlay(true);
+      }
     } else {
       if (!cur || !playerStore.playing) playerStore.playing = false;
     }

@@ -93,6 +93,25 @@ export class PlayerStore {
   }
 
   /**
+   * 🛡️ 方案 2 兜底：获取队列中下一首本地/电脑已落盘的曲目索引（跳过未下载在线曲目）
+   */
+  getNextLocalTrackIndex(): number {
+    if (this.queue.length === 0) return -1;
+    let attempts = 0;
+    let nextIdx = this.qIndex;
+    while (attempts < this.queue.length) {
+      nextIdx = (nextIdx + 1) % this.queue.length;
+      attempts++;
+      const t = this.queue[nextIdx];
+      if (t && t.unplayable !== true) {
+        const status = getTrackSourceStatus(t.id, t.isLocal);
+        if (status.isLocal) return nextIdx;
+      }
+    }
+    return -1;
+  }
+
+  /**
    * 获取确定性的下一首曲目索引
    */
   getNextTrackIndex(): number {

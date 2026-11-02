@@ -254,5 +254,26 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(restrictedTrack.unplayable).toBe(true);
     expect(restrictedTrack.unplayableReason).toBe('因版权保护或所在地区限制暂时无法播放');
   });
+
+  it('directly provides /v3/stream URL for tracks present in downloadedSet without blocking network call', async () => {
+    const { taskState } = await import('../taskStore.svelte');
+    taskState.downloadedSet.add(888);
+
+    const serverDownloadedTrack: Track = {
+      id: 888,
+      name: '胆小鬼',
+      artist: '梁咏琪',
+      cover: '/cover.png',
+      lyric: '[00:00.00]我在你的眼里'
+    };
+
+    const url = await resolveTrackUrl(serverDownloadedTrack);
+
+    expect(url).toBe('/v3/stream?id=888');
+    expect(serverDownloadedTrack.isLocal).toBe(true);
+    expect(serverDownloadedTrack.unplayable).toBe(false);
+    expect(serverDownloadedTrack.freeTrial).toBe(false);
+    expect(api.songV1).not.toHaveBeenCalled();
+  });
 });
 

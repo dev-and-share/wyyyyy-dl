@@ -2,9 +2,11 @@ import { api } from '../api';
 import type { Track } from '../types';
 import { cachedSongIdSet } from '../library/pwaCache.svelte';
 import { markSongDownloaded } from './trackStatus.svelte';
+import { taskState } from '../taskStore.svelte';
 import { recordPlaylistPlay } from '../playlist.svelte';
 import { playerStore, type SetQueueOptions } from './playerStore.svelte';
 import { platformAdapter } from '../adapters';
+import { showToast } from '../toast.svelte';
 import { t } from '../i18n';
 
 /**
@@ -20,6 +22,25 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   if (track.url && track.url.includes('/stream')) {
     track.isLocal = true;
     if (track.id) markSongDownloaded(track.id);
+    if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
+      platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
+        if (resolved.cover) track.cover = resolved.cover;
+        if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+      }).catch(() => {});
+    }
+    return track.url;
+  }
+
+  // 1.1 🎯 本地落盘直通秒播：若已知在服务器磁盘中已下载或自身已标记为本地，直接使用本地高可靠流通道秒播
+  const isServerDownloaded = track.id ? taskState.downloadedSet.has(Number(track.id)) : false;
+  if (track.isLocal || isServerDownloaded) {
+    track.isLocal = true;
+    track.freeTrial = false;
+    track.unplayable = false;
+    if (track.id) markSongDownloaded(track.id);
+    if (!track.url || !track.url.includes('/stream')) {
+      track.url = `/v3/stream?id=${track.id}`;
+    }
     if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
       platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
         if (resolved.cover) track.cover = resolved.cover;
@@ -201,6 +222,55 @@ export function parseFolderTracks(tracks: any[]): Track[] {
     isLocal: true,
     url: item.url || (item.relativePath ? `/v3/history/stream?path=${encodeURIComponent(item.relativePath)}` : item.filePath ? `/v3/history/stream?path=${encodeURIComponent(item.filePath)}` : item.streamUrl || '')
   }));
+}
+
+export interface SkipTrackDecision {
+  hasNext: boolean;
+  nextCount: number;
+}
+
+/**
+ * ⏭️ 核心跳歌与选歌逻辑：方案 1 优先自然顺次下一首；连续在线失败达阈值时，方案 2 兜底切换本地已下载曲目
+ */
+export function computeNextTrackOnSkip(
+  failedTrack: Track,
+  reason: string,
+  currentSkipCount: number,
+  isTrial = false
+): SkipTrackDecision {
+  const nextCount = currentSkipCount + 1;
+  const MAX_CONSECUTIVE_SKIPS = 15;
+  const ONLINE_FAIL_FALLBACK_THRESHOLD = 3;
+
+  // 🛡️ 方案 2 兜底：若连续跳过在线歌曲达到阈值，且队列中存在本地/电脑已下载歌曲，直接优先切换至本地歌曲
+  if (nextCount >= ONLINE_FAIL_FALLBACK_THRESHOLD) {
+    const nextLocalIdx = playerStore.getNextLocalTrackIndex();
+    if (nextLocalIdx >= 0 && nextLocalIdx !== playerStore.qIndex) {
+      showToast(
+        isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }),
+        isTrial ? 'info' : 'warning',
+        2000
+      );
+      playerStore.qIndex = nextLocalIdx;
+      playerStore.curTime = 0;
+      playerStore.save();
+      return { hasNext: true, nextCount };
+    }
+  }
+
+  // 🎯 方案 1 优先：正常获取下一首有效曲目
+  const nextIdx = playerStore.getNextTrackIndex();
+  if (nextIdx < 0 || nextIdx === playerStore.qIndex || nextCount > MAX_CONSECUTIVE_SKIPS) {
+    playerStore.playing = false;
+    showToast(isTrial ? t('player.trialNoMoreCompleteTracks', { name: failedTrack.name }) : t('player.noMorePlayableTracks'), 'warning', 2500);
+    return { hasNext: false, nextCount: 0 };
+  }
+
+  showToast(isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }), isTrial ? 'info' : 'warning', 2000);
+  playerStore.qIndex = nextIdx;
+  playerStore.curTime = 0;
+  playerStore.save();
+  return { hasNext: true, nextCount };
 }
 
 
