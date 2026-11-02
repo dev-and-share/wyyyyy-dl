@@ -10,6 +10,7 @@
   import SegmentedTabs, { type SegmentItem } from './sp/SegmentedTabs.svelte';
   import SwipeableTabsView from './sp/SwipeableTabsView.svelte';
   import DownloadAuditModal from './DownloadAuditModal.svelte';
+  import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
   import { t } from '../lib/i18n';
@@ -377,7 +378,14 @@
             <div class="flex-1 overflow-hidden min-w-0 pr-2">
               <div class="font-bold text-xs text-[var(--text-main)] truncate flex items-center">
                 <span>{(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || t('common.unknownSong')}</span>
-                <span class="audio-source-badge icon-only badge-server ml-1.5" title={t('download.localDownloadedTooltip')}>🖥️</span>
+                <TrackSourceBadge
+                  item={h}
+                  id={h.songId || h.id}
+                  isLocal={true}
+                  path={displayPath}
+                  {onReveal}
+                  class="ml-1.5"
+                />
                 {#if h.fileExists === false}
                   <span class="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1 py-0.5 rounded ml-1">{t('download.missingBadge')}</span>
                 {/if}

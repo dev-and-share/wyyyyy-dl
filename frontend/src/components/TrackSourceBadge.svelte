@@ -13,6 +13,7 @@
     isLocal = false,
     curTrack = null,
     onReveal,
+    variant = 'badge',
     class: customClass = ''
   } = $props<{
     id: number | string | undefined | null;
@@ -23,6 +24,7 @@
     isLocal?: boolean;
     curTrack?: Track | null;
     onReveal?: (item: any) => void;
+    variant?: 'badge' | 'tile';
     class?: string;
   }>();
 
@@ -44,7 +46,7 @@
       id,
       name,
       artist,
-      path
+      path: path || curTrack?.url || curTrack?.path || ''
     };
     showToast(t('toast.locatingFile'), 'info', 1200);
     if (onReveal) {
@@ -52,6 +54,12 @@
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: targetItem }));
+    }
+  }
+
+  function handleClick(e: MouseEvent) {
+    if (variant === 'tile' && status.isServer) {
+      doReveal(e);
     }
   }
 
@@ -106,46 +114,93 @@
   }
 </script>
 
-{#if status.isServer && status.isPhone}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <span
-    role="button"
-    tabindex="0"
-    class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform {customClass}"
-    title={t('track.badgeBoth')}
-    ondblclick={handleDblClick}
-    ontouchstart={handleTouchStart}
-    ontouchmove={handleTouchMove}
-    ontouchend={handleTouchEnd}
-    ontouchcancel={handleTouchEnd}
-    oncontextmenu={handleContextMenu}
-  >
-    ✨
-  </span>
-{:else if status.isServer}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <span
-    role="button"
-    tabindex="0"
-    class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform {customClass}"
-    title={t('track.badgeServer')}
-    ondblclick={handleDblClick}
-    ontouchstart={handleTouchStart}
-    ontouchmove={handleTouchMove}
-    ontouchend={handleTouchEnd}
-    ontouchcancel={handleTouchEnd}
-    oncontextmenu={handleContextMenu}
-  >
-    🖥️
-  </span>
-{:else if status.isPhone}
-  <span
-    class="audio-source-badge icon-only badge-browser {customClass}"
-    title={t('track.badgePhone')}
-  >
-    📲
-  </span>
+{#if variant === 'tile'}
+  <!-- 🎛️ 按钮/卡片形态：用于播放器快捷操作栏（42x42 标准舒适热区，与周围按钮视觉严格对齐） -->
+  {#if status.isServer && status.isPhone}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      role="button"
+      tabindex="0"
+      class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/30 text-amber-400 shadow-sm cursor-pointer select-none active:scale-92 transition-all {customClass}"
+      title={t('track.badgeBoth')}
+      onclick={handleClick}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
+    >
+      <span class="text-lg leading-none filter drop-shadow-sm">✨</span>
+    </div>
+  {:else if status.isServer}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      role="button"
+      tabindex="0"
+      class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 shadow-sm cursor-pointer select-none active:scale-92 transition-all {customClass}"
+      title={t('track.badgeServer')}
+      onclick={handleClick}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
+    >
+      <span class="text-lg leading-none filter drop-shadow-sm">🖥️</span>
+    </div>
+  {:else if status.isPhone}
+    <div
+      class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-purple-500/15 dark:bg-purple-500/20 border border-purple-500/30 text-purple-400 shadow-sm select-none {customClass}"
+      title={t('track.badgePhone')}
+    >
+      <span class="text-lg leading-none filter drop-shadow-sm">📲</span>
+    </div>
+  {/if}
+{:else}
+  <!-- 🏷️ 默认行内徽章形态：用于单曲列表、详情表格等文本行内 -->
+  {#if status.isServer && status.isPhone}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <span
+      role="button"
+      tabindex="0"
+      class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform {customClass}"
+      title={t('track.badgeBoth')}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
+    >
+      ✨
+    </span>
+  {:else if status.isServer}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <span
+      role="button"
+      tabindex="0"
+      class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform {customClass}"
+      title={t('track.badgeServer')}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
+    >
+      🖥️
+    </span>
+  {:else if status.isPhone}
+    <span
+      class="audio-source-badge icon-only badge-browser {customClass}"
+      title={t('track.badgePhone')}
+    >
+      📲
+    </span>
+  {/if}
 {/if}
 

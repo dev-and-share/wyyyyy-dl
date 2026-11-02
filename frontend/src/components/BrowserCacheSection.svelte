@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
+  import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { formatBytes, DEFAULT_VINYL_COVER } from '../lib/utils';
   import { autoCacheState, setAutoCacheEnabled } from '../lib/pwaCache.svelte';
   import { openSheet } from '../lib/ui.svelte';
@@ -305,7 +306,12 @@
         <div class="track-title-row">
           <span class="font-bold truncate">{item.name}</span>
           <span class="text-xs text-[var(--text-secondary)] truncate"> - {item.artist}</span>
-          <span class="audio-source-badge icon-only badge-browser ml-1 flex-shrink-0" title={t('cache.storedOnDeviceTooltip')}>📲</span>
+          <TrackSourceBadge
+            item={item}
+            id={item.id}
+            isLocal={false}
+            class="ml-1 flex-shrink-0"
+          />
           <span class="play-count-badge ml-1 flex-shrink-0" title={t('cache.playCountTooltip', { count: item.playCount })}>
             {t('cache.playCountLabel', { count: item.playCount })}
           </span>
