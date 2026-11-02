@@ -37,6 +37,6 @@
   },
   "dependencies": {
     "pinyin-match": "^1.2.10",
-    "pwa-audio-player": "^1.0.0"
+    "pwa-audio-player": "^1.1.0"
   }
 }
