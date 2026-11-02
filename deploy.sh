@@ -111,8 +111,13 @@ fi
 
 # ── 6. docker build + 启动 ───────────────────────────────────────────────────
 $COMPOSE_CMD up -d --build
+
+echo ""
+echo "=================================================="
 if [ "$IS_RELEASE" = false ]; then
-  echo "🎉 本地部署成功：v$NEW_VERSION 已在本地 Docker 运行 (未推送代码，无 git tag)"
+  echo "🎉 本地部署成功 (已在本地 Docker 运行，未推送代码)"
 else
-  echo "✅ 部署完成：v$NEW_VERSION 已上线并推送"
+  echo "🎉 生产发布完成 (代码与 git tag 已推送至远程)"
 fi
+echo "🚀 成功发布版本：$NEW_VERSION"
+echo "=================================================="
