@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { tick } from 'svelte';
 import DesktopSidebar from './DesktopSidebar.svelte';
 import { myPlaylists, recordPlaylistPlay, playlistPlayCounts } from '../../lib/playlist.svelte';
+import { localPlaylistState } from '../../lib/localPlaylistStore.svelte';
 
 describe('DesktopSidebar', () => {
   beforeEach(() => {
@@ -252,5 +253,28 @@ describe('DesktopSidebar', () => {
 
     // Should fade out shadow when scrolled to bottom
     expect(createdShadow.className).toContain('opacity-0');
+  });
+
+  it('supports direct playback of local playlists from sidebar', async () => {
+    localPlaylistState.playlists = [
+      { id: 'local_999', name: 'test-local', trackCount: 1, isLocal: true }
+    ];
+
+    const onPlayPlaylist = vi.fn();
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn(),
+        onPlayPlaylist
+      }
+    });
+
+    const localPlayBtn = getByTestId('sidebar-playbtn-local_999');
+    expect(localPlayBtn).toBeDefined();
+    await fireEvent.click(localPlayBtn);
+    expect(onPlayPlaylist).toHaveBeenCalledWith('local_999', 'test-local');
   });
 });

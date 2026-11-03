@@ -171,6 +171,53 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(mockShowToast).toHaveBeenCalledWith('正在播放《同名歌单》', 'info', 1500);
   });
 
+  it('playPlaylistTracks correctly fetches and plays local playlist via localPlaylistDetail', async () => {
+    const { playPlaylistTracks } = await import('./playerHelper');
+    const { playerStore } = await import('./playerStore.svelte');
+    playerStore.playlistId = null;
+    playerStore.queue = [];
+    playerStore.playing = false;
+
+    const mockOnPlayQueue = vi.fn();
+    const mockShowToast = vi.fn();
+
+    (api as any).localPlaylistDetail = vi.fn().mockResolvedValue({
+      code: '000000',
+      data: {
+        id: 'local_123456',
+        name: 'test-local',
+        trackCount: 1,
+        tracks: [
+          {
+            id: 1,
+            historyId: 88,
+            name: '本地测试曲目',
+            artist: '本地歌手',
+            url: '/v3/stream?historyId=88',
+            isLocal: true
+          }
+        ]
+      }
+    });
+
+    await playPlaylistTracks('local_123456', 'test-local', mockOnPlayQueue, mockShowToast);
+
+    expect((api as any).localPlaylistDetail).toHaveBeenCalledWith('local_123456');
+    expect(mockOnPlayQueue).toHaveBeenCalledTimes(1);
+    const queued = mockOnPlayQueue.mock.calls[0][0];
+    const options = mockOnPlayQueue.mock.calls[0][1];
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      id: 1,
+      name: '本地测试曲目',
+      artist: '本地歌手',
+      url: '/v3/stream?historyId=88',
+      isLocal: true
+    });
+    expect(options).toEqual({ startIndex: 0, playlistId: 'local_123456', isExplicitTrack: false });
+    expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('已开始播放《test-local》'), 'success', 2000);
+  });
+
   it('toPlayerTrack normalizes metadata and preserves isLocal/freeTrial contracts (DRY)', async () => {
     const { toPlayerTrack } = await import('./playerHelper');
 

@@ -7,6 +7,7 @@ import type {
 } from './types';
 import { api } from '../api';
 import { formatArtist, DEFAULT_VINYL_COVER, isLocalStreamUrl } from '../utils';
+import { isLocalPlaylist } from '../localPlaylistStore.svelte';
 import { getTrackSourceStatus } from '../player/trackStatus.svelte';
 import { t } from '../i18n';
 
@@ -48,12 +49,22 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
     );
     const freeTrial = Boolean(item.freeTrial);
 
+    // 针对本地曲目如果没有预先计算 url，补全兜底 url
+    let url = item.url;
+    if (!url && isLocal) {
+      if (item.historyId) {
+        url = `/v3/stream?historyId=${item.historyId}`;
+      } else if (item.filePath) {
+        url = `/v3/stream?path=${encodeURIComponent(item.filePath)}`;
+      }
+    }
+
     return {
       id,
       name,
       artist,
       cover,
-      url: item.url,
+      url,
       lyric: item.lyric,
       isLocal,
       freeTrial,
@@ -99,6 +110,9 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
   }
 
   async getPlaylist(id: string | number): Promise<any> {
+    if (isLocalPlaylist(id)) {
+      return api.localPlaylistDetail(String(id));
+    }
     return api.playlist(String(id));
   }
 

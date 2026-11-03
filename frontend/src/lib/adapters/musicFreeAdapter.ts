@@ -65,7 +65,24 @@ export class MusicFreeAdapter implements MusicPlatformAdapter {
       };
     }
 
-    const pluginId = rawItem._pluginId;
+    // 智能获取插件 ID：优先从 rawItem._pluginId，若缺失则从复合 ID 或启用插件反查
+    let pluginId = rawItem._pluginId || (options as any)?.raw?._pluginId || (options as any)?._pluginHash;
+    if (!pluginId) {
+      const active = musicFreeStore.getActivePlugins();
+      for (const p of active) {
+        if (compoundId.includes(encodeURIComponent(p.name)) || compoundId.includes(p.name)) {
+          pluginId = p.id;
+          break;
+        }
+      }
+      if (!pluginId) {
+        const anyMatch = musicFreeStore.plugins.find(
+          (p) => compoundId.includes(encodeURIComponent(p.name)) || compoundId.includes(p.name)
+        );
+        if (anyMatch) pluginId = anyMatch.id;
+      }
+    }
+
     if (!pluginId) {
       return {
         unplayable: true,

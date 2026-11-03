@@ -9,6 +9,7 @@ import { platformAdapter, musicFreeAdapter } from '../adapters';
 import { showToast } from '../toast.svelte';
 import { t } from '../i18n';
 import { isLocalStreamUrl } from '../utils';
+import { isLocalPlaylist } from '../localPlaylistStore.svelte';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -68,7 +69,12 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   // 3. 在线歌曲：合并为单次请求，一次性拿齐播放 URL、高清封面与歌词
   if (!track.id) return track.url || '';
   try {
-    const isMf = String(track.id).startsWith('mf_') || (track.raw && track.raw._isMusicFree);
+    const isMf =
+      String(track.id).startsWith('mf_') ||
+      Boolean(track.raw?._isMusicFree) ||
+      Boolean((track as any)._isMusicFree) ||
+      Boolean((track as any)._pluginHash) ||
+      Boolean(track.raw?._pluginId);
     const activeAdapter = isMf ? musicFreeAdapter : platformAdapter;
     const resolved = await activeAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist, raw: track.raw });
     if (!resolved.unplayable && resolved.url) {
@@ -160,8 +166,14 @@ export async function playPlaylistTracks(
 
   try {
     showToast(t('player.loadingPlaylist', { name: playlistName }), 'info', 1500);
-    const res = await (platformAdapter.getPlaylist ? platformAdapter.getPlaylist(playlistId) : api.playlist(playlistId));
-    const tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
+    let tracks: any[] = [];
+    if (isLocalPlaylist(playlistId)) {
+      const res = await api.localPlaylistDetail(playlistId);
+      tracks = res?.data?.tracks || [];
+    } else {
+      const res = await (platformAdapter.getPlaylist ? platformAdapter.getPlaylist(playlistId) : api.playlist(playlistId));
+      tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
+    }
     if (tracks && tracks.length > 0) {
       recordPlaylistPlay(playlistId);
       onPlayQueue(tracks.map((t: any) => toPlayerTrack(t)), {

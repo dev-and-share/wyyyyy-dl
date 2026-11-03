@@ -2,6 +2,7 @@
   import { DEFAULT_VINYL_COVER } from '../../lib/utils';
   import { getTrackSourceStatus, isSameTrack } from '../../lib/player/trackStatus.svelte';
   import { musicFreeStore } from '../../lib/musicfree/musicFreeStore.svelte';
+  import { musicFreeAdapter } from '../../lib/adapters/musicFreeAdapter';
   import { api } from '../../lib/api';
   import { startTaskPolling } from '../../lib/taskStore.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
@@ -26,26 +27,38 @@
 
   let actionLoadingId = $state<string | null>(null);
 
-  function handlePlay(item: any) {
-    if (!onPlayQueue) return;
+  function getSafeTitle(item: any): string {
+    return item?.title || item?.name || item?.songName || item?.songname || item?.musicName || '未知歌曲';
+  }
+
+  function getSafeArtist(item: any): string {
+    return item?.artist || item?.singer || item?.author || '未知歌手';
+  }
+
+  function buildSearchTrack(item: any) {
     const pluginId = item._pluginId || item.pluginHash;
-    const track = {
-      id: item.id || `mf_${pluginId}_${item.rawId || item.title || Math.random()}`,
-      name: item.title || item.name,
-      artist: item.artist || '未知歌手',
-      album: item.album || '',
+    const rawTrack = { ...(item.raw || item), _pluginId: pluginId, _isMusicFree: true };
+    return musicFreeAdapter.normalizeTrack(rawTrack, {
+      id: item.id || `mf_${pluginId}_${item.rawId || getSafeTitle(item) || Math.random()}`,
+      name: getSafeTitle(item),
+      artist: getSafeArtist(item),
+      al: { name: item.album || '', picUrl: item.artwork || item.picUrl || DEFAULT_VINYL_COVER },
       cover: item.artwork || item.picUrl || DEFAULT_VINYL_COVER,
-      raw: item.raw || item,
+      raw: rawTrack,
       _isMusicFree: true,
       _pluginHash: pluginId
-    };
-    onPlayQueue([track], { startIndex: 0, isExplicitTrack: true });
+    } as any);
+  }
+
+  function handlePlay(item: any) {
+    if (!onPlayQueue) return;
+    onPlayQueue([buildSearchTrack(item)], { startIndex: 0, isExplicitTrack: true });
   }
 
   async function handleDownload(item: any) {
     const pluginId = item._pluginId || item.pluginHash;
     actionLoadingId = item.id;
-    const songName = item.title || item.name || '未知歌曲';
+    const songName = getSafeTitle(item);
     try {
       showToast(`正在解析「${songName}」音源直链...`, 'info');
       const media = await musicFreeStore.resolveMediaSource(pluginId, item.raw || item);
@@ -56,7 +69,7 @@
       const res = await api.downloadCustom({
         id: item.id,
         name: songName,
-        artist: item.artist,
+        artist: getSafeArtist(item),
         album: item.album,
         url: media.url,
         coverUrl: item.artwork || item.picUrl,
@@ -77,20 +90,9 @@
   }
 
   async function handleCache(item: any) {
-    const pluginId = item._pluginId || item.pluginHash;
     actionLoadingId = item.id;
     try {
-      const track = {
-        id: item.id || `mf_${pluginId}_${item.rawId || item.title || Math.random()}`,
-        name: item.title || item.name,
-        artist: item.artist || '未知歌手',
-        album: item.album || '',
-        cover: item.artwork || item.picUrl || DEFAULT_VINYL_COVER,
-        raw: item.raw || item,
-        _isMusicFree: true,
-        _pluginHash: pluginId
-      };
-      const res = await cacheTrackToBrowser(track);
+      const res = await cacheTrackToBrowser(buildSearchTrack(item));
       showToast(res.msg, res.success ? 'success' : 'error');
     } catch (e: any) {
       showToast('离线缓存失败: ' + (e.message || e), 'error');
@@ -101,17 +103,7 @@
 
   function handleAdd(item: any) {
     if (!onOpenAddToPlaylist) return;
-    const pluginId = item._pluginId || item.pluginHash;
-    onOpenAddToPlaylist({
-      id: item.id || `mf_${pluginId}_${item.rawId || item.title}`,
-      name: item.title || item.name,
-      artist: item.artist || '未知歌手',
-      album: item.album || '',
-      cover: item.artwork || item.picUrl || DEFAULT_VINYL_COVER,
-      raw: item.raw || item,
-      _isMusicFree: true,
-      _pluginHash: pluginId
-    });
+    onOpenAddToPlaylist(buildSearchTrack(item));
   }
 </script>
 
@@ -126,31 +118,34 @@
       未检索到插件音源结果，请尝试更换关键词或在「发现中心」检查插件启用状态
     </div>
   {:else}
-    <div class="text-xs text-[var(--text-muted)] px-1 mb-1 flex items-center justify-between">
+    <div class="text-xs text-[var(--text-muted)] px-1 mb-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
       <span>跨平台插件音源检索共找到 {results.length} 首歌曲</span>
       <span class="text-[11px] opacity-70">提示：需先下载/缓存后方可加入本地歌单</span>
     </div>
 
     <div class="flex flex-col gap-1.5">
       {#each results as item, idx (item.id || item.rawId || idx)}
-        {@const title = item.title || item.name || '未知歌曲'}
-        {@const artist = item.artist || '未知歌手'}
+        {@const title = getSafeTitle(item)}
+        {@const artist = getSafeArtist(item)}
         {@const cover = item.artwork || item.picUrl || DEFAULT_VINYL_COVER}
         {@const pName = item._pluginPlatform || item.pluginName || '外部音源'}
         {@const trackId = item.id || `mf_${item._pluginId || item.pluginHash}_${item.rawId || title}`}
         {@const isCur = isSameTrack(curTrack, trackId)}
         {@const status = getTrackSourceStatus(trackId, false, curTrack)}
         <div
-          class="flex items-center gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
+          class="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
         >
           <!-- 封面 & 播放按钮 -->
-          <div class="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-black/10">
+          <div class="relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 bg-black/10">
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <img
               src={cover}
               alt={title}
               referrerpolicy="no-referrer"
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover cursor-pointer"
               loading="lazy"
+              onclick={() => handlePlay(item)}
               onerror={(e) => {
                 const el = e.currentTarget as HTMLImageElement;
                 if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
@@ -162,49 +157,52 @@
               onclick={() => handlePlay(item)}
             >
               {#if isCur && playing}
-                <span class="text-sm">⏸</span>
+                <span class="text-xs sm:text-sm">⏸</span>
               {:else}
-                <span class="text-sm ml-0.5">▶</span>
+                <span class="text-xs sm:text-sm ml-0.5">▶</span>
               {/if}
             </button>
           </div>
 
-          <!-- 歌曲信息 -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-sm font-semibold text-[var(--text-main)] truncate {isCur ? 'text-purple-400 font-bold' : ''}">
-                {title}
-              </span>
-              <!-- 音源归属标签 -->
-              <span class="text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/15 text-purple-400 font-medium shrink-0">
+          <!-- 歌曲信息 (点击整块可直接播放试听) -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="flex-1 min-w-0 cursor-pointer overflow-hidden py-0.5"
+            onclick={() => handlePlay(item)}
+          >
+            <!-- 歌名独立一行，确保无论屏幕多小都清晰完整可见 -->
+            <div class="text-xs sm:text-sm font-semibold text-[var(--text-main)] truncate min-w-0 mb-1 {isCur ? 'text-purple-400 font-bold' : ''}" title={title}>
+              {title}
+            </div>
+            <!-- 音源平台标签 + 歌手 + 专辑 -->
+            <div class="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate flex items-center gap-1.5 min-w-0">
+              <span class="text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/15 text-purple-400 font-medium shrink-0">
                 {pName}
               </span>
-              <!-- 存储状态徽标 -->
               {#if status.isServer}
-                <span class="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-500/15 text-emerald-400 font-medium shrink-0" title="已下载到电脑磁盘">
-                  🖥️ 本地已存
+                <span class="text-[9px] sm:text-[10px] px-1 rounded-md bg-emerald-500/15 text-emerald-400 font-medium shrink-0" title="已下载到电脑磁盘">
+                  🖥️
                 </span>
               {:else if status.isPhone}
-                <span class="text-[10px] px-1.5 py-0.2 rounded-md bg-blue-500/15 text-blue-400 font-medium shrink-0" title="已离线缓存至浏览器">
-                  📱 浏览器缓存
+                <span class="text-[9px] sm:text-[10px] px-1 rounded-md bg-blue-500/15 text-blue-400 font-medium shrink-0" title="已离线缓存至浏览器">
+                  📱
                 </span>
               {/if}
-            </div>
-            <div class="text-xs text-[var(--text-secondary)] truncate flex items-center gap-2">
-              <span>{item.artist || '未知歌手'}</span>
+              <span class="truncate">{artist}</span>
               {#if item.album}
-                <span class="opacity-40">•</span>
+                <span class="opacity-40 shrink-0">•</span>
                 <span class="truncate opacity-80">{item.album}</span>
               {/if}
             </div>
           </div>
 
-          <!-- 操作按钮栏 -->
-          <div class="flex items-center gap-2 shrink-0">
-            <!-- 试听 / 播放 -->
+          <!-- 操作按钮栏 (移动端精简图标，桌面端完整文本) -->
+          <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+            <!-- 试听 / 播放 (移动端点击整行或封面即可播放，桌面端显示独立按钮) -->
             <button
               type="button"
-              class="px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center gap-1 {isCur && playing ? 'bg-purple-600 text-white' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}"
+              class="hidden sm:flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all items-center gap-1 {isCur && playing ? 'bg-purple-600 text-white' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}"
               onclick={() => handlePlay(item)}
             >
               <span>{isCur && playing ? '播放中' : '试听'}</span>
@@ -214,32 +212,35 @@
             <button
               type="button"
               disabled={actionLoadingId === item.id || status.isServer}
-              class="px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] disabled:opacity-50"
+              class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] disabled:opacity-50 flex items-center gap-1"
               title={status.isServer ? '已存在于电脑磁盘中' : '下载完整音频与歌词到电脑磁盘'}
               onclick={() => handleDownload(item)}
             >
-              {status.isServer ? '🖥️ 已存' : '⬇️ 下载'}
+              <span>{status.isServer ? '🖥️' : '⬇️'}</span>
+              <span class="hidden sm:inline">{status.isServer ? '已存' : '下载'}</span>
             </button>
 
             <!-- 离线缓存到浏览器 -->
             <button
               type="button"
               disabled={actionLoadingId === item.id || status.isPhone}
-              class="px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] disabled:opacity-50"
+              class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] disabled:opacity-50 flex items-center gap-1"
               title={status.isPhone ? '已离线缓存到浏览器' : '将音频缓存到浏览器 Cache'}
               onclick={() => handleCache(item)}
             >
-              {status.isPhone ? '📱 已存' : '📱 缓存'}
+              <span>📱</span>
+              <span class="hidden sm:inline">{status.isPhone ? '已存' : '缓存'}</span>
             </button>
 
             <!-- 添加到歌单 -->
             <button
               type="button"
-              class="px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]"
+              class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] flex items-center gap-1"
               title="添加到歌单 (仅限已下载/已缓存歌曲存入本地歌单)"
               onclick={() => handleAdd(item)}
             >
-              ➕ 歌单
+              <span>➕</span>
+              <span class="hidden sm:inline">歌单</span>
             </button>
           </div>
         </div>

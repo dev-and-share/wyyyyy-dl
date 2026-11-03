@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
+  import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
   import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
   import { getTrackSourceStatus, isSameTrack } from '../../../lib/player/trackStatus.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
@@ -20,7 +21,8 @@
 
   let loading = $state(false);
   const INVALID_KEYWORD_BLACKLIST = [
-    '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书'
+    '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书',
+    'bilibili', '哔哩', 'b站', 'youtube', '快手', '视频'
   ];
 
   let topListGroups = $state<Array<{
@@ -31,6 +33,9 @@
       charts: any[];
     }>;
   }>>([]);
+  let activePluginId = $state<string>('');
+  const currentGroup = $derived(topListGroups.find((g) => g.pluginId === activePluginId) || topListGroups[0]);
+
   let selectedTopList = $state<any>(null);
   let detailLoading = $state(false);
   let chartTracks = $state<any[]>([]);
@@ -48,13 +53,14 @@
         const lower = (g.pluginName || '').toLowerCase();
         return !INVALID_KEYWORD_BLACKLIST.some((kw) => lower.includes(kw.toLowerCase()));
       });
+      // 🌟 酷狗官方榜单置为最高权重 (作为默认首选音源)
       const priorityWeights: Record<string, number> = {
+        '小枸音乐': 1000,
+        '酷狗音乐': 999,
         '小秋音乐': 100,
         'QQ音乐': 99,
         '小蜗音乐': 95,
         '酷我音乐': 94,
-        '小狗音乐': 90,
-        '酷狗音乐': 89,
         '网易音乐': 85,
         '小云音乐': 84,
         '猫耳FM': 80
@@ -64,6 +70,9 @@
         const wb = priorityWeights[b.pluginName.trim()] || 0;
         return wb - wa;
       });
+      if (topListGroups.length > 0 && !activePluginId) {
+        activePluginId = topListGroups[0].pluginId;
+      }
     } catch (e: any) {
       console.warn('获取排行榜失败:', e);
       topListGroups = [];
@@ -77,7 +86,7 @@
       showToast('该榜单缺少有效 ID', 'warning');
       return;
     }
-    selectedTopList = { ...chart, _pluginId: pluginId };
+    selectedTopList = { ...chart, _pluginId: pluginId, pluginName: currentGroup?.pluginName || '' };
     detailLoading = true;
     chartTracks = [];
     try {
@@ -95,50 +104,42 @@
     }
   }
 
-  function handlePlayAll() {
-    if (!chartTracks.length || !onPlayQueue || !selectedTopList) return;
-    const queue = chartTracks.map((t) => ({
-      id: t.id || `mf_${selectedTopList._pluginId}_${t.rawId || Math.random()}`,
+  function buildChartTrack(t: any) {
+    const rawId = t.id || t.rawId || Math.random().toString(36).substring(2, 9);
+    const platformName = selectedTopList?.pluginName || selectedTopList?._pluginId || 'toplist';
+    const compoundId = `mf_${encodeURIComponent(platformName)}_${rawId}`;
+    const rawTrack = {
+      ...t,
+      _pluginId: selectedTopList?._pluginId,
+      _pluginPlatform: selectedTopList?.pluginName,
+      _isMusicFree: true
+    };
+    return musicFreeAdapter.normalizeTrack(rawTrack, {
+      id: compoundId,
       name: t.title || t.name,
       artist: t.artist,
-      album: t.album,
+      al: { name: t.album || '', picUrl: t.artwork || t.cover || DEFAULT_VINYL_COVER },
       cover: t.artwork || t.cover || DEFAULT_VINYL_COVER,
-      raw: t,
+      raw: rawTrack,
       _isMusicFree: true,
-      _pluginHash: selectedTopList._pluginId
-    }));
-    onPlayQueue(queue, { startIndex: 0, isExplicitTrack: true });
-    showToast(`开始播放排行榜「${selectedTopList.title || selectedTopList.name}」`, 'info');
+      _pluginHash: selectedTopList?._pluginId
+    } as any);
+  }
+
+  function handlePlayAll() {
+    if (!chartTracks.length || !onPlayQueue || !selectedTopList) return;
+    onPlayQueue(chartTracks.map(buildChartTrack), { startIndex: 0, isExplicitTrack: true });
+    showToast(`开始播放「${selectedTopList.title || selectedTopList.name}」`, 'info');
   }
 
   function handlePlaySingle(t: any) {
     if (!onPlayQueue || !selectedTopList) return;
-    const track = {
-      id: t.id || `mf_${selectedTopList._pluginId}_${t.rawId || Math.random()}`,
-      name: t.title || t.name,
-      artist: t.artist,
-      album: t.album,
-      cover: t.artwork || t.cover || DEFAULT_VINYL_COVER,
-      raw: t,
-      _isMusicFree: true,
-      _pluginHash: selectedTopList._pluginId
-    };
-    onPlayQueue([track], { startIndex: 0, isExplicitTrack: true });
+    onPlayQueue([buildChartTrack(t)], { startIndex: 0, isExplicitTrack: true });
   }
 
   async function handleCache(t: any) {
     if (!selectedTopList) return;
-    const track = {
-      id: t.id || `mf_${selectedTopList._pluginId}_${t.rawId || Math.random()}`,
-      name: t.title || t.name,
-      artist: t.artist,
-      album: t.album,
-      cover: t.artwork || t.cover || DEFAULT_VINYL_COVER,
-      raw: t,
-      _isMusicFree: true,
-      _pluginHash: selectedTopList._pluginId
-    };
-    const res = await cacheTrackToBrowser(track);
+    const res = await cacheTrackToBrowser(buildChartTrack(t));
     showToast(res.msg, res.success ? 'success' : 'error');
   }
 </script>
@@ -243,7 +244,7 @@
                 <button
                   type="button"
                   class="px-2 py-1 rounded-lg text-xs font-medium cursor-pointer border-none bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)]"
-                  onclick={() => addToPlaylistSong = { ...t, id: t.id || `mf_${selectedTopList._pluginId}_${t.rawId}`, _isMusicFree: true }}
+                  onclick={() => addToPlaylistSong = buildChartTrack(t)}
                   title="加入歌单"
                 >
                   ➕
@@ -266,18 +267,27 @@
         当前已启用的音源插件暂未提供官方排行榜接口。可在「插件管理」中导入包含榜单功能的音源插件。
       </div>
     {:else}
-      {#each topListGroups as group (group.pluginId)}
-        <div class="space-y-4">
-          <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-            <h3 class="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
-              <span>🏆</span> <span>{group.pluginName} 官方榜单</span>
-            </h3>
-            <span class="text-xs text-[var(--text-muted)]">
-              {group.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0)} 个排行榜
-            </span>
-          </div>
+      <!-- 🏆 音源下拉选择器 (默认酷狗 Kugou 官方榜单) -->
+      <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm">🏆</span>
+          <span class="text-xs font-semibold text-[var(--text-main)]">选择官方榜单音源：</span>
+        </div>
+        <select
+          bind:value={activePluginId}
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] text-purple-400 border border-purple-500/30 outline-none cursor-pointer hover:border-purple-500 transition-colors"
+        >
+          {#each topListGroups as grp}
+            <option value={grp.pluginId}>
+              {grp.pluginName} ({grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0)} 个榜单)
+            </option>
+          {/each}
+        </select>
+      </div>
 
-          {#each group.subGroups as subGroup}
+      {#if currentGroup}
+        <div class="space-y-4">
+          {#each currentGroup.subGroups as subGroup}
             <div class="space-y-2">
               <div class="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5 pl-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
@@ -289,7 +299,7 @@
                   <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <div
                     class="group p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:-translate-y-1 transition-all cursor-pointer shadow-xs"
-                    onclick={() => handleSelectChart(group.pluginId, chart)}
+                    onclick={() => handleSelectChart(currentGroup.pluginId, chart)}
                   >
                     <div class="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black/10">
                       <img
@@ -318,7 +328,7 @@
             </div>
           {/each}
         </div>
-      {/each}
+      {/if}
     {/if}
   {/if}
 

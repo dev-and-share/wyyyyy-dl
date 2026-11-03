@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
+  import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
   import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
   import { getTrackSourceStatus, isSameTrack } from '../../../lib/player/trackStatus.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
@@ -22,7 +23,8 @@
   let emptyPluginIds = $state<Set<string>>(new Set());
 
   const INVALID_KEYWORD_BLACKLIST = [
-    '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书'
+    '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书',
+    'bilibili', '哔哩', 'b站', 'youtube', '快手', '视频'
   ];
 
   let sheetPlugins = $derived(
@@ -142,12 +144,13 @@
   async function markCurrentPluginEmptyAndFallback() {
     if (!selectedPluginId) return;
     const currentId = selectedPluginId;
+    const fallbackName = currentPluginName;
     const nextEmpty = new Set(emptyPluginIds);
     nextEmpty.add(currentId);
     emptyPluginIds = nextEmpty;
     const remaining = sheetPlugins.filter((p) => p.id !== currentId && !nextEmpty.has(p.id));
     if (remaining.length > 0) {
-      showToast(`音源「${currentPluginName}」暂无有效歌单，已自动切换`, 'info');
+      showToast(`音源「${fallbackName}」暂无有效歌单，已自动切换`, 'info');
       await handlePluginChange(remaining[0].id);
     } else {
       sheets = [];
@@ -177,12 +180,18 @@
   }
 
   async function handleSelectSheet(sheet: any) {
-    selectedSheet = { ...sheet, _pluginId: selectedPluginId };
+    const pluginId = sheet._pluginId || selectedPluginId;
+    selectedSheet = { ...sheet, _pluginId: pluginId };
     sheetDetailLoading = true;
     sheetTracks = [];
     try {
-      const detail = await musicFreeStore.getMusicSheetInfo(selectedPluginId, sheet, 1);
-      sheetTracks = Array.isArray(detail?.musicList) ? detail.musicList : (Array.isArray(detail) ? detail : []);
+      const detail = await musicFreeStore.getMusicSheetInfo(pluginId, sheet, 1);
+      const rawTracks = Array.isArray(detail?.musicList) ? detail.musicList : (Array.isArray(detail) ? detail : []);
+      sheetTracks = rawTracks.map((t: any) => ({
+        ...t,
+        _pluginId: pluginId,
+        _pluginPlatform: currentPluginName
+      }));
     } catch (e: any) {
       showToast('获取歌单详情失败: ' + (e?.message || e), 'error');
     } finally {
@@ -191,16 +200,20 @@
   }
 
   function buildTrack(t: any) {
-    return {
-      id: t.id || `mf_${selectedSheet._pluginId}_${t.rawId || Math.random()}`,
+    const pluginId = selectedSheet?._pluginId || t?._pluginId || selectedPluginId;
+    const rawId = t.id || t.rawId || Math.random().toString(36).substring(2, 9);
+    const compoundId = `mf_${encodeURIComponent(currentPluginName || pluginId || 'sheet')}_${rawId}`;
+    const rawTrack = { ...t, _pluginId: pluginId, _pluginPlatform: currentPluginName, _isMusicFree: true };
+    return musicFreeAdapter.normalizeTrack(rawTrack, {
+      id: compoundId,
       name: t.title || t.name,
       artist: t.artist,
-      album: t.album,
+      al: { name: t.album || '', picUrl: t.artwork || t.cover || DEFAULT_VINYL_COVER },
       cover: t.artwork || t.cover || DEFAULT_VINYL_COVER,
-      raw: t,
+      raw: rawTrack,
       _isMusicFree: true,
-      _pluginHash: selectedSheet._pluginId
-    };
+      _pluginHash: pluginId
+    } as any);
   }
 
   function handlePlayAll() {
@@ -321,7 +334,7 @@
                 <button
                   type="button"
                   class="px-2 py-1 rounded-lg text-xs font-medium cursor-pointer border-none bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)]"
-                  onclick={() => addToPlaylistSong = { ...t, id: t.id || `mf_${selectedSheet._pluginId}_${t.rawId}`, _isMusicFree: true }}
+                  onclick={() => addToPlaylistSong = buildTrack(t)}
                   title="加入歌单"
                 >
                   ➕

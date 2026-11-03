@@ -21,6 +21,7 @@
   import RemoveFromPlaylistModal from '../RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { toPlayerTrack } from '../../lib/playerHelper';
   import { t } from '../../lib/i18n';
 
   let {
@@ -150,13 +151,9 @@
     if (playlist?.id) recordPlaylistPlay(playlist.id);
     const queue = allTracks.map((item: any) => {
       const status = getTrackSourceStatus(item.id, item.isLocal, curTrack);
-      return {
-        id: item.id,
-        name: item.name,
-        artist: formatArtist(item),
-        cover: item.al?.picUrl || DEFAULT_VINYL_COVER,
+      return toPlayerTrack(item, {
         isLocal: status.isLocal
-      };
+      });
     });
     onPlayQueue(queue, { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false });
     showToast(t('playlist.playingPlaylistToast', { name: playlist?.name || t('playlist.title'), count: queue.length }), 'success', 2000);
@@ -395,7 +392,7 @@
                     <div class="inline-flex items-center justify-end gap-1.5">
                       <SlotBtn
                         playing={isPlayingThis && playing}
-                        onclick={() => onPlayQueue([{ id: trackItem.id, name: trackItem.name, artist, cover: trackItem.al?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
+                        onclick={() => onPlayQueue([toPlayerTrack(trackItem, { isLocal: status.isLocal })])}
                       >
                         {getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'desktop' })}
                       </SlotBtn>
