@@ -143,5 +143,45 @@ describe('LyricModal Component', () => {
       expect(getByTestId('skin-stage-spring')).toBeInTheDocument();
       expect(queryByTestId('skin-stage-winamp')).toBeNull();
     });
+
+    // 点击春樱初绽 (sakura)
+    const sakuraCard = getByText('春樱初绽');
+    await fireEvent.click(sakuraCard);
+    expect(skin.current).toBe('sakura');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-sakura')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-spring')).toBeNull();
+    });
+
+    // 点击盛夏晴空 (summer)
+    const summerCard = getByText('盛夏晴空');
+    await fireEvent.click(summerCard);
+    expect(skin.current).toBe('summer');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-summer')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-sakura')).toBeNull();
+    });
+
+    // 点击金秋落叶 (autumn)
+    const autumnCard = getByText('金秋落叶');
+    await fireEvent.click(autumnCard);
+    expect(skin.current).toBe('autumn');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-autumn')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-summer')).toBeNull();
+    });
+
+    // 点击凛冬初雪 (winter)
+    const winterCard = getByText('凛冬初雪');
+    await fireEvent.click(winterCard);
+    expect(skin.current).toBe('winter');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-winter')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-autumn')).toBeNull();
+    });
   });
 });

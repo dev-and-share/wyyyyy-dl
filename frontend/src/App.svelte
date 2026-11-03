@@ -31,6 +31,8 @@
   import ToastContainer from './components/ToastContainer.svelte';
   import SettingsDrawer from './components/SettingsDrawer.svelte';
   import BottomTabBar from './components/sp/BottomTabBar.svelte';
+  import { skin } from './lib/skinStore.svelte';
+  import SeasonParticleCanvas from './components/skins/effects/SeasonParticleCanvas.svelte';
 
   // ---------- 全局状态 ----------
   let repeat = $state(false);
@@ -50,6 +52,13 @@
 
   let hasActivePlayerBar = $derived(layoutState.isDesktop && !!curTrack && !isPlayerMinimized);
   let isAnyOverlayOpen = $derived(isPlayerOverlayOpen || !!revealData || !!sheetState.data || showSettings);
+
+  // 🍂 动态地平线偏移高度：展开播放栏时抬高，收起或最小化时落回屏幕底端
+  let particleBottomOffset = $derived(
+    hasActivePlayerBar
+      ? 76
+      : (!layoutState.isDesktop ? (curTrack && !isPlayerMinimized ? 70 : 56) : 0)
+  );
 
   async function handleReveal(item: any) {
     try {
@@ -118,6 +127,13 @@
 <!-- 📱 手机端下拉刷新指示器 (模态框/抽屉打开时自动禁用避免手势冲突) -->
 <PullToRefresh disabled={isAnyOverlayOpen} onRefresh={handleRefresh} />
 
+<!-- 🌸 四季全屏动态物理粒子层 (樱花漫天飘落与地面积累 / 飞蝶 / 枫叶层叠 / 初雪积雪) -->
+{#if skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter'}
+  <div class="fixed inset-0 pointer-events-none z-[30] overflow-hidden" aria-hidden="true">
+    <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={particleBottomOffset} />
+  </div>
+{/if}
+
 <!-- 页面整体容器：在宽屏 (>= 1024px) 锁定视口左侧边栏固定右侧独立滚动，窄屏竖屏自由流动 -->
 <div class="min-h-screen flex flex-col lg:flex-row lg:h-screen lg:max-h-screen lg:overflow-hidden">
   <!-- 💻 PC 桌面侧边栏 (>= 1024px 显示) -->
@@ -136,24 +152,26 @@
     />
   </div>
 
-  <!-- 📱 页面主内容区 (SP 全宽满屏无浪费边距，PC 宽屏模式下为独立纵向滚动区，播放栏最小化时撑满 100vh 可视面积最大化) -->
+  <!-- 📱 页面主内容区 (全宽独立滚动区，滚动条始终紧贴屏幕最右侧) -->
   <div
-    class="flex-1 flex flex-col min-w-0 app-main-container max-w-[1400px] relative lg:overflow-y-auto w-full mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0 transition-[height] duration-200"
+    class="flex-1 flex flex-col min-w-0 app-main-container relative lg:overflow-y-auto w-full transition-[height] duration-200"
     style="height: {layoutState.isDesktop ? (hasActivePlayerBar ? 'calc(100vh - 74px)' : '100vh') : 'auto'};"
   >
-    <!-- 顶栏导航 -->
-    <TopBar
-      tab={routerState.tab} {themeMode} {repeat}
-      isDesktopLayout={layoutState.isDesktop}
-      onSwitchTab={switchTab}
-      onToggleTheme={toggleTheme}
-      onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
-      onRefresh={handleRefresh}
-      onOpenSettings={() => showSettings = true}
-    />
+    <!-- 内容居中容器 (限制最大宽度 max-w-[1400px] 居中) -->
+    <div class="w-full max-w-[1400px] mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0 relative flex flex-col min-w-0">
+      <!-- 顶栏导航 -->
+      <TopBar
+        tab={routerState.tab} {themeMode} {repeat}
+        isDesktopLayout={layoutState.isDesktop}
+        onSwitchTab={switchTab}
+        onToggleTheme={toggleTheme}
+        onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
+        onRefresh={handleRefresh}
+        onOpenSettings={() => showSettings = true}
+      />
 
-  <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；PC 模式下减少冗余内边距) -->
-  <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px] lg:pb-4">
+      <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；PC 模式下减少冗余内边距) -->
+      <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px] lg:pb-4">
     <!-- 📁 歌单 Tab -->
     <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
       <!-- 💻 PC 桌面端专属：去手风琴画廊与宽屏大表格 (>= 1024px) -->
@@ -234,6 +252,7 @@
     <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity lg:hidden">
       {t('app.name')} · PWA v{__APP_VERSION__}
     </footer>
+  </div>
   </div>
   </div>
 </div>

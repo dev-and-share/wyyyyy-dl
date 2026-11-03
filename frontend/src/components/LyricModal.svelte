@@ -16,6 +16,11 @@
   import CassetteSkinStage from './skins/CassetteSkinStage.svelte';
   import WinampSkinStage from './skins/WinampSkinStage.svelte';
   import SpringSkinStage from './skins/SpringSkinStage.svelte';
+  import SakuraSkinStage from './skins/SakuraSkinStage.svelte';
+  import SummerSkinStage from './skins/SummerSkinStage.svelte';
+  import AutumnSkinStage from './skins/AutumnSkinStage.svelte';
+  import WinterSkinStage from './skins/WinterSkinStage.svelte';
+  import SeasonParticleCanvas from './skins/effects/SeasonParticleCanvas.svelte';
   import type { SkinId } from './skins/skinTypes';
 
   let {
@@ -66,7 +71,11 @@
     aurora: AuroraSkinStage,
     cassette: CassetteSkinStage,
     winamp: WinampSkinStage,
-    spring: SpringSkinStage
+    spring: SpringSkinStage,
+    sakura: SakuraSkinStage,
+    summer: SummerSkinStage,
+    autumn: AutumnSkinStage,
+    winter: WinterSkinStage
   };
 
   let Stage = $derived(STAGES[skin.current] || VinylSkinStage);
@@ -128,6 +137,9 @@
         style="animation-play-state: {playing ? 'running' : 'paused'};"
       ></div>
     </div>
+  {:else if skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter'}
+    <!-- 四季动态全屏微风物理粒子画布 (地平线抬高 110px 避让底部控制条) -->
+    <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={110} />
   {/if}
 
   <!-- 顶部轻盈浮空按钮（无横跨整屏的 bar，纯净大画布） -->

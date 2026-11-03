@@ -41,7 +41,15 @@
         ? 'text-fuchsia-300 font-medium'
         : skinId === 'spring'
           ? 'text-emerald-300 font-medium'
-          : 'text-white/80 font-medium'}"
+          : skinId === 'sakura'
+            ? 'text-pink-300 font-medium drop-shadow-[0_0_6px_rgba(255,64,129,0.5)]'
+            : skinId === 'summer'
+              ? 'text-sky-300 font-medium drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]'
+              : skinId === 'autumn'
+                ? 'text-yellow-300 font-medium drop-shadow-[0_0_6px_rgba(250,204,21,0.5)]'
+                : skinId === 'winter'
+                  ? 'text-white font-medium drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]'
+                  : 'text-white/80 font-medium'}"
   >
     {formatTime(curTime)}
   </span>
@@ -73,7 +81,15 @@
             ? 'bg-gradient-to-r from-amber-700 to-emerald-500'
             : skinId === 'spring'
               ? 'bg-gradient-to-r from-emerald-600 via-emerald-400 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-              : 'bg-gradient-to-r from-red-500 to-amber-500'}"
+              : skinId === 'sakura'
+                ? 'bg-gradient-to-r from-pink-500 via-rose-400 to-pink-300 shadow-[0_0_8px_rgba(255,64,129,0.6)]'
+                : skinId === 'summer'
+                  ? 'bg-gradient-to-r from-sky-600 via-sky-400 to-cyan-300 shadow-[0_0_8px_rgba(56,189,248,0.6)]'
+                  : skinId === 'autumn'
+                    ? 'bg-gradient-to-r from-amber-600 via-yellow-500 to-yellow-300 shadow-[0_0_8px_rgba(250,204,21,0.6)]'
+                    : skinId === 'winter'
+                      ? 'bg-gradient-to-r from-slate-400 via-slate-100 to-white shadow-[0_0_8px_rgba(255,255,255,0.7)]'
+                      : 'bg-gradient-to-r from-red-500 to-amber-500'}"
       style="width: {progressRatio * 100}%;"
     ></div>
 
@@ -104,7 +120,15 @@
         ? 'text-fuchsia-300/70 font-medium'
         : skinId === 'spring'
           ? 'text-emerald-300/70 font-medium'
-          : 'text-white/50 font-medium'}"
+          : skinId === 'sakura'
+            ? 'text-pink-300/70 font-medium'
+            : skinId === 'summer'
+              ? 'text-sky-300/70 font-medium'
+              : skinId === 'autumn'
+                ? 'text-yellow-300/70 font-medium'
+                : skinId === 'winter'
+                  ? 'text-white/80 font-medium'
+                  : 'text-white/50 font-medium'}"
   >
     {formatTime(duration)}
   </span>

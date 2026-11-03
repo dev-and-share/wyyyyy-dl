@@ -79,7 +79,17 @@
                   ? 'text-lg md:text-xl font-bold text-[var(--skin-accent,#10b981)] scale-105 tracking-wide drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]'
                   : skinId === 'winamp'
                     ? 'text-lg md:text-xl font-bold text-[#10b981] scale-105 tracking-widest drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-                    : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
+                    : skinId === 'spring'
+                      ? 'text-lg md:text-xl font-bold text-emerald-400 scale-105 drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]'
+                      : skinId === 'sakura'
+                        ? 'text-lg md:text-xl font-bold text-pink-300 scale-105 drop-shadow-[0_0_14px_rgba(255,64,129,0.7)]'
+                        : skinId === 'summer'
+                          ? 'text-lg md:text-xl font-bold text-sky-300 scale-105 drop-shadow-[0_0_14px_rgba(56,189,248,0.7)]'
+                          : skinId === 'autumn'
+                            ? 'text-lg md:text-xl font-bold text-yellow-300 scale-105 drop-shadow-[0_0_14px_rgba(250,204,21,0.7)]'
+                            : skinId === 'winter'
+                              ? 'text-lg md:text-xl font-bold text-white scale-105 drop-shadow-[0_0_14px_rgba(255,255,255,0.85)]'
+                              : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
             : (skinId === 'winamp'
                 ? 'text-sm md:text-base text-emerald-400/50 hover:text-[#10b981]'
                 : 'text-sm md:text-base text-white/45 hover:text-white/90')}"
