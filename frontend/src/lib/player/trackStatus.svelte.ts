@@ -47,11 +47,13 @@ export interface TrackSourceStatus {
 export function getTrackSourceStatus(
   trackId: number | string | undefined | null,
   trackIsLocal?: boolean,
-  curTrack?: Track | null
+  curTrack?: Track | null,
+  isExternal?: boolean
 ): TrackSourceStatus {
   const strId = trackId != null ? String(trackId).trim() : '';
+  const isExt = isExternal === true || strId.startsWith('mf_') || strId.startsWith('ext_');
   const numId = Number(trackId);
-  const validNum = !isNaN(numId) && numId > 0;
+  const validNum = !isExt && !isNaN(numId) && numId > 0;
 
   // 1. 手机本地 / 浏览器离线缓存检测
   const isPhone = (validNum && cachedSongIdSet.has(numId as any)) || (strId !== '' && cachedSongIdSet.has(strId as any));
@@ -66,7 +68,7 @@ export function getTrackSourceStatus(
     )
   );
 
-  // 3. 服务器磁盘检测：全局 downloadedSet、自身已标记、或当前播放已确认落盘
+  // 3. 服务器磁盘检测：全局 downloadedSet (仅限网易云数字 ID)、自身已标记、自定义下载集合、或当前播放已确认落盘
   const isServer =
     (validNum && taskState.downloadedSet.has(numId)) ||
     (strId !== '' && taskState.downloadedCustomSet.has(strId)) ||

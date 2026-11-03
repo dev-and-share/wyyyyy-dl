@@ -17,6 +17,26 @@ export const builtinPlugins: IMusicFreePlugin[] = [
   kugouPlugin
 ];
 
+function extractSafeString(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val.trim();
+  if (Array.isArray(val)) {
+    return val
+      .map((item) => {
+        if (!item) return '';
+        if (typeof item === 'string') return item.trim();
+        return (item.name || item.singerName || item.title || item.author_name || '').trim();
+      })
+      .filter(Boolean)
+      .join(' / ')
+      .trim();
+  }
+  if (typeof val === 'object') {
+    return (val.name || val.title || val.singerName || val.author_name || '').trim();
+  }
+  return String(val).trim();
+}
+
 /**
  * 🛡️ 跨源智能官方直链兜底
  * 当任意第三方插件因外部接口 502/503 或 VIP 限制失败时，自动利用官方内置插件池进行秒级无感补位
@@ -47,8 +67,10 @@ export async function resolveFallbackFromBuiltins(track: any): Promise<IMusicFre
   }
 
   // 3. 全网官方跨平台检索 (提取歌名与歌手)
-  const title = (raw.name || raw.title || raw.songName || track.name || track.title || '').trim();
-  const artist = (raw.artist || raw.singer || raw.author || track.artist || '').trim();
+  const rawTitle = raw.name || raw.title || raw.songName || track.name || track.title || '';
+  const rawArtist = raw.artist || raw.singer || raw.author || track.artist || '';
+  const title = extractSafeString(rawTitle);
+  const artist = extractSafeString(rawArtist);
   if (!title) return null;
 
   const cleanTitle = title.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').replace(/（[^）]*）/g, '').trim();

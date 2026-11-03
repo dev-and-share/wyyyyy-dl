@@ -131,7 +131,7 @@
         {@const pName = item._pluginPlatform || item.pluginName || '外部音源'}
         {@const trackId = item.id || `mf_${item._pluginId || item.pluginHash}_${item.rawId || title}`}
         {@const isCur = isSameTrack(curTrack, trackId)}
-        {@const status = getTrackSourceStatus(trackId, false, curTrack)}
+        {@const status = getTrackSourceStatus(trackId, false, curTrack, true)}
         <div
           class="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
         >

@@ -292,8 +292,9 @@
       {:else}
         <div class="flex flex-col gap-1.5">
           {#each sheetTracks as t, idx (t.id || idx)}
-            {@const isCur = isSameTrack(curTrack, t.id)}
-            {@const status = getTrackSourceStatus(t.id, false, curTrack)}
+            {@const trackObj = buildTrack(t)}
+            {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, t)}
+            {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true)}
             <div
               class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group"
             >
