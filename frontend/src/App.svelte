@@ -4,7 +4,7 @@
   import { checkForPwaUpdate } from './lib/pwa';
   import { applyTheme, getInitialTheme, type ThemeMode } from './lib/theme';
   import { showToast } from './lib/toast.svelte';
-  import { routerState, switchTab, jumpToAlbum, jumpToPlaylist, initRouter, toggleSidebarCollapse } from './lib/router.svelte';
+  import { routerState, switchTab, jumpToAlbum, jumpToPlaylist, jumpToDownloadTasks, initRouter, toggleSidebarCollapse } from './lib/router.svelte';
   import { layoutState, initLayoutWatcher } from './lib/layout.svelte';
   import { likeState, initLikeList, toggleLike } from './lib/likeStore.svelte';
   import { taskState, startTaskPolling, initDownloadedSet, getActiveDownloadingCount } from './lib/taskStore.svelte';
@@ -148,6 +148,7 @@
       onViewPlaylist={jumpToPlaylist}
       onPlayPlaylist={(id: string, name: string) => playPlaylistTracks(id, name, setQueue, showToast)}
       onToggleCollapse={toggleSidebarCollapse}
+      onOpenDownloadTasks={jumpToDownloadTasks}
       {showToast}
     />
   </div>
@@ -237,6 +238,7 @@
       <div class="hidden lg:block w-full">
         <DesktopDownloadMgrView
           {curTrack} {playing}
+          tasksTrigger={routerState.downloadTasksTrigger}
           onPlayQueue={setQueue}
           onReveal={handleReveal}
           {showToast}

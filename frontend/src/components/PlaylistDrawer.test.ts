@@ -233,4 +233,39 @@ describe('PlaylistDrawer Collector Mode (Pending Download)', () => {
       expect(getByText('添加歌曲到歌单')).toBeInTheDocument();
     });
   });
+
+  it('renders active downloading count instead of fixed total in tasks tab badge', () => {
+    const mockTasks = [
+      { id: 1, name: '一千零一个愿望', status: 'SUCCESS' },
+      { id: 2, name: '不是我不小心', status: 'PENDING' },
+      { id: 3, name: '狼', status: 'SUCCESS' },
+      { id: 4, name: '必杀技', status: 'DOWNLOADING' }
+    ];
+
+    const { getByText } = render(PlaylistDrawer, {
+      props: {
+        queue: mockQueue,
+        qIndex: 0,
+        tasks: mockTasks,
+        likedSet: new Set<number>(),
+        autoSkipTrial: true,
+        serverOnly: false,
+        offlineOnly: false,
+        downloadedSet: taskState.downloadedSet,
+        onPlayIndex: vi.fn(),
+        onClearQueue: vi.fn(),
+        onRemoveItem: vi.fn(),
+        onToggleLike: vi.fn(),
+        onToggleAutoSkip: vi.fn(),
+        onToggleServerOnly: vi.fn(),
+        onToggleOfflineOnly: vi.fn(),
+        onClearTasks: vi.fn(),
+        onReveal: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 4 个任务中有 2 个活跃中 (PENDING + DOWNLOADING)，红色角标应为 2
+    expect(getByText('2')).toBeInTheDocument();
+  });
 });

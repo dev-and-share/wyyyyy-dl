@@ -34,6 +34,27 @@ describe('DesktopSidebar', () => {
     expect(onSwitchTab).toHaveBeenCalledWith('download-mgr');
   });
 
+  it('triggers onOpenDownloadTasks only when clicking the downloading badge', async () => {
+    const onSwitchTab = vi.fn();
+    const onOpenDownloadTasks = vi.fn();
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        downloadingCount: 271,
+        onSwitchTab,
+        onOpenDownloadTasks,
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const badge = getByTestId('sidebar-downloading-badge');
+    expect(badge.textContent?.trim()).toBe('271');
+    await fireEvent.click(badge);
+    expect(onOpenDownloadTasks).toHaveBeenCalledTimes(1);
+  });
+
   it('handles toggle collapse action', async () => {
     const onToggleCollapse = vi.fn();
 

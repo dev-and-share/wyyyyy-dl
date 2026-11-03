@@ -2,6 +2,7 @@
   import { t } from '../../lib/i18n';
   import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount, getPlaylistPlayCount } from '../../lib/playlist.svelte';
   import { matchesKeyword } from '../../lib/utils';
+  import { jumpToDownloadTasks } from '../../lib/router.svelte';
 
   let {
     tab,
@@ -13,6 +14,7 @@
     onViewPlaylist,
     onPlayPlaylist,
     onToggleCollapse,
+    onOpenDownloadTasks,
     showToast
   } = $props<{
     tab: 'playlist' | 'search' | 'download-mgr';
@@ -24,6 +26,7 @@
     onViewPlaylist?: (id: string) => void;
     onPlayPlaylist?: (id: string, name: string) => void;
     onToggleCollapse: () => void;
+    onOpenDownloadTasks?: () => void;
     showToast?: (m: string, t?: string) => void;
   }>();
 
@@ -199,25 +202,50 @@
     </button>
 
     <!-- Local & Downloads -->
-    <button
-      type="button"
-      data-testid="sidebar-tab-download-mgr"
-      class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 relative {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
-      onclick={() => onSwitchTab('download-mgr')}
-      title={t('sidebar.localAndDownload')}
+    <div
+      class="flex items-center gap-1 rounded-lg transition-all duration-150 relative {tab === 'download-mgr' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'}"
     >
-      <span class="text-[15px] leading-none shrink-0">📥</span>
-      {#if !collapsed}
-        <span class="truncate flex-1 text-left">{t('topbar.local')}</span>
-        {#if downloadingCount > 0}
-          <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-none animate-pulse">
-            {downloadingCount}
-          </span>
+      <button
+        type="button"
+        data-testid="sidebar-tab-download-mgr"
+        class="flex-1 flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none bg-transparent text-inherit transition-all duration-150 {collapsed ? 'justify-center px-0 w-full' : ''}"
+        onclick={() => onSwitchTab('download-mgr')}
+        title={t('sidebar.localAndDownload')}
+      >
+        <span class="text-[15px] leading-none shrink-0">📥</span>
+        {#if !collapsed}
+          <span class="truncate flex-1 text-left">{t('topbar.local')}</span>
         {/if}
-      {:else if downloadingCount > 0}
-        <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[var(--card-bg)] animate-ping"></span>
+      </button>
+
+      {#if !collapsed && downloadingCount > 0}
+        <button
+          type="button"
+          data-testid="sidebar-downloading-badge"
+          class="mr-2 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-none animate-pulse border-none cursor-pointer transition-transform shrink-0"
+          onclick={(e) => {
+            e.stopPropagation();
+            if (onOpenDownloadTasks) onOpenDownloadTasks();
+            else jumpToDownloadTasks();
+          }}
+          title={t('drawer.tasks')}
+        >
+          {downloadingCount}
+        </button>
+      {:else if collapsed && downloadingCount > 0}
+        <button
+          type="button"
+          data-testid="sidebar-downloading-badge-collapsed"
+          class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-[var(--card-bg)] animate-ping border-none p-0 cursor-pointer"
+          onclick={(e) => {
+            e.stopPropagation();
+            if (onOpenDownloadTasks) onOpenDownloadTasks();
+            else jumpToDownloadTasks();
+          }}
+          title={t('drawer.tasks')}
+        ></button>
       {/if}
-    </button>
+    </div>
   </nav>
 
   <!-- 3. Playlist Quick Navigation -->

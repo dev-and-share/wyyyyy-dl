@@ -3,28 +3,44 @@
   import FolderExplorer from '../FolderExplorer.svelte';
   import LocalSearchBox from '../LocalSearchBox.svelte';
   import BrowserCacheSection from '../BrowserCacheSection.svelte';
+  import DesktopTaskQueueWorkbench from './DesktopTaskQueueWorkbench.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
   import { isSameTrack } from '../../lib/trackStatus.svelte';
+  import { taskState, getActiveDownloadingCount } from '../../lib/taskStore.svelte';
+  import { routerState } from '../../lib/router.svelte';
   import type { Track } from '../../lib/types';
 
   let {
     curTrack = null,
     playing = false,
+    tasksTrigger = 0,
     onPlayQueue,
     onReveal,
     showToast
   } = $props<{
     curTrack?: Track | null;
     playing?: boolean;
+    tasksTrigger?: number;
     onPlayQueue: (tracks: any[], idx?: number) => void;
     onReveal: (item: any) => void;
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let subTab = $state<'history' | 'browser-cache'>('history');
+  let subTab = $state<'history' | 'browser-cache' | 'tasks'>('history');
+  let activeTasksCount = $derived(getActiveDownloadingCount());
+
+  // ⚡ 仅当从外部/侧边栏点击数字角标触发时，才自动切换至任务列表 Tab
+  let lastTasksTrigger = 0;
+  $effect(() => {
+    const trigger = tasksTrigger || routerState.downloadTasksTrigger || 0;
+    if (trigger > 0 && trigger !== lastTasksTrigger) {
+      lastTasksTrigger = trigger;
+      subTab = 'tasks';
+    }
+  });
   let histKw = $state('');
   let histPage = $state(1);
   let histList = $state<any[]>([]);
@@ -204,6 +220,23 @@
         >
           {t('download.tabBrowserCache')}
         </button>
+        <button
+          type="button"
+          data-testid="subtab-tasks"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'tasks' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => subTab = 'tasks'}
+        >
+          <span>📥 {t('drawer.tasksTab')}</span>
+          {#if activeTasksCount > 0}
+            <span class="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-none animate-pulse">
+              {activeTasksCount}
+            </span>
+          {:else if taskState.tasks.length > 0}
+            <span class="text-[10px] opacity-75">
+              ({taskState.tasks.length})
+            </span>
+          {/if}
+        </button>
       </div>
     </div>
 
@@ -356,10 +389,12 @@
           </button>
         </div>
       </div>
-    {:else}
+    {:else if subTab === 'browser-cache'}
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm">
         <BrowserCacheSection {onPlayQueue} {showToast} />
       </div>
+    {:else if subTab === 'tasks'}
+      <DesktopTaskQueueWorkbench {onReveal} {showToast} />
     {/if}
   </div>
 </div>

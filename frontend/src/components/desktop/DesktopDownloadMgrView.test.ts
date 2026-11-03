@@ -62,5 +62,31 @@ describe('DesktopDownloadMgrView', () => {
     const historySubTab = getByTestId('subtab-history');
     await fireEvent.click(historySubTab);
     expect(getByTestId('subtab-history')).toHaveClass('bg-red-500');
+
+    const tasksSubTab = getByTestId('subtab-tasks');
+    await fireEvent.click(tasksSubTab);
+    expect(getByTestId('subtab-tasks')).toHaveClass('bg-red-500');
+  });
+
+  it('switches to tasks tab when tasksTrigger changes', async () => {
+    const { getByTestId, rerender } = render(DesktopDownloadMgrView, {
+      props: {
+        onPlayQueue: vi.fn(),
+        onReveal: vi.fn(),
+        showToast: vi.fn(),
+        tasksTrigger: 0
+      }
+    });
+
+    expect(getByTestId('subtab-history')).toHaveClass('bg-red-500');
+
+    await rerender({
+      onPlayQueue: vi.fn(),
+      onReveal: vi.fn(),
+      showToast: vi.fn(),
+      tasksTrigger: 1
+    });
+
+    expect(getByTestId('subtab-tasks')).toHaveClass('bg-red-500');
   });
 });

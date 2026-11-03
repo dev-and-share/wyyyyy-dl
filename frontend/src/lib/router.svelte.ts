@@ -27,6 +27,8 @@ export const routerState = $state<{
   sidebarCollapsed: boolean;
   playlistTrigger: number;
   albumTrigger: number;
+  downloadSubTab?: 'history' | 'browser-cache' | 'tasks';
+  downloadTasksTrigger: number;
 }>({
   tab: getInitialTab(),
   playlistId: getInitialPlaylistId(),
@@ -34,8 +36,16 @@ export const routerState = $state<{
   albumName: '',
   sidebarCollapsed: getInitialSidebarCollapsed(),
   playlistTrigger: 0,
-  albumTrigger: 0
+  albumTrigger: 0,
+  downloadSubTab: 'history',
+  downloadTasksTrigger: 0
 });
+
+export function jumpToDownloadTasks(): void {
+  routerState.downloadSubTab = 'tasks';
+  routerState.downloadTasksTrigger = (routerState.downloadTasksTrigger || 0) + 1;
+  switchTab('download-mgr');
+}
 
 export function toggleSidebarCollapse(): void {
   routerState.sidebarCollapsed = !routerState.sidebarCollapsed;

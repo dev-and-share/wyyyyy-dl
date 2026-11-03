@@ -84,6 +84,8 @@
   });
 
   // 统计数
+  const ACTIVE_STATUSES = new Set(['WAITING', 'DOWNLOADING', 'PENDING']);
+  let activeTasksCount = $derived(tasks.filter((t: any) => ACTIVE_STATUSES.has(t.status)).length);
   let countAll = $derived(queue.length);
   let countServer = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer).length);
   let countPhone = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isPhone).length);
@@ -599,8 +601,12 @@
           onclick={() => activeTab = 'tasks'}
         >
           📥 <span class="hidden sm:inline">{t('download.title').slice(0, 2)}</span>{t('drawer.tasks')}
-          {#if tasks.length > 0}
-            <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full leading-tight">
+          {#if activeTasksCount > 0}
+            <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full leading-tight animate-pulse">
+              {activeTasksCount}
+            </span>
+          {:else if tasks.length > 0}
+            <span class="bg-black/10 dark:bg-white/10 text-[var(--text-secondary)] text-[10px] font-medium px-1.5 py-px rounded-full leading-tight">
               {tasks.length}
             </span>
           {/if}
