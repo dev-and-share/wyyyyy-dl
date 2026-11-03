@@ -44,6 +44,41 @@
     await loadTagsAndSheets();
   }
 
+  function normalizeTags(rawTags: any): any[] {
+    if (!rawTags) return [{ id: undefined, title: '全部' }];
+    const result: any[] = [];
+    if (Array.isArray(rawTags.pinned)) {
+      for (const p of rawTags.pinned) {
+        if (p && (p.id != null || p.title || p.name)) {
+          result.push({ id: p.id, title: p.title || p.name });
+        }
+      }
+    }
+    const container = Array.isArray(rawTags) ? rawTags : (Array.isArray(rawTags.data) ? rawTags.data : []);
+    for (const item of container) {
+      if (item && Array.isArray(item.data)) {
+        for (const sub of item.data) {
+          if (sub && (sub.id != null || sub.title || sub.name)) {
+            result.push({ id: sub.id, title: sub.title || sub.name });
+          }
+        }
+      } else if (item && (item.id != null || item.title || item.name)) {
+        result.push({ id: item.id, title: item.title || item.name });
+      }
+    }
+    const seen = new Set<string>();
+    const unique = result.filter(tag => {
+      const key = `${tag.id}_${tag.title}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (unique.length === 0 || !unique.some(t => t.title === '全部')) {
+      unique.unshift({ id: undefined, title: '全部' });
+    }
+    return unique;
+  }
+
   async function loadTagsAndSheets() {
     if (!selectedPluginId) return;
     loading = true;
@@ -51,17 +86,14 @@
     selectedTag = null;
     sheets = [];
     try {
-      const rawTags = await musicFreeStore.getRecommendSheetTags(selectedPluginId);
-      if (rawTags) {
-        if (Array.isArray(rawTags)) {
-          tags = rawTags;
-        } else if (Array.isArray(rawTags.data)) {
-          tags = [...(rawTags.pinned || []), ...rawTags.data];
-        }
+      let rawTags: any = null;
+      try {
+        rawTags = await musicFreeStore.getRecommendSheetTags(selectedPluginId);
+      } catch (err: any) {
+        console.warn('获取推荐歌单标签异常，使用默认全部标签:', err);
       }
-      if (tags.length > 0) {
-        selectedTag = tags[0];
-      }
+      tags = normalizeTags(rawTags);
+      selectedTag = tags[0];
       await loadSheets(selectedTag);
     } catch (e: any) {
       showToast('获取歌单广场失败: ' + (e?.message || e), 'error');

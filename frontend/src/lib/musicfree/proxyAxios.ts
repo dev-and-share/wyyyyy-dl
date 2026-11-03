@@ -48,16 +48,24 @@ export function createProxiedAxios() {
 
       if (contentType.includes('application/json')) {
         data = await res.json().catch(() => null);
+        if (data === null) {
+          data = {};
+        }
       } else {
         const text = await res.text();
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = text;
+        if (!text || !text.trim()) {
+          data = '';
+        } else {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = text;
+          }
         }
       }
 
       if (!res.ok && res.status >= 400) {
+        console.warn(`[ProxyAxios] HTTP ${res.status} on: ${targetUrl}`, data);
         const error: any = new Error(`Request failed with status code ${res.status}`);
         error.response = {
           data,

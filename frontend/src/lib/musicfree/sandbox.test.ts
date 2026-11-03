@@ -48,4 +48,22 @@ describe('MusicFree Sandbox execution', () => {
 
     expect(() => executePluginScript(badCode)).toThrow(/Unsupported module/);
   });
+
+  it('safely handles empty strings and jsonp strings in JSON.parse without crashing', () => {
+    const jsonpCode = `
+      "use strict";
+      module.exports = {
+        platform: "JsonpTest",
+        parseEmpty: () => JSON.parse(""),
+        parseJsonp: (str) => JSON.parse(str)
+      };
+    `;
+
+    const plugin = executePluginScript(jsonpCode) as any;
+    expect(plugin.parseEmpty()).toEqual({});
+    expect(plugin.parseJsonp('MusicJsonCallback({"code":0,"data":{"id":123}})')).toEqual({
+      code: 0,
+      data: { id: 123 }
+    });
+  });
 });

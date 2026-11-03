@@ -39,9 +39,45 @@ export function executePluginScript(jsCode: string): IMusicFreePlugin {
     throw new Error(`Unsupported module in MusicFree plugin: "${name}"`);
   };
 
+  // 🛡️ 注入安全容错的 JSON 对象，避免插件解析空字符串或 jsonp 时的 Fatal "Unexpected end of JSON input"
+  const nativeParse = JSON.parse;
+  const safeJSON = {
+    ...JSON,
+    parse: (text: any, reviver?: any) => {
+      if (text == null) return {};
+      if (typeof text !== 'string') {
+        if (typeof text === 'object') return text;
+        text = String(text);
+      }
+      const trimmed = text.trim();
+      if (!trimmed) return {};
+      try {
+        return nativeParse(trimmed, reviver);
+      } catch {
+        // 自动剥离 jsonp 回调前缀与尾部括号：如 callback({...}) 或 MusicJsonCallback({...})
+        const jsonpMatch = trimmed.match(/^[a-zA-Z0-9_$.]+\s*\(([\s\S]*)\)\s*;?$/);
+        if (jsonpMatch && jsonpMatch[1]) {
+          try {
+            return nativeParse(jsonpMatch[1].trim(), reviver);
+          } catch {}
+        }
+        // 尝试剥离非 JSON 前缀与后缀
+        const startIdx = trimmed.indexOf('{');
+        const endIdx = trimmed.lastIndexOf('}');
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          try {
+            return nativeParse(trimmed.substring(startIdx, endIdx + 1), reviver);
+          } catch {}
+        }
+        console.warn('[MusicFree Sandbox] JSON.parse 宽容模式忽略畸形数据:', trimmed.slice(0, 80));
+        return {};
+      }
+    }
+  };
+
   try {
-    const runner = new Function('module', 'exports', 'require', 'window', 'globalThis', jsCode);
-    runner(module, exports, customRequire, typeof window !== 'undefined' ? window : {}, globalThis);
+    const runner = new Function('module', 'exports', 'require', 'window', 'globalThis', 'JSON', jsCode);
+    runner(module, exports, customRequire, typeof window !== 'undefined' ? window : {}, globalThis, safeJSON);
   } catch (err: any) {
     throw new Error(`Failed to execute MusicFree plugin script: ${err.message || err}`);
   }

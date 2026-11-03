@@ -317,25 +317,62 @@ class MusicFreeStore {
   }
 
   /**
-   * 获取指定插件或所有插件的排行榜列表
+   * 获取指定插件或所有插件的排行榜列表 (自动规整多层分组与扁平结构，过滤掉无效项)
    */
-  async getTopLists(pluginId?: string): Promise<Array<{ pluginId: string; pluginName: string; topLists: any[] }>> {
+  async getTopLists(pluginId?: string): Promise<Array<{
+    pluginId: string;
+    pluginName: string;
+    subGroups: Array<{
+      groupTitle: string;
+      charts: any[];
+    }>;
+  }>> {
     const targets = pluginId
       ? this.plugins.filter((p) => p.id === pluginId && p.enabled && p.instance)
       : this.getActivePlugins();
 
-    const results: Array<{ pluginId: string; pluginName: string; topLists: any[] }> = [];
+    const results: Array<{
+      pluginId: string;
+      pluginName: string;
+      subGroups: Array<{ groupTitle: string; charts: any[] }>;
+    }> = [];
+
     for (const pluginRec of targets) {
       const inst = pluginRec.instance;
       if (inst && typeof inst.getTopLists === 'function') {
         try {
           const list = await inst.getTopLists();
           if (Array.isArray(list) && list.length > 0) {
-            results.push({
-              pluginId: pluginRec.id,
-              pluginName: pluginRec.name,
-              topLists: list
-            });
+            const subGroups: Array<{ groupTitle: string; charts: any[] }> = [];
+
+            for (const item of list) {
+              if (item && Array.isArray(item.data)) {
+                // 这是一个分组结构：如 { title: "巅峰榜", data: [...] }
+                const validCharts = item.data.filter((c: any) => c && (c.id != null || c.topId != null));
+                if (validCharts.length > 0) {
+                  subGroups.push({
+                    groupTitle: item.title || '精选榜单',
+                    charts: validCharts
+                  });
+                }
+              } else if (item && (item.id != null || item.topId != null)) {
+                // 这是一个扁平榜单项
+                let defaultGroup = subGroups.find((g) => g.groupTitle === '官方排行榜');
+                if (!defaultGroup) {
+                  defaultGroup = { groupTitle: '官方排行榜', charts: [] };
+                  subGroups.push(defaultGroup);
+                }
+                defaultGroup.charts.push(item);
+              }
+            }
+
+            if (subGroups.length > 0) {
+              results.push({
+                pluginId: pluginRec.id,
+                pluginName: pluginRec.name,
+                subGroups
+              });
+            }
           }
         } catch (e) {
           console.warn(`[MusicFree] 获取 ${pluginRec.name} 排行榜失败:`, e);
@@ -353,8 +390,10 @@ class MusicFreeStore {
     if (!record || !record.instance || typeof record.instance.getTopListDetail !== 'function') {
       throw new Error('插件不支持获取排行榜详情');
     }
-    const res = await record.instance.getTopListDetail(topListItem);
-    return res;
+    if (!topListItem || (topListItem.id == null && !topListItem.topId)) {
+      throw new Error('榜单项缺少有效 ID，无法获取排行榜曲目');
+    }
+    return await record.instance.getTopListDetail(topListItem);
   }
 
   /**

@@ -19,7 +19,14 @@
   }>();
 
   let loading = $state(false);
-  let topListGroups = $state<Array<{ pluginId: string; pluginName: string; topLists: any[] }>>([]);
+  let topListGroups = $state<Array<{
+    pluginId: string;
+    pluginName: string;
+    subGroups: Array<{
+      groupTitle: string;
+      charts: any[];
+    }>;
+  }>>([]);
   let selectedTopList = $state<any>(null);
   let detailLoading = $state(false);
   let chartTracks = $state<any[]>([]);
@@ -42,6 +49,10 @@
   }
 
   async function handleSelectChart(pluginId: string, chart: any) {
+    if (!chart || (chart.id == null && !chart.topId)) {
+      showToast('该榜单缺少有效 ID', 'warning');
+      return;
+    }
     selectedTopList = { ...chart, _pluginId: pluginId };
     detailLoading = true;
     chartTracks = [];
@@ -222,41 +233,51 @@
       </div>
     {:else}
       {#each topListGroups as group (group.pluginId)}
-        <div class="space-y-3">
+        <div class="space-y-4">
           <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
             <h3 class="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
               <span>🏆</span> <span>{group.pluginName} 官方榜单</span>
             </h3>
-            <span class="text-xs text-[var(--text-muted)]">{group.topLists.length} 个排行榜</span>
+            <span class="text-xs text-[var(--text-muted)]">
+              {group.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0)} 个排行榜
+            </span>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {#each group.topLists as chart}
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div
-                class="group p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:-translate-y-1 transition-all cursor-pointer shadow-xs"
-                onclick={() => handleSelectChart(group.pluginId, chart)}
-              >
-                <div class="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black/10">
-                  <img
-                    src={chart.coverImg || chart.artwork || DEFAULT_VINYL_COVER}
-                    alt={chart.title || chart.name}
-                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
-                </div>
-                <div class="text-xs font-semibold text-[var(--text-main)] truncate group-hover:text-purple-400">
-                  {chart.title || chart.name}
-                </div>
-                {#if chart.description}
-                  <div class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                    {chart.description}
-                  </div>
-                {/if}
+          {#each group.subGroups as subGroup}
+            <div class="space-y-2">
+              <div class="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5 pl-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                <span>{subGroup.groupTitle}</span>
               </div>
-            {/each}
-          </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {#each subGroup.charts as chart}
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="group p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:-translate-y-1 transition-all cursor-pointer shadow-xs"
+                    onclick={() => handleSelectChart(group.pluginId, chart)}
+                  >
+                    <div class="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black/10">
+                      <img
+                        src={chart.coverImg || chart.artwork || DEFAULT_VINYL_COVER}
+                        alt={chart.title || chart.name}
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="text-xs font-semibold text-[var(--text-main)] truncate group-hover:text-purple-400">
+                      {chart.title || chart.name}
+                    </div>
+                    {#if chart.description}
+                      <div class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                        {chart.description}
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/each}
         </div>
       {/each}
     {/if}

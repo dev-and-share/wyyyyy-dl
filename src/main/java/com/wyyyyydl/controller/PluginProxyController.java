@@ -132,8 +132,15 @@ public class PluginProxyController {
         }
 
         try {
+            String rawUrl = payload.getUrl().trim();
+            if (rawUrl.startsWith("/")) {
+                log.warn("🌐 [PluginProxy] 拒绝相对 URL 代理请求: {}", rawUrl);
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                return;
+            }
+
             // 1. 构建目标 URI (包含 query params)
-            URIBuilder uriBuilder = new URIBuilder(payload.getUrl());
+            URIBuilder uriBuilder = new URIBuilder(rawUrl);
             if (payload.getParams() != null && !payload.getParams().isEmpty()) {
                 for (Map.Entry<String, Object> entry : payload.getParams().entrySet()) {
                     if (entry.getValue() != null) {
@@ -165,12 +172,12 @@ public class PluginProxyController {
                 httpRequest = new HttpGet(targetUri);
             }
 
-            // 3. 填充 Headers
+            // 3. 填充 Headers (过滤掉 host, content-length, accept-encoding，防止远端返回压缩乱码)
             boolean hasUa = false;
             if (payload.getHeaders() != null) {
                 for (Map.Entry<String, String> entry : payload.getHeaders().entrySet()) {
                     String key = entry.getKey();
-                    if ("host".equalsIgnoreCase(key) || "content-length".equalsIgnoreCase(key)) {
+                    if ("host".equalsIgnoreCase(key) || "content-length".equalsIgnoreCase(key) || "accept-encoding".equalsIgnoreCase(key)) {
                         continue;
                     }
                     if ("user-agent".equalsIgnoreCase(key)) {
@@ -189,10 +196,18 @@ public class PluginProxyController {
                     .build();
             httpRequest.setConfig(requestConfig);
 
+            log.info("🌐 [PluginProxy] >>> {} {}", method, targetUri);
+
             // 4. 执行请求并原样透传给前端 (自动跟随重定向)
             try (CloseableHttpResponse clientResp = executeWithRedirects(httpRequest, 5)) {
                 int status = clientResp.getStatusLine().getStatusCode();
                 response.setStatus(status);
+
+                if (status >= 400) {
+                    log.warn("🌐 [PluginProxy] ⚠️ 远端目标返回状态码 {}: url={}", status, targetUri);
+                } else {
+                    log.info("🌐 [PluginProxy] <<< {} status={}", targetUri, status);
+                }
 
                 HttpEntity entity = clientResp.getEntity();
                 if (entity != null) {
