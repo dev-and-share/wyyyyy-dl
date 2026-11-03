@@ -28,7 +28,14 @@ class MusicFreeStore {
       const savedPlugins = localStorage.getItem(STORAGE_PLUGINS_KEY);
       if (savedPlugins) {
         const records: InstalledPluginRecord[] = JSON.parse(savedPlugins);
-        this.plugins = records.map((rec) => {
+        const seenNames = new Set<string>();
+        const uniqueRecords = records.filter((r) => {
+          const n = (r.name || '').trim();
+          if (!n || seenNames.has(n)) return false;
+          seenNames.add(n);
+          return true;
+        });
+        this.plugins = uniqueRecords.map((rec) => {
           if (rec.code && rec.enabled !== false) {
             try {
               const instance = executePluginScript(rec.code);
@@ -182,7 +189,7 @@ class MusicFreeStore {
   }
 
   private upsertPluginRecord(record: InstalledPluginRecord) {
-    const idx = this.plugins.findIndex((p) => p.id === record.id || (p.name === record.name && p.url === record.url));
+    const idx = this.plugins.findIndex((p) => p.id === record.id || p.name === record.name);
     if (idx >= 0) {
       this.plugins[idx] = { ...this.plugins[idx], ...record };
     } else {
@@ -286,8 +293,9 @@ class MusicFreeStore {
     const ref = source.headers?.referer || source.headers?.Referer;
     const ua = source.headers?.['user-agent'] || source.headers?.['User-Agent'];
 
-    // 若插件明确指示需要特定 Referer / UA 防盗链，或者为 HTTP 协议，走 Spring Boot /v3/stream/online 中继流
-    if (ref || ua || source.url.startsWith('http://')) {
+    // 🌟 统一防盗链中继：只要是第三方外链，一律经由 Spring Boot /v3/stream/online 代理流转发，
+    // 自动跟随 302 重定向、注入对应音源 Referer 并支持浏览器 Range 分片拖拽 seek
+    if (source.url.startsWith('http://') || source.url.startsWith('https://')) {
       const q = new URLSearchParams();
       q.set('url', source.url);
       if (ref) q.set('referer', ref);

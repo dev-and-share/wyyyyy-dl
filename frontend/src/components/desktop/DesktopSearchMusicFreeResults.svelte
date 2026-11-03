@@ -148,8 +148,13 @@
             <img
               src={cover}
               alt={title}
+              referrerpolicy="no-referrer"
               class="w-full h-full object-cover"
               loading="lazy"
+              onerror={(e) => {
+                const el = e.currentTarget as HTMLImageElement;
+                if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
+              }}
             />
             <button
               type="button"

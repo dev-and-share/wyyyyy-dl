@@ -49,13 +49,14 @@ describe('MusicFree Sandbox execution', () => {
     expect(() => executePluginScript(badCode)).toThrow(/Unsupported module/);
   });
 
-  it('safely handles empty strings and jsonp strings in JSON.parse without crashing', () => {
+  it('safely handles empty strings and jsonp strings in JSON.parse without crashing, and keeps JSON.stringify functional', () => {
     const jsonpCode = `
       "use strict";
       module.exports = {
         platform: "JsonpTest",
         parseEmpty: () => JSON.parse(""),
-        parseJsonp: (str) => JSON.parse(str)
+        parseJsonp: (str) => JSON.parse(str),
+        stringifyData: (obj) => JSON.stringify(obj)
       };
     `;
 
@@ -65,5 +66,6 @@ describe('MusicFree Sandbox execution', () => {
       code: 0,
       data: { id: 123 }
     });
+    expect(plugin.stringifyData({ foo: 'bar', num: 42 })).toBe('{"foo":"bar","num":42}');
   });
 });

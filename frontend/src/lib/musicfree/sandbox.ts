@@ -40,9 +40,8 @@ export function executePluginScript(jsCode: string): IMusicFreePlugin {
   };
 
   // 🛡️ 注入安全容错的 JSON 对象，避免插件解析空字符串或 jsonp 时的 Fatal "Unexpected end of JSON input"
-  const nativeParse = JSON.parse;
-  const safeJSON = {
-    ...JSON,
+  // 注意：通过 Object.assign(Object.create(JSON), ...) 保留不可枚举的原生方法 (如 JSON.stringify)
+  const safeJSON = Object.assign(Object.create(JSON), {
     parse: (text: any, reviver?: any) => {
       if (text == null) return {};
       if (typeof text !== 'string') {
@@ -52,13 +51,13 @@ export function executePluginScript(jsCode: string): IMusicFreePlugin {
       const trimmed = text.trim();
       if (!trimmed) return {};
       try {
-        return nativeParse(trimmed, reviver);
+        return JSON.parse(trimmed, reviver);
       } catch {
         // 自动剥离 jsonp 回调前缀与尾部括号：如 callback({...}) 或 MusicJsonCallback({...})
         const jsonpMatch = trimmed.match(/^[a-zA-Z0-9_$.]+\s*\(([\s\S]*)\)\s*;?$/);
         if (jsonpMatch && jsonpMatch[1]) {
           try {
-            return nativeParse(jsonpMatch[1].trim(), reviver);
+            return JSON.parse(jsonpMatch[1].trim(), reviver);
           } catch {}
         }
         // 尝试剥离非 JSON 前缀与后缀
@@ -66,14 +65,15 @@ export function executePluginScript(jsCode: string): IMusicFreePlugin {
         const endIdx = trimmed.lastIndexOf('}');
         if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
           try {
-            return nativeParse(trimmed.substring(startIdx, endIdx + 1), reviver);
+            return JSON.parse(trimmed.substring(startIdx, endIdx + 1), reviver);
           } catch {}
         }
         console.warn('[MusicFree Sandbox] JSON.parse 宽容模式忽略畸形数据:', trimmed.slice(0, 80));
         return {};
       }
-    }
-  };
+    },
+    stringify: JSON.stringify.bind(JSON)
+  });
 
   try {
     const runner = new Function('module', 'exports', 'require', 'window', 'globalThis', 'JSON', jsCode);

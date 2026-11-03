@@ -130,7 +130,12 @@
         <img
           src={selectedTopList.coverImg || selectedTopList.artwork || DEFAULT_VINYL_COVER}
           alt={selectedTopList.title || selectedTopList.name}
+          referrerpolicy="no-referrer"
           class="w-20 h-20 rounded-xl object-cover shadow-md"
+          onerror={(e) => {
+            const el = e.currentTarget as HTMLImageElement;
+            if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
+          }}
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1">
@@ -261,8 +266,13 @@
                       <img
                         src={chart.coverImg || chart.artwork || DEFAULT_VINYL_COVER}
                         alt={chart.title || chart.name}
+                        referrerpolicy="no-referrer"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
+                        onerror={(e) => {
+                          const el = e.currentTarget as HTMLImageElement;
+                          if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
+                        }}
                       />
                     </div>
                     <div class="text-xs font-semibold text-[var(--text-main)] truncate group-hover:text-purple-400">

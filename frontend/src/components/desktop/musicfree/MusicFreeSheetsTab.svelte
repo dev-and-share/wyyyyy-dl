@@ -20,9 +20,38 @@
 
   let loading = $state(false);
   let sheetPlugins = $derived(
-    musicFreeStore.plugins.filter((p) => p.enabled && p.instance && typeof p.instance.getRecommendSheetsByTag === 'function')
+    (() => {
+      const seen = new Set<string>();
+      const list = musicFreeStore.plugins.filter((p) => {
+        if (!p.enabled || !p.instance || typeof p.instance.getRecommendSheetsByTag !== 'function') return false;
+        const n = (p.name || '').trim();
+        if (!n || seen.has(n)) return false;
+        seen.add(n);
+        return true;
+      });
+      const priorityWeights: Record<string, number> = {
+        '小秋音乐': 100,
+        'QQ音乐': 99,
+        '小蜗音乐': 95,
+        '酷我音乐': 94,
+        '小狗音乐': 90,
+        '酷狗音乐': 89,
+        '网易音乐': 85,
+        '小云音乐': 84,
+        '猫耳FM': 80,
+        '小蜜音乐': 75,
+        '咪咕音乐': 74
+      };
+      return list.sort((a, b) => {
+        const weightA = priorityWeights[a.name.trim()] || 0;
+        const weightB = priorityWeights[b.name.trim()] || 0;
+        return weightB - weightA;
+      });
+    })()
   );
   let selectedPluginId = $state<string>('');
+  const selectedPlugin = $derived(sheetPlugins.find((p) => p.id === selectedPluginId));
+  const currentPluginName = $derived(selectedPlugin?.name || '未知音源');
   let tags = $state<any[]>([]);
   let selectedTag = $state<any>(null);
   let sheets = $state<any[]>([]);
@@ -108,9 +137,18 @@
     selectedTag = tag;
     try {
       const res = await musicFreeStore.getRecommendSheetsByTag(selectedPluginId, tag, 1);
-      sheets = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const rawData = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      // 过滤无效条目（必须包含 title 或 name）
+      sheets = rawData.filter((item: any) => item && (item.title || item.name));
     } catch (e: any) {
-      showToast('加载歌单列表失败: ' + (e?.message || e), 'error');
+      console.warn('加载歌单列表失败:', e);
+      sheets = [];
+      const msg = e?.message || String(e);
+      if (msg.includes('res.total') || msg.includes('undefined is not an object')) {
+        showToast(`音源「${currentPluginName}」该分类数据结构异常`, 'warning');
+      } else {
+        showToast('加载歌单列表失败: ' + msg, 'error');
+      }
     } finally {
       loading = false;
     }
@@ -194,7 +232,12 @@
         <img
           src={selectedSheet.coverImg || selectedSheet.artwork || DEFAULT_VINYL_COVER}
           alt={selectedSheet.title || selectedSheet.name}
+          referrerpolicy="no-referrer"
           class="w-20 h-20 rounded-xl object-cover shadow-md"
+          onerror={(e) => {
+            const el = e.currentTarget as HTMLImageElement;
+            if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
+          }}
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1">
@@ -328,8 +371,12 @@
           <span>正在加载歌单广场...</span>
         </div>
       {:else if sheets.length === 0}
-        <div class="py-16 text-center text-xs text-[var(--text-muted)]">
-          该分类下暂无歌单
+        <div class="py-16 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-2.5">
+          <span class="text-3xl">📻</span>
+          <span class="font-semibold text-sm text-[var(--text-secondary)]">当前音源「{currentPluginName}」暂无有效歌单数据</span>
+          <span class="text-[11px] opacity-75 max-w-md">
+            部分音源仅支持检索或远端接口已失效。推荐点击上方切换至「小秋音乐 (QQ)」、「小蜗音乐 (酷我)」或「小狗音乐 (酷狗)」等主流音源。
+          </span>
         </div>
       {:else}
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
@@ -344,8 +391,13 @@
                 <img
                   src={sheet.coverImg || sheet.artwork || DEFAULT_VINYL_COVER}
                   alt={sheet.title || sheet.name}
+                  referrerpolicy="no-referrer"
                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
+                  onerror={(e) => {
+                    const el = e.currentTarget as HTMLImageElement;
+                    if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
+                  }}
                 />
               </div>
               <div class="text-xs font-semibold text-[var(--text-main)] truncate group-hover:text-purple-400">
