@@ -1,10 +1,8 @@
 import type { IMusicFreePlugin, IMusicFreeMediaSource } from '../types';
 import { qqPlugin } from './qq';
-import { kuwoPlugin } from './kuwo';
 import { kugouPlugin } from './kugou';
 
 export { qqPlugin } from './qq';
-export { kuwoPlugin } from './kuwo';
 export { kugouPlugin } from './kugou';
 
 /**
@@ -13,7 +11,6 @@ export { kugouPlugin } from './kugou';
  */
 export const builtinPlugins: IMusicFreePlugin[] = [
   qqPlugin,
-  kuwoPlugin,
   kugouPlugin
 ];
 
@@ -81,8 +78,8 @@ export async function resolveFallbackFromBuiltins(track: any): Promise<IMusicFre
     title
   ])).filter(Boolean);
 
-  // 优先在酷狗与酷我两大开放官方源中进行检索匹配
-  const fallbackSources = [kugouPlugin, kuwoPlugin];
+  // 优先在酷狗与 QQ 音乐开放官方源中进行检索匹配
+  const fallbackSources = [kugouPlugin, qqPlugin];
   for (const plugin of fallbackSources) {
     for (const q of candidateQueries) {
       try {
