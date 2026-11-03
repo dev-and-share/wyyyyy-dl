@@ -28,8 +28,7 @@
     { name: '酷我音乐 (小蜗)', url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaowo.js' },
     { name: 'QQ音乐 (小秋)', url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaoqiu.js' },
     { name: '酷狗音乐 (小枸)', url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaogou.js' },
-    { name: '猫耳FM (广播剧)', url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/maoerfm/index.js' },
-    { name: 'B站音乐 (Bilibili)', url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/bilibili/index.js' }
+    { name: '猫耳FM (广播剧)', url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/maoerfm/index.js' }
   ];
 
   function handleCleanupJunk() {

@@ -1,5 +1,6 @@
 import { executePluginScript } from './sandbox';
 import type { InstalledPluginRecord, SubscriptionMeta, IMusicFreePlugin } from './types';
+import { builtinPlugins, resolveFallbackFromBuiltins } from './plugins';
 
 const STORAGE_PLUGINS_KEY = 'wyyyy_musicfree_plugins_v1';
 const STORAGE_SUBS_KEY = 'wyyyy_musicfree_subs_v1';
@@ -38,8 +39,7 @@ class MusicFreeStore {
         this.plugins = uniqueRecords.map((rec) => {
           if (rec.code && rec.enabled !== false) {
             try {
-              const instance = executePluginScript(rec.code);
-              return { ...rec, instance, error: undefined };
+              return { ...rec, instance: executePluginScript(rec.code), error: undefined };
             } catch (err: any) {
               return { ...rec, instance: undefined, error: err.message || 'Execution error' };
             }
@@ -48,6 +48,21 @@ class MusicFreeStore {
         });
       }
     } catch {}
+
+    // 🌟 自动注入官方原生内置插件 (QQ音乐 / 酷我 / 酷狗官方直连)
+    for (const bp of builtinPlugins) {
+      const id = `builtin_${bp.platform}`;
+      const existing = this.plugins.find((p) => p.id === id || p.name === bp.platform);
+      if (!existing) {
+        this.plugins.unshift({
+          id, name: bp.platform, version: bp.version || '1.0.0', author: bp.author || 'wyyyyy-dl 官方',
+          url: bp.srcUrl || '', code: '', enabled: true, supportedSearchType: bp.supportedSearchType || ['music'], instance: bp
+        });
+      } else {
+        existing.instance = bp;
+        existing.id = id;
+      }
+    }
   }
 
   private saveToStorage() {
@@ -203,10 +218,8 @@ class MusicFreeStore {
   togglePlugin(id: string, enabled?: boolean) {
     const item = this.plugins.find((p) => p.id === id);
     if (!item) return;
-    const targetState = enabled !== undefined ? enabled : !item.enabled;
-    item.enabled = targetState;
-
-    if (targetState && !item.instance && item.code) {
+    item.enabled = enabled !== undefined ? enabled : !item.enabled;
+    if (item.enabled && !item.instance && item.code) {
       try {
         item.instance = executePluginScript(item.code);
         item.error = undefined;
@@ -217,36 +230,20 @@ class MusicFreeStore {
     this.saveToStorage();
   }
 
-  /**
-   * 卸载单个插件
-   */
   removePlugin(id: string) {
     this.plugins = this.plugins.filter((p) => p.id !== id);
     this.saveToStorage();
   }
 
-  /**
-   * 🧹 一键清理已知失效或垃圾插件
-   */
   cleanupJunkPlugins(): number {
-    const junkKeywords = [
-      '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书'
-    ];
+    const junkKeywords = ['歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书'];
     const initialCount = this.plugins.length;
-    this.plugins = this.plugins.filter((p) => {
-      const lower = (p.name || '').toLowerCase();
-      return !junkKeywords.some((kw) => lower.includes(kw.toLowerCase()));
-    });
+    this.plugins = this.plugins.filter((p) => !junkKeywords.some((kw) => (p.name || '').toLowerCase().includes(kw)));
     const removed = initialCount - this.plugins.length;
-    if (removed > 0) {
-      this.saveToStorage();
-    }
+    if (removed > 0) this.saveToStorage();
     return removed;
   }
 
-  /**
-   * 移除整个订阅源及关联插件
-   */
   removeSubscription(url: string) {
     this.subscriptions = this.subscriptions.filter((s) => s.url !== url);
     this.saveToStorage();
@@ -295,28 +292,34 @@ class MusicFreeStore {
   }
 
   /**
-   * 获取某个曲目的流播放地址（自动处理防盗链转接）
+   * 获取某个曲目的流播放地址（自动处理防盗链转接与官方兜底）
    */
   async resolveMediaSource(pluginId: string, track: any, quality = 'standard'): Promise<{ url: string; headers?: Record<string, string> }> {
     const record = this.plugins.find((p) => p.id === pluginId);
-    if (!record || !record.instance || typeof record.instance.getMediaSource !== 'function') {
-      throw new Error(`找不到音源插件或该插件不支持解析音频: ${pluginId}`);
+    let source: any = null;
+
+    if (record && record.instance && typeof record.instance.getMediaSource === 'function') {
+      try {
+        source = await record.instance.getMediaSource(track, quality);
+      } catch (e: any) {
+        console.warn(`[MusicFree] 插件 ${record.name} 获取流地址异常:`, e?.message || e);
+      }
     }
 
-    const source = await record.instance.getMediaSource(track, quality);
+    // 🚀 全网跨源智能官方直链兜底 (优先走官方原生内置插件池)
+    if (!source || !source.url) {
+      source = await resolveFallbackFromBuiltins(track);
+    }
+
     if (!source || !source.url) {
       throw new Error(`音源插件未能解析出音频地址`);
     }
 
     let finalUrl = source.url;
-    const ref = source.headers?.referer || source.headers?.Referer;
-    const ua = source.headers?.['user-agent'] || source.headers?.['User-Agent'];
-
-    // 🌟 统一防盗链中继：只要是第三方外链，一律经由 Spring Boot /v3/stream/online 代理流转发，
-    // 自动跟随 302 重定向、注入对应音源 Referer 并支持浏览器 Range 分片拖拽 seek
     if (source.url.startsWith('http://') || source.url.startsWith('https://')) {
-      const q = new URLSearchParams();
-      q.set('url', source.url);
+      const q = new URLSearchParams({ url: source.url });
+      const ref = source.headers?.referer || source.headers?.Referer;
+      const ua = source.headers?.['user-agent'] || source.headers?.['User-Agent'];
       if (ref) q.set('referer', ref);
       if (ua) q.set('ua', ua);
       finalUrl = `/v3/stream/online?${q.toString()}`;
@@ -459,12 +462,8 @@ class MusicFreeStore {
     }
     try {
       const res = await record.instance.getRecommendSheetsByTag(tag, page);
-      if (!res) return { isEnd: true, data: [] };
       const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      return {
-        isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : (data.length === 0),
-        data: data.filter((item: any) => item && (item.title || item.name))
-      };
+      return { isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : (data.length === 0), data: data.filter((item: any) => item && (item.title || item.name)) };
     } catch (e: any) {
       console.warn(`[MusicFree] 获取推荐歌单异常: ${record.name}`, e?.message || e);
       return { isEnd: true, data: [], error: e?.message || String(e) };
