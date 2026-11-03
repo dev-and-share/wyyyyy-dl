@@ -263,9 +263,15 @@
       />
       <div class="flex-1 min-w-0 flex flex-col gap-1.5">
         <div class="flex items-center gap-2">
-          <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
-            {t('playlist.title')}
-          </span>
+          {#if playlist.isLocal}
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              🖥️ 本地歌单
+            </span>
+          {:else}
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
+              {t('playlist.title')}
+            </span>
+          {/if}
           <span class="text-xs text-[var(--text-muted)]">ID: {playlist.id}</span>
         </div>
         <h1 class="text-lg sm:text-xl font-bold text-[var(--text-main)] truncate tracking-tight">
@@ -292,16 +298,17 @@
             <span>▶️</span>
             <span>{t('playlist.playAll')}</span>
           </button>
-          <button
-            type="button"
-            data-testid="btn-detail-download-all"
-            class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-            onclick={handleDownloadAll}
-          >
-            <span>🖥️</span>
-            <span>{t('playlist.downloadAllToPc')}</span>
-          </button>
-          {#if playlist && !playlist.isCreator}
+          {#if !playlist.isLocal}
+            <button
+              type="button"
+              data-testid="btn-detail-download-all"
+              class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
+              onclick={handleDownloadAll}
+            >
+              <span>🖥️</span> <span>{t('playlist.downloadAllToPc')}</span>
+            </button>
+          {/if}
+          {#if playlist && !playlist.isLocal && !playlist.isCreator}
             <button
               type="button"
               data-testid="btn-detail-fork"
@@ -309,8 +316,7 @@
               onclick={() => showForkModal = true}
               title={t('playlist.forkDesc')}
             >
-              <span>📦</span>
-              <span>{t('playlist.forkTitle')}</span>
+              <span>📦</span> <span>{t('playlist.forkTitle')}</span>
             </button>
             <button
               type="button"
@@ -319,8 +325,7 @@
               onclick={handleToggleSubscribe}
               title={playlist.subscribed ? t('playlist.unsubscribeTooltip') : t('playlist.subscribeTooltip')}
             >
-              <span>{playlist.subscribed ? '💔' : '⭐'}</span>
-              <span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
+              <span>{playlist.subscribed ? '💔' : '⭐'}</span> <span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
             </button>
           {/if}
         </div>

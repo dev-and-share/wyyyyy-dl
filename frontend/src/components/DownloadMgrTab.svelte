@@ -7,6 +7,7 @@
   import SlotBtn from './SlotBtn.svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import BrowserCacheSection from './BrowserCacheSection.svelte';
+  import LocalPlaylistsSection from './LocalPlaylistsSection.svelte';
   import SegmentedTabs, { type SegmentItem } from './sp/SegmentedTabs.svelte';
   import SwipeableTabsView from './sp/SwipeableTabsView.svelte';
   import DownloadAuditModal from './DownloadAuditModal.svelte';
@@ -20,21 +21,23 @@
     curTrack = null,
     playing = false,
     onPlayQueue,
+    onPlaylist,
     onReveal,
     showToast = () => {}
   } = $props<{
     curTrack?: Track | null;
     playing?: boolean;
     onPlayQueue: (tracks: any[], idx?: number) => void;
+    onPlaylist?: (id: string) => void;
     onReveal: (item: any) => void;
     showToast?: (m: string, t?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
   }>();
 
-  let mobileTab = $state<'folder' | 'history' | 'cache'>('history');
-  const SUBTABS: ('folder' | 'history' | 'cache')[] = ['folder', 'history', 'cache'];
+  let mobileTab = $state<'folder' | 'history' | 'playlists' | 'cache'>('history');
+  const SUBTABS: ('folder' | 'history' | 'playlists' | 'cache')[] = ['folder', 'history', 'playlists', 'cache'];
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(mobileTab)));
 
-  function setMobileTab(id: 'folder' | 'history' | 'cache') {
+  function setMobileTab(id: 'folder' | 'history' | 'playlists' | 'cache') {
     mobileTab = id;
   }
 
@@ -258,8 +261,9 @@
   }
 
   const mobileTabs: SegmentItem[] = $derived([
-    { id: 'folder', label: t('download.tabLocal'), icon: '📁', accent: 'red' },
+    { id: 'folder', label: t('download.tabLocal'), icon: '📂', accent: 'red' },
     { id: 'history', label: t('download.tabHistory'), icon: '📥', accent: 'blue' },
+    { id: 'playlists', label: '歌单', icon: '📁', accent: 'emerald' },
     { id: 'cache', label: t('download.tabCache'), icon: '📲', accent: 'emerald' }
   ]);
 </script>
@@ -458,6 +462,10 @@
         <button class="btn-secondary px-3 py-1 text-xs" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>{t('download.nextPage')}</button>
       </div>
     </AccordionCard>
+  </div>
+
+  <div class="w-full">
+    <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
   </div>
 
   <div class="w-full">

@@ -7,7 +7,7 @@ import type {
 } from './types';
 import { api } from '../api';
 import { formatArtist, DEFAULT_VINYL_COVER, isLocalStreamUrl } from '../utils';
-import { isLocalPlaylist } from '../localPlaylistStore.svelte';
+import { playlistService } from '../playlistService';
 import { getTrackSourceStatus } from '../player/trackStatus.svelte';
 import { t } from '../i18n';
 
@@ -110,10 +110,7 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
   }
 
   async getPlaylist(id: string | number): Promise<any> {
-    if (isLocalPlaylist(id)) {
-      return api.localPlaylistDetail(String(id));
-    }
-    return api.playlist(String(id));
+    return playlistService.getDetail(id);
   }
 
   async getMyPlaylists(): Promise<any> {

@@ -66,6 +66,11 @@ describe('DesktopDownloadMgrView', () => {
     const tasksSubTab = getByTestId('subtab-tasks');
     await fireEvent.click(tasksSubTab);
     expect(getByTestId('subtab-tasks')).toHaveClass('bg-red-500');
+
+    const localPlaylistsSubTab = getByTestId('subtab-local-playlists');
+    await fireEvent.click(localPlaylistsSubTab);
+    expect(getByTestId('subtab-local-playlists')).toHaveClass('bg-emerald-600');
+    expect(getByTestId('local-playlists-section')).toBeInTheDocument();
   });
 
   it('switches to tasks tab when tasksTrigger changes', async () => {

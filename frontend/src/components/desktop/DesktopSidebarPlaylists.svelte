@@ -1,16 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import {
     myPlaylists,
     isFavoritePlaylist,
     sortPlaylistsByPlayCount,
     getPlaylistPlayCount
   } from '../../lib/playlist.svelte';
-  import {
-    localPlaylistState,
-    loadLocalPlaylists,
-    createLocalPlaylist
-  } from '../../lib/localPlaylistStore.svelte';
   import { matchesKeyword } from '../../lib/utils';
   import { t } from '../../lib/i18n';
 
@@ -23,19 +17,12 @@
   }>();
 
   let sidebarSearchKw = $state('');
-  let filterMode = $state<'all' | 'netease' | 'local'>('all');
-  let showCreateInput = $state(false);
-  let newLocalName = $state('');
+  let filterMode = $state<'all' | 'created' | 'subscribed'>('all');
 
   let createdScrollEl = $state<HTMLDivElement | null>(null);
   let subscribedScrollEl = $state<HTMLDivElement | null>(null);
-  let localScrollEl = $state<HTMLDivElement | null>(null);
   let canScrollCreated = $state(false);
   let canScrollSubscribed = $state(false);
-
-  onMount(() => {
-    loadLocalPlaylists().catch(() => {});
-  });
 
   const createdPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter((p: any) => !p.subscribed)));
   const subscribedPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter((p: any) => p.subscribed)));
@@ -50,12 +37,6 @@
     sidebarSearchKw.trim()
       ? subscribedPlaylists.filter((p: any) => matchesKeyword(p.name, sidebarSearchKw.trim()))
       : subscribedPlaylists
-  );
-
-  const filteredLocal = $derived(
-    sidebarSearchKw.trim()
-      ? localPlaylistState.playlists.filter((p: any) => matchesKeyword(p.name, sidebarSearchKw.trim()))
-      : localPlaylistState.playlists
   );
 
   function checkCreatedScroll() {
@@ -94,17 +75,10 @@
     if (subscribedScrollEl) ro.observe(subscribedScrollEl);
     return () => ro.disconnect();
   });
-
-  async function handleQuickCreateLocal() {
-    if (!newLocalName.trim()) return;
-    await createLocalPlaylist(newLocalName.trim());
-    newLocalName = '';
-    showCreateInput = false;
-  }
 </script>
 
 <div class="flex-1 min-h-0 flex flex-col px-2 py-2 gap-1 overflow-hidden">
-  <!-- 1. 过滤胶囊选择器：全部 | 网易云 | 本地 -->
+  <!-- 1. 过滤胶囊选择器：全部 | 我创建的 | 我收藏的 -->
   <div class="flex items-center gap-1 p-0.5 rounded-lg bg-[var(--btn-secondary-bg)]/80 shrink-0 text-[10px]">
     <button
       type="button"
@@ -115,17 +89,17 @@
     </button>
     <button
       type="button"
-      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'netease' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
-      onclick={() => filterMode = 'netease'}
+      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'created' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+      onclick={() => filterMode = 'created'}
     >
-      ☁️ 网易云
+      自建
     </button>
     <button
       type="button"
-      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'local' ? 'bg-[var(--card-bg)] text-emerald-400 shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
-      onclick={() => filterMode = 'local'}
+      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'subscribed' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+      onclick={() => filterMode = 'subscribed'}
     >
-      🖥️ 本地
+      收藏
     </button>
   </div>
 
@@ -147,77 +121,8 @@
     {/if}
   </div>
 
-  <!-- 3. 本地专属自建歌单区域 (当 filterMode 为 'all' 或 'local') -->
-  {#if filterMode === 'all' || filterMode === 'local'}
-    <div class="flex-col {filterMode === 'local' ? 'flex-1 min-h-0' : 'max-h-[140px] shrink-0'} flex border-b border-[var(--border-subtle)] pb-1 mb-1">
-      <div class="px-2.5 py-1 text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-        <span class="flex items-center gap-1"><span>🖥️</span> <span>本地歌单</span></span>
-        <div class="flex items-center gap-1.5">
-          <span class="text-[10px] opacity-70">{filteredLocal.length}</span>
-          <button
-            type="button"
-            class="text-[10px] text-emerald-400 hover:text-emerald-300 font-normal bg-transparent border-none cursor-pointer"
-            onclick={() => showCreateInput = !showCreateInput}
-            title="新建本地歌单"
-          >
-            ➕ 新建
-          </button>
-        </div>
-      </div>
-
-      {#if showCreateInput}
-        <div class="flex items-center gap-1 px-1.5 py-1 bg-emerald-500/10 rounded-lg my-1">
-          <input
-            type="text"
-            placeholder="歌单名称..."
-            class="flex-1 px-2 py-0.5 text-[11px] rounded bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-main)] focus:outline-none"
-            bind:value={newLocalName}
-            onkeydown={(e) => e.key === 'Enter' && handleQuickCreateLocal()}
-          />
-          <button
-            type="button"
-            class="px-2 py-0.5 text-[10px] rounded bg-emerald-600 text-white font-medium cursor-pointer border-none"
-            onclick={handleQuickCreateLocal}
-          >
-            确定
-          </button>
-        </div>
-      {/if}
-
-      <div bind:this={localScrollEl} class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar">
-        {#each filteredLocal as pl (pl.id)}
-          <div class="group relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
-            <button
-              type="button"
-              class="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
-              onclick={() => onPlaylistClick(pl.id)}
-              title={pl.name}
-            >
-              <span class="shrink-0 text-xs text-emerald-400">📁</span>
-              <span class="truncate flex-1 font-medium">{pl.name}</span>
-              <span class="text-[10px] text-[var(--text-muted)] shrink-0">{pl.trackCount || 0}</span>
-            </button>
-            {#if onPlayPlaylist}
-              <button
-                type="button"
-                data-testid="sidebar-playbtn-{pl.id}"
-                class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
-                onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
-                title="播放整张歌单"
-              >▶</button>
-            {/if}
-          </div>
-        {:else}
-          <div class="px-2 py-2 text-center text-[11px] text-[var(--text-muted)]">
-            暂无本地歌单
-          </div>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  <!-- 4. 网易云自建歌单区域 (当 filterMode 为 'all' 或 'netease') -->
-  {#if filterMode === 'all' || filterMode === 'netease'}
+  <!-- 3. 自建歌单区域 (当 filterMode 为 'all' 或 'created') -->
+  {#if filterMode === 'all' || filterMode === 'created'}
     <div class="flex-1 min-h-0 flex flex-col border-b border-[var(--border-subtle)] pb-1 mb-1">
       <div class="relative flex-1 min-h-0 flex flex-col">
         <div
@@ -278,8 +183,10 @@
         ></div>
       </div>
     </div>
+  {/if}
 
-    <!-- 5. 收藏的云端歌单 -->
+  <!-- 4. 收藏歌单区域 (当 filterMode 为 'all' 或 'subscribed') -->
+  {#if filterMode === 'all' || filterMode === 'subscribed'}
     <div class="relative flex-1 min-h-0 flex flex-col">
       <div
         bind:this={subscribedScrollEl}

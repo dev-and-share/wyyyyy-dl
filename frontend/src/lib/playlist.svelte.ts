@@ -2,7 +2,7 @@ import { untrack } from 'svelte';
 import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 import { t } from './i18n';
-import { isLocalPlaylist } from './localPlaylistStore.svelte';
+import { playlistService } from './playlistService';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
@@ -184,8 +184,9 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
     return null;
   }
 
-  // 📁 本地自建隔离歌单分支
-  if (isLocalPlaylist(pidStr)) {
+  // 📁 本地自建隔离歌单分支 (通过 Provider 自动处理)
+  const provider = playlistService.getProvider(pidStr);
+  if (provider.type === 'local') {
     activeTargetPlaylistId = pidStr;
     const requestId = ++currentLoadRequestId;
     playlistState.loading = true;
@@ -195,9 +196,7 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
         playlistState.playlist = null;
         allTracks.length = 0;
       }
-      const j = await api.localPlaylistDetail(pidStr);
-      if (j?.code && j.code !== '000000') throw new Error(j.msg || t('common.failed'));
-      const pl = j?.data;
+      const pl = await provider.getDetail(pidStr);
       if (!pl) throw new Error(t('playlist.emptyOrNotFound'));
       if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
         renderPlaylist(pl);

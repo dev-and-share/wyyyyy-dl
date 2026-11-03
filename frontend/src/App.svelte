@@ -241,13 +241,20 @@
           {curTrack} {playing}
           tasksTrigger={routerState.downloadTasksTrigger}
           onPlayQueue={setQueue}
+          onPlaylist={jumpToPlaylist}
           onReveal={handleReveal}
           {showToast}
         />
       </div>
       <!-- 📱 移动端 / 窄屏：保留原有单列折叠手风琴 (< 1024px) -->
       <div class="block lg:hidden w-full">
-        <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
+        <DownloadMgrTab
+          {curTrack} {playing}
+          onPlayQueue={setQueue}
+          onPlaylist={jumpToPlaylist}
+          onReveal={handleReveal}
+          {showToast}
+        />
       </div>
     </div>
 

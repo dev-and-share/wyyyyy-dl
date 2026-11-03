@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { myPlaylists, getPlaylistFilter, loadMyPlaylists, sortPlaylistsByPlayCount, isFavoritePlaylist, getPlaylistPlayCount } from '../lib/playlist.svelte';
-  import { localPlaylistState, loadLocalPlaylists, createLocalPlaylist, deleteLocalPlaylist } from '../lib/localPlaylistStore.svelte';
+  import { playlistService } from '../lib/playlistService';
   import { api } from '../lib/api';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
@@ -33,55 +33,26 @@
   let playlistSearchKw = $state('');
   let showSearch = $state(false);
   let showCreateModal = $state(false);
-  let showLocalCreate = $state(false);
-  let newLocalName = $state('');
   let confirmAction = $state<{
     type: 'delete' | 'unsubscribe';
     playlistId: string;
     playlistName: string;
   } | null>(null);
 
-  onMount(() => {
-    loadLocalPlaylists().catch(() => {});
-  });
-
-  async function handleCreateLocal() {
-    if (!newLocalName.trim()) return;
-    try {
-      await createLocalPlaylist(newLocalName.trim());
-      showToast(`已创建本地歌单「${newLocalName.trim()}」`, 'success');
-      newLocalName = '';
-      showLocalCreate = false;
-    } catch (e: any) {
-      showToast('创建本地歌单失败: ' + (e.message || e), 'error');
-    }
-  }
-
   let filteredPlaylists = $derived(
-    playlistFilter === 'local'
-      ? (playlistSearchKw.trim()
-          ? localPlaylistState.playlists.filter((p: any) => matchesKeyword(p.name, playlistSearchKw.trim()) || String(p.id).includes(playlistSearchKw.trim()))
-          : localPlaylistState.playlists
-        ).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          trackCount: p.trackCount || 0,
-          isLocal: true,
-          subscribed: false
-        }))
-      : sortPlaylistsByPlayCount(
-          myPlaylists.filter((p: any) => {
-            const kw = playlistSearchKw.trim();
-            // 当用户输入关键词时跨分类全局搜索，关键词为空时恢复当前分类筛选
-            const matchType = !kw ? (playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed)) : true;
-            if (!matchType) return false;
-            if (!kw) return true;
-            const nameMatch = matchesKeyword(p.name, kw);
-            const creatorMatch = matchesKeyword(p.creator?.nickname || p.creator, kw);
-            const idMatch = String(p.id || '').includes(kw);
-            return nameMatch || creatorMatch || idMatch;
-          })
-        )
+    sortPlaylistsByPlayCount(
+      myPlaylists.filter((p: any) => {
+        const kw = playlistSearchKw.trim();
+        // 当用户输入关键词时跨分类全局搜索，关键词为空时恢复当前分类筛选
+        const matchType = !kw ? (playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed)) : true;
+        if (!matchType) return false;
+        if (!kw) return true;
+        const nameMatch = matchesKeyword(p.name, kw);
+        const creatorMatch = matchesKeyword(p.creator?.nickname || p.creator, kw);
+        const idMatch = String(p.id || '').includes(kw);
+        return nameMatch || creatorMatch || idMatch;
+      })
+    )
   );
 
   async function executeConfirmAction() {
@@ -90,17 +61,12 @@
     confirmAction = null;
     try {
       if (type === 'delete') {
-        if (String(targetId).startsWith('local_')) {
-          await deleteLocalPlaylist(targetId);
-          showToast(t('myPlaylists.deleted', { name: playlistName }), 'success');
-          return;
-        }
-        const j = await api.playlistDelete(targetId);
-        if (j.code === '000000') {
+        const ok = await playlistService.deletePlaylist(targetId);
+        if (ok) {
           showToast(t('myPlaylists.deleted', { name: playlistName }), 'success');
           await loadMyPlaylists('created');
         } else {
-          showToast(j.msg || t('myPlaylists.deleteFailed'), 'warning');
+          showToast(t('myPlaylists.deleteFailed'), 'warning');
         }
       } else if (type === 'unsubscribe') {
         const j = await api.playlistSubscribe(targetId, false);
@@ -190,18 +156,6 @@
       >
         {t('myPlaylists.tabAll')}
       </button>
-      <button
-        data-testid="tab-filter-local"
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-emerald-600 to-emerald-700 transition-all hover:brightness-110 active:scale-95"
-        class:ring-2={playlistFilter === 'local'}
-        class:ring-emerald-400={playlistFilter === 'local'}
-        onclick={() => loadMyPlaylists('local')}
-      >
-        🖥️ {t('common.local')}<span class="hidden sm:inline">自建</span>
-        {#if localPlaylistState.playlists.length > 0}
-          <span class="text-[10px] opacity-80">({localPlaylistState.playlists.length})</span>
-        {/if}
-      </button>
     </div>
 
     <div class="flex items-center gap-1.5 shrink-0">
@@ -215,47 +169,14 @@
       </button>
       <button
         type="button"
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-800/50 shadow-sm inline-flex items-center justify-center gap-1 shrink-0 transition-all active:scale-95"
-        onclick={() => {
-          if (playlistFilter === 'local') {
-            showLocalCreate = !showLocalCreate;
-          } else {
-            showCreateModal = true;
-          }
-        }}
-        title={playlistFilter === 'local' ? '新建本地歌单' : t('playlist.createTitle')}
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-red-400 border border-red-500/30 bg-red-950/40 hover:bg-red-800/50 shadow-sm inline-flex items-center justify-center gap-1 shrink-0 transition-all active:scale-95"
+        onclick={() => showCreateModal = true}
+        title={t('playlist.createTitle')}
       >
-        ➕ <span class="hidden sm:inline">{playlistFilter === 'local' ? '本地歌单' : t('playlist.create')}</span>
+        ➕ <span class="hidden sm:inline">{t('playlist.create')}</span>
       </button>
     </div>
   </div>
-
-  <!-- ➕ 本地歌单快捷创建栏 -->
-  {#if playlistFilter === 'local' && showLocalCreate}
-    <div class="flex items-center gap-1.5 p-2 mb-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-      <input
-        type="text"
-        placeholder="输入新本地歌单名称..."
-        class="flex-1 px-2.5 py-1 text-xs rounded-lg bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-main)] focus:outline-none focus:border-emerald-500"
-        bind:value={newLocalName}
-        onkeydown={(e) => e.key === 'Enter' && handleCreateLocal()}
-      />
-      <button
-        type="button"
-        class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white cursor-pointer border-none"
-        onclick={handleCreateLocal}
-      >
-        创建
-      </button>
-      <button
-        type="button"
-        class="px-2 py-1 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none cursor-pointer"
-        onclick={() => showLocalCreate = false}
-      >
-        ✕
-      </button>
-    </div>
-  {/if}
 
   <!-- 🔍 歌单客户端搜索 / 过滤栏 (点击🔍时才展开) -->
   {#if showSearch || playlistSearchKw}

@@ -3,6 +3,7 @@
   import FolderExplorer from '../FolderExplorer.svelte';
   import LocalSearchBox from '../LocalSearchBox.svelte';
   import BrowserCacheSection from '../BrowserCacheSection.svelte';
+  import LocalPlaylistsSection from '../LocalPlaylistsSection.svelte';
   import DesktopTaskQueueWorkbench from './DesktopTaskQueueWorkbench.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import { api } from '../../lib/api';
@@ -10,6 +11,7 @@
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
   import { isSameTrack } from '../../lib/trackStatus.svelte';
   import { taskState, getActiveDownloadingCount } from '../../lib/taskStore.svelte';
+  import { localPlaylistState } from '../../lib/localPlaylistStore.svelte';
   import { routerState } from '../../lib/router.svelte';
   import type { Track } from '../../lib/types';
 
@@ -18,6 +20,7 @@
     playing = false,
     tasksTrigger = 0,
     onPlayQueue,
+    onPlaylist,
     onReveal,
     showToast
   } = $props<{
@@ -25,11 +28,12 @@
     playing?: boolean;
     tasksTrigger?: number;
     onPlayQueue: (tracks: any[], idx?: number) => void;
+    onPlaylist?: (id: string) => void;
     onReveal: (item: any) => void;
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let subTab = $state<'history' | 'browser-cache' | 'tasks'>('history');
+  let subTab = $state<'history' | 'local-playlists' | 'browser-cache' | 'tasks'>('history');
   let activeTasksCount = $derived(getActiveDownloadingCount());
 
   // ⚡ 仅当从外部/侧边栏点击数字角标触发时，才自动切换至任务列表 Tab
@@ -214,6 +218,19 @@
         </button>
         <button
           type="button"
+          data-testid="subtab-local-playlists"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'local-playlists' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => subTab = 'local-playlists'}
+        >
+          <span>📁 本地歌单</span>
+          {#if localPlaylistState.playlists.length > 0}
+            <span class="text-[10px] opacity-80">
+              ({localPlaylistState.playlists.length})
+            </span>
+          {/if}
+        </button>
+        <button
+          type="button"
           data-testid="subtab-cache"
           class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {subTab === 'browser-cache' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => subTab = 'browser-cache'}
@@ -388,6 +405,10 @@
             {t('download.nextPage')}
           </button>
         </div>
+      </div>
+    {:else if subTab === 'local-playlists'}
+      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm">
+        <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
       </div>
     {:else if subTab === 'browser-cache'}
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm">

@@ -8,11 +8,6 @@
     sortPlaylistsByPlayCount,
     getPlaylistPlayCount
   } from '../../lib/playlist.svelte';
-  import {
-    localPlaylistState,
-    loadLocalPlaylists,
-    createLocalPlaylist
-  } from '../../lib/localPlaylistStore.svelte';
   import { DEFAULT_VINYL_COVER, formatCoverUrl, matchesKeyword } from '../../lib/utils';
 
   let {
@@ -25,12 +20,10 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let filter = $state<'all' | 'created' | 'subscribed' | 'local'>('all');
+  let filter = $state<'all' | 'created' | 'subscribed'>('all');
   let searchKeyword = $state('');
   let parseInput = $state('');
   let loading = $state(false);
-  let showCreateModal = $state(false);
-  let newLocalName = $state('');
 
   const d = new Date();
   const todayMonthText = $derived(t('recommend.monthText', { month: String(d.getMonth() + 1).padStart(2, '0') }));
@@ -40,33 +33,17 @@
     if (myPlaylists.length === 0) {
       loadMyPlaylists().catch(() => {});
     }
-    loadLocalPlaylists().catch(() => {});
   });
 
   async function handleRefresh() {
     loading = true;
     try {
-      await Promise.all([loadMyPlaylists(), loadLocalPlaylists()]);
+      await loadMyPlaylists();
       showToast(t('playlist.synced'), 'success', 1500);
     } catch (e: any) {
       showToast(t('playlist.loadFailedWithMsg', { error: e?.message || e }), 'error');
     } finally {
       loading = false;
-    }
-  }
-
-  async function handleCreateLocal() {
-    const name = newLocalName.trim();
-    if (!name) return;
-    try {
-      const created = await createLocalPlaylist(name);
-      if (created) {
-        showToast(`本地歌单「${name}」创建成功`, 'success');
-        newLocalName = '';
-        showCreateModal = false;
-      }
-    } catch (e: any) {
-      showToast('创建失败: ' + (e?.message || e), 'error');
     }
   }
 
@@ -86,21 +63,6 @@
 
   const filteredPlaylists = $derived(() => {
     const kw = searchKeyword.trim();
-    if (filter === 'local') {
-      let list = localPlaylistState.playlists.map(p => ({
-        id: p.id,
-        name: p.name,
-        trackCount: p.trackCount || 0,
-        coverImgUrl: DEFAULT_VINYL_COVER,
-        subscribed: false,
-        _isLocal: true
-      }));
-      if (kw) {
-        list = list.filter(p => matchesKeyword(p.name, kw));
-      }
-      return list;
-    }
-
     let list = myPlaylists;
     if (filter === 'created') list = list.filter(p => !p.subscribed);
     if (filter === 'subscribed') list = list.filter(p => p.subscribed);
@@ -161,23 +123,6 @@
       >
         {t('playlist.tabSubscribedWithCount', { count: myPlaylists.filter(p => p.subscribed).length })}
       </button>
-      <button
-        type="button"
-        data-testid="gallery-tab-local"
-        class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'local' ? 'bg-emerald-500/15 text-emerald-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => filter = 'local'}
-      >
-        🖥️ 本地自建 ({localPlaylistState.playlists.length})
-      </button>
-      {#if filter === 'local'}
-        <button
-          type="button"
-          class="px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs"
-          onclick={() => showCreateModal = !showCreateModal}
-        >
-          ➕ 新建本地歌单
-        </button>
-      {/if}
     </div>
 
     <!-- Filter and Refresh -->
@@ -199,39 +144,11 @@
     </div>
   </div>
 
-  <!-- 2.1 新建本地歌单输入栏 -->
-  {#if showCreateModal && filter === 'local'}
-    <div class="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-      <span class="text-xs text-emerald-400 font-bold">📁 新建本地歌单:</span>
-      <input
-        type="text"
-        placeholder="输入歌单名称..."
-        class="flex-1 max-w-xs px-3 py-1 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none"
-        bind:value={newLocalName}
-        onkeydown={(e) => e.key === 'Enter' && handleCreateLocal()}
-      />
-      <button
-        type="button"
-        class="px-3 py-1 rounded-lg text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-medium cursor-pointer border-none"
-        onclick={handleCreateLocal}
-      >
-        确定
-      </button>
-      <button
-        type="button"
-        class="px-2 py-1 rounded-lg text-xs bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] cursor-pointer border-none"
-        onclick={() => showCreateModal = false}
-      >
-        取消
-      </button>
-    </div>
-  {/if}
-
   <!-- 3. Gallery Grid -->
   {#if filteredPlaylists().length > 0}
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
       <!-- Daily Recommend Sticky Card -->
-      {#if !searchKeyword.trim() && filter !== 'subscribed' && filter !== 'local'}
+      {#if !searchKeyword.trim() && filter !== 'subscribed'}
         <div
           data-testid="gallery-card-daily-recommend"
           class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-red-400/40 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-lg hover:-translate-y-1"
