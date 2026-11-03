@@ -63,12 +63,15 @@ export function recordSongPlay(idOrKey: string | number): number {
 /**
  * 从本地存储加载所有已缓存歌曲的 ID 集合
  */
-export function loadCachedSongIds(): Set<number> {
+export function loadCachedSongIds(): Set<string | number> {
   const ids = audioCacheStorage.getCachedIds();
-  const set = new Set<number>();
+  const set = new Set<string | number>();
   for (const id of ids) {
     const num = Number(id);
-    if (!isNaN(num) && num > 0) set.add(num);
+    if (!isNaN(num) && num > 0) {
+      set.add(num);
+    }
+    set.add(String(id));
   }
   return set;
 }
@@ -76,7 +79,7 @@ export function loadCachedSongIds(): Set<number> {
 /**
  * 全局响应式状态：手机本地/浏览器离线已缓存的歌曲 ID 集合
  */
-export const cachedSongIdSet = $state<Set<number>>(loadCachedSongIds());
+export const cachedSongIdSet = $state<Set<string | number>>(loadCachedSongIds());
 
 /**
  * 刷新全局缓存集合
@@ -142,16 +145,22 @@ export async function cacheTrackToBrowser(
     let songData: any = {};
 
     if (!audioUrl || !audioUrl.includes('/stream')) {
-      const resp = await api.songV1(id, 'lossless');
-      audioUrl = resp?.data?.url || audioUrl;
-      songData = resp?.data || {};
+      if (id.startsWith('mf_') || (track as any)._isMusicFree) {
+        const { resolveTrackUrl } = await import('../player/playerHelper');
+        const resolved = await resolveTrackUrl(track as any);
+        if (resolved) audioUrl = resolved;
+      } else {
+        const resp = await api.songV1(id, 'lossless');
+        audioUrl = resp?.data?.url || audioUrl;
+        songData = resp?.data || {};
 
-      if (!audioUrl) {
-        // trigger fallback download
-        await api.downloadSingle(id).catch(() => {});
-        const retry = await api.songV1(id, 'lossless');
-        audioUrl = retry?.data?.url;
-        songData = retry?.data || {};
+        if (!audioUrl) {
+          // trigger fallback download
+          await api.downloadSingle(id).catch(() => {});
+          const retry = await api.songV1(id, 'lossless');
+          audioUrl = retry?.data?.url;
+          songData = retry?.data || {};
+        }
       }
     }
 

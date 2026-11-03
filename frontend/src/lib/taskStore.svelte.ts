@@ -5,10 +5,12 @@ const ACTIVE_STATUSES = new Set(['WAITING', 'DOWNLOADING', 'PENDING']);
 export const taskState = $state<{
   tasks: any[];
   downloadedSet: Set<number>;
+  downloadedCustomSet: Set<string>;
   monVisible: boolean;
 }>({
   tasks: [],
   downloadedSet: new Set<number>(),
+  downloadedCustomSet: new Set<string>(),
   monVisible: false
 });
 

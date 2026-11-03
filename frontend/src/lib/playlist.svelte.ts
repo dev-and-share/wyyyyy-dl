@@ -2,6 +2,7 @@ import { untrack } from 'svelte';
 import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 import { t } from './i18n';
+import { isLocalPlaylist } from './localPlaylistStore.svelte';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
@@ -60,6 +61,7 @@ export async function loadMyPlaylists(f:any=playlistState.filter){
   playlistState.filter=f;
   const cached=getApiCache('my_playlists');
   if(cached?.data?.playlists){ myPlaylists.length=0; myPlaylists.push(...cached.data.playlists); }
+  if (typeof api?.myPlaylist !== 'function') return;
   try{
     const j=await api.myPlaylist();
     if(j?.code && j.code!=='000000') throw new Error(j.msg);
@@ -181,6 +183,34 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
   if (pidStr === 'daily-recommend') {
     return null;
   }
+
+  // 📁 本地自建隔离歌单分支
+  if (isLocalPlaylist(pidStr)) {
+    activeTargetPlaylistId = pidStr;
+    const requestId = ++currentLoadRequestId;
+    playlistState.loading = true;
+    playlistState.loadingId = pidStr;
+    try {
+      if (playlistState.playlist && String(playlistState.playlist.id) !== pidStr) {
+        playlistState.playlist = null;
+        allTracks.length = 0;
+      }
+      const j = await api.localPlaylistDetail(pidStr);
+      if (j?.code && j.code !== '000000') throw new Error(j.msg || t('common.failed'));
+      const pl = j?.data;
+      if (!pl) throw new Error(t('playlist.emptyOrNotFound'));
+      if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
+        renderPlaylist(pl);
+      }
+      return pl;
+    } finally {
+      if (requestId === currentLoadRequestId) {
+        playlistState.loading = false;
+        playlistState.loadingId = '';
+      }
+    }
+  }
+
   const key = 'playlist_' + pidStr;
 
   activeTargetPlaylistId = pidStr;

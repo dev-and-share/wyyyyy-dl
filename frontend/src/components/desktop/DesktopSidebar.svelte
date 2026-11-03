@@ -1,8 +1,7 @@
 <script lang="ts">
   import { t } from '../../lib/i18n';
-  import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount, getPlaylistPlayCount } from '../../lib/playlist.svelte';
-  import { matchesKeyword } from '../../lib/utils';
   import { jumpToDownloadTasks, type ActiveTab } from '../../lib/router.svelte';
+  import DesktopSidebarPlaylists from './DesktopSidebarPlaylists.svelte';
 
   let {
     tab,
@@ -33,80 +32,12 @@
   const isRecommendActive = $derived(tab === 'playlist' && currentPlaylistId === 'daily-recommend');
   const isPlaylistActive = $derived(tab === 'playlist' && currentPlaylistId !== 'daily-recommend');
 
-  // Categorize playlists: created vs subscribed, sorted by play count
-  const createdPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => !p.subscribed)));
-  const subscribedPlaylists = $derived(sortPlaylistsByPlayCount(myPlaylists.filter(p => p.subscribed)));
-
-  // Sidebar playlist search filter
-  let sidebarSearchKw = $state('');
-  const filteredCreated = $derived(
-    sidebarSearchKw.trim()
-      ? createdPlaylists.filter(p => matchesKeyword(p.name, sidebarSearchKw.trim()))
-      : createdPlaylists
-  );
-  const filteredSubscribed = $derived(
-    sidebarSearchKw.trim()
-      ? subscribedPlaylists.filter(p => matchesKeyword(p.name, sidebarSearchKw.trim()))
-      : subscribedPlaylists
-  );
-
   function handlePlaylistClick(plId: string | number) {
     if (onViewPlaylist) {
       onViewPlaylist(String(plId));
     }
     onSwitchTab('playlist');
   }
-
-  // Scroll overflow indicators (gradient shadow at bottom when content is scrollable)
-  let createdScrollEl = $state<HTMLDivElement | null>(null);
-  let subscribedScrollEl = $state<HTMLDivElement | null>(null);
-  let canScrollCreated = $state(false);
-  let canScrollSubscribed = $state(false);
-
-  function checkCreatedScroll() {
-    if (!createdScrollEl) return;
-    const { scrollTop, scrollHeight, clientHeight } = createdScrollEl;
-    canScrollCreated = scrollHeight - scrollTop - clientHeight > 3;
-  }
-
-  function checkSubscribedScroll() {
-    if (!subscribedScrollEl) return;
-    const { scrollTop, scrollHeight, clientHeight } = subscribedScrollEl;
-    canScrollSubscribed = scrollHeight - scrollTop - clientHeight > 3;
-  }
-
-  $effect(() => {
-    // Track dependencies affecting list heights
-    filteredCreated;
-    filteredSubscribed;
-    collapsed;
-
-    if (typeof requestAnimationFrame !== 'undefined') {
-      requestAnimationFrame(() => {
-        checkCreatedScroll();
-        checkSubscribedScroll();
-      });
-    } else {
-      checkCreatedScroll();
-      checkSubscribedScroll();
-    }
-  });
-
-  $effect(() => {
-    if (typeof ResizeObserver === 'undefined') return;
-
-    const ro = new ResizeObserver(() => {
-      checkCreatedScroll();
-      checkSubscribedScroll();
-    });
-
-    if (createdScrollEl) ro.observe(createdScrollEl);
-    if (subscribedScrollEl) ro.observe(subscribedScrollEl);
-
-    return () => {
-      ro.disconnect();
-    };
-  });
 </script>
 
 <!-- PC Desktop Left Sidebar (Visible >= 1024px) -->
@@ -253,168 +184,34 @@
       data-testid="sidebar-tab-musicfree"
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {tab === 'musicfree' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('musicfree')}
-      title="MusicFree 插件与多音源"
+      title="发现中心 (MusicFree 广场与插件)"
     >
       <span class="text-[15px] leading-none shrink-0">🧩</span>
       {#if !collapsed}
-        <span class="truncate flex-1 text-left">MusicFree</span>
+        <span class="truncate flex-1 text-left">发现中心</span>
       {/if}
     </button>
   </nav>
 
   <!-- 3. Playlist Quick Navigation -->
-  <div class="flex-1 min-h-0 flex flex-col px-2 py-2 gap-0 overflow-hidden">
-    {#if !collapsed}
-      <div class="relative mb-1.5 shrink-0">
-        <input
-          type="text"
-          placeholder={t('playlist.filterPlaceholder')}
-          class="w-full pl-6 pr-2 py-1 rounded-lg text-[11px] bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-400/60 transition-colors"
-          bind:value={sidebarSearchKw}
-        />
-        <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none">🔍</span>
-        {#if sidebarSearchKw}
-          <button
-            type="button"
-            class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer p-0 bg-transparent border-none leading-none"
-            onclick={() => sidebarSearchKw = ''}
-          >✕</button>
-        {/if}
-      </div>
-
-      <!-- Created Playlists -->
-      <div class="flex-1 min-h-0 flex flex-col border-b border-[var(--border-subtle)] pb-1 mb-1">
-        <div class="relative flex-1 min-h-0 flex flex-col">
-          <div
-            bind:this={createdScrollEl}
-            onscroll={checkCreatedScroll}
-            class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar"
-          >
-            {#if filteredCreated.length > 0}
-              <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-                <span>{t('playlist.myPlaylists')}</span>
-                <span class="text-[10px] opacity-70">{filteredCreated.length}</span>
-              </div>
-              {#each filteredCreated as pl (pl.id)}
-                {@const playCount = getPlaylistPlayCount(pl.id)}
-                <div class="group relative flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
-                  <button
-                    type="button"
-                    class="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
-                    onclick={() => handlePlaylistClick(pl.id)}
-                    title={pl.name}
-                  >
-                    <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-red-400">
-                      {isFavoritePlaylist(pl) ? '❤️' : '📂'}
-                    </span>
-                    <span class="truncate flex-1 font-medium">{pl.name}</span>
-                    {#if playCount > 0}
-                      <span
-                        data-testid="sidebar-playcount-{pl.id}"
-                        class="text-[10px] text-amber-400/90 font-medium shrink-0 flex items-center gap-0.5 group-hover:opacity-0 transition-opacity"
-                        title={t('myPlaylists.historyPlayTooltip', { count: playCount })}
-                      >🔥 {playCount}</span>
-                    {/if}
-                    {#if typeof pl.trackCount === 'number'}
-                      <span class="text-[10px] text-[var(--text-muted)] shrink-0 group-hover:opacity-0 transition-opacity">{pl.trackCount}</span>
-                    {/if}
-                  </button>
-                  {#if onPlayPlaylist}
-                    <button
-                      type="button"
-                      data-testid="sidebar-playbtn-{pl.id}"
-                      class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
-                      onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
-                      title={t('playlist.playWholePlaylistTooltip')}
-                    >▶</button>
-                  {/if}
-                </div>
-              {/each}
-            {:else}
-              <div class="px-2 py-3 text-center text-xs text-[var(--text-muted)]">
-                {sidebarSearchKw ? t('sidebar.noMatch') : t('playlist.noPlaylistsData')}
-              </div>
-            {/if}
-          </div>
-          <div
-            data-testid="sidebar-created-scroll-shadow"
-            class="pointer-events-none absolute bottom-0 left-0 right-0 h-7 bg-gradient-to-t from-[var(--card-bg-solid,#111827)] to-transparent transition-opacity duration-200 {canScrollCreated ? 'opacity-100' : 'opacity-0'}"
-            aria-hidden="true"
-          ></div>
-        </div>
-      </div>
-
-      <!-- Subscribed Playlists -->
-      <div class="relative flex-1 min-h-0 flex flex-col">
-        <div
-          bind:this={subscribedScrollEl}
-          onscroll={checkSubscribedScroll}
-          class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar"
-        >
-          {#if filteredSubscribed.length > 0}
-            <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-              <span>{t('sidebar.subscribedPlaylists')}</span>
-              <span class="text-[10px] opacity-70">{filteredSubscribed.length}</span>
-            </div>
-            {#each filteredSubscribed as pl (pl.id)}
-              {@const playCount = getPlaylistPlayCount(pl.id)}
-              <div class="group relative flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
-                <button
-                  type="button"
-                  class="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
-                  onclick={() => handlePlaylistClick(pl.id)}
-                  title={pl.name}
-                >
-                  <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-amber-400">⭐</span>
-                  <span class="truncate flex-1 font-medium">{pl.name}</span>
-                  {#if playCount > 0}
-                    <span
-                      data-testid="sidebar-playcount-{pl.id}"
-                      class="text-[10px] text-amber-400/90 font-medium shrink-0 flex items-center gap-0.5 group-hover:opacity-0 transition-opacity"
-                      title={t('myPlaylists.historyPlayTooltip', { count: playCount })}
-                    >🔥 {playCount}</span>
-                  {/if}
-                  {#if typeof pl.trackCount === 'number'}
-                    <span class="text-[10px] text-[var(--text-muted)] shrink-0 group-hover:opacity-0 transition-opacity">{pl.trackCount}</span>
-                  {/if}
-                </button>
-                {#if onPlayPlaylist}
-                  <button
-                    type="button"
-                    data-testid="sidebar-playbtn-{pl.id}"
-                    class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
-                    onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
-                    title={t('playlist.playWholePlaylistTooltip')}
-                  >▶</button>
-                {/if}
-              </div>
-            {/each}
-          {:else}
-            <div class="px-2 py-3 text-center text-xs text-[var(--text-muted)]">
-              {sidebarSearchKw ? t('sidebar.noMatch') : t('sidebar.noSubscribedPlaylists')}
-            </div>
-          {/if}
-        </div>
-        <div
-          data-testid="sidebar-subscribed-scroll-shadow"
-          class="pointer-events-none absolute bottom-0 left-0 right-0 h-7 bg-gradient-to-t from-[var(--card-bg-solid,#111827)] to-transparent transition-opacity duration-200 {canScrollSubscribed ? 'opacity-100' : 'opacity-0'}"
-          aria-hidden="true"
-        ></div>
-      </div>
-    {:else}
-      <!-- Compact shortcuts in collapsed state -->
-      <div class="flex flex-col items-center gap-2 pt-2">
-        <button
-          type="button"
-          class="w-9 h-9 flex items-center justify-center rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs cursor-pointer border-none text-[var(--text-secondary)] hover:text-[var(--text-main)]"
-          title={t('playlist.myPlaylists')}
-          onclick={() => onSwitchTab('playlist')}
-        >
-          📂
-        </button>
-      </div>
-    {/if}
-  </div>
+  {#if !collapsed}
+    <DesktopSidebarPlaylists
+      onPlaylistClick={handlePlaylistClick}
+      {onPlayPlaylist}
+    />
+  {:else}
+    <!-- Compact shortcuts in collapsed state -->
+    <div class="flex flex-col items-center gap-2 pt-2">
+      <button
+        type="button"
+        class="w-9 h-9 flex items-center justify-center rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs cursor-pointer border-none text-[var(--text-secondary)] hover:text-[var(--text-main)]"
+        title={t('playlist.myPlaylists')}
+        onclick={() => onSwitchTab('playlist')}
+      >
+        📂
+      </button>
+    </div>
+  {/if}
 
   <!-- 4. Bottom Version Info -->
   <div
@@ -429,24 +226,3 @@
     {/if}
   </div>
 </aside>
-
-<style>
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color, rgba(255, 255, 255, 0.15)) transparent;
-    overscroll-behavior: contain;
-  }
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--border-color, rgba(255, 255, 255, 0.15));
-    border-radius: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted, rgba(255, 255, 255, 0.35));
-  }
-</style>

@@ -18,6 +18,15 @@ export function postForm(path: string, params: Record<string, string>) {
   return req(path, { method: 'POST', body: new URLSearchParams(params).toString() });
 }
 
+export async function postJson(path: string, body: any) {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return r.json().catch(() => ({ code: '999999', msg: 'invalid json' }));
+}
+
 export const api = {
   // 🔐 认证与状态
   loginStatus: () => get('/v3/auth/status'),
@@ -89,5 +98,27 @@ export const api = {
     if (params.path) q.set('path', params.path);
     if (params.taskId) q.set('taskId', String(params.taskId));
     return get(`/v3/reveal?${q.toString()}`);
-  }
+  },
+
+  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染网易云云端)
+  localPlaylistList: () => get('/v3/local-playlist/list'),
+  localPlaylistCreate: (name: string, coverUrl?: string) => postJson('/v3/local-playlist/create', { name, coverUrl }),
+  localPlaylistDelete: (id: string) => postForm('/v3/local-playlist/delete', { id }),
+  localPlaylistAddTrack: (playlistId: string, track: { historyId?: number; name: string; artist: string; filePath?: string; coverUrl?: string }) =>
+    postJson('/v3/local-playlist/tracks/add', { playlistId, ...track }),
+  localPlaylistRemoveTrack: (playlistId: string, trackId: number | string) =>
+    postForm('/v3/local-playlist/tracks/remove', { playlistId, trackId: String(trackId) }),
+  localPlaylistDetail: (id: string) => get(`/v3/local-playlist/detail?id=${encodeURIComponent(id)}`),
+
+  // 🧩 自定义/插件音源落盘下载
+  downloadCustom: (track: {
+    id?: string;
+    name: string;
+    artist?: string;
+    album?: string;
+    url: string;
+    coverUrl?: string;
+    lyric?: string;
+    headers?: Record<string, string>;
+  }) => postJson('/v3/download/custom', track)
 };

@@ -405,4 +405,99 @@ public class MusicDownloadService implements InitializingBean {
 		return true;
 	}
 
+	@lombok.Data
+	public static class CustomDownloadRequest {
+		private String id;
+		private String name;
+		private String artist;
+		private String album;
+		private String url;
+		private java.util.Map<String, String> headers;
+		private String lyric;
+		private String cover;
+	}
+
+	public DownloadTaskStatus downloadCustomSong(CustomDownloadRequest request) {
+		if (request == null || StringUtils.isBlank(request.getUrl())) {
+			return null;
+		}
+		String trackName = StringUtils.defaultIfBlank(request.getName(), "未知歌曲");
+		String artist = StringUtils.defaultIfBlank(request.getArtist(), "未知歌手");
+		String album = StringUtils.defaultIfBlank(request.getAlbum(), "单曲");
+
+		long syntheticId = Math.abs((long) (request.getId() != null ? request.getId().hashCode() : (trackName + artist).hashCode()));
+		if (syntheticId == 0) syntheticId = System.currentTimeMillis();
+
+		DownloadTaskStatus taskStatus = downloadTasks.get(syntheticId);
+		if (taskStatus == null) {
+			taskStatus = new DownloadTaskStatus(syntheticId, trackName, "PENDING", null, System.currentTimeMillis(), null);
+			downloadTasks.put(syntheticId, taskStatus);
+		}
+
+		if (!repeat && downloadHistoryDAO.isSongDownloaded(syntheticId)) {
+			taskStatus.setStatus("SKIP");
+			taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
+			return taskStatus;
+		}
+
+		final long finalId = syntheticId;
+		final DownloadTaskStatus finalTaskStatus = taskStatus;
+
+		executor.execute(() -> {
+			finalTaskStatus.setStatus("DOWNLOADING");
+			try {
+				String dir = this.path + "__曲库__/";
+				if (isSingleKnownArtist(artist)) {
+					dir = this.path + FileUtils.getValidatedPathName(artist.trim()) + "/";
+				}
+				File dirFile = new File(dir);
+				if (!dirFile.exists()) dirFile.mkdirs();
+
+				String fileName = FileUtils.getValidatedPathName(artist + " - " + trackName);
+				String ext = getType(request.getUrl(), null);
+				if (StringUtils.isBlank(ext) || ext.length() > 5) ext = ".mp3";
+				File file = Paths.get(dir, fileName + ext).toFile();
+
+				java.util.Map<String, String> headers = request.getHeaders() != null ? request.getHeaders() : new java.util.HashMap<>();
+				java.io.InputStream in = HttpClientUtil.getInputStream(request.getUrl(), headers);
+				if (in == null) throw new RuntimeException("无法从目标音源拉取音频流");
+
+				FileUtils.writeToFile(file.toPath(), in);
+
+				if (!file.exists() || file.length() < 100000) {
+					throw new RuntimeException("音频文件过小或无效");
+				}
+
+				TagUtils.setTags(file, trackName, artist, album);
+
+				if (StringUtils.isNotBlank(request.getLyric())) {
+					try {
+						FileUtils.writeToFile(Paths.get(dir, fileName + ".lrc"), request.getLyric().getBytes("UTF-8"));
+					} catch (Exception ignored) {}
+				}
+
+				finalTaskStatus.setStatus("SUCCESS");
+				finalTaskStatus.setFilePath(file.getAbsolutePath());
+
+				downloadHistoryDAO.addRecord(
+						finalId,
+						trackName,
+						artist,
+						album,
+						file.getAbsolutePath(),
+						file.length(),
+						"standard",
+						"SUCCESS"
+				);
+				log.info("外部音源 {} 下载并落盘完成: {}", trackName, file.getAbsolutePath());
+			} catch (Exception e) {
+				log.warn("外部音源下载失败: name={}, url={}, error={}", trackName, request.getUrl(), e.getMessage());
+				finalTaskStatus.setStatus("FAILED");
+				finalTaskStatus.setErrorMsg(e.getMessage());
+			}
+		});
+
+		return taskStatus;
+	}
+
 }

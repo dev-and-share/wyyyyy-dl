@@ -124,6 +124,27 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     ")";
             stmt.execute(configSql);
 
+            String localPlaylistsSql = "CREATE TABLE IF NOT EXISTS local_playlists (" +
+                    "id VARCHAR(64) PRIMARY KEY, " +
+                    "name TEXT NOT NULL, " +
+                    "cover_url TEXT, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                    ")";
+            stmt.execute(localPlaylistsSql);
+
+            String localPlaylistTracksSql = "CREATE TABLE IF NOT EXISTS local_playlist_tracks (" +
+                    autoIncCol + ", " +
+                    "playlist_id VARCHAR(64), " +
+                    "history_id BIGINT, " +
+                    "song_name TEXT, " +
+                    "artist TEXT, " +
+                    "file_path TEXT, " +
+                    "cover_url TEXT, " +
+                    "order_num INT DEFAULT 0, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                    ")";
+            stmt.execute(localPlaylistTracksSql);
+
             createIndexesSafely(stmt);
         }
     }
@@ -132,7 +153,8 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         String[] indexes = {
                 "CREATE INDEX IF NOT EXISTS idx_dh_song_id ON download_history(song_id)",
                 "CREATE INDEX IF NOT EXISTS idx_dh_name_artist ON download_history(song_name, artist)",
-                "CREATE INDEX IF NOT EXISTS idx_dh_created_at ON download_history(created_at)"
+                "CREATE INDEX IF NOT EXISTS idx_dh_created_at ON download_history(created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_lpt_playlist_id ON local_playlist_tracks(playlist_id)"
         };
         for (String idxSql : indexes) {
             try {
@@ -1332,5 +1354,151 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
         int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
         return new java.text.DecimalFormat("#,##0.00").format(size / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+    }
+
+    // ==========================================
+    // 7. 本地专属自建歌单 (Local Playlists)
+    // ==========================================
+    public List<Map<String, Object>> listLocalPlaylists() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = "SELECT p.id, p.name, p.cover_url, p.created_at, COUNT(t.id) as track_count " +
+                "FROM local_playlists p " +
+                "LEFT JOIN local_playlist_tracks t ON p.id = t.playlist_id " +
+                "GROUP BY p.id, p.name, p.cover_url, p.created_at " +
+                "ORDER BY p.created_at DESC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", rs.getString("id"));
+                map.put("name", rs.getString("name"));
+                map.put("coverImgUrl", rs.getString("cover_url"));
+                map.put("trackCount", rs.getInt("track_count"));
+                map.put("isLocal", true);
+                map.put("subscribed", false);
+                map.put("createdAt", rs.getString("created_at"));
+                list.add(map);
+            }
+        } catch (Exception e) {
+            log.error("查询本地歌单列表失败", e);
+        }
+        return list;
+    }
+
+    public boolean createLocalPlaylist(String id, String name, String coverUrl) {
+        String sql = "INSERT INTO local_playlists (id, name, cover_url) VALUES (?, ?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id);
+            ps.setString(2, name);
+            ps.setString(3, coverUrl);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            log.error("创建本地歌单失败: id={}, name={}", id, name, e);
+            return false;
+        }
+    }
+
+    public boolean deleteLocalPlaylist(String id) {
+        String delTracksSql = "DELETE FROM local_playlist_tracks WHERE playlist_id = ?";
+        String delPlSql = "DELETE FROM local_playlists WHERE id = ?";
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps1 = conn.prepareStatement(delTracksSql);
+                 PreparedStatement ps2 = conn.prepareStatement(delPlSql)) {
+                ps1.setString(1, id);
+                ps1.executeUpdate();
+                ps2.setString(1, id);
+                ps2.executeUpdate();
+                conn.commit();
+                return true;
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            log.error("删除本地歌单失败: id={}", id, e);
+            return false;
+        }
+    }
+
+    public boolean addTrackToLocalPlaylist(String playlistId, Long historyId, String songName, String artist, String filePath, String coverUrl) {
+        String sql = "INSERT INTO local_playlist_tracks (playlist_id, history_id, song_name, artist, file_path, cover_url) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, playlistId);
+            ps.setObject(2, historyId);
+            ps.setString(3, songName);
+            ps.setString(4, artist);
+            ps.setString(5, filePath);
+            ps.setString(6, coverUrl);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            log.error("向本地歌单添加歌曲失败: plId={}, song={}", playlistId, songName, e);
+            return false;
+        }
+    }
+
+    public boolean removeTrackFromLocalPlaylist(String playlistId, Long trackId) {
+        String sql = "DELETE FROM local_playlist_tracks WHERE playlist_id = ? AND (id = ? OR history_id = ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, playlistId);
+            ps.setLong(2, trackId);
+            ps.setLong(3, trackId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            log.error("从本地歌单移除歌曲失败: plId={}, trackId={}", playlistId, trackId, e);
+            return false;
+        }
+    }
+
+    public List<Map<String, Object>> getLocalPlaylistTracks(String playlistId) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = "SELECT id, history_id, song_name, artist, file_path, cover_url, created_at " +
+                "FROM local_playlist_tracks WHERE playlist_id = ? ORDER BY id ASC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, playlistId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> map = new HashMap<>();
+                    long autoId = rs.getLong("id");
+                    Long historyId = rs.getObject("history_id") != null ? rs.getLong("history_id") : null;
+                    String filePath = rs.getString("file_path");
+                    String songName = rs.getString("song_name");
+                    String artist = rs.getString("artist");
+                    String coverUrl = rs.getString("cover_url");
+
+                    map.put("id", autoId);
+                    map.put("historyId", historyId);
+                    map.put("name", songName);
+                    map.put("artist", artist);
+                    map.put("filePath", filePath);
+                    map.put("cover", coverUrl);
+                    map.put("picUrl", coverUrl);
+                    map.put("isLocal", true);
+                    Map<String, Object> arMap = new HashMap<>();
+                    arMap.put("name", artist != null ? artist : "未知");
+                    map.put("ar", List.of(arMap));
+                    Map<String, Object> alMap = new HashMap<>();
+                    alMap.put("name", "本地歌单");
+                    alMap.put("picUrl", coverUrl);
+                    map.put("al", alMap);
+                    if (historyId != null && historyId > 0) {
+                        map.put("url", "/v3/stream?historyId=" + historyId);
+                    } else if (filePath != null) {
+                        map.put("url", "/v3/stream?path=" + filePath);
+                    }
+                    list.add(map);
+                }
+            }
+        } catch (Exception e) {
+            log.error("查询本地歌单曲目明细失败: plId={}", playlistId, e);
+        }
+        return list;
     }
 }

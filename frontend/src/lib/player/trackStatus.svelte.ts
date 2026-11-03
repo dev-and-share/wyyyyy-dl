@@ -49,23 +49,27 @@ export function getTrackSourceStatus(
   trackIsLocal?: boolean,
   curTrack?: Track | null
 ): TrackSourceStatus {
+  const strId = trackId != null ? String(trackId).trim() : '';
   const numId = Number(trackId);
-  const validId = !isNaN(numId) && numId > 0;
+  const validNum = !isNaN(numId) && numId > 0;
 
   // 1. 手机本地 / 浏览器离线缓存检测
-  const isPhone = validId && cachedSongIdSet.has(numId);
+  const isPhone = (validNum && cachedSongIdSet.has(numId as any)) || (strId !== '' && cachedSongIdSet.has(strId as any));
 
   // 2. 当前播放歌曲的实时状态联动：若正在播放该曲目且已落盘
   const isCurPlayingLocal = !!(
     curTrack &&
     curTrack.isLocal === true &&
-    validId &&
-    Number(curTrack.id) === numId
+    (
+      (validNum && Number(curTrack.id) === numId) ||
+      (strId !== '' && String(curTrack.id) === strId)
+    )
   );
 
   // 3. 服务器磁盘检测：全局 downloadedSet、自身已标记、或当前播放已确认落盘
   const isServer =
-    (validId && taskState.downloadedSet.has(numId)) ||
+    (validNum && taskState.downloadedSet.has(numId)) ||
+    (strId !== '' && taskState.downloadedCustomSet.has(strId)) ||
     trackIsLocal === true ||
     isCurPlayingLocal;
 

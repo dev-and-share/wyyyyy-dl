@@ -315,6 +315,80 @@ class MusicFreeStore {
       return {};
     }
   }
+
+  /**
+   * 获取指定插件或所有插件的排行榜列表
+   */
+  async getTopLists(pluginId?: string): Promise<Array<{ pluginId: string; pluginName: string; topLists: any[] }>> {
+    const targets = pluginId
+      ? this.plugins.filter((p) => p.id === pluginId && p.enabled && p.instance)
+      : this.getActivePlugins();
+
+    const results: Array<{ pluginId: string; pluginName: string; topLists: any[] }> = [];
+    for (const pluginRec of targets) {
+      const inst = pluginRec.instance;
+      if (inst && typeof inst.getTopLists === 'function') {
+        try {
+          const list = await inst.getTopLists();
+          if (Array.isArray(list) && list.length > 0) {
+            results.push({
+              pluginId: pluginRec.id,
+              pluginName: pluginRec.name,
+              topLists: list
+            });
+          }
+        } catch (e) {
+          console.warn(`[MusicFree] 获取 ${pluginRec.name} 排行榜失败:`, e);
+        }
+      }
+    }
+    return results;
+  }
+
+  /**
+   * 获取排行榜详情（曲目列表）
+   */
+  async getTopListDetail(pluginId: string, topListItem: any): Promise<any> {
+    const record = this.plugins.find((p) => p.id === pluginId);
+    if (!record || !record.instance || typeof record.instance.getTopListDetail !== 'function') {
+      throw new Error('插件不支持获取排行榜详情');
+    }
+    const res = await record.instance.getTopListDetail(topListItem);
+    return res;
+  }
+
+  /**
+   * 获取歌单广场标签
+   */
+  async getRecommendSheetTags(pluginId: string): Promise<any> {
+    const record = this.plugins.find((p) => p.id === pluginId);
+    if (!record || !record.instance || typeof record.instance.getRecommendSheetTags !== 'function') {
+      return null;
+    }
+    return await record.instance.getRecommendSheetTags();
+  }
+
+  /**
+   * 根据标签获取推荐歌单
+   */
+  async getRecommendSheetsByTag(pluginId: string, tag: any, page = 1): Promise<any> {
+    const record = this.plugins.find((p) => p.id === pluginId);
+    if (!record || !record.instance || typeof record.instance.getRecommendSheetsByTag !== 'function') {
+      return { isEnd: true, data: [] };
+    }
+    return await record.instance.getRecommendSheetsByTag(tag, page);
+  }
+
+  /**
+   * 获取歌单详情与歌曲
+   */
+  async getMusicSheetInfo(pluginId: string, sheetItem: any, page = 1): Promise<any> {
+    const record = this.plugins.find((p) => p.id === pluginId);
+    if (!record || !record.instance || typeof record.instance.getMusicSheetInfo !== 'function') {
+      throw new Error('插件不支持获取歌单详情');
+    }
+    return await record.instance.getMusicSheetInfo(sheetItem, page);
+  }
 }
 
 export const musicFreeStore = new MusicFreeStore();

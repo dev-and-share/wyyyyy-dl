@@ -1,15 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, getApiCache, setApiCache } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
   import type { Track } from '../../lib/types';
-  import SlotBtn from '../SlotBtn.svelte';
-  import TrackLikeBtn from '../TrackLikeBtn.svelte';
-  import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import DesktopArtistDetail from './DesktopArtistDetail.svelte';
+  import DesktopSearchNeteaseResults from './DesktopSearchNeteaseResults.svelte';
+  import DesktopSearchMusicFreeResults from './DesktopSearchMusicFreeResults.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
-  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { musicFreeStore } from '../../lib/musicfree/musicFreeStore.svelte';
   import { routerState } from '../../lib/router.svelte';
   import { t } from '../../lib/i18n';
 
@@ -41,16 +40,20 @@
 
   const STORAGE_KEY_KW = 'wyyyy_search_kw';
   const STORAGE_KEY_TYPE = 'wyyyy_search_type';
+  const STORAGE_KEY_SOURCE = 'wyyyy_search_source';
   const STORAGE_KEY_HISTORY = 'wyyyy_desktop_search_history';
 
   let kw = $state('');
   let sType = $state('1'); // 1: song, 10: album, 1000: playlist, 100: artist
+  let searchSource = $state<'netease' | 'musicfree'>('netease');
   let sLimit = $state(30);
+
   let sResults = $state<any[]>([]);
+  let mfResults = $state<any[]>([]);
   let searchLoading = $state(false);
   let hasSearched = $state(false);
   let cachingTrackId = $state<number | null>(null);
-  let addToPlaylistSong = $state<{ id: number; name: string; artist: string } | null>(null);
+  let addToPlaylistSong = $state<any>(null);
   let searchHistory = $state<string[]>([]);
   let activeArtistId = $state('');
 
@@ -59,6 +62,7 @@
     if (routerState.albumTrigger > 0 && routerState.albumTrigger !== lastHandledAlbumTrigger) {
       lastHandledAlbumTrigger = routerState.albumTrigger;
       activeArtistId = '';
+      searchSource = 'netease';
       sType = '10';
       const searchWord = routerState.albumName || routerState.albumId;
       if (searchWord) {
@@ -72,18 +76,14 @@
     if (typeof localStorage !== 'undefined') {
       kw = localStorage.getItem(STORAGE_KEY_KW) || '';
       sType = localStorage.getItem(STORAGE_KEY_TYPE) || '1';
+      searchSource = (localStorage.getItem(STORAGE_KEY_SOURCE) as any) || 'netease';
       try {
         const hist = localStorage.getItem(STORAGE_KEY_HISTORY);
         if (hist) searchHistory = JSON.parse(hist);
       } catch {}
     }
     if (kw.trim()) {
-      const cacheKey = 'search_' + sType + '_' + kw.trim();
-      const cached = getApiCache(cacheKey);
-      if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
-        sResults = cached.data;
-        hasSearched = true;
-      }
+      executeSearch(kw.trim(), false).catch(() => {});
     }
   });
 
@@ -117,14 +117,34 @@
     try {
       localStorage.setItem(STORAGE_KEY_KW, query);
       localStorage.setItem(STORAGE_KEY_TYPE, sType);
+      localStorage.setItem(STORAGE_KEY_SOURCE, searchSource);
     } catch {}
 
+    searchLoading = true;
+
+    // 1. MusicFree 跨源检索分支
+    if (searchSource === 'musicfree') {
+      try {
+        const res = await musicFreeStore.searchAll(query, 1);
+        mfResults = res.results || [];
+        searchLoading = false;
+        if (!mfResults.length && showEmptyToast) {
+          showToast('未在已启用的 MusicFree 插件中找到相关结果', 'info');
+        }
+      } catch (e: any) {
+        searchLoading = false;
+        if (showEmptyToast) showToast('插件检索异常: ' + (e?.message || e), 'error');
+      }
+      return;
+    }
+
+    // 2. 网易云原生检索分支
     const cacheKey = 'search_' + sType + '_' + query;
     const cached = getApiCache(cacheKey);
     if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
       sResults = cached.data;
-    } else {
-      searchLoading = true;
+      searchLoading = false;
+      return;
     }
 
     try {
@@ -149,6 +169,13 @@
 
   function handleTypeChange(typeStr: string) {
     sType = typeStr;
+    if (kw.trim()) {
+      executeSearch(kw, false).catch(() => {});
+    }
+  }
+
+  function handleSourceChange(source: 'netease' | 'musicfree') {
+    searchSource = source;
     if (kw.trim()) {
       executeSearch(kw, false).catch(() => {});
     }
@@ -211,280 +238,161 @@
   }
 </script>
 
-<!-- 🖥️ PC 桌面端：搜索中心全宽直铺 (去手风琴化) -->
+<!-- 🖥️ PC 桌面端：搜索中心 -->
 <div class="flex flex-col gap-4 select-none animate-fade-in" data-testid="desktop-search-view">
   {#if activeArtistId}
     <DesktopArtistDetail
       artistId={activeArtistId}
       {curTrack}
       {playing}
-      {likedSet}
       {downloadedSet}
+      {likedSet}
       onBackToSearch={() => activeArtistId = ''}
       {onToggleLike}
-      {onPlayQueue}
       {onAlbum}
+      {onPlayQueue}
       {onSong}
       {onReveal}
       {showToast}
     />
   {:else}
-    <!-- 1. 顶部控制栏：搜索类型胶囊 + 大搜索框 + 单页条数 (右侧 lg:pr-[220px] 避让控制胶囊) -->
+    <!-- 1. 顶部控制栏：音源选择器 + 搜索类型胶囊 + 大搜索框 (右侧 lg:pr-[220px] 避让控制胶囊) -->
     <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm lg:pr-[220px]">
-    <!-- 类型切换 -->
-    <div class="flex items-center gap-1.5 flex-wrap">
-      <button type="button" data-testid="search-type-1" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1')}>{t('search.typeSong')}</button>
-      <button type="button" data-testid="search-type-10" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '10' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('10')}>{t('search.typeAlbum')}</button>
-      <button type="button" data-testid="search-type-1000" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1000' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1000')}>{t('search.typePlaylist')}</button>
-      <button type="button" data-testid="search-type-100" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '100' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('100')}>{t('search.typeArtist')}</button>
-    </div>
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <!-- 搜索类型切换 -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button type="button" data-testid="search-type-1" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1')}>{t('search.typeSong')}</button>
+          {#if searchSource === 'netease'}
+            <button type="button" data-testid="search-type-10" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '10' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('10')}>{t('search.typeAlbum')}</button>
+            <button type="button" data-testid="search-type-1000" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1000' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1000')}>{t('search.typePlaylist')}</button>
+            <button type="button" data-testid="search-type-100" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '100' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('100')}>{t('search.typeArtist')}</button>
+          {/if}
+        </div>
 
-    <!-- 搜索输入框与条数 -->
-    <div class="flex items-center gap-2.5">
-      <div class="relative flex-1">
-        <input
-          type="search"
-          data-testid="desktop-search-input"
-          placeholder={t('search.desktopInputPlaceholder')}
-          class="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
-          bind:value={kw}
-          onkeydown={(e) => e.key === 'Enter' && executeSearch()}
-        />
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">🔍</span>
-        {#if kw}
+        <!-- 🎯 音源来源选择器 (对应用户在界面设计红框标注处) -->
+        <div class="flex items-center gap-1 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)]">
           <button
             type="button"
-            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none bg-transparent"
-            onclick={() => kw = ''}
+            class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            onclick={() => handleSourceChange('netease')}
           >
-            ✕
+            <span>☁️</span> <span>网易云</span>
           </button>
+          <button
+            type="button"
+            class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            onclick={() => handleSourceChange('musicfree')}
+          >
+            <span>🧩</span> <span>MusicFree 聚合</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 搜索输入框与条数 -->
+      <div class="flex items-center gap-2.5">
+        <div class="relative flex-1">
+          <input
+            type="search"
+            data-testid="desktop-search-input"
+            placeholder={searchSource === 'musicfree' ? '输入歌曲或歌手，跨所有启用插件并行检索...' : t('search.desktopInputPlaceholder')}
+            class="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
+            bind:value={kw}
+            onkeydown={(e) => e.key === 'Enter' && executeSearch()}
+          />
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">🔍</span>
+          {#if kw}
+            <button
+              type="button"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none bg-transparent"
+              onclick={() => kw = ''}
+            >✕</button>
+          {/if}
+        </div>
+
+        {#if searchSource === 'netease'}
+          <select bind:value={sLimit} class="w-auto px-2.5 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] shrink-0 cursor-pointer" title={t('search.limitPerPage')}>
+            {#each [20, 30, 50, 100] as lim}
+              <option value={lim}>{t('search.itemsCount', { count: lim })}</option>
+            {/each}
+          </select>
         {/if}
+
+        <button type="button" data-testid="desktop-search-btn" class="btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-md shrink-0 {searchSource === 'musicfree' ? '!bg-purple-600 hover:!bg-purple-500' : ''}" onclick={() => executeSearch()}>
+          {t('common.search')}
+        </button>
       </div>
 
-      <select bind:value={sLimit} class="w-auto px-2.5 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] shrink-0 cursor-pointer" title={t('search.limitPerPage')}>
-        {#each [20, 30, 50, 100] as lim}
-          <option value={lim}>{t('search.itemsCount', { count: lim })}</option>
-        {/each}
-      </select>
-
-      <button type="button" data-testid="desktop-search-btn" class="btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-md shrink-0" onclick={() => executeSearch()}>
-        {t('common.search')}
-      </button>
+      <!-- 历史搜索标签 -->
+      {#if searchHistory.length > 0}
+        <div class="flex items-center gap-1.5 flex-wrap pt-1 text-[11px] text-[var(--text-muted)]">
+          <span>{t('search.recentSearches')}</span>
+          {#each searchHistory as term}
+            <button type="button" class="px-2 py-0.5 rounded-md bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer border-none transition-colors" onclick={() => executeSearch(term)}>{term}</button>
+          {/each}
+          <button type="button" class="text-[10px] text-[var(--text-muted)] hover:text-red-400 cursor-pointer border-none bg-transparent ml-1" onclick={clearHistory}>{t('common.clear')}</button>
+        </div>
+      {/if}
     </div>
 
-    <!-- 历史搜索标签 -->
-    {#if searchHistory.length > 0}
-      <div class="flex items-center gap-1.5 flex-wrap pt-1 text-[11px] text-[var(--text-muted)]">
-        <span>{t('search.recentSearches')}</span>
-        {#each searchHistory as term}
-          <button type="button" class="px-2 py-0.5 rounded-md bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer border-none transition-colors" onclick={() => executeSearch(term)}>{term}</button>
-        {/each}
-        <button type="button" class="text-[10px] text-[var(--text-muted)] hover:text-red-400 cursor-pointer border-none bg-transparent ml-1" onclick={clearHistory}>{t('common.clear')}</button>
+    <!-- 2. 结果展示区 -->
+    {#if searchLoading}
+      <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
+        <span class="text-3xl animate-spin">⏳</span>
+        <span>{searchSource === 'musicfree' ? '正在调用插件跨源检索中...' : t('search.searchingLibrary')}</span>
+      </div>
+    {:else if searchSource === 'musicfree'}
+      <DesktopSearchMusicFreeResults
+        results={mfResults}
+        loading={searchLoading}
+        {curTrack}
+        {playing}
+        {onPlayQueue}
+        onOpenAddToPlaylist={(track) => addToPlaylistSong = track}
+        {showToast}
+      />
+    {:else if sResults.length > 0}
+      <DesktopSearchNeteaseResults
+        results={sResults}
+        {sType}
+        {curTrack}
+        {playing}
+        {likedSet}
+        {cachingTrackId}
+        {onToggleLike}
+        {onAlbum}
+        {onPlaylist}
+        {onPlayQueue}
+        {onSong}
+        {onReveal}
+        onDownloadTrack={handleDownloadTrack}
+        onDownloadAlbum={handleDownloadAlbum}
+        onDownloadPlaylist={handleDownloadPlaylist}
+        onCacheTrack={handleCache}
+        onOpenAddToPlaylist={(track) => addToPlaylistSong = track}
+        onSelectArtist={(id) => activeArtistId = id}
+        onSearchSongsForArtist={(name) => { sType = '1'; executeSearch(name); }}
+      />
+    {:else if hasSearched}
+      <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
+        <span class="text-4xl">🔍</span>
+        <span class="text-sm font-medium text-[var(--text-secondary)]">{t('search.noResultsForKw', { kw })}</span>
+        <span class="text-xs text-[var(--text-muted)]">{t('search.tryDifferentKw')}</span>
+      </div>
+    {:else}
+      <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
+        <span class="text-4xl">🎵</span>
+        <span class="text-sm font-bold text-[var(--text-main)]">{t('search.librarySearchTitle')}</span>
+        <span class="text-xs text-[var(--text-muted)] max-w-md">{t('search.librarySearchPrompt')}</span>
       </div>
     {/if}
-  </div>
 
-  <!-- 2. 结果展示区 (去手风琴化) -->
-  {#if searchLoading}
-    <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
-      <span class="text-3xl animate-spin">⏳</span>
-      <span>{t('search.searchingLibrary')}</span>
-    </div>
-  {:else if sResults.length > 0}
-    {#if sType === '1'}
-      <!-- 单曲全宽大表 -->
-      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm">
-        <div class="px-4 py-3 border-b border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)]">
-          <span>{t('search.searchedSongCount', { count: sResults.length })}</span>
-          <span>{t('search.clickToPlayOrDownload')}</span>
-        </div>
-        <div class="overflow-x-auto max-h-[620px] overflow-y-auto custom-table-scroll">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
-              <tr>
-                <th class="w-12 py-3 pl-4 font-semibold">#</th>
-                <th class="py-3 px-3 font-semibold">{t('search.tableTitle')}</th>
-                <th class="py-3 px-3 font-semibold w-40">{t('common.artist')}</th>
-                <th class="py-3 px-3 font-semibold w-44 hidden md:table-cell">{t('common.album')}</th>
-                <th class="py-3 pr-4 text-right font-semibold w-56">{t('search.tableActions')}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--border-subtle)]">
-              {#each sResults as r, idx (r.id)}
-                {@const artistName = formatArtist(r)}
-                {@const status = getTrackSourceStatus(r.id, r.isLocal, curTrack)}
-                {@const isPlayingThis = isSameTrack(curTrack, r)}
-                <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
-                  <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
-                    {#if isPlayingThis && playing}
-                      <span class="text-red-500 animate-pulse">▶</span>
-                    {:else}
-                      {idx + 1}
-                    {/if}
-                  </td>
-                  <td class="py-2.5 px-3 min-w-0">
-                    <div class="flex items-center gap-2 min-w-0">
-                      <button
-                        type="button"
-                        class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors bg-transparent border-none p-0 cursor-pointer text-left"
-                        onclick={() => onSong ? onSong(String(r.id)) : (onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }]))}
-                      >
-                        {r.name}
-                      </button>
-                      <TrackSourceBadge id={r.id} isLocal={r.isLocal} {curTrack} class="shrink-0" />
-                      {#if onToggleLike}
-                        <TrackLikeBtn liked={likedSet.has(Number(r.id))} onclick={() => onToggleLike(Number(r.id), r.name, artistName)} />
-                      {/if}
-                    </div>
-                  </td>
-                  <td class="py-2.5 px-3 text-[var(--text-secondary)] truncate">
-                    {artistName || t('common.variousArtists')}
-                  </td>
-                  <td class="py-2.5 px-3 text-[var(--text-muted)] truncate hidden md:table-cell">
-                    {#if r.al?.id && onAlbum}
-                      <button
-                        type="button"
-                        class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
-                        onclick={() => onAlbum(String(r.al.id), r.al?.name)}
-                      >
-                        {r.al.name || t('search.tab.song')}
-                      </button>
-                    {:else}
-                      <span>{r.al?.name || r.album?.name || t('search.tab.song')}</span>
-                    {/if}
-                  </td>
-                  <td class="py-2.5 pr-4 text-right whitespace-nowrap">
-                    <div class="inline-flex items-center justify-end gap-1.5">
-                      <SlotBtn
-                        playing={isPlayingThis && playing}
-                        onclick={() => onPlayQueue && onPlayQueue([{ id: r.id, name: r.name, artist: artistName, cover: r.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
-                      >
-                        {getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'desktop' })}
-                      </SlotBtn>
-                      {#if status.isServer}
-                        <SlotBtn onclick={() => onReveal && onReveal({ id: r.id, name: r.name, artist: artistName })}>{t('common.reveal')}</SlotBtn>
-                      {:else}
-                        <SlotBtn onclick={() => handleDownloadTrack(String(r.id), r.name)}>{t('download.downloadSingle')}</SlotBtn>
-                      {/if}
-                      <SlotBtn onclick={() => handleCache(r)}>
-                        {status.isPhone ? t('search.cachedShort') : cachingTrackId === r.id ? '⏳' : t('search.cacheShort')}
-                      </SlotBtn>
-                      <SlotBtn onclick={() => addToPlaylistSong = { id: r.id, name: r.name, artist: artistName }}>➕</SlotBtn>
-                    </div>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    {:else if sType === '10'}
-      <!-- 专辑网格直铺 -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-        {#each sResults as al (al.id)}
-          <div class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1">
-            <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
-              <img src={formatCoverUrl(al.picUrl, 250)} alt={al.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-            </div>
-            <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={al.name}>{al.name}</span>
-            <span class="text-[11px] text-[var(--text-secondary)] truncate">{formatArtist(al.artists || al.artist) || t('common.variousArtists')}</span>
-            <div class="flex items-center gap-1.5 pt-1">
-              {#if onAlbum}
-                <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onAlbum(String(al.id), al.name)}>{t('album.viewShort')}</button>
-              {/if}
-              <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => handleDownloadAlbum(String(al.id), al.name)} title={t('album.downloadFull')}>📥</button>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {:else if sType === '1000'}
-      <!-- 歌单网格直铺 -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-        {#each sResults as pl (pl.id)}
-          <div class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1">
-            <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
-              <img src={formatCoverUrl(pl.coverImgUrl, 250)} alt={pl.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-            </div>
-            <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={pl.name}>{pl.name}</span>
-            <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-              <span>{t('playlist.trackCount', { count: pl.trackCount || 0 })}</span>
-              <span class="truncate max-w-[90px]">{pl.creator?.nickname || ''}</span>
-            </div>
-            <div class="flex items-center gap-1.5 pt-1">
-              <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onPlaylist(String(pl.id))}>{t('playlist.viewShort')}</button>
-              <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => handleDownloadPlaylist(String(pl.id), pl.name)} title={t('playlist.downloadAllShort')}>📥</button>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {:else if sType === '100'}
-      <!-- 歌手圆形头像网格直铺 (显示 ID 并支持一键查看热门 50 首) -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-        {#each sResults as ar (ar.id)}
-          <div class="group flex flex-col items-center gap-2 p-4 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1 text-center">
-            <button
-              type="button"
-              class="w-20 h-20 rounded-full overflow-hidden bg-black/20 shadow-md border-none p-0 cursor-pointer group-hover:ring-2 ring-red-500/50 transition-all"
-              onclick={() => activeArtistId = String(ar.id)}
-              title={t('artist.clickToViewTop50WithName', { name: ar.name })}
-            >
-              <img src={formatCoverUrl(ar.picUrl || ar.img1v1Url, 250)} alt={ar.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-            </button>
-            <button
-              type="button"
-              class="font-bold text-xs text-[var(--text-main)] truncate max-w-full group-hover:text-red-400 transition-colors bg-transparent border-none p-0 cursor-pointer flex items-center gap-1"
-              onclick={() => activeArtistId = String(ar.id)}
-              title={t('artist.clickToViewTop50')}
-            >
-              <span>{ar.name}</span>
-              <span class="text-[11px] text-[var(--text-muted)] font-normal font-mono">(ID: {ar.id})</span>
-            </button>
-            <span class="text-[11px] text-[var(--text-muted)]">{t('artist.albumCount', { count: ar.albumSize || 0 })} · {t('artist.songCount', { count: ar.musicSize || 0 })}</span>
-            <div class="flex items-center gap-1.5 w-full pt-1">
-              <button
-                type="button"
-                data-testid="btn-artist-view-top50"
-                class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer"
-                onclick={() => activeArtistId = String(ar.id)}
-                title={t('artist.viewTop50Desc')}
-              >
-                {t('artist.hotTop50')}
-              </button>
-              <button
-                type="button"
-                class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer shrink-0"
-                onclick={() => { sType = '1'; executeSearch(ar.name); }}
-                title={t('artist.searchSongsDesc')}
-              >
-                {t('artist.searchSongs')}
-              </button>
-            </div>
-          </div>
-        {/each}
-      </div>
+    {#if addToPlaylistSong}
+      <AddToPlaylistModal song={addToPlaylistSong} onClose={() => addToPlaylistSong = null} {showToast} />
     {/if}
-  {:else if hasSearched}
-    <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-      <span class="text-4xl">🔍</span>
-      <span class="text-sm font-medium text-[var(--text-secondary)]">{t('search.noResultsForKw', { kw })}</span>
-      <span class="text-xs text-[var(--text-muted)]">{t('search.tryDifferentKw')}</span>
-    </div>
-  {:else}
-    <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-      <span class="text-4xl">🎵</span>
-      <span class="text-sm font-bold text-[var(--text-main)]">{t('search.librarySearchTitle')}</span>
-      <span class="text-xs text-[var(--text-muted)] max-w-md">{t('search.librarySearchPrompt')}</span>
-    </div>
-  {/if}
-
-  {#if addToPlaylistSong}
-    <AddToPlaylistModal song={addToPlaylistSong} onClose={() => addToPlaylistSong = null} {showToast} />
-  {/if}
   {/if}
 </div>
 
 <style>
-  .custom-table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-  .custom-table-scroll::-webkit-scrollbar-thumb { background: var(--border-color, rgba(255, 255, 255, 0.15)); border-radius: 4px; }
+  :global(.custom-table-scroll::-webkit-scrollbar) { width: 6px; height: 6px; }
+  :global(.custom-table-scroll::-webkit-scrollbar-thumb) { background: rgba(150, 150, 150, 0.25); border-radius: 4px; }
 </style>

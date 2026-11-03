@@ -33,6 +33,12 @@ export interface IMusicFreePlugin {
   getLyric?: (musicItem: any) => Promise<IMusicFreeLyric>;
   getAlbumInfo?: (albumItem: any) => Promise<any>;
   getArtistWorks?: (artistItem: any, page: number, type: string) => Promise<any>;
+  getTopLists?: () => Promise<any[]>;
+  getTopListDetail?: (topListItem: any) => Promise<any>;
+  getRecommendSheetTags?: () => Promise<{ pinned?: any[]; data?: any[] } | any[]>;
+  getRecommendSheetsByTag?: (tag: any, page?: number) => Promise<{ isEnd?: boolean; data: any[] }>;
+  getMusicSheetInfo?: (sheet: any, page?: number) => Promise<any>;
+  importMusicSheet?: (urlLike: string) => Promise<any[]>;
   [key: string]: any;
 }
 
