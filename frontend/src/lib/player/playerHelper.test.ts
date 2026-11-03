@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resolveTrackUrl, preloadNextTrack } from './playerHelper';
+import { resolveTrackUrl, preloadNextTrack, handleRestrictedAudioCheck } from './playerHelper';
 import { api } from '../api';
 import { taskState } from '../taskStore.svelte';
 import type { Track } from '../types';
@@ -346,6 +346,31 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(serverDownloadedTrack.unplayable).toBe(false);
     expect(serverDownloadedTrack.freeTrial).toBe(false);
     expect(api.songV1).not.toHaveBeenCalled();
+  });
+
+  it('detects 11s kuwo restricted anti-leech audio and marks for skip or fallback', async () => {
+    const restrictedKuwoTrack: any = {
+      id: 'mf_kuwo_12345',
+      name: '你有没有真的爱过我',
+      artist: '阿图表妹',
+      duration: 204000,
+      isLocal: false
+    };
+
+    // 11秒的短音频检测：应当触发受限标记
+    const checkResult = await handleRestrictedAudioCheck(11, restrictedKuwoTrack, true, 'http://antiserver.kuwo.cn/play.mp3');
+    expect(checkResult.isRestricted).toBe(true);
+
+    // 正常长度的本地曲目不应被误判
+    const normalLocalTrack: any = {
+      id: 'mf_kuwo_888',
+      name: '本地歌曲',
+      artist: '歌手',
+      duration: 180000,
+      isLocal: true
+    };
+    const normalResult = await handleRestrictedAudioCheck(11, normalLocalTrack, true, 'http://localhost/stream');
+    expect(normalResult.isRestricted).toBe(false);
   });
 });
 

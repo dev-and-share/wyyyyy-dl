@@ -4,7 +4,7 @@
   import { showToast } from '../lib/toast.svelte';
   import { taskState, clearTasks } from '../lib/taskStore.svelte';
   import { markSongDownloaded } from '../lib/trackStatus.svelte';
-  import { resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks, computeNextTrackOnSkip } from '../lib/playerHelper';
+  import { resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks, computeNextTrackOnSkip, handleRestrictedAudioCheck } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition, clearMediaSessionPosition, getLastPositionSyncedKey, getCurrentTrackKey } from '../lib/mediaSession';
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
@@ -78,6 +78,21 @@
     const res = computeNextTrackOnSkip(track, reason, consecutiveSkipCount, isTrial);
     consecutiveSkipCount = res.nextCount;
     return res.hasNext;
+  }
+
+  async function checkRestrictedAudio(a: HTMLAudioElement) {
+    const res = await handleRestrictedAudioCheck(a.duration, playerStore.activeTrack, playerStore.playing, a.src);
+    if (!res.isRestricted) return;
+    if (res.fallbackUrl && audioEl) {
+      if (playerStore.activeTrack) playerStore.activeTrack.url = res.fallbackUrl;
+      audioEl.src = res.fallbackUrl;
+      ensurePlay(true);
+      return;
+    }
+    if (res.shouldSkip && playerStore.activeTrack) {
+      showToast(`「${playerStore.activeTrack.name}」为端内受限音频(11s提示)，已自动跳过`, 'info', 2000);
+      if (advanceToNextTrack(playerStore.activeTrack, '受限试听音频', true)) ensurePlay(true);
+    }
   }
 
   async function ensurePlay(resetTime = false) {
@@ -205,9 +220,7 @@
       }
       const p = audioEl.play();
       if (p !== undefined) {
-        p.then(() => {
-          applyPendingSeek(); preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-        }).catch(() => { playerStore.playing = false; ensurePlay(false); });
+        p.then(() => { applyPendingSeek(); preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode); }).catch(() => { playerStore.playing = false; ensurePlay(false); });
       }
     } else {
       pauseAudio();
@@ -241,13 +254,11 @@
     if (isIosF3Holding()) { playerStore.curTime = targetTime; updateIosF3SavedTime(targetTime); playerStore.save(); return; }
     audioEl.currentTime = targetTime; playerStore.curTime = audioEl.currentTime; playerStore.save();
   }
-
   function seek(e: MouseEvent) {
     if (!audioEl || !playerStore.duration) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     applyTargetSeek(((e.clientX - rect.left) / rect.width) * playerStore.duration);
   }
-
   function handleClearQueue() {
     resetIosF3State(audioEl);
     if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
@@ -302,23 +313,12 @@
   function bindMediaSessionHandlers() {
     setupMediaSession({
       onPlay: () => {
-        if (isIosF3Holding()) {
-          handleTogglePlay();
-          return;
-        }
+        if (isIosF3Holding()) { handleTogglePlay(); return; }
         if (audioEl?.paused) handleTogglePlay();
       },
-      onPause: () => {
-        pauseAudio();
-      },
-      onPrev: () => {
-        resetIosF3State(audioEl);
-        prev();
-      },
-      onNext: () => {
-        resetIosF3State(audioEl);
-        next();
-      }
+      onPause: () => pauseAudio(),
+      onPrev: () => { resetIosF3State(audioEl); prev(); },
+      onNext: () => { resetIosF3State(audioEl); next(); }
     });
   }
 
@@ -354,12 +354,11 @@
     };
 
     window.addEventListener('svelte:playFolder', onPlayFolder as EventListener);
-    const onSleepTrigger = () => handleSleepTimerTrigger();
-    window.addEventListener('wyyyy:sleep-timer-trigger', onSleepTrigger);
+    window.addEventListener('wyyyy:sleep-timer-trigger', handleSleepTimerTrigger);
     return () => {
       window.removeEventListener('beforeunload', () => playerStore.save());
       window.removeEventListener('svelte:playFolder', onPlayFolder as EventListener);
-      window.removeEventListener('wyyyy:sleep-timer-trigger', onSleepTrigger);
+      window.removeEventListener('wyyyy:sleep-timer-trigger', handleSleepTimerTrigger);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   });
@@ -412,6 +411,7 @@
     if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
     bindMediaSessionHandlers();
     updateMediaSessionPosition(a);
+    checkRestrictedAudio(a);
   }}
   onseeked={(e) => {
     if (isIosF3Holding()) return;

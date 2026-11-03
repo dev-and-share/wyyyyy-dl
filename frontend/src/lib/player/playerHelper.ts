@@ -9,7 +9,8 @@ import { platformAdapter, musicFreeAdapter } from '../adapters';
 import { showToast } from '../toast.svelte';
 import { t } from '../i18n';
 import { isLocalStreamUrl } from '../utils';
-import { isLocalPlaylist } from '../localPlaylistStore.svelte';
+import { playlistService } from '../playlistService';
+import { resolveFallbackFromBuiltins } from '../musicfree/plugins';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -166,14 +167,7 @@ export async function playPlaylistTracks(
 
   try {
     showToast(t('player.loadingPlaylist', { name: playlistName }), 'info', 1500);
-    let tracks: any[] = [];
-    if (isLocalPlaylist(playlistId)) {
-      const res = await api.localPlaylistDetail(playlistId);
-      tracks = res?.data?.tracks || [];
-    } else {
-      const res = await (platformAdapter.getPlaylist ? platformAdapter.getPlaylist(playlistId) : api.playlist(playlistId));
-      tracks = res?.data?.playlist?.tracks || res?.data?.tracks || [];
-    }
+    const tracks = await playlistService.getTracks(playlistId);
     if (tracks && tracks.length > 0) {
       recordPlaylistPlay(playlistId);
       onPlayQueue(tracks.map((t: any) => toPlayerTrack(t)), {
@@ -294,5 +288,42 @@ export function computeNextTrackOnSkip(
   playerStore.save();
   return { hasNext: true, nextCount };
 }
+
+/**
+ * 🛡️ 智能检测受限防盗链短音频（如酷我 11 秒“请在客户端播放”提示音，或 <=15s 受限截断）
+ */
+export async function handleRestrictedAudioCheck(
+  audioDuration: number,
+  activeTrack: Track | null,
+  isPlaying: boolean,
+  currentAudioSrc: string
+): Promise<{
+  isRestricted: boolean;
+  fallbackUrl?: string;
+  shouldSkip: boolean;
+}> {
+  if (!activeTrack || activeTrack.isLocal || !isPlaying) {
+    return { isRestricted: false, shouldSkip: false };
+  }
+  const rawDuration = (activeTrack as any).duration || (activeTrack as any).dt;
+  const isRestrictedShort = audioDuration > 0 && audioDuration <= 15 && (!rawDuration || rawDuration > 30000);
+  if (!isRestrictedShort) {
+    return { isRestricted: false, shouldSkip: false };
+  }
+
+  console.warn(`[Player] 发现受限防盗链短音频 (${Math.round(audioDuration)}s):`, activeTrack.name);
+  try {
+    const fallback = await resolveFallbackFromBuiltins(activeTrack);
+    if (fallback?.url && !isSameAudioSource(currentAudioSrc, fallback.url)) {
+      return { isRestricted: true, fallbackUrl: fallback.url, shouldSkip: false };
+    }
+  } catch {}
+
+  activeTrack.freeTrial = true;
+  activeTrack.unplayable = true;
+  activeTrack.unplayableReason = '受限音频(11s提示)';
+  return { isRestricted: true, shouldSkip: true };
+}
+
 
 
