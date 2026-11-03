@@ -6,6 +6,7 @@ export default {
   'topbar.settings': '偏好設定',
   'topbar.playlist': '播放清單',
   'topbar.search': '搜尋',
+  'topbar.discover': '探索',
   'topbar.local': '本機',
   'common.confirm': '確定',
   'common.cancel': '取消',

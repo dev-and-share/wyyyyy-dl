@@ -6,6 +6,7 @@ export default {
   'topbar.settings': '환경설정',
   'topbar.playlist': '플레이리스트',
   'topbar.search': '검색',
+  'topbar.discover': '발견',
   'topbar.local': '로컬',
   'common.confirm': '확인',
   'common.cancel': '취소',

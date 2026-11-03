@@ -11,40 +11,27 @@
   import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import SwipeableTabsView from './sp/SwipeableTabsView.svelte';
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
+  import { musicFreeStore } from '../lib/musicfree/musicFreeStore.svelte';
+  import DesktopSearchMusicFreeResults from './desktop/DesktopSearchMusicFreeResults.svelte';
+  import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import { t } from '../lib/i18n';
 
   let {
-    albumId = '',
-    albumTrigger = 0,
-    curTrack = null,
-    playing = false,
-    downloadedSet = new Set<number>(),
-    likedSet = new Set<number>(),
-    onToggleLike,
-    onAlbum,
-    onPlaylist,
-    onPlayQueue,
-    onSong,
-    onReveal,
-    showToast
+    albumId = '', albumTrigger = 0, curTrack = null, playing = false,
+    downloadedSet = new Set<number>(), likedSet = new Set<number>(),
+    onToggleLike, onAlbum, onPlaylist, onPlayQueue, onSong, onReveal, showToast
   } = $props<{
-    albumId?: string;
-    albumTrigger?: number;
-    curTrack?: Track | null;
-    playing?: boolean;
-    downloadedSet?: Set<number>;
-    likedSet?: Set<number>;
+    albumId?: string; albumTrigger?: number; curTrack?: Track | null; playing?: boolean;
+    downloadedSet?: Set<number>; likedSet?: Set<number>;
     onToggleLike?: (id: number, name: string, artist?: string) => void;
-    onAlbum?: (id: string, name?: string) => void;
-    onPlaylist: (id: string) => void;
-    onPlayQueue?: (tracks: any[], idx?: number) => void;
-    onSong?: (id: string) => void;
-    onReveal?: (item: any) => void;
-    showToast: (m: string, t?: string) => void;
+    onAlbum?: (id: string, name?: string) => void; onPlaylist: (id: string) => void;
+    onPlayQueue?: (tracks: any[], idx?: number) => void; onSong?: (id: string) => void;
+    onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
 
   const STORAGE_KEY_SEARCH_KW = 'wyyyy_search_kw';
   const STORAGE_KEY_SEARCH_TYPE = 'wyyyy_search_type';
+  const STORAGE_KEY_SEARCH_SOURCE = 'wyyyy_search_source';
   const STORAGE_KEY_ALBUM_ID = 'wyyyy_search_album_id';
   const STORAGE_KEY_SUBTAB = 'wyyyy_search_subtab';
   const STORAGE_KEY_ACC_SEARCH = 'wyyyy_search_acc_search';
@@ -58,10 +45,13 @@
 
   let kw = $state(getStored(STORAGE_KEY_SEARCH_KW, ''));
   let sType = $state(getStored(STORAGE_KEY_SEARCH_TYPE, '1'));
+  let searchSource = $state<'netease' | 'musicfree'>((getStored(STORAGE_KEY_SEARCH_SOURCE, 'netease') as any) || 'netease');
   let sLimit = $state(20);
   let sResults: any[] = $state([]);
+  let mfResults: any[] = $state([]);
   let searchLoading = $state(false);
   let hasSearched = $state(false);
+  let addToPlaylistTrack = $state<any>(null);
 
   function initSubtab() {
     return albumId ? 'album' : ((getStored(STORAGE_KEY_SUBTAB, 'search') as any) || 'search');
@@ -182,7 +172,27 @@
     try {
       localStorage.setItem(STORAGE_KEY_SEARCH_KW, kw);
       localStorage.setItem(STORAGE_KEY_SEARCH_TYPE, sType);
+      localStorage.setItem(STORAGE_KEY_SEARCH_SOURCE, searchSource);
     } catch {}
+
+    // 1. MusicFree 跨源检索
+    if (searchSource === 'musicfree') {
+      searchLoading = true;
+      try {
+        const res = await musicFreeStore.searchAll(kw.trim(), 1);
+        mfResults = res.results || [];
+        searchLoading = false;
+        if (!mfResults.length && showEmptyToast) {
+          showToast('未在已启用的 MusicFree 插件中找到相关结果', 'info');
+        }
+      } catch (e: any) {
+        searchLoading = false;
+        if (showEmptyToast) showToast('插件检索异常: ' + (e?.message || e), 'error');
+      }
+      return;
+    }
+
+    // 2. 网易云原生检索
     const cacheKey = 'search_' + sType + '_' + kw.trim();
     const cached = getApiCache(cacheKey);
     if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
@@ -347,17 +357,40 @@
   <!-- Section 1: 在线搜索 -->
   <div class="w-full">
     <AccordionCard title={t('search.globalSearch')} flat open={true} accent="red">
-      <div class="flex gap-1.5 flex-nowrap w-auto max-sm:w-full max-sm:grid max-sm:grid-cols-4 max-sm:gap-1.5">
-        <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1')}>{t('search.typeSong')}</button>
-        <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '10' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('10')}>{t('search.typeAlbum')}</button>
-        <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1000' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1000')}>{t('search.typePlaylist')}</button>
-        <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '100' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('100')}>{t('search.typeArtist')}</button>
+      <!-- 🎯 音源来源选择器：网易云 vs MusicFree 聚合 -->
+      <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] mb-2.5">
+        <button
+          type="button"
+          data-testid="sp-search-source-netease"
+          class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center justify-center gap-1 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => { searchSource = 'netease'; if (kw.trim()) doSearch(false); }}
+        >
+          <span>☁️</span> <span>网易云</span>
+        </button>
+        <button
+          type="button"
+          data-testid="sp-search-source-musicfree"
+          class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center justify-center gap-1 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => { searchSource = 'musicfree'; if (kw.trim()) doSearch(false); }}
+        >
+          <span>🧩</span> <span>MusicFree 聚合</span>
+        </button>
       </div>
+
+      {#if searchSource === 'netease'}
+        <div class="flex gap-1.5 flex-nowrap w-auto max-sm:w-full max-sm:grid max-sm:grid-cols-4 max-sm:gap-1.5">
+          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1')}>{t('search.typeSong')}</button>
+          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '10' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('10')}>{t('search.typeAlbum')}</button>
+          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1000' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1000')}>{t('search.typePlaylist')}</button>
+          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '100' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('100')}>{t('search.typeArtist')}</button>
+        </div>
+      {/if}
+
       <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
         <input
           type="search"
           enterkeyhint="search"
-          placeholder={t('search.inputPlaceholderWithShortcut')}
+          placeholder={searchSource === 'musicfree' ? '输入歌曲或歌手，跨插件并行检索...' : t('search.inputPlaceholderWithShortcut')}
           class="flex-1 min-w-0"
           bind:value={kw}
           onkeydown={(e) => {
@@ -367,30 +400,45 @@
             }
           }}
         />
-        <input type="number" bind:value={sLimit} min="1" max="100" class="w-[50px] md:w-[60px] text-center shrink-0" title={t('search.limitPerPage')} />
+        {#if searchSource === 'netease'}
+          <input type="number" bind:value={sLimit} min="1" max="100" class="w-[50px] md:w-[60px] text-center shrink-0" title={t('search.limitPerPage')} />
+        {/if}
         <button type="button" class="btn-primary shrink-0 whitespace-nowrap hidden sm:inline-flex" onclick={() => doSearch().catch((e:any) => showToast(e.message, 'warning'))}>{t('common.search')}</button>
       </div>
-      <SearchResultsSection
-        {sResults}
-        {sType}
-        {searchLoading}
-        {hasSearched}
-        {curTrack}
-        {playing}
-        {likedSet}
-        {onToggleLike}
-        {onPlaylist}
-        onAlbum={handleAlbum}
-        {onPlayQueue}
-        {onSong}
-        {onReveal}
-        onViewArtist={handleViewArtist}
-        {handlePlayPlaylist}
-        {handleDownloadPlaylist}
-        {showToast}
-      />
-      {#if hasSearched && sResults.length > 0}
-        <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">{t('search.resultCount', { count: sResults.length })}</div>
+
+      {#if searchSource === 'musicfree'}
+        <DesktopSearchMusicFreeResults
+          results={mfResults}
+          loading={searchLoading}
+          {curTrack}
+          {playing}
+          {onPlayQueue}
+          onOpenAddToPlaylist={(item) => addToPlaylistTrack = item}
+          {showToast}
+        />
+      {:else}
+        <SearchResultsSection
+          {sResults}
+          {sType}
+          {searchLoading}
+          {hasSearched}
+          {curTrack}
+          {playing}
+          {likedSet}
+          {onToggleLike}
+          {onPlaylist}
+          onAlbum={handleAlbum}
+          {onPlayQueue}
+          {onSong}
+          {onReveal}
+          onViewArtist={handleViewArtist}
+          {handlePlayPlaylist}
+          {handleDownloadPlaylist}
+          {showToast}
+        />
+        {#if hasSearched && sResults.length > 0}
+          <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px;">{t('search.resultCount', { count: sResults.length })}</div>
+        {/if}
       {/if}
     </AccordionCard>
   </div>
@@ -423,3 +471,11 @@
     />
   </div>
 </SwipeableTabsView>
+
+{#if addToPlaylistTrack}
+  <AddToPlaylistModal
+    song={addToPlaylistTrack}
+    onClose={() => addToPlaylistTrack = null}
+    {showToast}
+  />
+{/if}

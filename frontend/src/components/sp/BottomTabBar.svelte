@@ -36,6 +36,15 @@
   </button>
   <button
     type="button"
+    data-testid="bottom-tab-musicfree"
+    class="flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer bg-transparent border-none select-none {tab === 'musicfree' ? 'text-purple-500 dark:text-purple-400 font-bold scale-105' : 'text-[var(--text-secondary)] opacity-80 hover:opacity-100 font-medium'}"
+    onclick={() => onSwitchTab('musicfree')}
+  >
+    <span class="text-[17px] leading-tight">🧩</span>
+    <span class="text-[11px] mt-0.5 leading-none">{t('topbar.discover')}</span>
+  </button>
+  <button
+    type="button"
     data-testid="bottom-tab-download-mgr"
     class="flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer bg-transparent border-none select-none {tab === 'download-mgr' ? 'text-red-500 dark:text-red-400 font-bold scale-105' : 'text-[var(--text-secondary)] opacity-80 hover:opacity-100 font-medium'}"
     onclick={() => onSwitchTab('download-mgr')}

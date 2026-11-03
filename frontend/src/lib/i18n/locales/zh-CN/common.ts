@@ -6,6 +6,7 @@ export default {
   'topbar.settings': '系统偏好设置',
   'topbar.playlist': '歌单',
   'topbar.search': '搜索',
+  'topbar.discover': '发现',
   'topbar.local': '本地',
   'common.confirm': '确定',
   'common.cancel': '取消',

@@ -6,6 +6,7 @@ export default {
   'topbar.settings': 'System Preferences',
   'topbar.playlist': 'Playlists',
   'topbar.search': 'Search',
+  'topbar.discover': 'Discover',
   'topbar.local': 'Local',
   'common.confirm': 'Confirm',
   'common.cancel': 'Cancel',

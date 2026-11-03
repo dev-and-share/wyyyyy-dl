@@ -6,6 +6,7 @@ export default {
   'topbar.settings': '環境設定',
   'topbar.playlist': 'プレイリスト',
   'topbar.search': '検索',
+  'topbar.discover': '発見',
   'topbar.local': 'ローカル',
   'common.confirm': '確認',
   'common.cancel': 'キャンセル',
