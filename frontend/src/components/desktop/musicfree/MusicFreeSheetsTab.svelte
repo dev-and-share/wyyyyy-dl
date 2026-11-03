@@ -70,6 +70,16 @@
   let sheetDetailLoading = $state(false);
   let sheetTracks = $state<any[]>([]);
   let addToPlaylistSong = $state<any>(null);
+  let showAllTags = $state(false);
+
+  function cleanTagTitle(raw: any): string {
+    if (!raw) return '';
+    return String(raw)
+      .replace(/&#38;/g, '&')
+      .replace(/&amp;/g, '&')
+      .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)))
+      .trim();
+  }
 
   onMount(async () => {
     if (sheetPlugins.length > 0) {
@@ -81,41 +91,27 @@
   async function handlePluginChange(newPluginId: string) {
     selectedPluginId = newPluginId;
     selectedSheet = null;
+    showAllTags = false;
     await loadTagsAndSheets();
   }
 
   function normalizeTags(rawTags: any): any[] {
     if (!rawTags) return [{ id: undefined, title: '全部' }];
-    const result: any[] = [];
-    if (Array.isArray(rawTags.pinned)) {
-      for (const p of rawTags.pinned) {
-        if (p && (p.id != null || p.title || p.name)) {
-          result.push({ id: p.id, title: p.title || p.name });
-        }
+    const list: any[] = [];
+    const add = (item: any) => {
+      if (item && (item.id != null || item.title || item.name)) {
+        list.push({ id: item.id, title: cleanTagTitle(item.title || item.name) });
       }
-    }
+    };
+    if (Array.isArray(rawTags.pinned)) rawTags.pinned.forEach(add);
     const container = Array.isArray(rawTags) ? rawTags : (Array.isArray(rawTags.data) ? rawTags.data : []);
     for (const item of container) {
-      if (item && Array.isArray(item.data)) {
-        for (const sub of item.data) {
-          if (sub && (sub.id != null || sub.title || sub.name)) {
-            result.push({ id: sub.id, title: sub.title || sub.name });
-          }
-        }
-      } else if (item && (item.id != null || item.title || item.name)) {
-        result.push({ id: item.id, title: item.title || item.name });
-      }
+      if (item && Array.isArray(item.data)) item.data.forEach(add);
+      else add(item);
     }
     const seen = new Set<string>();
-    const unique = result.filter(tag => {
-      const key = `${tag.id}_${tag.title}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    if (unique.length === 0 || !unique.some(t => t.title === '全部')) {
-      unique.unshift({ id: undefined, title: '全部' });
-    }
+    const unique = list.filter(t => !seen.has(`${t.id}_${t.title}`) && seen.add(`${t.id}_${t.title}`));
+    if (!unique.some(t => t.title === '全部')) unique.unshift({ id: undefined, title: '全部' });
     return unique;
   }
 
@@ -194,9 +190,8 @@
     }
   }
 
-  function handlePlayAll() {
-    if (!sheetTracks.length || !onPlayQueue || !selectedSheet) return;
-    const queue = sheetTracks.map((t) => ({
+  function buildTrack(t: any) {
+    return {
       id: t.id || `mf_${selectedSheet._pluginId}_${t.rawId || Math.random()}`,
       name: t.title || t.name,
       artist: t.artist,
@@ -205,39 +200,23 @@
       raw: t,
       _isMusicFree: true,
       _pluginHash: selectedSheet._pluginId
-    }));
-    onPlayQueue(queue, { startIndex: 0, isExplicitTrack: true });
+    };
+  }
+
+  function handlePlayAll() {
+    if (!sheetTracks.length || !onPlayQueue || !selectedSheet) return;
+    onPlayQueue(sheetTracks.map(buildTrack), { startIndex: 0, isExplicitTrack: true });
     showToast(`开始播放「${selectedSheet.title || selectedSheet.name}」`, 'info');
   }
 
   function handlePlaySingle(t: any) {
     if (!onPlayQueue || !selectedSheet) return;
-    const track = {
-      id: t.id || `mf_${selectedSheet._pluginId}_${t.rawId || Math.random()}`,
-      name: t.title || t.name,
-      artist: t.artist,
-      album: t.album,
-      cover: t.artwork || t.cover || DEFAULT_VINYL_COVER,
-      raw: t,
-      _isMusicFree: true,
-      _pluginHash: selectedSheet._pluginId
-    };
-    onPlayQueue([track], { startIndex: 0, isExplicitTrack: true });
+    onPlayQueue([buildTrack(t)], { startIndex: 0, isExplicitTrack: true });
   }
 
   async function handleCache(t: any) {
     if (!selectedSheet) return;
-    const track = {
-      id: t.id || `mf_${selectedSheet._pluginId}_${t.rawId || Math.random()}`,
-      name: t.title || t.name,
-      artist: t.artist,
-      album: t.album,
-      cover: t.artwork || t.cover || DEFAULT_VINYL_COVER,
-      raw: t,
-      _isMusicFree: true,
-      _pluginHash: selectedSheet._pluginId
-    };
-    const res = await cacheTrackToBrowser(track);
+    const res = await cacheTrackToBrowser(buildTrack(t));
     showToast(res.msg, res.success ? 'success' : 'error');
   }
 </script>
@@ -361,13 +340,26 @@
       </div>
     {:else}
       <!-- 插件来源切换 & 标签栏 -->
-      <div class="space-y-3">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs text-[var(--text-muted)] font-medium">音源选择：</span>
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between flex-wrap gap-1">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs text-[var(--text-muted)] font-medium">音源选择：</span>
+            <span class="text-[11px] text-[var(--text-muted)] opacity-70">
+              ({sheetPlugins.length}/{musicFreeStore.plugins.length} 个插件支持歌单广场)
+            </span>
+          </div>
+          {#if musicFreeStore.plugins.length > sheetPlugins.length}
+            <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+              其余为纯搜歌/歌词/网盘源
+            </span>
+          {/if}
+        </div>
+
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
           {#each sheetPlugins as pl}
             <button
               type="button"
-              class="px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all {selectedPluginId === pl.id ? 'bg-purple-600 text-white shadow-sm' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+              class="px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all shrink-0 {selectedPluginId === pl.id ? 'bg-purple-600 text-white shadow-sm' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
               onclick={() => handlePluginChange(pl.id)}
             >
               {pl.name}
@@ -376,16 +368,49 @@
         </div>
 
         {#if tags.length > 0}
-          <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[var(--border-subtle)]">
-            {#each tags as tg}
-              <button
-                type="button"
-                class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-                onclick={() => loadSheets(tg)}
-              >
-                {tg.title || tg.name || tg}
-              </button>
-            {/each}
+          <div class="space-y-1.5 pt-1 border-t border-[var(--border-subtle)]">
+            <!-- 单行横向滚动模式（默认，不霸占屏幕空间） -->
+            <div class="flex items-center gap-1.5">
+              <div class="flex-1 min-w-0 overflow-x-auto flex items-center gap-1.5 no-scrollbar py-0.5">
+                {#each tags as tg}
+                  <button
+                    type="button"
+                    class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors shrink-0 {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+                    onclick={() => loadSheets(tg)}
+                  >
+                    {tg.title || tg.name || tg}
+                  </button>
+                {/each}
+              </div>
+
+              {#if tags.length > 6}
+                <button
+                  type="button"
+                  class="px-2 py-0.5 rounded-lg text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] bg-[var(--btn-secondary-bg)] border-none shrink-0 cursor-pointer"
+                  onclick={() => showAllTags = !showAllTags}
+                >
+                  {showAllTags ? '收起 ▴' : `分类(${tags.length}) ▾`}
+                </button>
+              {/if}
+            </div>
+
+            <!-- 点击展开时展示的分类弹层面板 -->
+            {#if showAllTags}
+              <div class="flex items-center gap-1.5 flex-wrap p-2.5 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] max-h-48 overflow-y-auto">
+                {#each tags as tg}
+                  <button
+                    type="button"
+                    class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+                    onclick={() => {
+                      loadSheets(tg);
+                      showAllTags = false;
+                    }}
+                  >
+                    {tg.title || tg.name || tg}
+                  </button>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/if}
       </div>
