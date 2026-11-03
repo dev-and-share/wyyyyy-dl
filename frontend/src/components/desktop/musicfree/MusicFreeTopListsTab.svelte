@@ -19,6 +19,10 @@
   }>();
 
   let loading = $state(false);
+  const INVALID_KEYWORD_BLACKLIST = [
+    '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书'
+  ];
+
   let topListGroups = $state<Array<{
     pluginId: string;
     pluginName: string;
@@ -40,9 +44,29 @@
     loading = true;
     try {
       const groups = await musicFreeStore.getTopLists();
-      topListGroups = groups;
+      const filtered = groups.filter((g) => {
+        const lower = (g.pluginName || '').toLowerCase();
+        return !INVALID_KEYWORD_BLACKLIST.some((kw) => lower.includes(kw.toLowerCase()));
+      });
+      const priorityWeights: Record<string, number> = {
+        '小秋音乐': 100,
+        'QQ音乐': 99,
+        '小蜗音乐': 95,
+        '酷我音乐': 94,
+        '小狗音乐': 90,
+        '酷狗音乐': 89,
+        '网易音乐': 85,
+        '小云音乐': 84,
+        '猫耳FM': 80
+      };
+      topListGroups = filtered.sort((a, b) => {
+        const wa = priorityWeights[a.pluginName.trim()] || 0;
+        const wb = priorityWeights[b.pluginName.trim()] || 0;
+        return wb - wa;
+      });
     } catch (e: any) {
-      showToast('获取排行榜失败: ' + (e?.message || e), 'error');
+      console.warn('获取排行榜失败:', e);
+      topListGroups = [];
     } finally {
       loading = false;
     }
@@ -59,8 +83,13 @@
     try {
       const detail = await musicFreeStore.getTopListDetail(pluginId, chart);
       chartTracks = Array.isArray(detail?.musicList) ? detail.musicList : (Array.isArray(detail) ? detail : []);
+      if (chartTracks.length === 0) {
+        showToast('该榜单暂无有效曲目', 'info');
+      }
     } catch (e: any) {
-      showToast('获取榜单曲目失败: ' + (e?.message || e), 'error');
+      console.warn('获取榜单曲目失败:', e);
+      chartTracks = [];
+      showToast('该榜单曲目解析暂不可用', 'warning');
     } finally {
       detailLoading = false;
     }

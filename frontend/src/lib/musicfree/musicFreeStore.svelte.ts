@@ -226,6 +226,25 @@ class MusicFreeStore {
   }
 
   /**
+   * 🧹 一键清理已知失效或垃圾插件
+   */
+  cleanupJunkPlugins(): number {
+    const junkKeywords = [
+      '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书'
+    ];
+    const initialCount = this.plugins.length;
+    this.plugins = this.plugins.filter((p) => {
+      const lower = (p.name || '').toLowerCase();
+      return !junkKeywords.some((kw) => lower.includes(kw.toLowerCase()));
+    });
+    const removed = initialCount - this.plugins.length;
+    if (removed > 0) {
+      this.saveToStorage();
+    }
+    return removed;
+  }
+
+  /**
    * 移除整个订阅源及关联插件
    */
   removeSubscription(url: string) {
@@ -391,50 +410,86 @@ class MusicFreeStore {
   }
 
   /**
-   * 获取排行榜详情（曲目列表）
+   * 获取排行榜详情（曲目列表）- 深度容错安全包装
    */
   async getTopListDetail(pluginId: string, topListItem: any): Promise<any> {
     const record = this.plugins.find((p) => p.id === pluginId);
     if (!record || !record.instance || typeof record.instance.getTopListDetail !== 'function') {
-      throw new Error('插件不支持获取排行榜详情');
+      return { isEnd: true, musicList: [] };
     }
     if (!topListItem || (topListItem.id == null && !topListItem.topId)) {
-      throw new Error('榜单项缺少有效 ID，无法获取排行榜曲目');
+      return { isEnd: true, musicList: [] };
     }
-    return await record.instance.getTopListDetail(topListItem);
+    try {
+      const res = await record.instance.getTopListDetail(topListItem);
+      const musicList = Array.isArray(res?.musicList) ? res.musicList : (Array.isArray(res) ? res : []);
+      return {
+        isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : false,
+        musicList: musicList.filter((m: any) => m && (m.title || m.name))
+      };
+    } catch (e: any) {
+      console.warn(`[MusicFree] 获取榜单详情异常: ${record.name}`, e?.message || e);
+      return { isEnd: true, musicList: [] };
+    }
   }
 
   /**
-   * 获取歌单广场标签
+   * 获取歌单广场标签 - 深度容错安全包装
    */
   async getRecommendSheetTags(pluginId: string): Promise<any> {
     const record = this.plugins.find((p) => p.id === pluginId);
     if (!record || !record.instance || typeof record.instance.getRecommendSheetTags !== 'function') {
       return null;
     }
-    return await record.instance.getRecommendSheetTags();
+    try {
+      return await record.instance.getRecommendSheetTags();
+    } catch (e: any) {
+      console.warn(`[MusicFree] 获取歌单标签异常: ${record.name}`, e?.message || e);
+      return null;
+    }
   }
 
   /**
-   * 根据标签获取推荐歌单
+   * 根据标签获取推荐歌单 - 深度容错安全包装
    */
   async getRecommendSheetsByTag(pluginId: string, tag: any, page = 1): Promise<any> {
     const record = this.plugins.find((p) => p.id === pluginId);
     if (!record || !record.instance || typeof record.instance.getRecommendSheetsByTag !== 'function') {
       return { isEnd: true, data: [] };
     }
-    return await record.instance.getRecommendSheetsByTag(tag, page);
+    try {
+      const res = await record.instance.getRecommendSheetsByTag(tag, page);
+      if (!res) return { isEnd: true, data: [] };
+      const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      return {
+        isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : (data.length === 0),
+        data: data.filter((item: any) => item && (item.title || item.name))
+      };
+    } catch (e: any) {
+      console.warn(`[MusicFree] 获取推荐歌单异常: ${record.name}`, e?.message || e);
+      return { isEnd: true, data: [], error: e?.message || String(e) };
+    }
   }
 
   /**
-   * 获取歌单详情与歌曲
+   * 获取歌单详情与歌曲 - 深度容错安全包装
    */
   async getMusicSheetInfo(pluginId: string, sheetItem: any, page = 1): Promise<any> {
     const record = this.plugins.find((p) => p.id === pluginId);
     if (!record || !record.instance || typeof record.instance.getMusicSheetInfo !== 'function') {
-      throw new Error('插件不支持获取歌单详情');
+      return { isEnd: true, musicList: [] };
     }
-    return await record.instance.getMusicSheetInfo(sheetItem, page);
+    try {
+      const res = await record.instance.getMusicSheetInfo(sheetItem, page);
+      const musicList = Array.isArray(res?.musicList) ? res.musicList : (Array.isArray(res) ? res : []);
+      return {
+        isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : false,
+        musicList: musicList.filter((m: any) => m && (m.title || m.name))
+      };
+    } catch (e: any) {
+      console.warn(`[MusicFree] 获取歌单曲目异常: ${record.name}`, e?.message || e);
+      return { isEnd: true, musicList: [] };
+    }
   }
 }
 

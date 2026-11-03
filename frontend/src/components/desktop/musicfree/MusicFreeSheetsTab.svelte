@@ -19,13 +19,24 @@
   }>();
 
   let loading = $state(false);
+  let emptyPluginIds = $state<Set<string>>(new Set());
+
+  const INVALID_KEYWORD_BLACKLIST = [
+    '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书'
+  ];
+
   let sheetPlugins = $derived(
     (() => {
       const seen = new Set<string>();
       const list = musicFreeStore.plugins.filter((p) => {
         if (!p.enabled || !p.instance || typeof p.instance.getRecommendSheetsByTag !== 'function') return false;
         const n = (p.name || '').trim();
-        if (!n || seen.has(n)) return false;
+        if (!n || seen.has(n) || emptyPluginIds.has(p.id)) return false;
+        // 彻底过滤已知无歌单数据的纯搜歌或失效小众源
+        const lower = n.toLowerCase();
+        if (INVALID_KEYWORD_BLACKLIST.some((kw) => lower.includes(kw.toLowerCase()))) {
+          return false;
+        }
         seen.add(n);
         return true;
       });
@@ -125,9 +136,25 @@
       selectedTag = tags[0];
       await loadSheets(selectedTag);
     } catch (e: any) {
-      showToast('获取歌单广场失败: ' + (e?.message || e), 'error');
+      console.warn('获取歌单广场失败:', e);
+      markCurrentPluginEmptyAndFallback();
     } finally {
       loading = false;
+    }
+  }
+
+  async function markCurrentPluginEmptyAndFallback() {
+    if (!selectedPluginId) return;
+    const currentId = selectedPluginId;
+    const nextEmpty = new Set(emptyPluginIds);
+    nextEmpty.add(currentId);
+    emptyPluginIds = nextEmpty;
+    const remaining = sheetPlugins.filter((p) => p.id !== currentId && !nextEmpty.has(p.id));
+    if (remaining.length > 0) {
+      showToast(`音源「${currentPluginName}」暂无有效歌单，已自动切换`, 'info');
+      await handlePluginChange(remaining[0].id);
+    } else {
+      sheets = [];
     }
   }
 
@@ -140,15 +167,14 @@
       const rawData = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       // 过滤无效条目（必须包含 title 或 name）
       sheets = rawData.filter((item: any) => item && (item.title || item.name));
+      // 若该音源在默认/全部标签下均返回空，自动标记为空源并切换到健康源
+      if (sheets.length === 0 && (!tag || tag.title === '全部')) {
+        markCurrentPluginEmptyAndFallback();
+      }
     } catch (e: any) {
       console.warn('加载歌单列表失败:', e);
       sheets = [];
-      const msg = e?.message || String(e);
-      if (msg.includes('res.total') || msg.includes('undefined is not an object')) {
-        showToast(`音源「${currentPluginName}」该分类数据结构异常`, 'warning');
-      } else {
-        showToast('加载歌单列表失败: ' + msg, 'error');
-      }
+      markCurrentPluginEmptyAndFallback();
     } finally {
       loading = false;
     }

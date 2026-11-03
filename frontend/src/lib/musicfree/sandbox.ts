@@ -72,7 +72,17 @@ export function executePluginScript(jsCode: string): IMusicFreePlugin {
         return {};
       }
     },
-    stringify: JSON.stringify.bind(JSON)
+    stringify: (value: any, replacer?: any, space?: any) => {
+      try {
+        if (typeof JSON !== 'undefined' && typeof JSON.stringify === 'function') {
+          return JSON.stringify(value, replacer, space);
+        }
+        return String(value);
+      } catch (err) {
+        console.warn('[MusicFree Sandbox] JSON.stringify 异常兜底:', err);
+        return '{}';
+      }
+    }
   });
 
   try {

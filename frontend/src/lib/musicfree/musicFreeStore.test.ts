@@ -53,4 +53,44 @@ describe('MusicFree Store & Adapter', () => {
     musicFreeStore.removePlugin('test_plugin_1');
     expect(musicFreeStore.plugins.length).toBe(0);
   });
+
+  it('cleans up junk and invalid plugins automatically', () => {
+    musicFreeStore.plugins = [
+      { id: '1', name: '歌曲宝', version: '1.0', author: 'a', url: '', code: '', enabled: true, supportedSearchType: [] },
+      { id: '2', name: '书音FM', version: '1.0', author: 'b', url: '', code: '', enabled: true, supportedSearchType: [] },
+      { id: '3', name: '小秋音乐', version: '1.0', author: 'c', url: '', code: '', enabled: true, supportedSearchType: [] },
+      { id: '4', name: '爱听音乐', version: '1.0', author: 'd', url: '', code: '', enabled: true, supportedSearchType: [] }
+    ];
+
+    const cleanedCount = musicFreeStore.cleanupJunkPlugins();
+    expect(cleanedCount).toBe(3);
+    expect(musicFreeStore.plugins.length).toBe(1);
+    expect(musicFreeStore.plugins[0].name).toBe('小秋音乐');
+  });
+
+  it('safely handles plugin exception in recommend sheets without crashing UI', async () => {
+    musicFreeStore.plugins = [
+      {
+        id: 'bad_plug',
+        name: '畸形插件',
+        version: '1.0',
+        author: 'x',
+        url: '',
+        code: '',
+        enabled: true,
+        supportedSearchType: [],
+        instance: {
+          platform: '畸形插件',
+          getRecommendSheetsByTag: () => {
+            throw new Error('undefined is not an object (evaluating res.total)');
+          }
+        } as any
+      }
+    ];
+
+    const result = await musicFreeStore.getRecommendSheetsByTag('bad_plug', { title: '全部' }, 1);
+    expect(result.data).toEqual([]);
+    expect(result.isEnd).toBe(true);
+    expect(result.error).toContain('res.total');
+  });
 });

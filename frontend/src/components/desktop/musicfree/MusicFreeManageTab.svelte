@@ -11,22 +11,35 @@
 
   const PRESET_SOURCES = [
     {
-      name: '测试接口 (Gitee)',
-      url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/master/plugins.json'
-    },
-    {
-      name: '综合接口一 (JsDelivr 推荐)',
+      name: '🌟 纯净主流五大源 (高品质推荐)',
       url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/myPlugins.json'
     },
     {
-      name: '综合接口零',
-      url: 'https://musicfreepluginshub.2020818.xyz/plugins.json'
+      name: '🌐 全网每日自动同步源 (Cloudflare)',
+      url: 'https://musicfreepluginshub.pages.dev/plugins.json'
     },
     {
-      name: '综合接口四 (GitLab)',
-      url: 'https://gitlab.com/acoolbook/musicfree/-/raw/main/music.json'
+      name: '📻 官方基础扩展源 (Gitee)',
+      url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/master/plugins.json'
     }
   ];
+
+  const SINGLE_PRESETS = [
+    { name: '酷我音乐 (小蜗)', url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaowo.js' },
+    { name: 'QQ音乐 (小秋)', url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaoqiu.js' },
+    { name: '酷狗音乐 (小枸)', url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaogou.js' },
+    { name: '猫耳FM (广播剧)', url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/maoerfm/index.js' },
+    { name: 'B站音乐 (Bilibili)', url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/bilibili/index.js' }
+  ];
+
+  function handleCleanupJunk() {
+    const count = musicFreeStore.cleanupJunkPlugins();
+    if (count > 0) {
+      showToast(`已为您成功清理 ${count} 个无歌单或失效垃圾插件！`, 'success');
+    } else {
+      showToast('当前已安装插件中未检测到已知失效垃圾源', 'info');
+    }
+  }
 
   async function handleImport(urlToImport?: string) {
     const url = (urlToImport || inputUrl).trim();
@@ -84,9 +97,9 @@
     </div>
 
     <!-- 预设接口快捷点击标签 -->
-    <div class="pt-2 border-t border-[var(--border-color)]/50">
-      <span class="text-xs text-[var(--text-muted)] mr-2 font-medium">快速测试预设：</span>
-      <div class="inline-flex flex-wrap gap-1.5 mt-1 sm:mt-0">
+    <div class="pt-2 border-t border-[var(--border-color)]/50 space-y-2">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="text-xs text-[var(--text-muted)] font-medium">高品质订阅源：</span>
         {#each PRESET_SOURCES as preset}
           <button
             type="button"
@@ -100,6 +113,22 @@
           </button>
         {/each}
       </div>
+
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="text-xs text-[var(--text-muted)] font-medium">单平台精选：</span>
+        {#each SINGLE_PRESETS as single}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded-md text-[10px] bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 transition-colors cursor-pointer"
+            onclick={() => {
+              inputUrl = single.url;
+              handleImport(single.url);
+            }}
+          >
+            + {single.name}
+          </button>
+        {/each}
+      </div>
     </div>
   </section>
 
@@ -109,9 +138,21 @@
       <h2 class="text-sm font-semibold text-[var(--text-main)] flex items-center gap-1.5">
         <span>📦</span> 已安装音源插件 ({musicFreeStore.plugins.length})
       </h2>
-      <span class="text-xs text-[var(--text-muted)]">
-        支持单独启用或禁用音源
-      </span>
+      <div class="flex items-center gap-2">
+        {#if musicFreeStore.plugins.length > 0}
+          <button
+            type="button"
+            onclick={handleCleanupJunk}
+            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
+            title="剔除歌曲宝、书音FM、6yueting等无歌单数据的死源"
+          >
+            🧹 一键清理失效垃圾源
+          </button>
+        {/if}
+        <span class="text-xs text-[var(--text-muted)] hidden sm:inline">
+          支持单独启用或禁用音源
+        </span>
+      </div>
     </div>
 
     {#if musicFreeStore.plugins.length === 0}
