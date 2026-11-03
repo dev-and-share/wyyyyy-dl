@@ -120,5 +120,11 @@ export const api = {
     coverUrl?: string;
     lyric?: string;
     headers?: Record<string, string>;
-  }) => postJson('/v3/download/custom', track)
+  }) => postJson('/v3/download/custom', track),
+
+  // 🇨🇳 国内跨区解析代理 (解锁海外版权)
+  getGeoProxyConfig: () => get('/v3/geo-proxy/config'),
+  updateGeoProxyConfig: (config: any) => postJson('/v3/geo-proxy/config', config),
+  testGeoProxy: (proxyUrl?: string) => postJson('/v3/geo-proxy/test', { proxyUrl }),
+  refreshGeoProxyPool: () => postJson('/v3/geo-proxy/refresh', {})
 };
