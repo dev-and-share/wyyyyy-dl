@@ -26,6 +26,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
         if (resolved.cover) track.cover = resolved.cover;
         if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+        if (resolved.url && (resolved.url.includes('path=') || resolved.url.includes('historyId='))) {
+          track.url = resolved.url;
+        }
       }).catch(() => {});
     }
     return track.url;
@@ -45,6 +48,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
         if (resolved.cover) track.cover = resolved.cover;
         if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+        if (resolved.url && (resolved.url.includes('path=') || resolved.url.includes('historyId='))) {
+          track.url = resolved.url;
+        }
       }).catch(() => {});
     }
     return track.url;

@@ -195,7 +195,7 @@
     }
     if (audioEl.paused) {
       const currentSrc = audioEl.src;
-      if (!currentSrc || currentSrc === window.location.href || currentSrc.startsWith('blob:')) { ensurePlay(false); return; }
+      if (audioEl.error || !currentSrc || currentSrc === window.location.href || currentSrc.startsWith('blob:')) { ensurePlay(false); return; }
       const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
       if (platform.isIOS && (needsReloadOnResume || isHidden || audioEl.readyState < 3)) {
         needsReloadOnResume = false;
@@ -207,7 +207,7 @@
       if (p !== undefined) {
         p.then(() => {
           applyPendingSeek(); preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-        }).catch(() => { playerStore.playing = false; });
+        }).catch(() => { playerStore.playing = false; ensurePlay(false); });
       }
     } else {
       pauseAudio();
