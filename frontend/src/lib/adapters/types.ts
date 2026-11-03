@@ -4,6 +4,7 @@ export interface ResolveTrackOptions {
   level?: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' | 'jyeffect' | 'sky' | 'jymaster' | string;
   name?: string;
   artist?: string;
+  raw?: any;
 }
 
 export interface ResolvedTrackData {

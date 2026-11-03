@@ -5,9 +5,10 @@ import { markSongDownloaded } from './trackStatus.svelte';
 import { taskState } from '../taskStore.svelte';
 import { recordPlaylistPlay } from '../playlist.svelte';
 import { playerStore, type SetQueueOptions } from './playerStore.svelte';
-import { platformAdapter } from '../adapters';
+import { platformAdapter, musicFreeAdapter } from '../adapters';
 import { showToast } from '../toast.svelte';
 import { t } from '../i18n';
+import { isLocalStreamUrl } from '../utils';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -19,7 +20,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   }
 
   // 1. 如果已有本地/历史流地址，保留原完整地址（含 historyId 等参数），仅在缺失封面/歌词时静默后台补齐
-  if (track.url && track.url.includes('/stream')) {
+  if (track.url && isLocalStreamUrl(track.url)) {
     track.isLocal = true;
     if (track.id) markSongDownloaded(track.id);
     if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
@@ -41,7 +42,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     track.freeTrial = false;
     track.unplayable = false;
     if (track.id) markSongDownloaded(track.id);
-    if (!track.url || !track.url.includes('/stream')) {
+    if (!track.url || !isLocalStreamUrl(track.url)) {
       track.url = `/v3/stream?id=${track.id}`;
     }
     if (track.id && (!track.cover || track.cover === '/favicon.png' || !track.lyric)) {
@@ -67,7 +68,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   // 3. 在线歌曲：合并为单次请求，一次性拿齐播放 URL、高清封面与歌词
   if (!track.id) return track.url || '';
   try {
-    const resolved = await platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist });
+    const isMf = String(track.id).startsWith('mf_') || (track.raw && track.raw._isMusicFree);
+    const activeAdapter = isMf ? musicFreeAdapter : platformAdapter;
+    const resolved = await activeAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist, raw: track.raw });
     if (!resolved.unplayable && resolved.url) {
       track.url = resolved.url;
       track.unplayable = false;
@@ -77,6 +80,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
         track.unplayable = false;
         markSongDownloaded(track.id);
       } else {
+        track.isLocal = false;
         track.freeTrial = resolved.freeTrial === true;
       }
       track.freeTrialDuration = resolved.freeTrialDuration;

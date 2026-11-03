@@ -1,12 +1,13 @@
 <script lang="ts">
   import { t } from '../../lib/i18n/index.svelte';
+  import type { ActiveTab } from '../../lib/router.svelte';
 
   let {
     tab,
     onSwitchTab
   } = $props<{
-    tab: 'playlist' | 'search' | 'download-mgr';
-    onSwitchTab: (tab: 'playlist' | 'search' | 'download-mgr') => void;
+    tab: ActiveTab;
+    onSwitchTab: (tab: ActiveTab) => void;
   }>();
 </script>
 

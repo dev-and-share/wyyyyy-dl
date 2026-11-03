@@ -23,6 +23,7 @@ export interface Track {
   freeTrialDuration?: number;
   unplayable?: boolean;
   unplayableReason?: string;
+  raw?: any;
 }
 
 export interface DownloadTask {

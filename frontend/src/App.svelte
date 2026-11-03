@@ -20,6 +20,7 @@
   import DesktopPlaylistView from './components/desktop/DesktopPlaylistView.svelte';
   import DesktopSearchView from './components/desktop/DesktopSearchView.svelte';
   import DesktopDownloadMgrView from './components/desktop/DesktopDownloadMgrView.svelte';
+  import DesktopMusicFreeView from './components/desktop/DesktopMusicFreeView.svelte';
   import PlaylistTab from './components/PlaylistTab.svelte';
   import SearchTab from './components/SearchTab.svelte';
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
@@ -247,6 +248,17 @@
       <!-- 📱 移动端 / 窄屏：保留原有单列折叠手风琴 (< 1024px) -->
       <div class="block lg:hidden w-full">
         <DownloadMgrTab {curTrack} {playing} onPlayQueue={setQueue} onReveal={handleReveal} {showToast} />
+      </div>
+    </div>
+
+    <!-- 🧩 MusicFree 插件管理 Tab -->
+    <div style="display: {routerState.tab === 'musicfree' ? 'contents' : 'none'};">
+      <div class="w-full">
+        <DesktopMusicFreeView
+          {curTrack} {playing}
+          onPlayQueue={setQueue}
+          {showToast}
+        />
       </div>
     </div>
 

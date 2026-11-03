@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolveTrackUrl, preloadNextTrack } from './playerHelper';
 import { api } from '../api';
+import { taskState } from '../taskStore.svelte';
 import type { Track } from '../types';
 
 vi.mock('../api', () => ({
@@ -78,6 +79,30 @@ describe('playerHelper URL resolution & preload contracts', () => {
 
     expect(trialTrack.freeTrial).toBe(true);
     expect(trialTrack.freeTrialDuration).toBe(30);
+  });
+
+  it('correctly identifies online proxy stream (/v3/stream/online) as non-local and keeps freeTrial=true', async () => {
+    const trialTrack: Track = {
+      id: 304,
+      name: 'VIP试听曲目2',
+      artist: '某歌手'
+    };
+
+    (api.songV1 as any).mockResolvedValueOnce({
+      code: '000000',
+      data: {
+        url: '/v3/stream/online?id=304&url=http%3A%2F%2Fm701.music.126.net%2Ftrial.mp3&freeTrial=true',
+        freeTrial: true,
+        freeTrialDuration: 30
+      }
+    });
+
+    await resolveTrackUrl(trialTrack);
+
+    expect(trialTrack.isLocal).toBe(false);
+    expect(trialTrack.freeTrial).toBe(true);
+    expect(trialTrack.freeTrialDuration).toBe(30);
+    expect(taskState.downloadedSet.has(304)).toBe(false);
   });
 
   it('preloadSurroundingTracks triggers pre-resolution for both next and previous tracks in queue', () => {

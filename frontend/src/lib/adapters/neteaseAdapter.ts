@@ -6,7 +6,7 @@ import type {
   ResolvedTrackData
 } from './types';
 import { api } from '../api';
-import { formatArtist, DEFAULT_VINYL_COVER } from '../utils';
+import { formatArtist, DEFAULT_VINYL_COVER, isLocalStreamUrl } from '../utils';
 import { getTrackSourceStatus } from '../player/trackStatus.svelte';
 import { t } from '../i18n';
 
@@ -43,7 +43,7 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
     const cover = item.pic || item.picUrl || item.al?.picUrl || item.cover || DEFAULT_VINYL_COVER;
     const isLocal = Boolean(
       item.isLocal ||
-      (item.url && item.url.includes('/stream')) ||
+      (item.url && isLocalStreamUrl(item.url)) ||
       getTrackSourceStatus(id, item.isLocal).isLocal
     );
     const freeTrial = Boolean(item.freeTrial);
@@ -78,7 +78,7 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
       };
     }
 
-    const isServerLocal = song.isLocal === true || (song.url && song.url.includes('/v3/stream'));
+    const isServerLocal = Boolean(song.isLocal === true || (song.url && isLocalStreamUrl(song.url)));
     const isUnplayable = !song.url;
     const unplayableReason = isUnplayable
       ? song.unplayableReason ||

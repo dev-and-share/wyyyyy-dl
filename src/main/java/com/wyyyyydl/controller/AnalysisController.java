@@ -394,8 +394,8 @@ public class AnalysisController {
                         }
                     }
 
-                    // 3.2 若在线解析出的 URL 存在且为有效网络直链
-                    if (org.apache.commons.lang3.StringUtils.isNotBlank(analysis.getUrl())) {
+                    // 3.2 若在线解析出的 URL 存在且为有效网络直链（试听曲目禁止伪装为本地流）
+                    if (org.apache.commons.lang3.StringUtils.isNotBlank(analysis.getUrl()) && !Boolean.TRUE.equals(analysis.getFreeTrial())) {
                         String rawUrl = analysis.getUrl();
                         if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
                             storageService.serveOnlineStream(id, rawUrl, request, response);

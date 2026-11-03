@@ -8,6 +8,7 @@ import { NeteaseAdapter } from './neteaseAdapter';
 
 export * from './types';
 export * from './neteaseAdapter';
+export * from './musicFreeAdapter';
 
 let activeAdapter: MusicPlatformAdapter = new NeteaseAdapter();
 

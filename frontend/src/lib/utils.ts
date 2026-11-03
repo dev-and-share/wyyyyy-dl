@@ -107,6 +107,24 @@ const pinyinMatchFn = resolvePinyinMatchFn();
  * 2. 普通匹配未命中时，自动进行拼音（全拼、首字母缩写、多音字）匹配；
  * 3. 自动剥离常见书名号/引号干扰，支持空格分词多关键词全命中。
  */
+/**
+ * 校验指定音频 URL 是否为本地已下载/落盘流地址（严格排除 /stream/online 在线代理流）
+ */
+export function isLocalStreamUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  // 必须排除在线代理流
+  if (url.includes('/stream/online') || url.includes('/v3/stream/online')) return false;
+  // 真正的本地物理流格式：相对路径或本站路径下的 /v3/stream, /stream, /v3/history/stream，或明确带有本地标识 path=/historyId=
+  const isRelative = url.startsWith('/') || !url.includes('://');
+  const hasLocalStreamPath =
+    url.includes('/v3/stream') ||
+    url.includes('/stream/local') ||
+    url.includes('/v3/history/stream') ||
+    (isRelative && url.startsWith('/stream'));
+  const hasLocalParam = url.includes('historyId=') || url.includes('path=');
+  return Boolean(hasLocalStreamPath || hasLocalParam);
+}
+
 export function matchesKeyword(target: string | null | undefined, keyword: string | null | undefined): boolean {
   if (keyword === null || keyword === undefined) return false;
   const kw = String(keyword).trim().toLowerCase();

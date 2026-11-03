@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../lib/i18n/index.svelte';
-  import { scrollToPageTop } from '../lib/router.svelte';
+  import { scrollToPageTop, type ActiveTab } from '../lib/router.svelte';
 
   let {
     tab,
@@ -13,11 +13,11 @@
     onRefresh,
     onOpenSettings
   } = $props<{
-    tab: 'playlist' | 'search' | 'download-mgr';
+    tab: ActiveTab;
     themeMode: 'dark' | 'light' | 'auto';
     repeat?: boolean;
     isDesktopLayout?: boolean;
-    onSwitchTab: (tab: 'playlist' | 'search' | 'download-mgr') => void;
+    onSwitchTab: (tab: ActiveTab) => void;
     onToggleTheme: () => void;
     onToggleRepeat?: () => void;
     onRefresh?: () => void;

@@ -32,6 +32,10 @@ describe('DesktopSidebar', () => {
     const downloadBtn = getByTestId('sidebar-tab-download-mgr');
     await fireEvent.click(downloadBtn);
     expect(onSwitchTab).toHaveBeenCalledWith('download-mgr');
+
+    const musicfreeBtn = getByTestId('sidebar-tab-musicfree');
+    await fireEvent.click(musicfreeBtn);
+    expect(onSwitchTab).toHaveBeenCalledWith('musicfree');
   });
 
   it('triggers onOpenDownloadTasks only when clicking the downloading badge', async () => {

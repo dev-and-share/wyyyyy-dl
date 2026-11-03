@@ -1,0 +1,257 @@
+package com.wyyyyydl.controller;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wyyyyydl.utils.AudioStreamUtil;
+import com.wyyyyydl.utils.HttpClientUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * 🧩 通用第三方音源插件网络代理中继控制器 (MusicFree & Universal Plugin Proxy)
+ *
+ * 核心目的：
+ * 1. 彻底解决 Web 浏览器沙箱中的同源策略 (CORS) 限制
+ * 2. 避免为每个第三方平台手写后端代码，提供 100% 平台中立的 HTTP 盲代理
+ * 3. 支持透传 Referer、Cookie、User-Agent 等防盗链关键标头
+ */
+@Slf4j
+@RestController
+@RequestMapping("/v3/plugin")
+public class PluginProxyController {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Data
+    public static class ProxyRequestPayload {
+        private String url;
+        private String method = "GET";
+        private Map<String, String> headers;
+        private Map<String, Object> params;
+        private Object data;
+    }
+
+    /**
+     * 快捷拉取插件订阅源 JSON 或单脚本 JS 内容 (GET 方式)
+     */
+    @GetMapping(value = "/fetch")
+    public void fetchDirect(@RequestParam("url") String targetUrl,
+                            HttpServletRequest request,
+                            HttpServletResponse response) {
+        AudioStreamUtil.applyCorsHeaders(response);
+        if (AudioStreamUtil.isPreflight(request)) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            return;
+        }
+
+        if (StringUtils.isBlank(targetUrl)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+
+        HttpGet httpGet = new HttpGet(targetUrl);
+        httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36");
+        httpGet.setHeader("Accept", "*/*");
+
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(15000)
+                .setSocketTimeout(30000)
+                .build();
+        httpGet.setConfig(requestConfig);
+
+        try (CloseableHttpResponse clientResp = executeWithRedirects(httpGet, 5)) {
+            response.setStatus(clientResp.getStatusLine().getStatusCode());
+            HttpEntity entity = clientResp.getEntity();
+            if (entity != null) {
+                if (entity.getContentType() != null) {
+                    response.setContentType(entity.getContentType().getValue());
+                } else {
+                    response.setContentType("text/plain;charset=UTF-8");
+                }
+                try (InputStream in = entity.getContent(); OutputStream out = response.getOutputStream()) {
+                    byte[] buf = new byte[8192];
+                    int len;
+                    while ((len = in.read(buf)) != -1) {
+                        out.write(buf, 0, len);
+                    }
+                    out.flush();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("插件资源拉取异常: url={}, msg={}", targetUrl, e.getMessage());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * 通用 HTTP 盲代理中继 (POST 方式)
+     * 支持 GET / POST / PUT 等任意方法，支持自定义 headers / query params / body 数据
+     */
+    @RequestMapping(value = "/proxy", method = {RequestMethod.POST, RequestMethod.OPTIONS})
+    public void proxyRequest(@RequestBody(required = false) ProxyRequestPayload payload,
+                             HttpServletRequest request,
+                             HttpServletResponse response) {
+        AudioStreamUtil.applyCorsHeaders(response);
+        if (AudioStreamUtil.isPreflight(request)) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            return;
+        }
+
+        if (payload == null || StringUtils.isBlank(payload.getUrl())) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+
+        try {
+            // 1. 构建目标 URI (包含 query params)
+            URIBuilder uriBuilder = new URIBuilder(payload.getUrl());
+            if (payload.getParams() != null && !payload.getParams().isEmpty()) {
+                for (Map.Entry<String, Object> entry : payload.getParams().entrySet()) {
+                    if (entry.getValue() != null) {
+                        uriBuilder.setParameter(entry.getKey(), String.valueOf(entry.getValue()));
+                    }
+                }
+            }
+            URI targetUri = uriBuilder.build();
+
+            // 2. 构建 HttpRequestBase 实例
+            String method = StringUtils.defaultIfBlank(payload.getMethod(), "GET").toUpperCase();
+            HttpRequestBase httpRequest;
+
+            if ("POST".equals(method)) {
+                HttpPost post = new HttpPost(targetUri);
+                attachRequestBody(post, payload);
+                httpRequest = post;
+            } else if ("PUT".equals(method)) {
+                HttpEntityEnclosingRequestBase put = new HttpEntityEnclosingRequestBase() {
+                    @Override
+                    public String getMethod() {
+                        return "PUT";
+                    }
+                };
+                put.setURI(targetUri);
+                attachRequestBody(put, payload);
+                httpRequest = put;
+            } else {
+                httpRequest = new HttpGet(targetUri);
+            }
+
+            // 3. 填充 Headers
+            boolean hasUa = false;
+            if (payload.getHeaders() != null) {
+                for (Map.Entry<String, String> entry : payload.getHeaders().entrySet()) {
+                    String key = entry.getKey();
+                    if ("host".equalsIgnoreCase(key) || "content-length".equalsIgnoreCase(key)) {
+                        continue;
+                    }
+                    if ("user-agent".equalsIgnoreCase(key)) {
+                        hasUa = true;
+                    }
+                    httpRequest.setHeader(key, entry.getValue());
+                }
+            }
+            if (!hasUa) {
+                httpRequest.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36");
+            }
+
+            RequestConfig requestConfig = RequestConfig.custom()
+                    .setConnectTimeout(15000)
+                    .setSocketTimeout(30000)
+                    .build();
+            httpRequest.setConfig(requestConfig);
+
+            // 4. 执行请求并原样透传给前端 (自动跟随重定向)
+            try (CloseableHttpResponse clientResp = executeWithRedirects(httpRequest, 5)) {
+                int status = clientResp.getStatusLine().getStatusCode();
+                response.setStatus(status);
+
+                HttpEntity entity = clientResp.getEntity();
+                if (entity != null) {
+                    if (entity.getContentType() != null) {
+                        response.setContentType(entity.getContentType().getValue());
+                    } else {
+                        response.setContentType("application/json;charset=UTF-8");
+                    }
+                    try (InputStream in = entity.getContent(); OutputStream out = response.getOutputStream()) {
+                        byte[] buf = new byte[8192];
+                        int len;
+                        while ((len = in.read(buf)) != -1) {
+                            out.write(buf, 0, len);
+                        }
+                        out.flush();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("通用插件代理转发异常: url={}, msg={}", payload.getUrl(), e.getMessage());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private void attachRequestBody(HttpEntityEnclosingRequestBase request, ProxyRequestPayload payload) {
+        if (payload.getData() == null) return;
+        try {
+            if (payload.getData() instanceof String str) {
+                request.setEntity(new StringEntity(str, StandardCharsets.UTF_8));
+            } else {
+                String json = objectMapper.writeValueAsString(payload.getData());
+                request.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
+            }
+        } catch (Exception e) {
+            log.warn("序列化插件请求体失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 自动处理 301/302/303/307/308 HTTP 重定向 (如 Gitee/GitLab 的 raw 资源重定向)
+     */
+    private CloseableHttpResponse executeWithRedirects(HttpRequestBase request, int maxRedirects) throws Exception {
+        URI currentUri = request.getURI();
+        for (int i = 0; i < maxRedirects; i++) {
+            request.setURI(currentUri);
+            CloseableHttpResponse resp = HttpClientUtil.getInstance().execute(request);
+            int code = resp.getStatusLine().getStatusCode();
+            if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+                Header loc = resp.getFirstHeader("Location");
+                if (loc != null && StringUtils.isNotBlank(loc.getValue())) {
+                    String redirectUrl = loc.getValue();
+                    URI nextUri = currentUri.resolve(redirectUrl);
+                    resp.close();
+                    currentUri = nextUri;
+                    continue;
+                }
+            }
+            return resp;
+        }
+        return HttpClientUtil.getInstance().execute(request);
+    }
+}

@@ -2,7 +2,7 @@
   import { t } from '../../lib/i18n';
   import { myPlaylists, isFavoritePlaylist, sortPlaylistsByPlayCount, getPlaylistPlayCount } from '../../lib/playlist.svelte';
   import { matchesKeyword } from '../../lib/utils';
-  import { jumpToDownloadTasks } from '../../lib/router.svelte';
+  import { jumpToDownloadTasks, type ActiveTab } from '../../lib/router.svelte';
 
   let {
     tab,
@@ -17,12 +17,12 @@
     onOpenDownloadTasks,
     showToast
   } = $props<{
-    tab: 'playlist' | 'search' | 'download-mgr';
+    tab: ActiveTab;
     currentPlaylistId?: string;
     collapsed: boolean;
     downloadingCount?: number;
     hasPlayerBar?: boolean;
-    onSwitchTab: (tab: 'playlist' | 'search' | 'download-mgr') => void;
+    onSwitchTab: (tab: ActiveTab) => void;
     onViewPlaylist?: (id: string) => void;
     onPlayPlaylist?: (id: string, name: string) => void;
     onToggleCollapse: () => void;
@@ -246,6 +246,20 @@
         ></button>
       {/if}
     </div>
+
+    <!-- 🧩 MusicFree Plugins -->
+    <button
+      type="button"
+      data-testid="sidebar-tab-musicfree"
+      class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {tab === 'musicfree' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
+      onclick={() => onSwitchTab('musicfree')}
+      title="MusicFree 插件与多音源"
+    >
+      <span class="text-[15px] leading-none shrink-0">🧩</span>
+      {#if !collapsed}
+        <span class="truncate flex-1 text-left">MusicFree</span>
+      {/if}
+    </button>
   </nav>
 
   <!-- 3. Playlist Quick Navigation -->

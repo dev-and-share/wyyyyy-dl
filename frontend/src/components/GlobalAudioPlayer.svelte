@@ -274,7 +274,7 @@
     if (targetTrack?.id) {
       if (targetTrack.isLocal) {
         markSongDownloaded(targetTrack.id);
-      } else {
+      } else if (!targetTrack.freeTrial) {
         api.downloadSingle(String(targetTrack.id)).then(() => {
           showToast(t('player.addedAutoDownload', { name: targetTrack.name || t('common.song') }), 'info', 2000);
           window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));

@@ -163,8 +163,26 @@ public final class AudioStreamUtil {
         if (StringUtils.isNotBlank(rangeHeader)) {
             httpGet.setHeader("Range", rangeHeader);
         }
-        httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
-        httpGet.setHeader("Referer", "https://music.163.com/");
+
+        String customUa = request.getHeader("X-Stream-User-Agent");
+        if (StringUtils.isBlank(customUa)) {
+            customUa = request.getParameter("ua");
+        }
+        if (StringUtils.isNotBlank(customUa)) {
+            httpGet.setHeader("User-Agent", customUa);
+        } else {
+            httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
+        }
+
+        String customReferer = request.getHeader("X-Stream-Referer");
+        if (StringUtils.isBlank(customReferer)) {
+            customReferer = request.getParameter("referer");
+        }
+        if (StringUtils.isNotBlank(customReferer)) {
+            httpGet.setHeader("Referer", customReferer);
+        } else {
+            httpGet.setHeader("Referer", "https://music.163.com/");
+        }
 
         RequestConfig requestConfig = RequestConfig.custom()
                 .setConnectTimeout(15000)

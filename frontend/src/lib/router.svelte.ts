@@ -1,10 +1,10 @@
-export type ActiveTab = 'playlist' | 'search' | 'download-mgr';
+export type ActiveTab = 'playlist' | 'search' | 'download-mgr' | 'musicfree';
 
 function getInitialTab(): ActiveTab {
   const raw = typeof window !== 'undefined' ? location.hash.replace('#', '').split('?')[0] : '';
-  if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr') return raw;
+  if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr' || raw === 'musicfree') return raw;
   const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_active_tab') : '';
-  return (saved === 'playlist' || saved === 'search' || saved === 'download-mgr') ? saved as ActiveTab : 'playlist';
+  return (saved === 'playlist' || saved === 'search' || saved === 'download-mgr' || saved === 'musicfree') ? saved as ActiveTab : 'playlist';
 }
 
 function getInitialPlaylistId(): string {
@@ -135,7 +135,7 @@ export function initRouter(): () => void {
       routerState.playlistId = '';
     }
     const h = raw.split('?')[0];
-    if (h === 'playlist' || h === 'search' || h === 'download-mgr') {
+    if (h === 'playlist' || h === 'search' || h === 'download-mgr' || h === 'musicfree') {
       routerState.tab = h as ActiveTab;
     }
   };
