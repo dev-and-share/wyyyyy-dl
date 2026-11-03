@@ -4,11 +4,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
@@ -28,8 +30,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wyyyyydl.service.GeoProxyService;
 import com.wyyyyydl.utils.AudioStreamUtil;
 import com.wyyyyydl.utils.HttpClientUtil;
+
+import jakarta.annotation.Resource;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -50,6 +55,9 @@ import lombok.extern.slf4j.Slf4j;
 public class PluginProxyController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Resource
+    private GeoProxyService geoProxyService;
 
     @Data
     public static class ProxyRequestPayload {
@@ -198,8 +206,8 @@ public class PluginProxyController {
 
             log.info("🌐 [PluginProxy] >>> {} {}", method, targetUri);
 
-            // 4. 执行请求并原样透传给前端 (自动跟随重定向)
-            try (CloseableHttpResponse clientResp = executeWithRedirects(httpRequest, 5)) {
+            // 4. 执行请求并原样透传给前端 (自动挂载国内跨区解析代理，支持故障切换与直连兜底)
+            try (CloseableHttpResponse clientResp = executeWithProxyFallback(httpRequest, 5)) {
                 int status = clientResp.getStatusLine().getStatusCode();
                 response.setStatus(status);
 
@@ -247,9 +255,60 @@ public class PluginProxyController {
     }
 
     /**
-     * 自动处理 301/302/303/307/308 HTTP 重定向 (如 Gitee/GitLab 的 raw 资源重定向)
+     * 执行 HTTP 请求，优先挂载国内解析代理；若代理全部失败则自动直连兜底
+     */
+    private CloseableHttpResponse executeWithProxyFallback(HttpRequestBase request, int maxRedirects) throws Exception {
+        if (!geoProxyService.isEnabled()) {
+            return executeWithRedirects(request, null, maxRedirects);
+        }
+
+        List<HttpHost> candidates = geoProxyService.getCandidateProxies();
+        if (candidates.isEmpty()) {
+            log.info("🇨🇳 [GeoProxy] 暂无可用国内代理，直接以直连方式兜底请求: {}", request.getURI());
+            return executeWithRedirects(request, null, maxRedirects);
+        }
+
+        for (HttpHost proxy : candidates) {
+            try {
+                log.info("🇨🇳 [GeoProxy] 正在通过国内代理尝试解析: proxy={}, url={}", proxy.toHostString(), request.getURI());
+                CloseableHttpResponse resp = executeWithRedirects(request, proxy, maxRedirects);
+                int code = resp.getStatusLine().getStatusCode();
+                if (code >= 200 && code < 400) {
+                    return resp;
+                }
+                log.warn("🇨🇳 [GeoProxy] 代理节点返回非正常状态码 {}: proxy={}, url={}", code, proxy.toHostString(), request.getURI());
+                resp.close();
+                geoProxyService.reportProxyFailure(proxy);
+            } catch (Exception e) {
+                log.warn("🇨🇳 [GeoProxy] 代理节点解析异常: proxy={}, error={}", proxy.toHostString(), e.getMessage());
+                geoProxyService.reportProxyFailure(proxy);
+            }
+        }
+
+        // 🌟 当所有代理都失败时，自动直连兜底 (Fallback to direct connection)
+        log.warn("🇨🇳 [GeoProxy] ⚠️ 候选代理均失败，自动降级为直连兜底: url={}", request.getURI());
+        return executeWithRedirects(request, null, maxRedirects);
+    }
+
+    /**
+     * 自动处理 301/302/303/307/308 HTTP 重定向 (向后兼容无代理调用)
      */
     private CloseableHttpResponse executeWithRedirects(HttpRequestBase request, int maxRedirects) throws Exception {
+        return executeWithRedirects(request, null, maxRedirects);
+    }
+
+    /**
+     * 自动处理 301/302/303/307/308 HTTP 重定向 (支持代理)
+     */
+    private CloseableHttpResponse executeWithRedirects(HttpRequestBase request, HttpHost proxy, int maxRedirects) throws Exception {
+        RequestConfig.Builder rcb = RequestConfig.custom()
+                .setConnectTimeout(proxy != null ? 6000 : 15000)
+                .setSocketTimeout(proxy != null ? 10000 : 30000);
+        if (proxy != null) {
+            rcb.setProxy(proxy);
+        }
+        request.setConfig(rcb.build());
+
         URI currentUri = request.getURI();
         for (int i = 0; i < maxRedirects; i++) {
             request.setURI(currentUri);
