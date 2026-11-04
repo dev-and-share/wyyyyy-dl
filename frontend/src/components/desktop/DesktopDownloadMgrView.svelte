@@ -184,7 +184,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'history' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'history'; routerState.downloadSubTab = 'history'; }}
         >
-          <span>📥</span> <span>{t('download.tabHistoryAndFiles')}</span>
+          <span>📥</span> <span>{t('download.tabHistory')}</span>
         </button>
         <button
           type="button"
@@ -192,7 +192,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'folder' ? 'bg-sky-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'folder'; routerState.downloadSubTab = 'folder'; }}
         >
-          <span>🗂️</span> <span>{t('download.localLibraryAndTree')}</span>
+          <span>🗂️</span> <span>{t('download.localLibrary')}</span>
         </button>
         <button
           type="button"
@@ -200,7 +200,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'browser-cache' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'browser-cache'; routerState.downloadSubTab = 'browser-cache'; }}
         >
-          <span>📱</span> <span>{t('download.tabBrowserCache')}</span>
+          <span>📱</span> <span>{t('artist.offlineCache')}</span>
         </button>
         <button
           type="button"

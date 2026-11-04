@@ -22,7 +22,7 @@
   const activeCount = $derived(musicFreeStore.getActivePlugins().length);
 </script>
 
-<div class="w-full h-full flex flex-col p-4 lg:p-6 overflow-y-auto max-w-7xl mx-auto space-y-5 animate-fade-in">
+<div class="w-full flex flex-col gap-4 select-none animate-fade-in" data-testid="desktop-musicfree-view">
   <!-- 发现中心统一顶栏 -->
   <DesktopViewHeader
     icon="🧩"

@@ -23,7 +23,7 @@
 <!-- 🖥️ PC 桌面端统一版块 Header (Desktop View Standard Header) -->
 <header
   data-testid="desktop-view-header"
-  class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-3 lg:pb-4 shrink-0 select-none"
+  class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-3 lg:pb-4 shrink-0 select-none lg:pr-[150px]"
 >
   <!-- 左侧：图标 + 板块大标题 + 状态/统计 Badge + 辅助说明 -->
   <div class="flex items-center gap-3 min-w-0">
