@@ -156,4 +156,7 @@ export default {
   'settings.geoProxy.winnerMsgFastest': '已优选最快节点 ({latency}ms)',
   'settings.geoProxy.winnerMsgConnected': '连通成功 ({latency}ms)',
   'settings.geoProxy.testFailToast': '❌ 连通失败: {error}',
+  'settings.geoProxy.locationLabel': '归属地:',
+  'settings.geoProxy.latencyLabel': '网络延迟:',
+  'settings.geoProxy.tooltipTitle': '网络代理详情',
 } as const;

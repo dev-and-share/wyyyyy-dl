@@ -156,4 +156,7 @@ export default {
   'settings.geoProxy.winnerMsgFastest': '最速ノードを選択しました ({latency}ms)',
   'settings.geoProxy.winnerMsgConnected': '接続成功 ({latency}ms)',
   'settings.geoProxy.testFailToast': '❌ 接続失敗: {error}',
+  'settings.geoProxy.locationLabel': '所在地:',
+  'settings.geoProxy.latencyLabel': '遅延:',
+  'settings.geoProxy.tooltipTitle': 'プロキシ詳細',
 } as const;

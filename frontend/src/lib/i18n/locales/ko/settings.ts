@@ -156,4 +156,7 @@ export default {
   'settings.geoProxy.winnerMsgFastest': '최적 노드가 자동 선택되었습니다 ({latency}ms)',
   'settings.geoProxy.winnerMsgConnected': '연결 성공 ({latency}ms)',
   'settings.geoProxy.testFailToast': '❌ 연결 실패: {error}',
+  'settings.geoProxy.locationLabel': '위치:',
+  'settings.geoProxy.latencyLabel': '지연 시간:',
+  'settings.geoProxy.tooltipTitle': '프록시 상세 정보',
 } as const;

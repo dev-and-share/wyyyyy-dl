@@ -125,13 +125,25 @@ public class LocalPlaylistController {
 
     @PostMapping("/tracks/remove")
     public RespEntity<String> removeTrack(@RequestParam("playlistId") String playlistId,
-                                          @RequestParam("trackId") Long trackId) {
-        if (StringUtils.isBlank(playlistId) || trackId == null) {
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "参数缺失", null);
+                                          @RequestParam(value = "trackId", required = false) String trackIdStr,
+                                          @RequestParam(value = "songName", required = false) String songName,
+                                          @RequestParam(value = "artist", required = false) String artist) {
+        if (StringUtils.isBlank(playlistId)) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单ID不能为空", null);
         }
-        boolean ok = downloadHistoryDAO.removeTrackFromLocalPlaylist(playlistId, trackId);
+        Long trackId = null;
+        if (StringUtils.isNotBlank(trackIdStr)) {
+            try {
+                trackId = Long.parseLong(trackIdStr.trim());
+            } catch (Exception ignored) {
+            }
+        }
+        if (trackId == null && StringUtils.isBlank(songName)) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "需提供 trackId 或 songName", null);
+        }
+        boolean ok = downloadHistoryDAO.removeTrackFromLocalPlaylist(playlistId, trackId, songName, artist);
         return ok ? RespEntity.apply(CommonRespInfo.SUCCESS, "移除成功")
-                  : RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "移除失败", null);
+                  : RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "移除失败或未找到匹配曲目", null);
     }
 
     @GetMapping("/detail")

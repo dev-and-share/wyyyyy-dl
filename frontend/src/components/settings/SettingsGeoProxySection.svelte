@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
+  import { updateGeoProxyState } from '../../lib/geoProxyStore.svelte';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -46,6 +47,7 @@
         activeLocation = res.data.activeLocation || '';
         activeLatencyMs = res.data.activeLatencyMs ?? null;
         fallbackDirect = Boolean(res.data.fallbackDirect);
+        updateGeoProxyState(res.data);
       }
     } catch (e: any) {
       console.warn('加载网络代理配置失败:', e);
@@ -79,6 +81,7 @@
           activeLocation = res.data.activeLocation || '';
           activeLatencyMs = res.data.activeLatencyMs ?? null;
           fallbackDirect = Boolean(res.data.fallbackDirect);
+          updateGeoProxyState(res.data);
         }
       } else {
         showToast(res?.msg || t('settings.geoProxy.saveFailedToast'), 'error');
@@ -103,6 +106,12 @@
           activeLocation = testResult.location || '';
           activeLatencyMs = testResult.latencyMs ?? null;
           fallbackDirect = false;
+          updateGeoProxyState({
+            activeProxy,
+            activeLocation,
+            activeLatencyMs,
+            fallbackDirect: false
+          });
           const winnerMsg = testResult.isFastestWinner
             ? t('settings.geoProxy.winnerMsgFastest', { latency: testResult.latencyMs })
             : t('settings.geoProxy.winnerMsgConnected', { latency: testResult.latencyMs });

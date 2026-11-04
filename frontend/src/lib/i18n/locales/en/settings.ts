@@ -156,4 +156,7 @@ export default {
   'settings.geoProxy.winnerMsgFastest': 'Selected fastest node ({latency}ms)',
   'settings.geoProxy.winnerMsgConnected': 'Connected ({latency}ms)',
   'settings.geoProxy.testFailToast': '❌ Connection failed: {error}',
+  'settings.geoProxy.locationLabel': 'Location:',
+  'settings.geoProxy.latencyLabel': 'Latency:',
+  'settings.geoProxy.tooltipTitle': 'Proxy Details',
 } as const;

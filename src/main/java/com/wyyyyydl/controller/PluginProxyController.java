@@ -100,11 +100,14 @@ public class PluginProxyController {
             response.setStatus(clientResp.getStatusLine().getStatusCode());
             HttpEntity entity = clientResp.getEntity();
             if (entity != null) {
-                if (entity.getContentType() != null) {
-                    response.setContentType(entity.getContentType().getValue());
-                } else {
-                    response.setContentType("text/plain;charset=UTF-8");
+                String ct = entity.getContentType() != null ? entity.getContentType().getValue() : "text/plain;charset=UTF-8";
+                if (!ct.toLowerCase().contains("charset=")) {
+                    if (ct.startsWith("text/") || ct.contains("json") || ct.contains("javascript") || ct.contains("xml")) {
+                        ct = ct + ";charset=UTF-8";
+                    }
                 }
+                response.setContentType(ct);
+                response.setCharacterEncoding("UTF-8");
                 try (InputStream in = entity.getContent(); OutputStream out = response.getOutputStream()) {
                     byte[] buf = new byte[8192];
                     int len;
@@ -219,11 +222,14 @@ public class PluginProxyController {
 
                 HttpEntity entity = clientResp.getEntity();
                 if (entity != null) {
-                    if (entity.getContentType() != null) {
-                        response.setContentType(entity.getContentType().getValue());
-                    } else {
-                        response.setContentType("application/json;charset=UTF-8");
+                    String ct = entity.getContentType() != null ? entity.getContentType().getValue() : "application/json;charset=UTF-8";
+                    if (!ct.toLowerCase().contains("charset=")) {
+                        if (ct.startsWith("text/") || ct.contains("json") || ct.contains("javascript") || ct.contains("xml")) {
+                            ct = ct + ";charset=UTF-8";
+                        }
                     }
+                    response.setContentType(ct);
+                    response.setCharacterEncoding("UTF-8");
                     try (InputStream in = entity.getContent(); OutputStream out = response.getOutputStream()) {
                         byte[] buf = new byte[8192];
                         int len;
