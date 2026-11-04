@@ -33,16 +33,22 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let subTab = $state<'history' | 'local-playlists' | 'browser-cache' | 'tasks'>('history');
+  let subTab = $state<'local-playlists' | 'history' | 'folder' | 'browser-cache' | 'tasks'>(
+    routerState.downloadSubTab || 'local-playlists'
+  );
   let activeTasksCount = $derived(getActiveDownloadingCount());
 
-  // ⚡ 仅当从外部/侧边栏点击数字角标触发时，才自动切换至任务列表 Tab
+  // ⚡ 仅当从外部/侧边栏点击数字角标或路由指定时，自动切换至对应 SubTab
   let lastTasksTrigger = 0;
+  let lastDownloadSubTab: any = routerState.downloadSubTab || 'local-playlists';
   $effect(() => {
     const trigger = tasksTrigger || routerState.downloadTasksTrigger || 0;
     if (trigger > 0 && trigger !== lastTasksTrigger) {
       lastTasksTrigger = trigger;
       subTab = 'tasks';
+    } else if (routerState.downloadSubTab && routerState.downloadSubTab !== lastDownloadSubTab) {
+      lastDownloadSubTab = routerState.downloadSubTab;
+      subTab = routerState.downloadSubTab;
     }
   });
   let histKw = $state('');
@@ -148,25 +154,8 @@
 </script>
 
 <!-- PC Desktop: Local Management Workbench -->
-<div class="flex flex-col lg:flex-row gap-5 items-start w-full select-none animate-fade-in" data-testid="desktop-download-mgr-view">
-  <!-- Left Column: Folder Explorer Tree -->
-  <div class="w-full lg:w-[400px] xl:w-[460px] 2xl:w-[500px] shrink-0 flex flex-col gap-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] p-4 shadow-sm">
-    <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
-      <div class="flex items-center gap-2">
-        <span class="text-base">📁</span>
-        <h2 class="font-bold text-sm text-[var(--text-main)]">{t('download.localLibraryAndTree')}</h2>
-      </div>
-      <span class="text-[10px] text-[var(--text-muted)]">{t('download.clickToExpandPlay')}</span>
-    </div>
-
-    <div class="max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-auto custom-scroll pr-1">
-      <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
-    </div>
-  </div>
-
-  <!-- Right Column: Download History & Offline Cache Workbench -->
-  <div class="flex-1 min-w-0 w-full flex flex-col gap-4">
-    <!-- 1. Stats and Maintenance Bar -->
+<div class="flex flex-col gap-4 w-full select-none animate-fade-in" data-testid="desktop-download-mgr-view">
+  <!-- 1. Stats and Maintenance Bar -->
     <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs lg:pr-[220px]">
       <div class="flex items-center gap-3 flex-wrap">
         <span class="text-[var(--text-secondary)]">
@@ -207,20 +196,12 @@
 
     <!-- 2. Subtab Switcher -->
     <div class="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          data-testid="subtab-history"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {subTab === 'history' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-          onclick={() => subTab = 'history'}
-        >
-          {t('download.tabHistoryAndFiles')}
-        </button>
+      <div class="flex items-center gap-2 flex-wrap">
         <button
           type="button"
           data-testid="subtab-local-playlists"
           class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'local-playlists' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-          onclick={() => subTab = 'local-playlists'}
+          onclick={() => { subTab = 'local-playlists'; routerState.downloadSubTab = 'local-playlists'; }}
         >
           <span>📁 本地歌单</span>
           {#if localPlaylistState.playlists.length > 0}
@@ -231,9 +212,26 @@
         </button>
         <button
           type="button"
+          data-testid="subtab-history"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {subTab === 'history' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => { subTab = 'history'; routerState.downloadSubTab = 'history'; }}
+        >
+          {t('download.tabHistoryAndFiles')}
+        </button>
+        <button
+          type="button"
+          data-testid="subtab-folder"
+          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'folder' ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => { subTab = 'folder'; routerState.downloadSubTab = 'folder'; }}
+        >
+          <span>📁</span>
+          <span>{t('download.localLibraryAndTree')}</span>
+        </button>
+        <button
+          type="button"
           data-testid="subtab-cache"
           class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {subTab === 'browser-cache' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-          onclick={() => subTab = 'browser-cache'}
+          onclick={() => { subTab = 'browser-cache'; routerState.downloadSubTab = 'browser-cache'; }}
         >
           {t('download.tabBrowserCache')}
         </button>
@@ -241,7 +239,7 @@
           type="button"
           data-testid="subtab-tasks"
           class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'tasks' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-          onclick={() => subTab = 'tasks'}
+          onclick={() => { subTab = 'tasks'; routerState.downloadSubTab = 'tasks'; }}
         >
           <span>📥 {t('drawer.tasksTab')}</span>
           {#if activeTasksCount > 0}
@@ -258,7 +256,11 @@
     </div>
 
     <!-- 3. Content Area -->
-    {#if subTab === 'history'}
+    {#if subTab === 'local-playlists'}
+      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm">
+        <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
+      </div>
+    {:else if subTab === 'history'}
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
         <!-- Search & Refresh Bar -->
         <div class="p-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2.5">
@@ -406,9 +408,19 @@
           </button>
         </div>
       </div>
-    {:else if subTab === 'local-playlists'}
-      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm">
-        <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
+    {:else if subTab === 'folder'}
+      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-base">📁</span>
+            <h2 class="font-bold text-sm text-[var(--text-main)]">{t('download.localLibraryAndTree')}</h2>
+          </div>
+          <span class="text-[10px] text-[var(--text-muted)]">{t('download.clickToExpandPlay')}</span>
+        </div>
+
+        <div class="max-h-[calc(100vh-280px)] min-h-[400px] overflow-y-auto overflow-x-auto custom-scroll pr-1">
+          <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
+        </div>
       </div>
     {:else if subTab === 'browser-cache'}
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm">
@@ -417,7 +429,6 @@
     {:else if subTab === 'tasks'}
       <DesktopTaskQueueWorkbench {onReveal} {showToast} />
     {/if}
-  </div>
 </div>
 
 <style>

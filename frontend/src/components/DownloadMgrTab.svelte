@@ -14,6 +14,7 @@
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
+  import { routerState } from '../lib/router.svelte';
   import { t } from '../lib/i18n';
   import type { Track } from '../lib/types';
 
@@ -33,16 +34,29 @@
     showToast?: (m: string, t?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
   }>();
 
-  let mobileTab = $state<'folder' | 'history' | 'playlists' | 'cache'>('history');
-  const SUBTABS: ('folder' | 'history' | 'playlists' | 'cache')[] = ['folder', 'history', 'playlists', 'cache'];
+  let mobileTab = $state<'playlists' | 'folder' | 'history' | 'cache'>('playlists');
+  const SUBTABS: ('playlists' | 'folder' | 'history' | 'cache')[] = ['playlists', 'folder', 'history', 'cache'];
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(mobileTab)));
 
-  function setMobileTab(id: 'folder' | 'history' | 'playlists' | 'cache') {
+  $effect(() => {
+    if (routerState.downloadSubTab === 'local-playlists') {
+      mobileTab = 'playlists';
+    } else if (routerState.downloadSubTab === 'history') {
+      mobileTab = 'history';
+    } else if (routerState.downloadSubTab === 'browser-cache') {
+      mobileTab = 'cache';
+    }
+  });
+
+  function setMobileTab(id: 'playlists' | 'folder' | 'history' | 'cache') {
     mobileTab = id;
+    if (id === 'playlists') routerState.downloadSubTab = 'local-playlists';
+    else if (id === 'history') routerState.downloadSubTab = 'history';
+    else if (id === 'cache') routerState.downloadSubTab = 'browser-cache';
   }
 
   function handleSwipeIndexChange(newIndex: number) {
-    const nextTab = SUBTABS[newIndex] || 'folder';
+    const nextTab = SUBTABS[newIndex] || 'playlists';
     setMobileTab(nextTab);
   }
 
@@ -261,9 +275,9 @@
   }
 
   const mobileTabs: SegmentItem[] = $derived([
+    { id: 'playlists', label: '歌单', icon: '📁', accent: 'emerald' },
     { id: 'folder', label: t('download.tabLocal'), icon: '📂', accent: 'red' },
     { id: 'history', label: t('download.tabHistory'), icon: '📥', accent: 'blue' },
-    { id: 'playlists', label: '歌单', icon: '📁', accent: 'emerald' },
     { id: 'cache', label: t('download.tabCache'), icon: '📲', accent: 'emerald' }
   ]);
 </script>
@@ -278,9 +292,13 @@
 
   <SwipeableTabsView
     activeIndex={activeTabIndex}
-    count={3}
+    count={4}
     onChange={handleSwipeIndexChange}
   >
+    <div class="w-full">
+      <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
+    </div>
+
     <div class="w-full">
       <AccordionCard title={t('download.accordionLocalTree')} flat open={true} accent="red">
         <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
@@ -462,10 +480,6 @@
         <button class="btn-secondary px-3 py-1 text-xs" disabled={histPage >= histTotalPages} onclick={() => loadHistory(histPage + 1)}>{t('download.nextPage')}</button>
       </div>
     </AccordionCard>
-  </div>
-
-  <div class="w-full">
-    <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
   </div>
 
   <div class="w-full">
