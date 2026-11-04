@@ -7,6 +7,7 @@
   import DesktopArtistDetail from './DesktopArtistDetail.svelte';
   import DesktopSearchNeteaseResults from './DesktopSearchNeteaseResults.svelte';
   import DesktopSearchMusicFreeResults from './DesktopSearchMusicFreeResults.svelte';
+  import DesktopViewHeader from './DesktopViewHeader.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { musicFreeStore } from '../../lib/musicfree/musicFreeStore.svelte';
   import { routerState } from '../../lib/router.svelte';
@@ -272,36 +273,47 @@
       {showToast}
     />
   {:else}
-    <!-- 1. 顶部控制栏：音源选择器 + 搜索类型胶囊 + 大搜索框 (右侧 lg:pr-[220px] 避让控制胶囊) -->
-    <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm lg:pr-[220px]">
-      <div class="flex items-center justify-between gap-3 flex-wrap">
-        <!-- 搜索类型切换 -->
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <button type="button" data-testid="search-type-1" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1')}>{t('search.typeSong')}</button>
-          {#if searchSource === 'netease'}
-            <button type="button" data-testid="search-type-10" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '10' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('10')}>{t('search.typeAlbum')}</button>
-            <button type="button" data-testid="search-type-1000" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1000' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1000')}>{t('search.typePlaylist')}</button>
-            <button type="button" data-testid="search-type-100" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '100' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('100')}>{t('search.typeArtist')}</button>
-          {/if}
-        </div>
-
-        <!-- 🎯 音源来源选择器 (对应用户在界面设计红框标注处) -->
-        <div class="flex items-center gap-1 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)]">
+    <!-- 1. 统一桌面 Header：大标题 + 状态 Badge + 音源切换胶囊 -->
+    <DesktopViewHeader
+      icon="🔍"
+      title={t('topbar.search')}
+      badge={searchSource === 'musicfree' ? '聚合检索' : '官方直连'}
+      badgeType={searchSource === 'musicfree' ? 'purple' : 'default'}
+      subtitle="全网多源搜索引擎"
+    >
+      {#snippet actions()}
+        <!-- 🎯 音源来源选择器 (统一规格胶囊) -->
+        <div class="flex items-center gap-1 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] shrink-0">
           <button
             type="button"
-            class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            data-testid="desktop-search-source-netease"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('netease')}
           >
             <span>☁️</span> <span>网易云</span>
           </button>
           <button
             type="button"
-            class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+            data-testid="desktop-search-source-musicfree"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('musicfree')}
           >
             <span>🧩</span> <span>MusicFree 聚合</span>
           </button>
         </div>
+      {/snippet}
+    </DesktopViewHeader>
+
+    <!-- 2. 搜索控制栏：搜索类型胶囊 + 大搜索框 (右侧 lg:pr-[220px] 避让浮动控制胶囊) -->
+    <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm lg:pr-[220px]">
+      <!-- 搜索类型切换 -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <button type="button" data-testid="search-type-1" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1')}>{t('search.typeSong')}</button>
+        {#if searchSource === 'netease'}
+          <button type="button" data-testid="search-type-10" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '10' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('10')}>{t('search.typeAlbum')}</button>
+          <button type="button" data-testid="search-type-1000" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '1000' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('1000')}>{t('search.typePlaylist')}</button>
+          <button type="button" data-testid="search-type-100" class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {sType === '100' ? 'bg-red-500 text-white shadow-md shadow-red-500/20 scale-105' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => handleTypeChange('100')}>{t('search.typeArtist')}</button>
+        {/if}
       </div>
 
       <!-- 搜索输入框与条数 -->

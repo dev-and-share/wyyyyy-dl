@@ -5,6 +5,7 @@
   import BrowserCacheSection from '../BrowserCacheSection.svelte';
   import LocalPlaylistsSection from '../LocalPlaylistsSection.svelte';
   import DesktopTaskQueueWorkbench from './DesktopTaskQueueWorkbench.svelte';
+  import DesktopViewHeader from './DesktopViewHeader.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
@@ -155,107 +156,111 @@
 
 <!-- PC Desktop: Local Management Workbench -->
 <div class="flex flex-col gap-4 w-full select-none animate-fade-in" data-testid="desktop-download-mgr-view">
-  <!-- 1. Stats and Maintenance Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs lg:pr-[220px]">
-      <div class="flex items-center gap-3 flex-wrap">
-        <span class="text-[var(--text-secondary)]">
-          {t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}
-        </span>
-        <span class="text-[var(--text-secondary)]">
-          {t('download.diskSpaceUsed', { size: histStats?.totalSize ? formatBytes(histStats.totalSize) : '-' })}
-        </span>
-        {#if (histStats?.missingCount ?? 0) > 0}
-          <span class="text-amber-400 font-medium bg-amber-400/10 px-2 py-0.5 rounded-md">
-            {t('download.missingCount', { count: histStats.missingCount })}
-          </span>
-        {/if}
-      </div>
-
-      <!-- Quick Maintenance Tools -->
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="btn-secondary px-2.5 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer"
-          disabled={scanLoading}
-          onclick={handleScanExternal}
-          title={t('download.scanExternalTooltip')}
-        >
-          {scanLoading ? t('download.scanning') : t('download.incrementalScan')}
-        </button>
-        <button
-          type="button"
-          class="btn-secondary px-2.5 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer"
-          disabled={scanLoading}
-          onclick={handleScanDisk}
-          title={t('download.diskCheckTooltip')}
-        >
-          {t('download.diskCheck')}
-        </button>
-      </div>
-    </div>
-
-    <!-- 2. Subtab Switcher -->
-    <div class="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
-      <div class="flex items-center gap-2 flex-wrap">
+  <!-- 1. 统一桌面 Header：本地曲库大标题 + 下载容量 Badge + 统一规格 Sub-Tabs 胶囊 -->
+  <DesktopViewHeader
+    icon="📥"
+    title={t('sidebar.localAndDownload')}
+    badge={`${histStats?.totalCount ?? histTotal ?? 0} 首 · ${histStats?.totalSize ? formatBytes(histStats.totalSize) : '-'}`}
+    badgeType="default"
+  >
+    {#snippet actions()}
+      <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] shrink-0 overflow-x-auto max-w-full">
         <button
           type="button"
           data-testid="subtab-local-playlists"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'local-playlists' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'local-playlists' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'local-playlists'; routerState.downloadSubTab = 'local-playlists'; }}
         >
-          <span>📁 本地歌单</span>
+          <span>📁</span> <span>本地歌单</span>
           {#if localPlaylistState.playlists.length > 0}
-            <span class="text-[10px] opacity-80">
-              ({localPlaylistState.playlists.length})
+            <span class="text-[10px] px-1.5 py-0.2 rounded-full {subTab === 'local-playlists' ? 'bg-white/20 text-white' : 'bg-black/10 dark:bg-white/10 text-[var(--text-muted)]'}">
+              {localPlaylistState.playlists.length}
             </span>
           {/if}
         </button>
         <button
           type="button"
           data-testid="subtab-history"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {subTab === 'history' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'history' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'history'; routerState.downloadSubTab = 'history'; }}
         >
-          {t('download.tabHistoryAndFiles')}
+          <span>📥</span> <span>{t('download.tabHistoryAndFiles')}</span>
         </button>
         <button
           type="button"
           data-testid="subtab-folder"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'folder' ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'folder' ? 'bg-sky-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'folder'; routerState.downloadSubTab = 'folder'; }}
         >
-          <span>📁</span>
-          <span>{t('download.localLibraryAndTree')}</span>
+          <span>🗂️</span> <span>{t('download.localLibraryAndTree')}</span>
         </button>
         <button
           type="button"
           data-testid="subtab-cache"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all {subTab === 'browser-cache' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'browser-cache' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'browser-cache'; routerState.downloadSubTab = 'browser-cache'; }}
         >
-          {t('download.tabBrowserCache')}
+          <span>📱</span> <span>{t('download.tabBrowserCache')}</span>
         </button>
         <button
           type="button"
           data-testid="subtab-tasks"
-          class="px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'tasks' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'tasks' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'tasks'; routerState.downloadSubTab = 'tasks'; }}
         >
-          <span>📥 {t('drawer.tasksTab')}</span>
+          <span>⚡</span> <span>{t('drawer.tasksTab')}</span>
           {#if activeTasksCount > 0}
             <span class="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-none animate-pulse">
               {activeTasksCount}
             </span>
           {:else if taskState.tasks.length > 0}
-            <span class="text-[10px] opacity-75">
-              ({taskState.tasks.length})
+            <span class="text-[10px] px-1.5 py-0.2 rounded-full {subTab === 'tasks' ? 'bg-white/20 text-white' : 'bg-black/10 dark:bg-white/10 text-[var(--text-muted)]'}">
+              {taskState.tasks.length}
             </span>
           {/if}
         </button>
       </div>
+    {/snippet}
+  </DesktopViewHeader>
+
+  <!-- 2. 状态与维护工具条 (右侧 lg:pr-[220px] 避让浮动控制胶囊) -->
+  <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs lg:pr-[220px]">
+    <div class="flex items-center gap-3 flex-wrap">
+      {#if (histStats?.missingCount ?? 0) > 0}
+        <span class="text-amber-400 font-medium bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
+          ⚠️ {t('download.missingCount', { count: histStats.missingCount })}
+        </span>
+      {:else}
+        <span class="text-[var(--text-secondary)]">
+          💾 {t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}
+        </span>
+      {/if}
     </div>
 
-    <!-- 3. Content Area -->
+    <!-- Quick Maintenance Tools -->
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="btn-secondary px-2.5 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer"
+        disabled={scanLoading}
+        onclick={handleScanExternal}
+        title={t('download.scanExternalTooltip')}
+      >
+        {scanLoading ? t('download.scanning') : t('download.incrementalScan')}
+      </button>
+      <button
+        type="button"
+        class="btn-secondary px-2.5 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer"
+        disabled={scanLoading}
+        onclick={handleScanDisk}
+        title={t('download.diskCheckTooltip')}
+      >
+        {t('download.diskCheck')}
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. Content Area -->
     {#if subTab === 'local-playlists'}
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm">
         <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
