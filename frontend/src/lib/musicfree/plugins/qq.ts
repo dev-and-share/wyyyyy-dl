@@ -17,12 +17,39 @@ function parseJsonOrJsonp(raw: any): any {
  * 🐧 QQ 音乐官方原生插件 (QQ Music Official Native Plugin)
  * 100% 直连腾讯官方 u.y.qq.com 与 CDN 接口，本地组织官方 CgiGetVkey 协议
  */
+/**
+ * 👑 QQ音乐私有 VIP/付费状态判定
+ */
+export function isQQVip(item: any): boolean {
+  if (!item) return false;
+  const pay = item.pay || {};
+  const action = item.action || {};
+  return Boolean(
+    pay.payplay === 1 ||
+    pay.paydownload === 1 ||
+    pay.payinfo === 1 ||
+    pay.paytrackmouth === 1 ||
+    action.payplay === 1 ||
+    action.pay_play === 1 ||
+    item.alertid === 2 ||
+    item.result === 104003 ||
+    item.isvip === 1 ||
+    item.isVip === true ||
+    item.vip === true ||
+    item.fee === 1
+  );
+}
+
 export const qqPlugin: IMusicFreePlugin = {
   platform: 'QQ音乐 (官方)',
   version: '1.0.0',
   author: 'wyyyyy-dl 官方',
   srcUrl: 'https://y.qq.com/',
   supportedSearchType: ['music'],
+
+  isVip(trackOrItem: any): boolean {
+    return isQQVip(trackOrItem?.raw || trackOrItem);
+  },
 
   async search(query: string, page = 1, type = 'music') {
     if (type !== 'music') return { isEnd: true, data: [] };
@@ -46,6 +73,7 @@ export const qqPlugin: IMusicFreePlugin = {
         album: item.albumname || item.album?.name || '',
         duration: item.interval ? item.interval * 1000 : 0,
         artwork: albummid ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg` : '',
+        isVip: isQQVip(item),
         raw: item
       };
     });
@@ -99,6 +127,9 @@ export const qqPlugin: IMusicFreePlugin = {
     const purl = midUrlInfo?.purl;
 
     if (!purl) {
+      if (midUrlInfo?.result === 104003 || raw.pay?.payplay === 1) {
+        throw new Error('版权付费/VIP歌曲');
+      }
       throw new Error('[QQ音乐] 官方接口未返回音频流地址 (可能为 VIP 限制)');
     }
 
@@ -149,6 +180,7 @@ export const qqPlugin: IMusicFreePlugin = {
         album: data.albumname || data.album?.name || '',
         duration: data.interval ? data.interval * 1000 : 0,
         artwork: albummid ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg` : '',
+        isVip: isQQVip(data),
         raw: data
       };
     });
@@ -228,31 +260,51 @@ export const qqPlugin: IMusicFreePlugin = {
 
   async getMusicSheetInfo(sheet: any) {
     const dissId = sheet.id || sheet.dissid;
-    const url = `http://i.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg?type=1&utf8=1&disstid=${dissId}&loginUin=0`;
-    const raw = await proxyRequest<any>(url, {
-      headers: { Referer: 'https://y.qq.com/n/yqq/playlist', Cookie: 'uin=' }
+    // 1. 优先调用 QQ 音乐官方现代化 Web 歌单接口 (支持全网公开歌单，高可用直连)
+    const modernUrl = `https://c.y.qq.com/v8/fcg-bin/fcg_v8_playlist_cp.fcg?id=${dissId}&format=json&newsong=1&platform=yqq`;
+    let raw = await proxyRequest<any>(modernUrl, {
+      headers: { Referer: 'https://y.qq.com/' },
+      timeout: 10000
     });
-    const parsed = parseJsonOrJsonp(raw);
-    const cdlist = parsed?.cdlist?.[0];
-    const songlist = cdlist?.songlist || [];
+
+    let cd = raw?.data?.cdlist?.[0] || raw?.cdlist?.[0];
+    let songlist: any[] = cd?.songlist || [];
+
+    // 2. 兜底尝试备用 QZone 歌单接口 (分页轻量拉取，避免 Broken pipe)
+    if (!songlist || songlist.length === 0) {
+      const fallbackUrl = `http://i.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg?type=1&utf8=1&disstid=${dissId}&loginUin=0&song_begin=0&song_num=60`;
+      raw = await proxyRequest<any>(fallbackUrl, {
+        headers: { Referer: 'https://y.qq.com/n/yqq/playlist', Cookie: 'uin=' },
+        timeout: 10000
+      });
+      const parsed = parseJsonOrJsonp(raw);
+      cd = parsed?.cdlist?.[0] || parsed?.data?.cdlist?.[0];
+      songlist = cd?.songlist || [];
+    }
 
     const musicList: IMusicFreeTrack[] = songlist.map((item: any) => {
       const singer = (item.singer || []).map((s: any) => s.name).join(' / ') || '未知歌手';
-      const songmid = item.songmid || item.mid;
-      const albummid = item.albummid || item.album?.mid;
+      const songmid = item.mid || item.songmid || (typeof item.id === 'string' ? item.id : '');
+      const albumObj = item.album || {};
+      const albumName = albumObj.name || albumObj.title || item.albumname || '';
+      const albummid = albumObj.mid || item.albummid;
       return {
         id: songmid,
-        title: item.songname || item.name || '未知歌曲',
+        title: item.title || item.songname || item.name || '未知歌曲',
         artist: singer,
-        album: item.albumname || item.album?.name || '',
+        album: albumName,
         duration: item.interval ? item.interval * 1000 : 0,
-        artwork: albummid ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg` : '',
+        artwork: albummid ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg` : (sheet.artwork || ''),
+        isVip: isQQVip(item),
         raw: item
       };
-    });
+    }).filter((m: any) => m && m.id && m.title);
 
     return {
       ...sheet,
+      title: cd?.dissname || sheet.title || sheet.name,
+      coverImg: cd?.logo || sheet.artwork || sheet.coverImg,
+      description: cd?.desc || sheet.description,
       isEnd: true,
       musicList
     };

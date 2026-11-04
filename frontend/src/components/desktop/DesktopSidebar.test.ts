@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { tick } from 'svelte';
 import DesktopSidebar from './DesktopSidebar.svelte';
 import { myPlaylists, recordPlaylistPlay, playlistPlayCounts } from '../../lib/playlist.svelte';
+import { geoProxyState, updateGeoProxyState } from '../../lib/geoProxyStore.svelte';
 
 describe('DesktopSidebar', () => {
   beforeEach(() => {
@@ -10,6 +11,14 @@ describe('DesktopSidebar', () => {
     for (const key of Object.keys(playlistPlayCounts)) {
       delete playlistPlayCounts[key];
     }
+    updateGeoProxyState({
+      enabled: false,
+      loaded: true,
+      activeProxy: '',
+      activeLocation: '',
+      activeLatencyMs: null,
+      fallbackDirect: false
+    });
   });
   it('renders navigation tabs and triggers onSwitchTab', async () => {
     const onSwitchTab = vi.fn();
@@ -252,5 +261,72 @@ describe('DesktopSidebar', () => {
 
     // Should fade out shadow when scrolled to bottom
     expect(createdShadow.className).toContain('opacity-0');
+  });
+
+  it('hides proxy network icon when proxy is not enabled', () => {
+    updateGeoProxyState({ enabled: false, loaded: true });
+    const { queryByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    expect(queryByTestId('sidebar-geo-proxy-icon')).toBeNull();
+  });
+
+  it('shows proxy network icon and details tooltip when proxy is enabled', () => {
+    updateGeoProxyState({
+      enabled: true,
+      loaded: true,
+      activeProxy: '120.232.115.57:3128',
+      activeLocation: '中国 广东 佛山',
+      activeLatencyMs: 274,
+      fallbackDirect: false,
+      mode: 'pool'
+    });
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const icon = getByTestId('sidebar-geo-proxy-icon');
+    expect(icon).toBeDefined();
+    expect(icon.getAttribute('title')).toContain('120.232.115.57:3128');
+    expect(icon.getAttribute('title')).toContain('中国 广东 佛山');
+    expect(icon.getAttribute('title')).toContain('274ms');
+
+    const tooltip = getByTestId('sidebar-proxy-tooltip');
+    expect(tooltip).toBeDefined();
+    expect(tooltip.textContent).toContain('120.232.115.57:3128');
+    expect(tooltip.textContent).toContain('中国 广东 佛山');
+    expect(tooltip.textContent).toContain('274 ms');
+  });
+
+  it('shows collapsed proxy icon when sidebar is collapsed', () => {
+    updateGeoProxyState({
+      enabled: true,
+      loaded: true,
+      activeProxy: '1.2.3.4:8080'
+    });
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: true,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const icon = getByTestId('sidebar-geo-proxy-icon');
+    expect(icon).toBeDefined();
   });
 });

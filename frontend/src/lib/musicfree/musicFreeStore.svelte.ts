@@ -1,6 +1,7 @@
 import { executePluginScript } from './sandbox';
 import type { InstalledPluginRecord, SubscriptionMeta, IMusicFreePlugin } from './types';
 import { builtinPlugins, resolveFallbackFromBuiltins } from './plugins';
+import { isVipOrPaidTrack } from '../trackStatus.svelte';
 import {
   fetchTopListsAcrossPlugins,
   fetchTopListDetail,
@@ -257,6 +258,42 @@ class MusicFreeStore {
     this.saveToStorage();
   }
 
+  /**
+   * 批量启用/禁用所有插件
+   */
+  setAllPluginsEnabled(enabled: boolean) {
+    for (const item of this.plugins) {
+      item.enabled = enabled;
+      if (enabled && !item.instance && item.code) {
+        try {
+          item.instance = executePluginScript(item.code);
+          item.error = undefined;
+        } catch (err: any) {
+          item.error = err.message || 'Execution error';
+        }
+      }
+    }
+    this.saveToStorage();
+  }
+
+  /**
+   * 反转所有插件的启用状态
+   */
+  invertAllPlugins() {
+    for (const item of this.plugins) {
+      item.enabled = !item.enabled;
+      if (item.enabled && !item.instance && item.code) {
+        try {
+          item.instance = executePluginScript(item.code);
+          item.error = undefined;
+        } catch (err: any) {
+          item.error = err.message || 'Execution error';
+        }
+      }
+    }
+    this.saveToStorage();
+  }
+
   removePlugin(id: string) {
     const target = this.plugins.find((p) => p.id === id);
     if (target) {
@@ -387,11 +424,13 @@ class MusicFreeStore {
   async resolveMediaSource(pluginId: string, track: any, quality = 'standard'): Promise<{ url: string; headers?: Record<string, string> }> {
     const record = this.plugins.find((p) => p.id === pluginId);
     let source: any = null;
+    let lastErrorMsg = '';
 
     if (record && record.instance && typeof record.instance.getMediaSource === 'function') {
       try {
         source = await record.instance.getMediaSource(track, quality);
       } catch (e: any) {
+        lastErrorMsg = e?.message || '';
         console.warn(`[MusicFree] 插件 ${record.name} 获取流地址异常:`, e?.message || e);
       }
     }
@@ -402,6 +441,10 @@ class MusicFreeStore {
     }
 
     if (!source || !source.url) {
+      const isVip = isVipOrPaidTrack(track?.raw || track) || lastErrorMsg.includes('VIP') || lastErrorMsg.includes('付费');
+      if (isVip) {
+        throw new Error('为版权付费/VIP歌曲');
+      }
       throw new Error(`音源插件未能解析出音频地址`);
     }
 
@@ -436,37 +479,18 @@ class MusicFreeStore {
     }
   }
 
-  /**
-   * 获取指定插件或所有插件的排行榜列表 (自动规整多层分组与扁平结构，过滤掉无效项)
-   */
   async getTopLists(pluginId?: string) {
     return fetchTopListsAcrossPlugins(this.plugins, pluginId);
   }
-
-  /**
-   * 获取排行榜详情（曲目列表）- 深度容错安全包装
-   */
   async getTopListDetail(pluginId: string, topListItem: any): Promise<any> {
     return fetchTopListDetail(this.plugins, pluginId, topListItem);
   }
-
-  /**
-   * 获取歌单广场标签 - 深度容错安全包装
-   */
   async getRecommendSheetTags(pluginId: string): Promise<any> {
     return fetchRecommendSheetTags(this.plugins, pluginId);
   }
-
-  /**
-   * 根据标签获取推荐歌单 - 深度容错安全包装
-   */
   async getRecommendSheetsByTag(pluginId: string, tag: any, page = 1): Promise<any> {
     return fetchRecommendSheetsByTag(this.plugins, pluginId, tag, page);
   }
-
-  /**
-   * 获取歌单详情与歌曲 - 深度容错安全包装
-   */
   async getMusicSheetInfo(pluginId: string, sheetItem: any, page = 1): Promise<any> {
     return fetchMusicSheetInfo(this.plugins, pluginId, sheetItem, page);
   }

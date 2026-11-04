@@ -3,7 +3,8 @@
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
   import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
-  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../../../lib/player/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, isVipOrPaidTrack } from '../../../lib/player/trackStatus.svelte';
+  import { jumpToMusicFreeSearch } from '../../../lib/router.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
   import TrackSourceBadge from '../../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../../TrackLikeBtn.svelte';
@@ -213,59 +214,72 @@
         </div>
       {:else}
         <div class="flex flex-col gap-1.5">
-          {#each chartTracks as t, idx (t.id || idx)}
-            {@const trackObj = buildChartTrack(t)}
-            {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, t)}
-            {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, t.title || t.name, t.artist)}
-            {@const isLiked = isTrackLiked(trackObj.id, t.title || t.name, t.artist)}
+          {#each chartTracks as trackItem, idx (trackItem.id || idx)}
+            {@const trackObj = buildChartTrack(trackItem)}
+            {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, trackItem)}
+            {@const isVip = isVipOrPaidTrack(trackItem) || isVipOrPaidTrack(trackObj)}
+            {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, trackItem.title || trackItem.name, trackItem.artist)}
+            {@const isLiked = isTrackLiked(trackObj.id, trackItem.title || trackItem.name, trackItem.artist)}
             <div
-              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group"
+              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group {isVip ? 'opacity-90' : ''}"
             >
               <span class="w-6 text-center text-xs text-[var(--text-muted)] font-mono">{idx + 1}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold text-[var(--text-main)] truncate {isCur ? 'text-purple-400' : ''}">
-                    {t.title || t.name}
+                  <span class="text-xs font-semibold truncate {isCur ? 'text-purple-400' : isVip ? 'text-[var(--text-secondary)] opacity-80' : 'text-[var(--text-main)]'}">
+                    {trackItem.title || trackItem.name}
                   </span>
+                  {#if isVip}
+                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title="版权付费歌曲，可点击右侧「聚合搜」跨源播放">
+                      VIP
+                    </span>
+                  {/if}
                   <TrackSourceBadge
                     id={trackObj.id}
-                    name={t.title || t.name}
-                    artist={t.artist}
+                    name={trackItem.title || trackItem.name}
+                    artist={trackItem.artist}
                     item={trackObj}
-                    isLocal={status.isLocal}
+                    isServer={status.isServer}
+                    isPhone={status.isPhone}
                     curTrack={curTrack}
                     class="shrink-0"
                   />
                   <TrackLikeBtn
                     liked={isLiked}
-                    onclick={() => toggleLike(trackObj.id, t.title || t.name, t.artist, trackObj)}
+                    onclick={() => toggleLike(trackObj.id, trackItem.title || trackItem.name, trackItem.artist, trackObj)}
                   />
                 </div>
                 <div class="text-[11px] text-[var(--text-secondary)] truncate">
-                  {t.artist || '未知歌手'}
+                  {trackItem.artist || '未知歌手'}
                 </div>
               </div>
 
               <div class="inline-flex items-center justify-end gap-1.5 shrink-0">
                 <SlotBtn
                   playing={isCur && playing}
-                  onclick={() => handlePlaySingle(t)}
+                  onclick={() => handlePlaySingle(trackItem)}
                 >
                   {getTrackPlayActionLabel({ isPlaying: isCur && playing, isLocal: status.isLocal, variant: 'desktop' })}
                 </SlotBtn>
+                <SlotBtn
+                  onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
+                  title="跳转至「MusicFree 聚合」跨多音源检索可用版本"
+                >
+                  🧩 聚合搜
+                </SlotBtn>
                 {#if status.isServer}
-                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: t.title || t.name, artist: t.artist } }))}>
+                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
                     {t('common.reveal')}
                   </SlotBtn>
                 {:else}
-                  <SlotBtn onclick={() => handleDownload(t)}>
+                  <SlotBtn onclick={() => handleDownload(trackItem)}>
                     {t('download.downloadSingle')}
                   </SlotBtn>
                 {/if}
-                <SlotBtn onclick={() => handleCache(t)}>
+                <SlotBtn onclick={() => handleCache(trackItem)}>
                   {status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}
                 </SlotBtn>
-                <SlotBtn onclick={() => addToPlaylistSong = buildChartTrack(t)}>
+                <SlotBtn onclick={() => addToPlaylistSong = buildChartTrack(trackItem)}>
                   ➕
                 </SlotBtn>
               </div>

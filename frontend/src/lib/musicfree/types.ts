@@ -5,6 +5,8 @@ export interface IMusicFreeTrack {
   album?: string;
   artwork?: string;
   duration?: number;
+  isVip?: boolean;
+  vip?: boolean;
   raw?: any;
   [key: string]: any;
 }
@@ -31,6 +33,7 @@ export interface IMusicFreePlugin {
   search?: (query: string, page: number, type: 'music' | 'album' | 'artist') => Promise<{ isEnd?: boolean; data: any[] }>;
   getMediaSource?: (musicItem: any, quality: string) => Promise<IMusicFreeMediaSource>;
   getLyric?: (musicItem: any) => Promise<IMusicFreeLyric>;
+  isVip?: (trackOrItem: any) => boolean;
   getAlbumInfo?: (albumItem: any) => Promise<any>;
   getArtistWorks?: (artistItem: any, page: number, type: string) => Promise<any>;
   getTopLists?: () => Promise<any[]>;

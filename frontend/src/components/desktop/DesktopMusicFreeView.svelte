@@ -25,7 +25,7 @@
   <!-- 发现中心顶栏 -->
   <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-3 lg:pb-4 shrink-0">
     <h1 class="text-xl lg:text-2xl font-bold flex items-center gap-2.5 text-[var(--text-main)]">
-      <span class="text-2xl">🧩</span> 发现中心
+      <span class="text-2xl">🧩</span> MusicFree发现中心
     </h1>
 
     <!-- 选项卡切换胶囊 -->

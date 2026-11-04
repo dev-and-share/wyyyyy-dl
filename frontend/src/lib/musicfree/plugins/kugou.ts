@@ -16,6 +16,36 @@ function decodeBase64ToUtf8(base64Str: string): string {
 }
 
 /**
+ * 👑 酷狗音乐私有 VIP/付费状态判定
+ */
+export function isKugouVip(item: any): boolean {
+  if (!item) return false;
+  return Boolean(
+    (typeof item.privilege === 'number' && item.privilege >= 8) ||
+    (typeof item.sqprivilege === 'number' && item.sqprivilege >= 8) ||
+    (typeof item['320privilege'] === 'number' && item['320privilege'] >= 8) ||
+    (typeof item.highprivilege === 'number' && item.highprivilege >= 8) ||
+    (typeof item['128privilege'] === 'number' && item['128privilege'] >= 8) ||
+    (typeof item.pay_type === 'number' && item.pay_type > 0) ||
+    (typeof item.pay_type_sq === 'number' && item.pay_type_sq > 0) ||
+    (typeof item.pay_type_320 === 'number' && item.pay_type_320 > 0) ||
+    item.fail_process === 4 ||
+    item.fail_process === 12 ||
+    item.fail_process_320 === 4 ||
+    item.fail_process_sq === 4 ||
+    (typeof item.pkg_price === 'number' && item.pkg_price > 0) ||
+    (typeof item.pkg_price_sq === 'number' && item.pkg_price_sq > 0) ||
+    (typeof item.pkg_price_320 === 'number' && item.pkg_price_320 > 0) ||
+    (typeof item.price === 'number' && item.price > 0) ||
+    (typeof item.price_sq === 'number' && item.price_sq > 0) ||
+    (typeof item.price_320 === 'number' && item.price_320 > 0) ||
+    item.old_cpy === 1 ||
+    item.feetype > 0 ||
+    item.error === '需要付费'
+  );
+}
+
+/**
  * 🐕 酷狗音乐官方原生插件 (Kugou Official Native Plugin)
  * 100% 直连酷狗官方 CDN 与接口，无需任何第三方中转，支持搜索、官方排行榜与全音质直链
  */
@@ -25,6 +55,10 @@ export const kugouPlugin: IMusicFreePlugin = {
   author: 'wyyyyy-dl 官方',
   srcUrl: 'https://www.kugou.com/',
   supportedSearchType: ['music'],
+
+  isVip(trackOrItem: any): boolean {
+    return isKugouVip(trackOrItem?.raw || trackOrItem);
+  },
 
   async search(query: string, page = 1, type = 'music') {
     if (type !== 'music') return { isEnd: true, data: [] };
@@ -43,6 +77,7 @@ export const kugouPlugin: IMusicFreePlugin = {
         album: item.album_name || '',
         duration: item.duration ? item.duration * 1000 : 0,
         artwork: item.album_img || item.imgUrl || '',
+        isVip: isKugouVip(item),
         raw: item
       };
     });
@@ -65,6 +100,9 @@ export const kugouPlugin: IMusicFreePlugin = {
     const playUrl = data?.url || (data?.backup_url && data.backup_url[0]);
 
     if (!playUrl) {
+      if (data?.error === '需要付费' || data?.privilege === 10 || data?.pay_type > 0) {
+        throw new Error('版权付费/VIP歌曲');
+      }
       throw new Error('[酷狗音乐] 官方接口未返回有效音频直链');
     }
 
@@ -113,6 +151,7 @@ export const kugouPlugin: IMusicFreePlugin = {
         album: item.album_name || '',
         duration: item.duration ? item.duration * 1000 : 0,
         artwork: item.album_img || '',
+        isVip: isKugouVip(item),
         raw: item
       };
     });
@@ -193,7 +232,7 @@ export const kugouPlugin: IMusicFreePlugin = {
   async getMusicSheetInfo(sheet: any, page = 1) {
     const specialId = sheet.id || sheet.specialid;
     const url = `http://mobilecdn.kugou.com/api/v3/special/song?specialid=${specialId}&page=${page}&pagesize=50&plat=0&version=9108`;
-    const res = await proxyRequest<any>(url);
+    const res = await proxyRequest<any>(url, { timeout: 10000 });
     const list = res?.data?.info || [];
 
     const musicList: IMusicFreeTrack[] = list.map((item: any) => {
@@ -216,6 +255,7 @@ export const kugouPlugin: IMusicFreePlugin = {
         album: item.album_name || '',
         duration: item.duration ? item.duration * 1000 : 0,
         artwork: item.album_img || sheet.artwork || '',
+        isVip: isKugouVip(item),
         raw: item
       };
     });

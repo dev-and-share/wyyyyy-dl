@@ -72,6 +72,22 @@
     }
   });
 
+  let lastHandledSearchTrigger = 0;
+  $effect(() => {
+    if (routerState.searchTrigger > 0 && routerState.searchTrigger !== lastHandledSearchTrigger) {
+      lastHandledSearchTrigger = routerState.searchTrigger;
+      activeArtistId = '';
+      if (routerState.searchSource) {
+        searchSource = routerState.searchSource;
+      }
+      sType = '1';
+      if (routerState.searchKeyword) {
+        kw = routerState.searchKeyword;
+        executeSearch(routerState.searchKeyword);
+      }
+    }
+  });
+
   onMount(() => {
     if (typeof localStorage !== 'undefined') {
       kw = localStorage.getItem(STORAGE_KEY_KW) || '';

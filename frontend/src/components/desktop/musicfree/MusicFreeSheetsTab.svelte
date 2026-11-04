@@ -3,7 +3,8 @@
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
   import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
-  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../../../lib/player/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, isVipOrPaidTrack } from '../../../lib/player/trackStatus.svelte';
+  import { jumpToMusicFreeSearch } from '../../../lib/router.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
   import TrackSourceBadge from '../../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../../TrackLikeBtn.svelte';
@@ -41,6 +42,7 @@
   let sheetTracks = $state<any[]>([]);
   let addToPlaylistSong = $state<any>(null);
   let showAllTags = $state(false);
+  let displayLimit = $state(100);
 
   onMount(async () => {
     if (sheetPlugins.length > 0) {
@@ -123,8 +125,10 @@
     try {
       const res = await musicFreeStore.getRecommendSheetsByTag(selectedPluginId, tag, 1);
       const rawData = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      // 过滤无效条目（必须包含 title 或 name）
-      sheets = rawData.filter((item: any) => item && (item.title || item.name));
+      // 过滤无效条目并绑定当前音源插件 ID
+      sheets = rawData
+        .filter((item: any) => item && (item.title || item.name))
+        .map((item: any) => ({ ...item, _pluginId: selectedPluginId }));
       // 若该音源在默认/全部标签下均返回空，自动标记为空源并切换到健康源
       if (sheets.length === 0 && (!tag || tag.title === '全部')) {
         markCurrentPluginEmptyAndFallback();
@@ -143,6 +147,8 @@
     selectedSheet = { ...sheet, _pluginId: pluginId };
     sheetDetailLoading = true;
     sheetTracks = [];
+    displayLimit = 100;
+    console.info(`[MusicFree] 正在加载歌单「${sheet.title || sheet.name}」(pluginId: ${pluginId})...`);
     try {
       const detail = await musicFreeStore.getMusicSheetInfo(pluginId, sheet, 1);
       const rawTracks = Array.isArray(detail?.musicList) ? detail.musicList : (Array.isArray(detail) ? detail : []);
@@ -151,7 +157,9 @@
         _pluginId: pluginId,
         _pluginPlatform: currentPluginName
       }));
+      console.info(`[MusicFree] 歌单「${sheet.title || sheet.name}」解析成功，共 ${sheetTracks.length} 首歌曲`);
     } catch (e: any) {
+      console.error('[MusicFree] 加载歌单详情失败:', e);
       showToast('获取歌单详情失败: ' + (e?.message || e), 'error');
     } finally {
       sheetDetailLoading = false;
@@ -252,66 +260,95 @@
           <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
           <span>正在加载歌单曲目...</span>
         </div>
+      {:else if sheetTracks.length === 0}
+        <div class="p-8 text-center text-xs text-[var(--text-muted)] border border-dashed border-[var(--border-color)] rounded-xl">
+          歌单曲目为空或解析异常，请尝试更换其他歌单
+        </div>
       {:else}
         <div class="flex flex-col gap-1.5">
-          {#each sheetTracks as t, idx (t.id || idx)}
-            {@const trackObj = buildTrack(t)}
-            {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, t)}
-            {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, t.title || t.name, t.artist)}
-            {@const isLiked = isTrackLiked(trackObj.id, t.title || t.name, t.artist)}
+          {#each sheetTracks.slice(0, displayLimit) as trackItem, idx (trackItem.id || idx)}
+            {@const trackObj = buildTrack(trackItem)}
+            {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, trackItem)}
+            {@const isVip = isVipOrPaidTrack(trackItem) || isVipOrPaidTrack(trackObj)}
+            {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, trackItem.title || trackItem.name, trackItem.artist)}
+            {@const isLiked = isTrackLiked(trackObj.id, trackItem.title || trackItem.name, trackItem.artist)}
             <div
-              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group"
+              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group {isVip ? 'opacity-90' : ''}"
             >
               <span class="w-6 text-center text-xs text-[var(--text-muted)] font-mono">{idx + 1}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold text-[var(--text-main)] truncate {isCur ? 'text-purple-400' : ''}">
-                    {t.title || t.name}
+                  <span class="text-xs font-semibold truncate {isCur ? 'text-purple-400' : isVip ? 'text-[var(--text-secondary)] opacity-80' : 'text-[var(--text-main)]'}">
+                    {trackItem.title || trackItem.name}
                   </span>
+                  {#if isVip}
+                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title="版权付费歌曲，可点击右侧「聚合搜」跨源播放">
+                      VIP
+                    </span>
+                  {/if}
                   <TrackSourceBadge
                     id={trackObj.id}
-                    name={t.title || t.name}
-                    artist={t.artist}
+                    name={trackItem.title || trackItem.name}
+                    artist={trackItem.artist}
                     item={trackObj}
-                    isLocal={status.isLocal}
+                    isServer={status.isServer}
+                    isPhone={status.isPhone}
                     curTrack={curTrack}
                     class="shrink-0"
                   />
                   <TrackLikeBtn
                     liked={isLiked}
-                    onclick={() => toggleLike(trackObj.id, t.title || t.name, t.artist, trackObj)}
+                    onclick={() => toggleLike(trackObj.id, trackItem.title || trackItem.name, trackItem.artist, trackObj)}
                   />
                 </div>
                 <div class="text-[11px] text-[var(--text-secondary)] truncate">
-                  {t.artist || '未知歌手'}
+                  {trackItem.artist || '未知歌手'}
                 </div>
               </div>
 
               <div class="inline-flex items-center justify-end gap-1.5 shrink-0">
                 <SlotBtn
                   playing={isCur && playing}
-                  onclick={() => handlePlaySingle(t)}
+                  onclick={() => handlePlaySingle(trackItem)}
                 >
                   {getTrackPlayActionLabel({ isPlaying: isCur && playing, isLocal: status.isLocal, variant: 'desktop' })}
                 </SlotBtn>
+                <SlotBtn
+                  onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
+                  title="跳转至「MusicFree 聚合」跨多音源检索可用版本"
+                >
+                  🧩 聚合搜
+                </SlotBtn>
                 {#if status.isServer}
-                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: t.title || t.name, artist: t.artist } }))}>
+                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
                     {t('common.reveal')}
                   </SlotBtn>
                 {:else}
-                  <SlotBtn onclick={() => handleDownload(t)}>
+                  <SlotBtn onclick={() => handleDownload(trackItem)}>
                     {t('download.downloadSingle')}
                   </SlotBtn>
                 {/if}
-                <SlotBtn onclick={() => handleCache(t)}>
+                <SlotBtn onclick={() => handleCache(trackItem)}>
                   {status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}
                 </SlotBtn>
-                <SlotBtn onclick={() => addToPlaylistSong = buildTrack(t)}>
+                <SlotBtn onclick={() => addToPlaylistSong = buildTrack(trackItem)}>
                   ➕
                 </SlotBtn>
               </div>
             </div>
           {/each}
+
+          {#if sheetTracks.length > displayLimit}
+            <div class="pt-3 pb-2 flex justify-center">
+              <button
+                type="button"
+                class="px-5 py-2 rounded-xl text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-600 hover:text-white transition-all cursor-pointer border-none text-[var(--text-secondary)] shadow-xs"
+                onclick={() => displayLimit += 100}
+              >
+                展开更多歌曲 (已展示 {Math.min(displayLimit, sheetTracks.length)} / 共 {sheetTracks.length} 首) ▾
+              </button>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

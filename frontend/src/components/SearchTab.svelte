@@ -14,6 +14,7 @@
   import { musicFreeStore } from '../lib/musicfree/musicFreeStore.svelte';
   import DesktopSearchMusicFreeResults from './desktop/DesktopSearchMusicFreeResults.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import { routerState } from '../lib/router.svelte';
   import { t } from '../lib/i18n';
 
   let {
@@ -131,6 +132,22 @@
     } else if (albumId && albumId !== currentAlbumId) {
       currentAlbumId = albumId;
       loadAlbum(albumId);
+    }
+  });
+
+  let lastHandledSearchTrigger = 0;
+  $effect(() => {
+    if (routerState.searchTrigger > 0 && routerState.searchTrigger !== lastHandledSearchTrigger) {
+      lastHandledSearchTrigger = routerState.searchTrigger;
+      if (routerState.searchSource) {
+        searchSource = routerState.searchSource;
+      }
+      activeSubtab = 'search';
+      sType = '1';
+      if (routerState.searchKeyword) {
+        kw = routerState.searchKeyword;
+        doSearch();
+      }
     }
   });
 

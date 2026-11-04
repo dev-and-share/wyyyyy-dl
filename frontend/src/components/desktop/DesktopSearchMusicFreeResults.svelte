@@ -1,14 +1,16 @@
 <script lang="ts">
   import { DEFAULT_VINYL_COVER } from '../../lib/utils';
-  import { getTrackSourceStatus, isSameTrack } from '../../lib/player/trackStatus.svelte';
+  import { getTrackSourceStatus, isSameTrack, getTrackPlayActionLabel, isVipOrPaidTrack } from '../../lib/player/trackStatus.svelte';
   import { musicFreeStore } from '../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../lib/adapters/musicFreeAdapter';
   import { api } from '../../lib/api';
   import { startTaskPolling } from '../../lib/taskStore.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
+  import SlotBtn from '../SlotBtn.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import { isTrackLiked, toggleLike } from '../../lib/likeStore.svelte';
+  import { t } from '../../lib/i18n';
 
   let {
     results = [],
@@ -134,6 +136,7 @@
         {@const pName = item._pluginPlatform || item.pluginName || '外部音源'}
         {@const trackId = item.id || `mf_${item._pluginId || item.pluginHash}_${item.rawId || title}`}
         {@const isCur = isSameTrack(curTrack, trackId)}
+        {@const isVip = isVipOrPaidTrack(item)}
         {@const status = getTrackSourceStatus(trackId, false, curTrack, true, title, artist)}
         <div
           class="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
@@ -175,15 +178,29 @@
             onclick={() => handlePlay(item)}
           >
             <!-- 歌名独立一行，确保无论屏幕多小都清晰完整可见 -->
-            <div class="text-xs sm:text-sm font-semibold text-[var(--text-main)] truncate min-w-0 mb-1 {isCur ? 'text-purple-400 font-bold' : ''}" title={title}>
-              {title}
+            <div class="text-xs sm:text-sm font-semibold truncate min-w-0 mb-1 flex items-center gap-1.5 {isCur ? 'text-purple-400 font-bold' : isVip ? 'text-[var(--text-secondary)] opacity-80' : 'text-[var(--text-main)]'}" title={title}>
+              <span class="truncate">{title}</span>
+              {#if isVip}
+                <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title="版权付费歌曲">
+                  VIP
+                </span>
+              {/if}
             </div>
             <!-- 音源平台标签 + 歌手 + 专辑 -->
             <div class="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate flex items-center gap-1.5 min-w-0">
               <span class="text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/15 text-purple-400 font-medium shrink-0">
                 {pName}
               </span>
-              <TrackSourceBadge id={trackId} name={title} {artist} item={item} isLocal={status.isLocal} {curTrack} class="shrink-0" />
+              <TrackSourceBadge
+                id={trackId}
+                name={title}
+                {artist}
+                item={item}
+                isServer={status.isServer}
+                isPhone={status.isPhone}
+                {curTrack}
+                class="shrink-0"
+              />
               <TrackLikeBtn liked={isTrackLiked(trackId, item.title, artist)} onclick={() => toggleLike(trackId, item.title, artist, item)} />
               <span class="truncate">{artist}</span>
               {#if item.album}
@@ -193,51 +210,32 @@
             </div>
           </div>
 
-          <!-- 操作按钮栏 (移动端精简图标，桌面端完整文本) -->
-          <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-            <!-- 试听 / 播放 (移动端点击整行或封面即可播放，桌面端显示独立按钮) -->
-            <button
-              type="button"
-              class="hidden sm:flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all items-center gap-1 {isCur && playing ? 'bg-purple-600 text-white' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}"
+          <!-- 操作按钮栏 (统一 SlotBtn 架构) -->
+          <div class="inline-flex items-center justify-end gap-1.5 shrink-0">
+            <SlotBtn
+              playing={isCur && playing}
               onclick={() => handlePlay(item)}
             >
-              <span>{isCur && playing ? '播放中' : '试听'}</span>
-            </button>
+              {getTrackPlayActionLabel({ isPlaying: isCur && playing, isLocal: status.isLocal, variant: 'desktop' })}
+            </SlotBtn>
 
-            <!-- 下载到电脑 -->
-            <button
-              type="button"
-              disabled={actionLoadingId === item.id || status.isServer}
-              class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] disabled:opacity-50 flex items-center gap-1"
-              title={status.isServer ? '已存在于电脑磁盘中' : '下载完整音频与歌词到电脑磁盘'}
-              onclick={() => handleDownload(item)}
-            >
-              <span>{status.isServer ? '🖥️' : '⬇️'}</span>
-              <span class="hidden sm:inline">{status.isServer ? '已存' : '下载'}</span>
-            </button>
+            {#if status.isServer}
+              <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackId, name: title, artist } }))}>
+                {t('common.reveal')}
+              </SlotBtn>
+            {:else}
+              <SlotBtn onclick={() => handleDownload(item)}>
+                {actionLoadingId === item.id ? '⏳' : t('download.downloadSingle')}
+              </SlotBtn>
+            {/if}
 
-            <!-- 离线缓存到浏览器 -->
-            <button
-              type="button"
-              disabled={actionLoadingId === item.id || status.isPhone}
-              class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] disabled:opacity-50 flex items-center gap-1"
-              title={status.isPhone ? '已离线缓存到浏览器' : '将音频缓存到浏览器 Cache'}
-              onclick={() => handleCache(item)}
-            >
-              <span>{status.isPhone ? '✓' : '💾'}</span>
-              <span class="hidden sm:inline">{status.isPhone ? '已存' : '缓存'}</span>
-            </button>
+            <SlotBtn onclick={() => handleCache(item)}>
+              {status.isPhone ? t('search.cachedShort') : actionLoadingId === item.id ? '⏳' : t('search.cacheShort')}
+            </SlotBtn>
 
-            <!-- 添加到歌单 -->
-            <button
-              type="button"
-              class="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium cursor-pointer border-none transition-all bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] flex items-center gap-1"
-              title="添加到歌单 (仅限已下载/已缓存歌曲存入本地歌单)"
-              onclick={() => handleAdd(item)}
-            >
-              <span>➕</span>
-              <span class="hidden sm:inline">歌单</span>
-            </button>
+            <SlotBtn onclick={() => handleAdd(item)}>
+              ➕
+            </SlotBtn>
           </div>
         </div>
       {/each}

@@ -27,8 +27,11 @@ export const routerState = $state<{
   sidebarCollapsed: boolean;
   playlistTrigger: number;
   albumTrigger: number;
-  downloadSubTab?: 'history' | 'browser-cache' | 'tasks';
+  downloadSubTab?: 'local-playlists' | 'history' | 'folder' | 'browser-cache' | 'tasks';
   downloadTasksTrigger: number;
+  searchKeyword?: string;
+  searchSource?: 'netease' | 'musicfree';
+  searchTrigger: number;
 }>({
   tab: getInitialTab(),
   playlistId: getInitialPlaylistId(),
@@ -38,8 +41,18 @@ export const routerState = $state<{
   playlistTrigger: 0,
   albumTrigger: 0,
   downloadSubTab: 'history',
-  downloadTasksTrigger: 0
+  downloadTasksTrigger: 0,
+  searchKeyword: '',
+  searchSource: 'netease',
+  searchTrigger: 0
 });
+
+export function jumpToMusicFreeSearch(keyword: string): void {
+  routerState.searchKeyword = keyword.trim();
+  routerState.searchSource = 'musicfree';
+  routerState.searchTrigger = (routerState.searchTrigger || 0) + 1;
+  switchTab('search');
+}
 
 export function jumpToDownloadTasks(): void {
   routerState.downloadSubTab = 'tasks';
@@ -119,6 +132,16 @@ export function exitPlaylistToGallery(): void {
   routerState.playlistId = '';
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
   history.pushState(null, '', '#playlist');
+  try {
+    localStorage.removeItem('wyyyy_last_playlist_id');
+  } catch {}
+}
+
+export function exitPlaylistToLocalManager(): void {
+  routerState.playlistId = '';
+  routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
+  routerState.downloadSubTab = 'local-playlists';
+  switchTab('download-mgr');
   try {
     localStorage.removeItem('wyyyy_last_playlist_id');
   } catch {}

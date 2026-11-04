@@ -54,6 +54,46 @@ describe('MusicFree Store & Adapter', () => {
     expect(musicFreeStore.plugins.length).toBe(0);
   });
 
+  it('supports batch enabling, disabling, and inverting plugin selection', () => {
+    musicFreeStore.plugins = [
+      {
+        id: 'plug_a',
+        name: '音源A',
+        version: '1.0.0',
+        author: 'A',
+        url: '',
+        code: 'module.exports = { platform: "音源A" };',
+        enabled: true,
+        supportedSearchType: ['music']
+      },
+      {
+        id: 'plug_b',
+        name: '音源B',
+        version: '1.0.0',
+        author: 'B',
+        url: '',
+        code: 'module.exports = { platform: "音源B" };',
+        enabled: false,
+        supportedSearchType: ['music']
+      }
+    ];
+
+    // 全选 (全部启用)
+    musicFreeStore.setAllPluginsEnabled(true);
+    expect(musicFreeStore.plugins.every((p) => p.enabled)).toBe(true);
+
+    // 全不选 (全部禁用)
+    musicFreeStore.setAllPluginsEnabled(false);
+    expect(musicFreeStore.plugins.every((p) => !p.enabled)).toBe(true);
+
+    // 反选
+    musicFreeStore.plugins[0].enabled = true;
+    musicFreeStore.plugins[1].enabled = false;
+    musicFreeStore.invertAllPlugins();
+    expect(musicFreeStore.plugins[0].enabled).toBe(false);
+    expect(musicFreeStore.plugins[1].enabled).toBe(true);
+  });
+
   it('cleans up junk and invalid plugins automatically', () => {
     musicFreeStore.plugins = [
       { id: '1', name: '歌曲宝', version: '1.0', author: 'a', url: '', code: '', enabled: true, supportedSearchType: [] },

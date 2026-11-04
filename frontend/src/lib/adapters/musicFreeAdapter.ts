@@ -45,6 +45,7 @@ export class MusicFreeAdapter implements MusicPlatformAdapter {
       },
       cover: item.artwork || item.pic || item.cover || DEFAULT_VINYL_COVER,
       url: item.url,
+      isVip: item.isVip ?? item.vip,
       raw: item,
       isLocal: false,
       ...overrides

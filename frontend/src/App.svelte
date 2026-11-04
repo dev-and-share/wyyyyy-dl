@@ -8,6 +8,7 @@
   import { layoutState, initLayoutWatcher } from './lib/layout.svelte';
   import { likeState, initLikeList, toggleLike } from './lib/likeStore.svelte';
   import { taskState, startTaskPolling, initDownloadedSet, getActiveDownloadingCount } from './lib/taskStore.svelte';
+  import { fetchGeoProxyConfig } from './lib/geoProxyStore.svelte';
   import { sheetState } from './lib/ui.svelte';
   import { executeReveal } from './lib/revealHelper';
   import { playPlaylistTracks } from './lib/playerHelper';
@@ -81,6 +82,7 @@
     startTaskPolling();
     initDownloadedSet();
     initLikeList();
+    fetchGeoProxyConfig();
 
     api.getRepeat().then((j: any) => {
       if (j?.code === '000000') repeat = j.data === true;

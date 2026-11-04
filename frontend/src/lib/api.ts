@@ -106,8 +106,15 @@ export const api = {
   localPlaylistDelete: (id: string) => postForm('/v3/local-playlist/delete', { id }),
   localPlaylistAddTrack: (playlistId: string, track: { historyId?: number; name: string; artist: string; filePath?: string; coverUrl?: string }) =>
     postJson('/v3/local-playlist/tracks/add', { playlistId, ...track }),
-  localPlaylistRemoveTrack: (playlistId: string, trackId: number | string) =>
-    postForm('/v3/local-playlist/tracks/remove', { playlistId, trackId: String(trackId) }),
+  localPlaylistRemoveTrack: (playlistId: string, trackId?: number | string, songName?: string, artist?: string) => {
+    const form: Record<string, string> = { playlistId };
+    if (trackId !== undefined && trackId !== null && String(trackId).trim() !== '' && String(trackId) !== 'NaN') {
+      form.trackId = String(trackId);
+    }
+    if (songName) form.songName = songName;
+    if (artist) form.artist = artist;
+    return postForm('/v3/local-playlist/tracks/remove', form);
+  },
   localPlaylistDetail: (id: string) => get(`/v3/local-playlist/detail?id=${encodeURIComponent(id)}`),
 
   // 🧩 自定义/插件音源落盘下载

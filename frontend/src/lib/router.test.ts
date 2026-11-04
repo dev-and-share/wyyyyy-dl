@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { routerState, jumpToPlaylist, exitPlaylistToGallery, switchTab, initRouter } from './router.svelte';
+import { routerState, jumpToPlaylist, exitPlaylistToGallery, exitPlaylistToLocalManager, switchTab, initRouter } from './router.svelte';
 
 describe('router navigation and URL sync contracts', () => {
   beforeEach(() => {
@@ -26,6 +26,19 @@ describe('router navigation and URL sync contracts', () => {
 
     expect(routerState.playlistId).toBe('');
     expect(location.hash).toBe('#playlist');
+    expect(localStorage.getItem('wyyyy_last_playlist_id')).toBeNull();
+  });
+
+  it('resets URL hash and switches to download-mgr with local-playlists subtab when exitPlaylistToLocalManager is called', () => {
+    jumpToPlaylist('local_favorites');
+    expect(location.hash).toBe('#playlist?id=local_favorites');
+
+    exitPlaylistToLocalManager();
+
+    expect(routerState.playlistId).toBe('');
+    expect(routerState.tab).toBe('download-mgr');
+    expect(routerState.downloadSubTab).toBe('local-playlists');
+    expect(location.hash).toBe('#download-mgr');
     expect(localStorage.getItem('wyyyy_last_playlist_id')).toBeNull();
   });
 

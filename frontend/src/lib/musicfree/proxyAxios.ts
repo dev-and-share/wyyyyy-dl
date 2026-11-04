@@ -52,7 +52,8 @@ export function createProxiedAxios() {
           data = {};
         }
       } else {
-        const text = await res.text();
+        const buffer = await res.arrayBuffer();
+        const text = new TextDecoder('utf-8').decode(new Uint8Array(buffer));
         if (!text || !text.trim()) {
           data = '';
         } else {

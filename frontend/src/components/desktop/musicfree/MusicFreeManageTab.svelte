@@ -11,15 +11,15 @@
 
   const PRESET_SOURCES = [
     {
-      name: '🌟 纯净主流五大源 (高品质推荐)',
+      name: '🌟 纯净主流五大源',
       url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/myPlugins.json'
     },
     {
-      name: '🌐 全网每日自动同步源 (Cloudflare)',
-      url: 'https://musicfreepluginshub.pages.dev/plugins.json'
+      name: '🌐 全网每日自动同步源',
+      url: 'https://fastly.jsdelivr.net/gh/hebijunge/musicfree-plugins@master/plugins.json'
     },
     {
-      name: '📻 官方基础扩展源 (Gitee)',
+      name: '📻 MusicFree官方源',
       url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/master/plugins.json'
     }
   ];
@@ -38,6 +38,21 @@
     } else {
       showToast('当前已安装插件中未检测到已知失效垃圾源', 'info');
     }
+  }
+
+  function handleSelectAll() {
+    musicFreeStore.setAllPluginsEnabled(true);
+    showToast('已全部启用音源插件', 'success');
+  }
+
+  function handleSelectNone() {
+    musicFreeStore.setAllPluginsEnabled(false);
+    showToast('已全部停用音源插件', 'info');
+  }
+
+  function handleInvertSelection() {
+    musicFreeStore.invertAllPlugins();
+    showToast('已反转音源插件启用状态', 'info');
   }
 
   function handleRestoreBuiltins() {
@@ -142,11 +157,11 @@
 
   <!-- 已安装插件网格列表 -->
   <section class="space-y-3">
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-[var(--text-main)] flex items-center gap-1.5">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-sm font-semibold text-[var(--text-main)] flex items-center gap-1.5 shrink-0">
         <span>📦</span> 已安装音源插件 ({musicFreeStore.plugins.length})
       </h2>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         {#if musicFreeStore.canRestoreBuiltins}
           <button
             type="button"
@@ -166,8 +181,32 @@
           >
             🧹 一键清理失效垃圾源
           </button>
+          <button
+            type="button"
+            onclick={handleSelectAll}
+            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-500/10 hover:text-purple-400 text-[var(--text-secondary)] border border-[var(--border-color)] transition-colors cursor-pointer"
+            title="全部启用所有音源插件"
+          >
+            全选
+          </button>
+          <button
+            type="button"
+            onclick={handleSelectNone}
+            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-500/10 hover:text-purple-400 text-[var(--text-secondary)] border border-[var(--border-color)] transition-colors cursor-pointer"
+            title="全部停用所有音源插件"
+          >
+            全不选
+          </button>
+          <button
+            type="button"
+            onclick={handleInvertSelection}
+            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-500/10 hover:text-purple-400 text-[var(--text-secondary)] border border-[var(--border-color)] transition-colors cursor-pointer"
+            title="反转所有音源插件的启用状态"
+          >
+            反选
+          </button>
         {/if}
-        <span class="text-xs text-[var(--text-muted)] hidden sm:inline">
+        <span class="text-xs text-[var(--text-muted)] hidden lg:inline">
           支持单独启用或禁用音源
         </span>
       </div>
