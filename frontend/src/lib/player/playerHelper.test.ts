@@ -371,6 +371,52 @@ describe('playerHelper URL resolution & preload contracts', () => {
     };
     const normalResult = await handleRestrictedAudioCheck(11, normalLocalTrack, true, 'http://localhost/stream');
     expect(normalResult.isRestricted).toBe(false);
+  }, 15000);
+
+  it('isVipOrPaidTrack correctly identifies VIP and paid tracks across platforms', async () => {
+    const { isVipOrPaidTrack } = await import('./trackStatus.svelte');
+
+    // 1. 酷狗付费歌曲 (如《彩云之南》用户抓包数据)
+    expect(isVipOrPaidTrack({
+      name: '彩云之南',
+      raw: { privilege: 10, pay_type: 3, error: '需要付费' }
+    })).toBe(true);
+
+    // 2. 酷狗 VIP 歌曲
+    expect(isVipOrPaidTrack({
+      raw: { privilege: 8, pay_type: 0 }
+    })).toBe(true);
+
+    // 3. 酷狗免费歌曲 (privilege 0, pay_type 0)
+    expect(isVipOrPaidTrack({
+      raw: { privilege: 0, pay_type: 0, fail_process: 0 }
+    })).toBe(false);
+
+    // 4. QQ 音乐 VIP 歌曲 (payplay 1)
+    expect(isVipOrPaidTrack({
+      raw: { pay: { payplay: 1 } }
+    })).toBe(true);
+
+    // 5. QQ 音乐免费歌曲
+    expect(isVipOrPaidTrack({
+      raw: { pay: { payplay: 0 } }
+    })).toBe(false);
+
+    // 6. 通用/网易云 VIP/Fee
+    expect(isVipOrPaidTrack({ fee: 1 })).toBe(true);
+    expect(isVipOrPaidTrack({ freeTrial: true })).toBe(true);
+    expect(isVipOrPaidTrack({ fee: 0 })).toBe(false);
+  });
+
+  it('jumpToMusicFreeSearch properly configures routerState and switches tab', async () => {
+    const { routerState, jumpToMusicFreeSearch } = await import('../router.svelte');
+
+    jumpToMusicFreeSearch('彩云之南 徐千雅');
+
+    expect(routerState.tab).toBe('search');
+    expect(routerState.searchSource).toBe('musicfree');
+    expect(routerState.searchKeyword).toBe('彩云之南 徐千雅');
+    expect(routerState.searchTrigger).toBeGreaterThan(0);
   });
 });
 

@@ -10,6 +10,8 @@
     artist = '',
     path = '',
     item = null,
+    isServer = undefined,
+    isPhone = undefined,
     isLocal = false,
     curTrack = null,
     onReveal,
@@ -21,6 +23,8 @@
     artist?: string;
     path?: string;
     item?: any;
+    isServer?: boolean;
+    isPhone?: boolean;
     isLocal?: boolean;
     curTrack?: Track | null;
     onReveal?: (item: any) => void;
@@ -28,16 +32,22 @@
     class?: string;
   }>();
 
-  let status = $derived(
+  let computedStatus = $derived(
     getTrackSourceStatus(
       id,
-      isLocal,
+      Boolean(isLocal && (path || item?.filePath)),
       curTrack,
       typeof id === 'string' && (id.startsWith('mf_') || id.startsWith('ext_')),
       name,
       artist
     )
   );
+
+  let status = $derived({
+    isServer: isServer !== undefined ? isServer : computedStatus.isServer,
+    isPhone: isPhone !== undefined ? isPhone : computedStatus.isPhone,
+    isLocal: (isServer !== undefined ? isServer : computedStatus.isServer) || (isPhone !== undefined ? isPhone : computedStatus.isPhone)
+  });
 
   // 长按手势状态
   let pressTimer: any = null;

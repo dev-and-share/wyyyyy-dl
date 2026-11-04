@@ -108,5 +108,9 @@ describe('lyricParser', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0].text).toBe(originalText);
     expect(lines[0].time).toBe(116);
+
+    // 验证 Windows-1252 宽字符混淆自愈
+    const win1252Garbled = new TextDecoder('windows-1252').decode(utf8Bytes);
+    expect(fixLatin1Utf8Garbled(win1252Garbled)).toBe(originalText);
   });
 });

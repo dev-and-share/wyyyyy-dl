@@ -11,6 +11,7 @@ import { t } from '../i18n';
 import { isLocalStreamUrl } from '../utils';
 import { playlistService } from '../playlistService';
 import { resolveFallbackFromBuiltins } from '../musicfree/plugins';
+import { jumpToMusicFreeSearch } from '../router.svelte';
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -38,12 +39,15 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
   }
 
   // 1.1 🎯 本地落盘直通秒播：若已知在服务器磁盘中已下载或自身已标记为本地，直接使用本地高可靠流通道秒播
-  const isServerDownloaded = track.id ? taskState.downloadedSet.has(Number(track.id)) : false;
-  if (track.isLocal || isServerDownloaded) {
+  const numId = Number(track.id);
+  const isNetEaseNum = !isNaN(numId) && numId > 0 && !String(track.id).startsWith('mf_') && !String(track.id).startsWith('ext_');
+  const isServerDownloaded = isNetEaseNum ? taskState.downloadedSet.has(numId) : false;
+  const hasServerFile = Boolean(track.filePath && !track.filePath.startsWith('/v3/stream/online') && !track.filePath.startsWith('http'));
+  if (hasServerFile || isServerDownloaded) {
     track.isLocal = true;
     track.freeTrial = false;
     track.unplayable = false;
-    if (track.id) markSongDownloaded(track.id);
+    if (isNetEaseNum) markSongDownloaded(track.id);
     if (!track.url || !isLocalStreamUrl(track.url)) {
       track.url = `/v3/stream?id=${track.id}`;
     }
@@ -258,6 +262,16 @@ export function computeNextTrackOnSkip(
   const MAX_CONSECUTIVE_SKIPS = 15;
   const ONLINE_FAIL_FALLBACK_THRESHOLD = 3;
 
+  const isVipReason = reason.includes('VIP') || reason.includes('付费') || reason.includes('版权');
+  const toastAction = isVipReason
+    ? {
+        label: '🧩 聚合搜',
+        onClick: () => {
+          jumpToMusicFreeSearch(`${failedTrack.name} ${failedTrack.artist || ''}`.trim());
+        }
+      }
+    : undefined;
+
   // 🛡️ 方案 2 兜底：若连续跳过在线歌曲达到阈值，且队列中存在本地/电脑已下载歌曲，直接优先切换至本地歌曲
   if (nextCount >= ONLINE_FAIL_FALLBACK_THRESHOLD) {
     const nextLocalIdx = playerStore.getNextLocalTrackIndex();
@@ -265,7 +279,8 @@ export function computeNextTrackOnSkip(
       showToast(
         isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }),
         isTrial ? 'info' : 'warning',
-        2000
+        isVipReason ? 4000 : 2000,
+        toastAction
       );
       playerStore.qIndex = nextLocalIdx;
       playerStore.curTime = 0;
@@ -282,7 +297,12 @@ export function computeNextTrackOnSkip(
     return { hasNext: false, nextCount: 0 };
   }
 
-  showToast(isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }), isTrial ? 'info' : 'warning', 2000);
+  showToast(
+    isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }),
+    isTrial ? 'info' : 'warning',
+    isVipReason ? 4000 : 2000,
+    toastAction
+  );
   playerStore.qIndex = nextIdx;
   playerStore.curTime = 0;
   playerStore.save();

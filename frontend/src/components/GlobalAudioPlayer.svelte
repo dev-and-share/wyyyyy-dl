@@ -29,7 +29,7 @@
     curTrack?: Track | null; playing?: boolean;
     setQueue?: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void;
     togglePlay?: () => void; isOverlayOpen?: boolean; likedSet?: Set<number>;
-    onToggleLike?: (id: number, name: string) => void; onReveal?: (item: any) => void;
+    onToggleLike?: (id: any, name?: string, artist?: string, extra?: any) => void; onReveal?: (item: any) => void;
     showPeq?: boolean; isPlayerMinimized?: boolean;
   }>();
 
@@ -59,7 +59,7 @@
   });
 
   async function prepareTrackInUI(track: Track) {
-    if (track.isLocal && track.id) markSongDownloaded(track.id);
+    if (track.filePath && track.id && !track.filePath.startsWith('/v3/stream/online')) markSongDownloaded(track.id);
     if (track.url && track.url.startsWith('blob:')) track.url = track.id ? `/v3/stream?id=${track.id}` : '';
     const url = track.url || (await resolveTrackUrl(track));
     if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:') || !isSameAudioSource(audioEl.src, url))) {
@@ -466,7 +466,7 @@
   bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next}
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer} onClearQueue={handleClearQueue}
-  {likedSet} onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
+  {likedSet} onToggleLike={() => onToggleLike(playerStore.activeTrack?.id, playerStore.activeTrack?.name || '', playerStore.activeTrack?.artist, playerStore.activeTrack)}
 />
 
 <!-- 📜 播放列表统一抽屉 -->

@@ -41,12 +41,12 @@ export interface TrackSourceStatus {
 /**
  * 🎯 统一判定歌曲的多端存储来源状态 (Single Source of Truth)
  * @param trackId 歌曲 ID
- * @param trackIsLocal 歌曲对象自带的 isLocal 属性
+ * @param trackIsPhysicalServer 是否明确已物理落盘在服务器磁盘
  * @param curTrack 当前播放器正在播放的曲目（用于实时联动正在播出的曲目）
  */
 export function getTrackSourceStatus(
   trackId: number | string | undefined | null,
-  trackIsLocal?: boolean,
+  trackIsPhysicalServer?: boolean,
   curTrack?: Track | null,
   isExternal?: boolean,
   trackName?: string,
@@ -66,23 +66,26 @@ export function getTrackSourceStatus(
     (strId !== '' && cachedSongIdSet.has(strId as any)) ||
     (comboKey !== '' && cachedSongIdSet.has(comboKey as any));
 
-  // 2. 当前播放歌曲的实时状态联动：若正在播放该曲目且已落盘
-  const isCurPlayingLocal = !!(
+  // 2. 当前播放歌曲的实时状态联动：若正在播放该曲目且已落盘在服务器
+  const isCurPlayingServer = !!(
     curTrack &&
     curTrack.isLocal === true &&
+    curTrack.filePath &&
+    !curTrack.filePath.startsWith('/v3/stream/online') &&
     (
       (validNum && Number(curTrack.id) === numId) ||
-      (strId !== '' && String(curTrack.id) === strId)
+      (strId !== '' && String(curTrack.id) === strId) ||
+      (comboKey !== '' && isSameTrack(curTrack, { name: safeName, artist: safeArtist }))
     )
   );
 
-  // 3. 服务器磁盘检测：全局 downloadedSet (仅限网易云数字 ID)、自身已标记、自定义下载集合、或当前播放已确认落盘
+  // 3. 服务器磁盘检测：严格基于服务端落盘记录（避免客户端离线缓存污染）
   const isServer =
+    Boolean(trackIsPhysicalServer) ||
+    isCurPlayingServer ||
     (validNum && taskState.downloadedSet.has(numId)) ||
     (strId !== '' && taskState.downloadedCustomSet.has(strId)) ||
-    (comboKey !== '' && taskState.downloadedCustomSet.has(comboKey)) ||
-    trackIsLocal === true ||
-    isCurPlayingLocal;
+    (comboKey !== '' && taskState.downloadedCustomSet.has(comboKey));
 
   return {
     isServer,
@@ -194,5 +197,77 @@ export function isSameTrack(
 
   return false;
 }
+
+/**
+ * 👑 判定曲目是否为版权付费/VIP受限歌曲 (优先遵循音源插件自身判断，兼顾多层 raw 容错解析)
+ */
+export function isVipOrPaidTrack(track: any): boolean {
+  if (!track) return false;
+  // 1. 首选：插件本身已经标准化输出的 isVip / vip 标识
+  if (track.isVip === true || track.vip === true) return true;
+
+  // 2. 解包多层 raw 结构 (防止外部包装或多重嵌套丢弃 isVip)
+  let raw = track.raw || track;
+  while (raw && typeof raw === 'object') {
+    if (raw.isVip === true || raw.vip === true) return true;
+    if (raw.raw && raw.raw !== raw) {
+      raw = raw.raw;
+    } else {
+      break;
+    }
+  }
+
+  // 3. 兜底各音源私有字段容错 (Kugou)
+  if (
+    (typeof raw.privilege === 'number' && raw.privilege >= 8) ||
+    (typeof raw.sqprivilege === 'number' && raw.sqprivilege >= 8) ||
+    (typeof raw['320privilege'] === 'number' && raw['320privilege'] >= 8) ||
+    (typeof raw.highprivilege === 'number' && raw.highprivilege >= 8) ||
+    (typeof raw['128privilege'] === 'number' && raw['128privilege'] >= 8) ||
+    (typeof raw.pay_type === 'number' && raw.pay_type > 0) ||
+    (typeof raw.pay_type_sq === 'number' && raw.pay_type_sq > 0) ||
+    (typeof raw.pay_type_320 === 'number' && raw.pay_type_320 > 0) ||
+    raw.fail_process === 4 ||
+    raw.fail_process === 12 ||
+    raw.fail_process_320 === 4 ||
+    raw.fail_process_sq === 4 ||
+    (typeof raw.pkg_price === 'number' && raw.pkg_price > 0) ||
+    (typeof raw.pkg_price_sq === 'number' && raw.pkg_price_sq > 0) ||
+    (typeof raw.pkg_price_320 === 'number' && raw.pkg_price_320 > 0) ||
+    (typeof raw.price === 'number' && raw.price > 0) ||
+    (typeof raw.price_sq === 'number' && raw.price_sq > 0) ||
+    (typeof raw.price_320 === 'number' && raw.price_320 > 0) ||
+    raw.old_cpy === 1 ||
+    raw.feetype > 0 ||
+    raw.error === '需要付费'
+  ) {
+    return true;
+  }
+  // QQ Music
+  if (
+    raw.pay?.payplay === 1 ||
+    raw.pay?.paydownload === 1 ||
+    raw.pay?.payinfo === 1 ||
+    raw.pay?.paytrackmouth === 1 ||
+    raw.action?.payplay === 1 ||
+    raw.action?.pay_play === 1 ||
+    raw.alertid === 2 ||
+    raw.result === 104003 ||
+    raw.isvip === 1
+  ) {
+    return true;
+  }
+  // Generic / NetEase / MusicFree plugins
+  if (
+    raw.freeTrial === true ||
+    raw.fee === 1 ||
+    raw.fee === 4 ||
+    raw.fee === 8
+  ) {
+    return true;
+  }
+  return false;
+}
+
 
 
