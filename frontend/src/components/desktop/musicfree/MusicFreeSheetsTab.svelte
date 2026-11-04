@@ -3,11 +3,15 @@
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
   import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
-  import { getTrackSourceStatus, isSameTrack } from '../../../lib/player/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../../../lib/player/trackStatus.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
   import TrackSourceBadge from '../../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../../TrackLikeBtn.svelte';
   import { isTrackLiked, toggleLike } from '../../../lib/likeStore.svelte';
+  import { filterAndSortSheetPlugins, cleanTagTitle } from '../../../lib/musicfree/sheetHelpers';
+  import { downloadExternalTrack } from '../../../lib/musicfree/downloadHelper';
+  import SlotBtn from '../../SlotBtn.svelte';
+  import { t } from '../../../lib/i18n';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
 
   let {
@@ -25,46 +29,7 @@
   let loading = $state(false);
   let emptyPluginIds = $state<Set<string>>(new Set());
 
-  const INVALID_KEYWORD_BLACKLIST = [
-    '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书',
-    'bilibili', '哔哩', 'b站', 'youtube', '快手', '视频'
-  ];
-
-  let sheetPlugins = $derived(
-    (() => {
-      const seen = new Set<string>();
-      const list = musicFreeStore.plugins.filter((p) => {
-        if (!p.enabled || !p.instance || typeof p.instance.getRecommendSheetsByTag !== 'function') return false;
-        const n = (p.name || '').trim();
-        if (!n || seen.has(n) || emptyPluginIds.has(p.id)) return false;
-        // 彻底过滤已知无歌单数据的纯搜歌或失效小众源
-        const lower = n.toLowerCase();
-        if (INVALID_KEYWORD_BLACKLIST.some((kw) => lower.includes(kw.toLowerCase()))) {
-          return false;
-        }
-        seen.add(n);
-        return true;
-      });
-      const priorityWeights: Record<string, number> = {
-        '小秋音乐': 100,
-        'QQ音乐': 99,
-        '小蜗音乐': 95,
-        '酷我音乐': 94,
-        '小狗音乐': 90,
-        '酷狗音乐': 89,
-        '网易音乐': 85,
-        '小云音乐': 84,
-        '猫耳FM': 80,
-        '小蜜音乐': 75,
-        '咪咕音乐': 74
-      };
-      return list.sort((a, b) => {
-        const weightA = priorityWeights[a.name.trim()] || 0;
-        const weightB = priorityWeights[b.name.trim()] || 0;
-        return weightB - weightA;
-      });
-    })()
-  );
+  let sheetPlugins = $derived(filterAndSortSheetPlugins(musicFreeStore.plugins, emptyPluginIds));
   let selectedPluginId = $state<string>('');
   const selectedPlugin = $derived(sheetPlugins.find((p) => p.id === selectedPluginId));
   const currentPluginName = $derived(selectedPlugin?.name || '未知音源');
@@ -76,15 +41,6 @@
   let sheetTracks = $state<any[]>([]);
   let addToPlaylistSong = $state<any>(null);
   let showAllTags = $state(false);
-
-  function cleanTagTitle(raw: any): string {
-    if (!raw) return '';
-    return String(raw)
-      .replace(/&#38;/g, '&')
-      .replace(/&amp;/g, '&')
-      .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)))
-      .trim();
-  }
 
   onMount(async () => {
     if (sheetPlugins.length > 0) {
@@ -235,6 +191,10 @@
     const res = await cacheTrackToBrowser(buildTrack(t));
     showToast(res.msg, res.success ? 'success' : 'error');
   }
+
+  async function handleDownload(t: any) {
+    await downloadExternalTrack(buildTrack(t), t, selectedPluginId);
+  }
 </script>
 
 <div class="space-y-4">
@@ -297,7 +257,7 @@
           {#each sheetTracks as t, idx (t.id || idx)}
             {@const trackObj = buildTrack(t)}
             {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, t)}
-            {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true)}
+            {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, t.title || t.name, t.artist)}
             {@const isLiked = isTrackLiked(trackObj.id, t.title || t.name, t.artist)}
             <div
               class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group"
@@ -313,6 +273,7 @@
                     name={t.title || t.name}
                     artist={t.artist}
                     item={trackObj}
+                    isLocal={status.isLocal}
                     curTrack={curTrack}
                     class="shrink-0"
                   />
@@ -326,31 +287,28 @@
                 </div>
               </div>
 
-              <div class="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  class="px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer border-none bg-purple-500/10 text-purple-400 hover:bg-purple-500/20"
+              <div class="inline-flex items-center justify-end gap-1.5 shrink-0">
+                <SlotBtn
+                  playing={isCur && playing}
                   onclick={() => handlePlaySingle(t)}
                 >
-                  {isCur && playing ? '播放中' : '播放'}
-                </button>
-                <button
-                  type="button"
-                  disabled={status.isPhone}
-                  class="px-2 py-1 rounded-lg text-xs font-medium cursor-pointer border-none bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] disabled:opacity-40"
-                  onclick={() => handleCache(t)}
-                  title={status.isPhone ? '已离线缓存到当前设备' : '离线缓存到当前设备'}
-                >
-                  {status.isPhone ? '✓' : '💾'}
-                </button>
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded-lg text-xs font-medium cursor-pointer border-none bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)]"
-                  onclick={() => addToPlaylistSong = buildTrack(t)}
-                  title="加入歌单"
-                >
+                  {getTrackPlayActionLabel({ isPlaying: isCur && playing, isLocal: status.isLocal, variant: 'desktop' })}
+                </SlotBtn>
+                {#if status.isServer}
+                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: t.title || t.name, artist: t.artist } }))}>
+                    {t('common.reveal')}
+                  </SlotBtn>
+                {:else}
+                  <SlotBtn onclick={() => handleDownload(t)}>
+                    {t('download.downloadSingle')}
+                  </SlotBtn>
+                {/if}
+                <SlotBtn onclick={() => handleCache(t)}>
+                  {status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}
+                </SlotBtn>
+                <SlotBtn onclick={() => addToPlaylistSong = buildTrack(t)}>
                   ➕
-                </button>
+                </SlotBtn>
               </div>
             </div>
           {/each}

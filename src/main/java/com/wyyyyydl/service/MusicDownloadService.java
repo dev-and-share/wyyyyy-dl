@@ -421,6 +421,19 @@ public class MusicDownloadService implements InitializingBean {
 		if (request == null || StringUtils.isBlank(request.getUrl())) {
 			return null;
 		}
+		String targetUrl = request.getUrl().trim();
+		if (targetUrl.contains("/stream/online?") || targetUrl.contains("/plugin/proxy?")) {
+			try {
+				int idx = targetUrl.indexOf("url=");
+				if (idx != -1) {
+					String sub = targetUrl.substring(idx + 4);
+					int amp = sub.indexOf('&');
+					if (amp != -1) sub = sub.substring(0, amp);
+					targetUrl = java.net.URLDecoder.decode(sub, java.nio.charset.StandardCharsets.UTF_8.name());
+				}
+			} catch (Exception ignored) {}
+		}
+		request.setUrl(targetUrl);
 		String trackName = StringUtils.defaultIfBlank(request.getName(), "未知歌曲");
 		String artist = StringUtils.defaultIfBlank(request.getArtist(), "未知歌手");
 		String album = StringUtils.defaultIfBlank(request.getAlbum(), "单曲");

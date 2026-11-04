@@ -141,5 +141,89 @@ export const kugouPlugin: IMusicFreePlugin = {
       }
     } catch {}
     return {};
+  },
+
+  async getRecommendSheetTags() {
+    const pinned = [
+      { id: '热门', title: '热门精选' },
+      { id: '流行', title: '流行' },
+      { id: '抖音', title: '热歌爆款' },
+      { id: '治愈', title: '治愈放松' },
+      { id: '车载', title: '车载重低音' },
+      { id: '经典', title: '华语经典' },
+      { id: '民谣', title: '民谣' },
+      { id: '摇滚', title: '摇滚' },
+      { id: '古风', title: '国风古典' },
+      { id: '电音', title: '潮流电音' }
+    ];
+    return {
+      pinned,
+      data: [
+        {
+          title: '精选主题',
+          data: pinned
+        }
+      ]
+    };
+  },
+
+  async getRecommendSheetsByTag(tag: any, page = 1) {
+    const pageSize = 20;
+    const keyword = (tag?.id || tag?.title || '热门').replace('全部', '热门');
+    const url = `http://mobilecdn.kugou.com/api/v3/search/special?format=json&keyword=${encodeURIComponent(keyword)}&page=${page}&pagesize=${pageSize}&showtype=1`;
+    const res = await proxyRequest<any>(url);
+    const info = res?.data?.info || [];
+    const total = res?.data?.total || 0;
+
+    const sheets = info.map((item: any) => ({
+      id: String(item.specialid),
+      title: item.specialname,
+      artwork: (item.imgurl || '').replace('{size}', '400'),
+      description: item.intro || item.specialname,
+      playCount: item.playcount || 0,
+      artist: item.nickname || '酷狗音乐官方'
+    }));
+
+    return {
+      isEnd: page * pageSize >= total,
+      data: sheets
+    };
+  },
+
+  async getMusicSheetInfo(sheet: any, page = 1) {
+    const specialId = sheet.id || sheet.specialid;
+    const url = `http://mobilecdn.kugou.com/api/v3/special/song?specialid=${specialId}&page=${page}&pagesize=50&plat=0&version=9108`;
+    const res = await proxyRequest<any>(url);
+    const list = res?.data?.info || [];
+
+    const musicList: IMusicFreeTrack[] = list.map((item: any) => {
+      let singer = item.author_name || (item.authors && item.authors[0]?.author_name) || '';
+      let songTitle = item.songname || '';
+      if (!songTitle && item.filename) {
+        const parts = item.filename.split(' - ');
+        if (parts.length > 1) {
+          singer = singer || parts[0].trim();
+          songTitle = parts.slice(1).join(' - ').trim();
+        } else {
+          songTitle = item.filename;
+        }
+      }
+      const hash = item.hash || item.sqhash;
+      return {
+        id: hash,
+        title: songTitle || '未知曲目',
+        artist: singer || '未知歌手',
+        album: item.album_name || '',
+        duration: item.duration ? item.duration * 1000 : 0,
+        artwork: item.album_img || sheet.artwork || '',
+        raw: item
+      };
+    });
+
+    return {
+      ...sheet,
+      isEnd: true,
+      musicList
+    };
   }
 };

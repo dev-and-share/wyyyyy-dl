@@ -65,7 +65,7 @@ export const api = {
   tasksClear: () => req('/v3/download/tasks/clear', { method: 'POST' }),
 
   // 📜 本地历史管理
-  historyList: (kw: string, page: number) => get(`/v3/history/list?keyword=${encodeURIComponent(kw)}&page=${page}&pageSize=10`),
+  historyList: (kw: string, page: number, pageSize = 10) => get(`/v3/history/list?keyword=${encodeURIComponent(kw)}&page=${page}&pageSize=${pageSize}`),
   historyIds: () => get('/v3/history/ids'),
   historyStats: () => get('/v3/history/stats'),
   historyScan: () => req('/v3/history/scan', { method: 'POST' }),

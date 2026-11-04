@@ -28,7 +28,16 @@
     class?: string;
   }>();
 
-  let status = $derived(getTrackSourceStatus(id, isLocal, curTrack));
+  let status = $derived(
+    getTrackSourceStatus(
+      id,
+      isLocal,
+      curTrack,
+      typeof id === 'string' && (id.startsWith('mf_') || id.startsWith('ext_')),
+      name,
+      artist
+    )
+  );
 
   // 长按手势状态
   let pressTimer: any = null;
@@ -42,12 +51,15 @@
       e.stopPropagation();
       e.preventDefault();
     }
-    const targetItem = item || {
-      id,
-      name,
-      artist,
-      path: path || curTrack?.url || curTrack?.path || ''
-    };
+    const cleanPath = (path && !path.startsWith('/v3/stream') && !path.startsWith('http')) ? path : '';
+    const targetItem = item
+      ? { ...item, path: (item.path && !item.path.startsWith('/v3/stream') && !item.path.startsWith('http')) ? item.path : cleanPath }
+      : {
+          id,
+          name,
+          artist,
+          path: cleanPath
+        };
     showToast(t('toast.locatingFile'), 'info', 1200);
     if (onReveal) {
       onReveal(targetItem);
@@ -168,6 +180,7 @@
       tabindex="0"
       class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform {customClass}"
       title={t('track.badgeBoth')}
+      onclick={doReveal}
       ondblclick={handleDblClick}
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
@@ -185,6 +198,7 @@
       tabindex="0"
       class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform {customClass}"
       title={t('track.badgeServer')}
+      onclick={doReveal}
       ondblclick={handleDblClick}
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}

@@ -156,3 +156,21 @@ export function matchesKeyword(target: string | null | undefined, keyword: strin
   return false;
 }
 
+/**
+ * 🎯 从可能包含代理包装的 URL 中安全提取真实的原始音频直链 (http/https)
+ */
+export function extractRawAudioUrl(url?: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.includes('/stream/online?') || url.includes('/plugin/proxy?')) {
+    try {
+      const parsed = new URL(url, 'http://localhost');
+      const target = parsed.searchParams.get('url');
+      if (target && (target.startsWith('http://') || target.startsWith('https://'))) {
+        return target;
+      }
+    } catch {}
+  }
+  return url;
+}
+

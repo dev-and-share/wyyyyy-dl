@@ -1,13 +1,22 @@
 import { executePluginScript } from './sandbox';
 import type { InstalledPluginRecord, SubscriptionMeta, IMusicFreePlugin } from './types';
 import { builtinPlugins, resolveFallbackFromBuiltins } from './plugins';
+import {
+  fetchTopListsAcrossPlugins,
+  fetchTopListDetail,
+  fetchRecommendSheetTags,
+  fetchRecommendSheetsByTag,
+  fetchMusicSheetInfo
+} from './chartSheetService';
 
 const STORAGE_PLUGINS_KEY = 'wyyyy_musicfree_plugins_v1';
 const STORAGE_SUBS_KEY = 'wyyyy_musicfree_subs_v1';
+const STORAGE_REMOVED_BUILTINS_KEY = 'wyyyy_musicfree_removed_builtins_v1';
 
 class MusicFreeStore {
   plugins = $state<InstalledPluginRecord[]>([]);
   subscriptions = $state<SubscriptionMeta[]>([]);
+  removedBuiltinIds = $state<string[]>([]);
   loading = $state(false);
   statusMessage = $state('');
 
@@ -17,6 +26,13 @@ class MusicFreeStore {
 
   private init() {
     if (typeof localStorage === 'undefined') return;
+
+    try {
+      const savedRemoved = localStorage.getItem(STORAGE_REMOVED_BUILTINS_KEY);
+      if (savedRemoved) {
+        this.removedBuiltinIds = JSON.parse(savedRemoved);
+      }
+    } catch {}
 
     try {
       const savedSubs = localStorage.getItem(STORAGE_SUBS_KEY);
@@ -49,9 +65,13 @@ class MusicFreeStore {
       }
     } catch {}
 
-    // 🌟 自动注入官方原生内置插件 (QQ音乐 / 酷我 / 酷狗官方直连)
+    // 🌟 自动注入官方原生内置插件 (QQ音乐 / 酷狗官方直连)
     for (const bp of builtinPlugins) {
       const id = `builtin_${bp.platform}`;
+      // 若用户显式删除了该内置插件，不再强制重新注入
+      if (this.removedBuiltinIds.includes(id) || this.removedBuiltinIds.includes(bp.platform)) {
+        continue;
+      }
       const existing = this.plugins.find((p) => p.id === id || p.name === bp.platform);
       if (!existing) {
         this.plugins.unshift({
@@ -63,6 +83,13 @@ class MusicFreeStore {
         existing.id = id;
       }
     }
+  }
+
+  private saveRemovedBuiltinsToStorage() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_REMOVED_BUILTINS_KEY, JSON.stringify(this.removedBuiltinIds));
+    } catch {}
   }
 
   private saveToStorage() {
@@ -231,8 +258,71 @@ class MusicFreeStore {
   }
 
   removePlugin(id: string) {
+    const target = this.plugins.find((p) => p.id === id);
+    if (target) {
+      // 检查是否属于官方内置插件 (内置 ID 或名称匹配)
+      const isBuiltin = id.startsWith('builtin_') || builtinPlugins.some((bp) => bp.platform === target.name);
+      if (isBuiltin) {
+        if (!this.removedBuiltinIds.includes(id)) {
+          this.removedBuiltinIds.push(id);
+        }
+        if (target.name && !this.removedBuiltinIds.includes(target.name)) {
+          this.removedBuiltinIds.push(target.name);
+        }
+        this.saveRemovedBuiltinsToStorage();
+      }
+    }
     this.plugins = this.plugins.filter((p) => p.id !== id);
     this.saveToStorage();
+  }
+
+  /**
+   * 恢复所有已删除的官方内置插件
+   */
+  restoreBuiltinPlugins(): number {
+    this.removedBuiltinIds = [];
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem(STORAGE_REMOVED_BUILTINS_KEY);
+      } catch {}
+    }
+
+    let restoredCount = 0;
+    for (const bp of builtinPlugins) {
+      const id = `builtin_${bp.platform}`;
+      const existing = this.plugins.find((p) => p.id === id || p.name === bp.platform);
+      if (!existing) {
+        this.plugins.unshift({
+          id,
+          name: bp.platform,
+          version: bp.version || '1.0.0',
+          author: bp.author || 'wyyyyy-dl 官方',
+          url: bp.srcUrl || '',
+          code: '',
+          enabled: true,
+          supportedSearchType: bp.supportedSearchType || ['music'],
+          instance: bp
+        });
+        restoredCount++;
+      } else {
+        existing.enabled = true;
+        existing.instance = bp;
+        restoredCount++;
+      }
+    }
+
+    this.saveToStorage();
+    return restoredCount;
+  }
+
+  /**
+   * 当前是否存在已被删除或未安装的内置插件
+   */
+  get canRestoreBuiltins(): boolean {
+    return builtinPlugins.some((bp) => {
+      const id = `builtin_${bp.platform}`;
+      return !this.plugins.some((p) => p.id === id || p.name === bp.platform);
+    });
   }
 
   cleanupJunkPlugins(): number {
@@ -349,146 +439,36 @@ class MusicFreeStore {
   /**
    * 获取指定插件或所有插件的排行榜列表 (自动规整多层分组与扁平结构，过滤掉无效项)
    */
-  async getTopLists(pluginId?: string): Promise<Array<{
-    pluginId: string;
-    pluginName: string;
-    subGroups: Array<{
-      groupTitle: string;
-      charts: any[];
-    }>;
-  }>> {
-    const targets = pluginId
-      ? this.plugins.filter((p) => p.id === pluginId && p.enabled && p.instance)
-      : this.getActivePlugins();
-
-    const results: Array<{
-      pluginId: string;
-      pluginName: string;
-      subGroups: Array<{ groupTitle: string; charts: any[] }>;
-    }> = [];
-
-    for (const pluginRec of targets) {
-      const inst = pluginRec.instance;
-      if (inst && typeof inst.getTopLists === 'function') {
-        try {
-          const list = await inst.getTopLists();
-          if (Array.isArray(list) && list.length > 0) {
-            const subGroups: Array<{ groupTitle: string; charts: any[] }> = [];
-
-            for (const item of list) {
-              if (item && Array.isArray(item.data)) {
-                // 这是一个分组结构：如 { title: "巅峰榜", data: [...] }
-                const validCharts = item.data.filter((c: any) => c && (c.id != null || c.topId != null));
-                if (validCharts.length > 0) {
-                  subGroups.push({
-                    groupTitle: item.title || '精选榜单',
-                    charts: validCharts
-                  });
-                }
-              } else if (item && (item.id != null || item.topId != null)) {
-                // 这是一个扁平榜单项
-                let defaultGroup = subGroups.find((g) => g.groupTitle === '官方排行榜');
-                if (!defaultGroup) {
-                  defaultGroup = { groupTitle: '官方排行榜', charts: [] };
-                  subGroups.push(defaultGroup);
-                }
-                defaultGroup.charts.push(item);
-              }
-            }
-
-            if (subGroups.length > 0) {
-              results.push({
-                pluginId: pluginRec.id,
-                pluginName: pluginRec.name,
-                subGroups
-              });
-            }
-          }
-        } catch (e) {
-          console.warn(`[MusicFree] 获取 ${pluginRec.name} 排行榜失败:`, e);
-        }
-      }
-    }
-    return results;
+  async getTopLists(pluginId?: string) {
+    return fetchTopListsAcrossPlugins(this.plugins, pluginId);
   }
 
   /**
    * 获取排行榜详情（曲目列表）- 深度容错安全包装
    */
   async getTopListDetail(pluginId: string, topListItem: any): Promise<any> {
-    const record = this.plugins.find((p) => p.id === pluginId);
-    if (!record || !record.instance || typeof record.instance.getTopListDetail !== 'function') {
-      return { isEnd: true, musicList: [] };
-    }
-    if (!topListItem || (topListItem.id == null && !topListItem.topId)) {
-      return { isEnd: true, musicList: [] };
-    }
-    try {
-      const res = await record.instance.getTopListDetail(topListItem);
-      const musicList = Array.isArray(res?.musicList) ? res.musicList : (Array.isArray(res) ? res : []);
-      return {
-        isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : false,
-        musicList: musicList.filter((m: any) => m && (m.title || m.name))
-      };
-    } catch (e: any) {
-      console.warn(`[MusicFree] 获取榜单详情异常: ${record.name}`, e?.message || e);
-      return { isEnd: true, musicList: [] };
-    }
+    return fetchTopListDetail(this.plugins, pluginId, topListItem);
   }
 
   /**
    * 获取歌单广场标签 - 深度容错安全包装
    */
   async getRecommendSheetTags(pluginId: string): Promise<any> {
-    const record = this.plugins.find((p) => p.id === pluginId);
-    if (!record || !record.instance || typeof record.instance.getRecommendSheetTags !== 'function') {
-      return null;
-    }
-    try {
-      return await record.instance.getRecommendSheetTags();
-    } catch (e: any) {
-      console.warn(`[MusicFree] 获取歌单标签异常: ${record.name}`, e?.message || e);
-      return null;
-    }
+    return fetchRecommendSheetTags(this.plugins, pluginId);
   }
 
   /**
    * 根据标签获取推荐歌单 - 深度容错安全包装
    */
   async getRecommendSheetsByTag(pluginId: string, tag: any, page = 1): Promise<any> {
-    const record = this.plugins.find((p) => p.id === pluginId);
-    if (!record || !record.instance || typeof record.instance.getRecommendSheetsByTag !== 'function') {
-      return { isEnd: true, data: [] };
-    }
-    try {
-      const res = await record.instance.getRecommendSheetsByTag(tag, page);
-      const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      return { isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : (data.length === 0), data: data.filter((item: any) => item && (item.title || item.name)) };
-    } catch (e: any) {
-      console.warn(`[MusicFree] 获取推荐歌单异常: ${record.name}`, e?.message || e);
-      return { isEnd: true, data: [], error: e?.message || String(e) };
-    }
+    return fetchRecommendSheetsByTag(this.plugins, pluginId, tag, page);
   }
 
   /**
    * 获取歌单详情与歌曲 - 深度容错安全包装
    */
   async getMusicSheetInfo(pluginId: string, sheetItem: any, page = 1): Promise<any> {
-    const record = this.plugins.find((p) => p.id === pluginId);
-    if (!record || !record.instance || typeof record.instance.getMusicSheetInfo !== 'function') {
-      return { isEnd: true, musicList: [] };
-    }
-    try {
-      const res = await record.instance.getMusicSheetInfo(sheetItem, page);
-      const musicList = Array.isArray(res?.musicList) ? res.musicList : (Array.isArray(res) ? res : []);
-      return {
-        isEnd: typeof res?.isEnd === 'boolean' ? res.isEnd : false,
-        musicList: musicList.filter((m: any) => m && (m.title || m.name))
-      };
-    } catch (e: any) {
-      console.warn(`[MusicFree] 获取歌单曲目异常: ${record.name}`, e?.message || e);
-      return { isEnd: true, musicList: [] };
-    }
+    return fetchMusicSheetInfo(this.plugins, pluginId, sheetItem, page);
   }
 }
 

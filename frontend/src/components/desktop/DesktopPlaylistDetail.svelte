@@ -15,6 +15,7 @@
   import PlaylistTrackFilter from '../PlaylistTrackFilter.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
+  import { isTrackLiked } from '../../lib/likeStore.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import ForkPlaylistModal from '../ForkPlaylistModal.svelte';
@@ -31,10 +32,9 @@
   } = $props<{
     playlistId: string; playlistTrigger?: number; curTrack?: any; playing?: boolean;
     likedSet: Set<number>; downloadedSet?: Set<number>; onBackToGallery: () => void;
-    onToggleLike: (id: number, name: string) => void; onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
+    onToggleLike: (id: any, name?: string, artist?: string, extra?: any) => void; onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
     onAlbum?: (albumId: string) => void; onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
-
   let desktopCurPage = $state(1);
   let filteredTracks = $derived(getFilteredTracks());
   let totalPages = $derived(Math.max(1, Math.ceil(filteredTracks.length / pageSize)));
@@ -373,8 +373,8 @@
                       <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
                         {trackItem.name}
                       </span>
-                      <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="shrink-0" />
-                      <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike(Number(trackItem.id), trackItem.name)} />
+                      <TrackSourceBadge id={trackItem.id} name={trackItem.name} {artist} path={trackItem.filePath} item={trackItem} isLocal={status.isLocal} {curTrack} class="shrink-0" />
+                      <TrackLikeBtn liked={isTrackLiked(trackItem.id, trackItem.name, artist)} onclick={() => onToggleLike(trackItem.id, trackItem.name, artist, trackItem)} />
                     </div>
                   </td>
                   <td class="py-2.5 px-3 text-[var(--text-secondary)] truncate">

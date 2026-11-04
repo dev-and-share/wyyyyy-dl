@@ -1,6 +1,18 @@
 import { proxyRequest } from './http';
 import type { IMusicFreePlugin, IMusicFreeTrack, IMusicFreeMediaSource } from '../types';
 
+function parseJsonOrJsonp(raw: any): any {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  if (typeof raw === 'string') {
+    const clean = raw.trim().replace(/^(\w+\()|\);?$/g, '');
+    try {
+      return JSON.parse(clean);
+    } catch {}
+  }
+  return null;
+}
+
 /**
  * 🐧 QQ 音乐官方原生插件 (QQ Music Official Native Plugin)
  * 100% 直连腾讯官方 u.y.qq.com 与 CDN 接口，本地组织官方 CgiGetVkey 协议
@@ -149,5 +161,100 @@ export const qqPlugin: IMusicFreePlugin = {
 
   async getLyric() {
     return {};
+  },
+
+  async getRecommendSheetTags() {
+    const url = 'https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_tag_conf.fcg?format=json&inCharset=utf8&outCharset=utf-8';
+    const raw = await proxyRequest<any>(url, {
+      headers: { Referer: 'https://y.qq.com/' }
+    });
+    const parsed = parseJsonOrJsonp(raw);
+    const categories = parsed?.data?.categories || [];
+    const groups = categories.slice(1).map((g: any) => ({
+      title: g.categoryGroupName,
+      data: (g.items || []).map((item: any) => ({
+        id: String(item.categoryId),
+        title: item.categoryName
+      }))
+    }));
+
+    const pinned = [
+      { id: '10000000', title: '全部' },
+      { id: '3317', title: '官方歌单' },
+      { id: '165', title: '华语' },
+      { id: '167', title: '流行' },
+      { id: '168', title: '摇滚' },
+      { id: '166', title: '欧美' },
+      { id: '170', title: '民谣' },
+      { id: '71', title: '治愈' },
+      { id: '76', title: '学习' }
+    ];
+
+    return {
+      pinned,
+      data: groups
+    };
+  },
+
+  async getRecommendSheetsByTag(tag: any, page = 1) {
+    const pageSize = 20;
+    const categoryId = tag?.id || '10000000';
+    const sin = pageSize * (page - 1);
+    const ein = page * pageSize - 1;
+    const url = `https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg?inCharset=utf8&outCharset=utf-8&sortId=5&categoryId=${categoryId}&sin=${sin}&ein=${ein}`;
+
+    const raw = await proxyRequest<any>(url, {
+      headers: { Referer: 'https://y.qq.com/' }
+    });
+    const parsed = parseJsonOrJsonp(raw);
+    const dataObj = parsed?.data || {};
+    const list = dataObj.list || [];
+    const total = dataObj.sum || 0;
+
+    const sheets = list.map((item: any) => ({
+      id: String(item.dissid),
+      title: item.dissname,
+      artwork: item.imgurl,
+      description: item.introduction,
+      playCount: item.listennum,
+      artist: item.creator?.name || 'QQ音乐官方'
+    }));
+
+    return {
+      isEnd: page * pageSize >= total,
+      data: sheets
+    };
+  },
+
+  async getMusicSheetInfo(sheet: any) {
+    const dissId = sheet.id || sheet.dissid;
+    const url = `http://i.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg?type=1&utf8=1&disstid=${dissId}&loginUin=0`;
+    const raw = await proxyRequest<any>(url, {
+      headers: { Referer: 'https://y.qq.com/n/yqq/playlist', Cookie: 'uin=' }
+    });
+    const parsed = parseJsonOrJsonp(raw);
+    const cdlist = parsed?.cdlist?.[0];
+    const songlist = cdlist?.songlist || [];
+
+    const musicList: IMusicFreeTrack[] = songlist.map((item: any) => {
+      const singer = (item.singer || []).map((s: any) => s.name).join(' / ') || '未知歌手';
+      const songmid = item.songmid || item.mid;
+      const albummid = item.albummid || item.album?.mid;
+      return {
+        id: songmid,
+        title: item.songname || item.name || '未知歌曲',
+        artist: singer,
+        album: item.albumname || item.album?.name || '',
+        duration: item.interval ? item.interval * 1000 : 0,
+        artwork: albummid ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albummid}.jpg` : '',
+        raw: item
+      };
+    });
+
+    return {
+      ...sheet,
+      isEnd: true,
+      musicList
+    };
   }
 };

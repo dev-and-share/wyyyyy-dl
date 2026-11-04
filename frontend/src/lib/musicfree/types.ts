@@ -42,6 +42,8 @@ export interface IMusicFreePlugin {
   [key: string]: any;
 }
 
+export type MusicFreePlugin = IMusicFreePlugin;
+
 export interface InstalledPluginRecord {
   id: string;
   name: string;

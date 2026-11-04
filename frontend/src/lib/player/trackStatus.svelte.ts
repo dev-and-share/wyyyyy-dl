@@ -48,15 +48,23 @@ export function getTrackSourceStatus(
   trackId: number | string | undefined | null,
   trackIsLocal?: boolean,
   curTrack?: Track | null,
-  isExternal?: boolean
+  isExternal?: boolean,
+  trackName?: string,
+  trackArtist?: string
 ): TrackSourceStatus {
   const strId = trackId != null ? String(trackId).trim() : '';
   const isExt = isExternal === true || strId.startsWith('mf_') || strId.startsWith('ext_');
   const numId = Number(trackId);
   const validNum = !isExt && !isNaN(numId) && numId > 0;
+  const safeName = (trackName || '').trim();
+  const safeArtist = (trackArtist || '').trim();
+  const comboKey = safeName && safeArtist ? `${safeName}___${safeArtist}` : '';
 
   // 1. 手机本地 / 浏览器离线缓存检测
-  const isPhone = (validNum && cachedSongIdSet.has(numId as any)) || (strId !== '' && cachedSongIdSet.has(strId as any));
+  const isPhone =
+    (validNum && cachedSongIdSet.has(numId as any)) ||
+    (strId !== '' && cachedSongIdSet.has(strId as any)) ||
+    (comboKey !== '' && cachedSongIdSet.has(comboKey as any));
 
   // 2. 当前播放歌曲的实时状态联动：若正在播放该曲目且已落盘
   const isCurPlayingLocal = !!(
@@ -72,6 +80,7 @@ export function getTrackSourceStatus(
   const isServer =
     (validNum && taskState.downloadedSet.has(numId)) ||
     (strId !== '' && taskState.downloadedCustomSet.has(strId)) ||
+    (comboKey !== '' && taskState.downloadedCustomSet.has(comboKey)) ||
     trackIsLocal === true ||
     isCurPlayingLocal;
 

@@ -1,5 +1,5 @@
 import { api } from './api';
-import { getApiCache, setApiCache } from './utils';
+import { getApiCache, setApiCache, extractRawAudioUrl } from './utils';
 import { showToast } from './toast.svelte';
 import { t } from './i18n';
 
@@ -146,20 +146,22 @@ async function triggerAutoDownloadForLikedTrack(extra: any, songName: string, ar
     const raw = extra.raw || extra;
     let url = extra.url;
     let headers = extra.headers;
-    if (!url && extra._pluginId) {
+    const pluginId = extra._pluginId || extra.pluginHash || extra.pluginId;
+    if (!url && pluginId) {
       const { musicFreeStore } = await import('./musicfree/musicFreeStore.svelte');
-      const media = await musicFreeStore.resolveMediaSource(extra._pluginId, raw);
+      const media = await musicFreeStore.resolveMediaSource(pluginId, raw);
       url = media?.url;
       headers = media?.headers;
     }
-    if (url) {
+    const cleanUrl = extractRawAudioUrl(url);
+    if (cleanUrl) {
       await api.downloadCustom({
         id: extra.id,
         name: songName,
         artist,
         album: extra.album,
-        url,
-        coverUrl: extra.cover || extra.artwork,
+        url: cleanUrl,
+        coverUrl: extra.cover || extra.artwork || extra.picUrl,
         headers
       });
       window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));

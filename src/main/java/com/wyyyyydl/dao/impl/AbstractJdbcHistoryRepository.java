@@ -1482,6 +1482,17 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     String artist = rs.getString("artist");
                     String coverUrl = rs.getString("cover_url");
 
+                    // 🌟 若本地关联路径为空，自动从 download_history 中反查是否已完成落盘
+                    if ((org.apache.commons.lang3.StringUtils.isBlank(filePath) || historyId == null) && org.apache.commons.lang3.StringUtils.isNotBlank(songName)) {
+                        com.wyyyyydl.models.dtos.DownloadHistoryItem found = findLocalFileBySongOrName(historyId, songName, artist);
+                        if (found != null && org.apache.commons.lang3.StringUtils.isNotBlank(found.getFilePath())) {
+                            filePath = found.getFilePath();
+                            historyId = found.getId();
+                        }
+                    }
+
+                    boolean isPhysicalLocal = org.apache.commons.lang3.StringUtils.isNotBlank(filePath) && resolveFile(filePath) != null && resolveFile(filePath).exists();
+
                     map.put("id", autoId);
                     map.put("historyId", historyId);
                     map.put("name", songName);
@@ -1489,7 +1500,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     map.put("filePath", filePath);
                     map.put("cover", coverUrl);
                     map.put("picUrl", coverUrl);
-                    map.put("isLocal", true);
+                    map.put("isLocal", isPhysicalLocal);
                     Map<String, Object> arMap = new HashMap<>();
                     arMap.put("name", artist != null ? artist : "未知");
                     map.put("ar", List.of(arMap));
@@ -1497,9 +1508,9 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     alMap.put("name", "本地歌单");
                     alMap.put("picUrl", coverUrl);
                     map.put("al", alMap);
-                    if (historyId != null && historyId > 0) {
+                    if (isPhysicalLocal && historyId != null && historyId > 0) {
                         map.put("url", "/v3/stream?historyId=" + historyId);
-                    } else if (filePath != null) {
+                    } else if (isPhysicalLocal && filePath != null) {
                         map.put("url", "/v3/stream?path=" + filePath);
                     }
                     list.add(map);

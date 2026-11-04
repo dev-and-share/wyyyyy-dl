@@ -40,6 +40,15 @@
     }
   }
 
+  function handleRestoreBuiltins() {
+    const count = musicFreeStore.restoreBuiltinPlugins();
+    if (count > 0) {
+      showToast(`已成功恢复 ${count} 个官方内置音源插件！`, 'success');
+    } else {
+      showToast('官方内置插件均已处于正常安装状态', 'info');
+    }
+  }
+
   async function handleImport(urlToImport?: string) {
     const url = (urlToImport || inputUrl).trim();
     if (!url) {
@@ -138,6 +147,16 @@
         <span>📦</span> 已安装音源插件 ({musicFreeStore.plugins.length})
       </h2>
       <div class="flex items-center gap-2">
+        {#if musicFreeStore.canRestoreBuiltins}
+          <button
+            type="button"
+            onclick={handleRestoreBuiltins}
+            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/30 transition-colors cursor-pointer flex items-center gap-1"
+            title="一键找回已删除的官方内置插件"
+          >
+            <span>🔄</span> 恢复内置插件
+          </button>
+        {/if}
         {#if musicFreeStore.plugins.length > 0}
           <button
             type="button"
@@ -164,10 +183,15 @@
           <div class="p-3.5 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-xs flex flex-col justify-between hover:border-purple-500/40 transition-all">
             <div class="space-y-1.5">
               <div class="flex items-center justify-between">
-                <span class="font-bold text-xs sm:text-sm text-[var(--text-main)] truncate max-w-[140px]" title={plugin.name}>
-                  {plugin.name}
-                </span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--btn-secondary-bg)] text-[var(--text-muted)] font-mono">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="font-bold text-xs sm:text-sm text-[var(--text-main)] truncate max-w-[130px]" title={plugin.name}>
+                    {plugin.name}
+                  </span>
+                  {#if plugin.id.startsWith('builtin_')}
+                    <span class="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 shrink-0 font-medium">内置</span>
+                  {/if}
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--btn-secondary-bg)] text-[var(--text-muted)] font-mono shrink-0">
                   v{plugin.version}
                 </span>
               </div>

@@ -93,4 +93,27 @@ describe('MusicFree Store & Adapter', () => {
     expect(result.isEnd).toBe(true);
     expect(result.error).toContain('res.total');
   });
+
+  it('correctly blacklists removed builtin plugins and allows restoration', () => {
+    // 恢复初始状态
+    musicFreeStore.restoreBuiltinPlugins();
+    expect(musicFreeStore.plugins.length).toBeGreaterThanOrEqual(2);
+    expect(musicFreeStore.canRestoreBuiltins).toBe(false);
+
+    // 删除 QQ 音乐官方插件
+    const qqPlugin = musicFreeStore.plugins.find((p) => p.name.includes('QQ音乐'));
+    expect(qqPlugin).toBeDefined();
+
+    musicFreeStore.removePlugin(qqPlugin!.id);
+    expect(musicFreeStore.plugins.some((p) => p.name.includes('QQ音乐'))).toBe(false);
+    expect(musicFreeStore.removedBuiltinIds).toContain(qqPlugin!.id);
+    expect(musicFreeStore.canRestoreBuiltins).toBe(true);
+
+    // 触发一键恢复
+    const restored = musicFreeStore.restoreBuiltinPlugins();
+    expect(restored).toBeGreaterThan(0);
+    expect(musicFreeStore.plugins.some((p) => p.name.includes('QQ音乐'))).toBe(true);
+    expect(musicFreeStore.removedBuiltinIds.length).toBe(0);
+    expect(musicFreeStore.canRestoreBuiltins).toBe(false);
+  });
 });

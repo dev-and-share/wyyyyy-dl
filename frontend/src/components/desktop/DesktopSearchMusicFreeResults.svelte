@@ -134,7 +134,7 @@
         {@const pName = item._pluginPlatform || item.pluginName || '外部音源'}
         {@const trackId = item.id || `mf_${item._pluginId || item.pluginHash}_${item.rawId || title}`}
         {@const isCur = isSameTrack(curTrack, trackId)}
-        {@const status = getTrackSourceStatus(trackId, false, curTrack, true)}
+        {@const status = getTrackSourceStatus(trackId, false, curTrack, true, title, artist)}
         <div
           class="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
         >
@@ -183,7 +183,7 @@
               <span class="text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/15 text-purple-400 font-medium shrink-0">
                 {pName}
               </span>
-              <TrackSourceBadge id={trackId} item={item} {curTrack} class="shrink-0" />
+              <TrackSourceBadge id={trackId} name={title} {artist} item={item} isLocal={status.isLocal} {curTrack} class="shrink-0" />
               <TrackLikeBtn liked={isTrackLiked(trackId, item.title, artist)} onclick={() => toggleLike(trackId, item.title, artist, item)} />
               <span class="truncate">{artist}</span>
               {#if item.album}

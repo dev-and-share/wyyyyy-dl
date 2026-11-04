@@ -15,6 +15,9 @@ describe('Official Builtin MusicFree Plugins', () => {
       expect(typeof plugin.search).toBe('function');
       expect(typeof plugin.getMediaSource).toBe('function');
       expect(typeof plugin.getTopLists).toBe('function');
+      expect(typeof plugin.getRecommendSheetTags).toBe('function');
+      expect(typeof plugin.getRecommendSheetsByTag).toBe('function');
+      expect(typeof plugin.getMusicSheetInfo).toBe('function');
     }
   });
 

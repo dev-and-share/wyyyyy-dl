@@ -47,6 +47,8 @@
   // 若 track 缺少歌词，自动异步拉取
   async function loadTrackLyric(t: any) {
     if (!t || t.lyric) return;
+    const numId = Number(t.id);
+    if (isNaN(numId) || numId <= 0 || String(t.id).startsWith('mf_')) return;
     try {
       const j = await api.songV1(String(t.id), 'lossless');
       if (j?.data?.lyric) {

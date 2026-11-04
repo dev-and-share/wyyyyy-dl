@@ -34,8 +34,7 @@
   }>();
 
   let showDrawer = $state(false), showLyric = $state(false), pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
-  let needsReloadOnResume = false, parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2);
-  let playSessionId = 0, consecutiveSkipCount = 0;
+  let needsReloadOnResume = false, parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2), playSessionId = 0, consecutiveSkipCount = 0;
 
   $effect(() => {
     curTrack = playerStore.activeTrack;
@@ -48,7 +47,8 @@
     const tr = playerStore.activeTrack;
     lastLyricIndex = -2;
     updateMediaSessionMetadata(tr);
-    if (tr?.id && !tr.lyric) {
+    const numId = Number(tr?.id);
+    if (tr?.id && !tr.lyric && !isNaN(numId) && numId > 0 && !String(tr.id).startsWith('mf_')) {
       api.songV1(String(tr.id), 'lossless').then((j: any) => {
         if (j?.data?.lyric && playerStore.activeTrack?.id === tr.id) {
           tr.lyric = j.data.lyric;
