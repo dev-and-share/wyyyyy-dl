@@ -4,7 +4,8 @@
   import DesktopDailyRecommendDetail from './DesktopDailyRecommendDetail.svelte';
   import { playPlaylistTracks } from '../../lib/playerHelper';
   import { resetActiveTargetPlaylist } from '../../lib/playlist.svelte';
-  import { exitPlaylistToGallery, jumpToPlaylist } from '../../lib/router.svelte';
+  import { exitPlaylistToGallery, exitPlaylistToLocalManager, jumpToPlaylist } from '../../lib/router.svelte';
+  import { isLocalPlaylist } from '../../lib/localPlaylistStore.svelte';
 
   let {
     playlistId = '',
@@ -59,10 +60,15 @@
   let activePlaylistId = $derived(dismissed ? '' : (selectedId || playlistId || ''));
 
   function handleBackToGallery() {
+    const curActive = activePlaylistId;
     dismissed = true;
     selectedId = '';
     resetActiveTargetPlaylist();
-    exitPlaylistToGallery();
+    if (isLocalPlaylist(curActive)) {
+      exitPlaylistToLocalManager();
+    } else {
+      exitPlaylistToGallery();
+    }
   }
 
   function handleSelectPlaylist(id: string) {

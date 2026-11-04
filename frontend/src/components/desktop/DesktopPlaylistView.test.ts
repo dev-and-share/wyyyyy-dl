@@ -1,6 +1,7 @@
 import { render, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi } from 'vitest';
 import DesktopPlaylistView from './DesktopPlaylistView.svelte';
+import { routerState } from '../../lib/router.svelte';
 
 vi.mock('../../lib/api', () => ({
   api: {
@@ -63,6 +64,27 @@ describe('DesktopPlaylistView', () => {
     await fireEvent.click(backBtn);
 
     expect(getByTestId('desktop-playlist-gallery')).toBeInTheDocument();
+  });
+
+  it('calls exitPlaylistToLocalManager and switches to download-mgr with local-playlists subtab when returning from local playlist', async () => {
+    const { getByTestId } = render(DesktopPlaylistView, {
+      props: {
+        playlistId: 'local_favorites',
+        likedSet: new Set<number>(),
+        onToggleLike: vi.fn(),
+        onPlayQueue: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    expect(getByTestId('desktop-playlist-detail')).toBeInTheDocument();
+    const backBtn = getByTestId('btn-back-gallery');
+    expect(backBtn).toHaveTextContent('返回本地歌单');
+
+    await fireEvent.click(backBtn);
+
+    expect(routerState.tab).toBe('download-mgr');
+    expect(routerState.downloadSubTab).toBe('local-playlists');
   });
 
   it('does NOT show "未找到歌单信息" while loading or on initial render', async () => {

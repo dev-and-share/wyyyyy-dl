@@ -273,6 +273,7 @@ export default {
   'playlist.subscribeFailedRiskPrompt': 'Failed to collect: Netease account restrictions apply, try saving as custom playlist',
   'playlist.operateExceptionPrompt': 'Operation exception, recommend saving as custom playlist',
   'playlist.backToGallery': 'Back to Gallery',
+  'playlist.backToLocalPlaylists': 'Back to Local Playlists',
   'playlist.creatorLabel': 'Creator: {creator}',
   'playlist.songCountTotal': '{count} tracks total',
   'playlist.diskStats': '(💻 Downloaded {downloaded} · 📥 Pending {pending})',

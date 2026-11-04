@@ -58,7 +58,19 @@ describe('likeStore contracts', () => {
 
     // Toggle again removes from local_favorites
     await toggleLike(extId, '睡前别想太多', '李雨霏');
-    expect(spyRemove).toHaveBeenCalledWith('local_favorites', extId);
+    expect(spyRemove).toHaveBeenCalledWith('local_favorites', extId, '睡前别想太多', '李雨霏');
     expect(isTrackLiked(extId, '睡前别想太多', '李雨霏')).toBe(false);
+  });
+
+  it('safely handles track with NaN id or extra metadata without polluting with NaN', async () => {
+    const spyAdd = vi.spyOn(api, 'localPlaylistAddTrack').mockResolvedValue({ code: '000000' } as any);
+    await toggleLike(NaN as any, '山海不说话', undefined, { artist: '陳鴨梨Charlie' });
+
+    expect(spyAdd).toHaveBeenCalledWith('local_favorites', expect.objectContaining({
+      name: '山海不说话',
+      artist: '陳鴨梨Charlie'
+    }));
+    expect(isTrackLiked(undefined, '山海不说话', '陳鴨梨Charlie')).toBe(true);
+    expect(isTrackLiked('NaN', '山海不说话', '陳鴨梨Charlie')).toBe(true);
   });
 });

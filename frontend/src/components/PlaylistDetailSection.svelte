@@ -390,8 +390,8 @@
       >
         {#each paged as trackItem, i}
         {@const idx = i + 1}
-        {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}
         {@const artist = formatArtist(trackItem)}
+        {@const status = getTrackSourceStatus(trackItem.id, Boolean(trackItem.isLocal && trackItem.filePath), curTrack, false, trackItem.name, artist)}
         {@const isPlayingThis = isSameTrack(curTrack, trackItem)}
         {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
@@ -403,7 +403,7 @@
             >
               {idx}. {trackItem.name}{artist ? ' - ' + artist : ''}
             </button>
-            <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="ml-1.5" />
+            <TrackSourceBadge id={trackItem.id} name={trackItem.name} {artist} path={trackItem.filePath} item={trackItem} isServer={status.isServer} isPhone={status.isPhone} {curTrack} class="ml-1.5" />
             <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike(Number(trackItem.id), trackItem.name)} />
           </div>
           <div class="track-action-group">

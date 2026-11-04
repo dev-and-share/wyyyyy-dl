@@ -273,6 +273,7 @@ export default {
   'playlist.subscribeFailedRiskPrompt': '收藏失败：网易云官方有设备风控限制，推荐使用「转存为自建歌单」',
   'playlist.operateExceptionPrompt': '操作异常，推荐使用「转存为自建歌单」',
   'playlist.backToGallery': '返回歌单画廊',
+  'playlist.backToLocalPlaylists': '返回本地歌单',
   'playlist.creatorLabel': '创建者: {creator}',
   'playlist.songCountTotal': '共 {count} 首歌曲',
   'playlist.diskStats': '(💻 已下 {downloaded} · 📥 待下 {pending})',

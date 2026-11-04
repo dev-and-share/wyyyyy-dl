@@ -273,6 +273,7 @@ export default {
   'playlist.subscribeFailedRiskPrompt': 'お気に入り追加失敗: 公式アカウント制限のため「自作プレイリストに保存」をご利用ください',
   'playlist.operateExceptionPrompt': 'エラーが発生しました。「自作プレイリストに保存」をご利用ください',
   'playlist.backToGallery': 'ギャラリーに戻る',
+  'playlist.backToLocalPlaylists': 'ローカルプレイリストに戻る',
   'playlist.creatorLabel': '作成者: {creator}',
   'playlist.songCountTotal': '全 {count} 曲',
   'playlist.diskStats': '(💻 ダウンロード済み {downloaded} · 📥 未ダウンロード {pending})',

@@ -115,6 +115,13 @@ export function removeTrackFromCurrentPlaylist(playlistId: string | number, trac
   // 3. 同步递减该歌单的曲目计数（内存 + my_playlists 缓存）
   updatePlaylistTrackCount(pIdStr, -1);
 
+  // 4. 同步更新本地歌单缓存
+  const localCache = getApiCache('local_pl_' + pIdStr);
+  if (localCache?.data?.tracks && Array.isArray(localCache.data.tracks)) {
+    localCache.data.tracks = localCache.data.tracks.filter((t: any) => String(t.id) !== tIdStr);
+    setApiCache('local_pl_' + pIdStr, localCache.data);
+  }
+
   // 4. 同步更新本地持久化缓存 playlist_${pIdStr}
   const cacheKey = 'playlist_' + pIdStr;
   const cached = getApiCache(cacheKey);
@@ -189,6 +196,25 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
   if (provider.type === 'local') {
     activeTargetPlaylistId = pidStr;
     const requestId = ++currentLoadRequestId;
+    const localCacheKey = 'local_pl_' + pidStr;
+    const cached = getApiCache(localCacheKey);
+    const hasCache = !!(cached?.data?.tracks?.length);
+
+    // 1. Cache First: 若已有本地缓存且非强制刷新，立即秒显数据，无任何 loading 白屏！
+    if (hasCache && !force) {
+      renderPlaylist(cached.data);
+      // 后台静默调用 API 进行 Revalidate，更新最新数据与本地缓存
+      provider.getDetail(pidStr).then((pl) => {
+        if (pl && Array.isArray(pl.tracks)) {
+          setApiCache(localCacheKey, pl);
+          if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
+            renderPlaylist(pl);
+          }
+        }
+      }).catch(() => {});
+      return cached.data;
+    }
+
     playlistState.loading = true;
     playlistState.loadingId = pidStr;
     try {
@@ -198,6 +224,7 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
       }
       const pl = await provider.getDetail(pidStr);
       if (!pl) throw new Error(t('playlist.emptyOrNotFound'));
+      setApiCache(localCacheKey, pl);
       if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
         renderPlaylist(pl);
       }

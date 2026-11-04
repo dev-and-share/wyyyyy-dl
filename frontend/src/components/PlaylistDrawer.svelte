@@ -12,6 +12,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { getTrackSourceStatus, markSongDownloaded } from '../lib/trackStatus.svelte';
+  import { isTrackLiked } from '../lib/likeStore.svelte';
 
   let {
     queue = [],
@@ -45,7 +46,7 @@
     onPlayIndex: (index: number) => void;
     onClearQueue: () => void;
     onRemoveItem: (index: number) => void;
-    onToggleLike: (id: number, name: string) => void;
+    onToggleLike: (id: any, name?: string, artist?: string, extra?: any) => void;
     onToggleAutoSkip: (val: boolean) => void;
     onToggleServerOnly: (val: boolean) => void;
     onToggleOfflineOnly: (val: boolean) => void;
@@ -788,8 +789,8 @@
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                   <TrackLikeBtn
-                    liked={likedSet.has(Number(trackItem.id))}
-                    onclick={() => onToggleLike(Number(trackItem.id), trackItem.name)}
+                    liked={isTrackLiked(trackItem.id, trackItem.name, formatArtist(trackItem.artist))}
+                    onclick={() => onToggleLike(trackItem.id, trackItem.name, formatArtist(trackItem.artist), trackItem)}
                   />
                   <button
                     type="button"

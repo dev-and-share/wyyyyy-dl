@@ -3,6 +3,7 @@
   import { removeTrackFromCurrentPlaylist } from '../lib/playlist.svelte';
   import { removeTrackBrowserCache } from '../lib/browserCacheHelper';
   import { unmarkSongDownloaded } from '../lib/trackStatus.svelte';
+  import { isLocalPlaylist } from '../lib/localPlaylistStore.svelte';
   import Modal from './Modal.svelte';
   import { t } from '../lib/i18n/index.svelte';
 
@@ -32,8 +33,14 @@
     if (!song || loading) return;
     loading = true;
     try {
-      // 1. Remove track from cloud playlist
-      const res = await api.playlistRemove(String(playlistId), String(song.id));
+      const isLocal = isLocalPlaylist(playlistId);
+      let res: any;
+      if (isLocal) {
+        res = await api.localPlaylistRemoveTrack(String(playlistId), song.id, song.name, song.artist);
+      } else {
+        res = await api.playlistRemove(String(playlistId), String(song.id));
+      }
+
       if (res?.code && res.code !== '000000') {
         showToast(res.msg || t('playlist.removeFailed'), 'warning');
         return;

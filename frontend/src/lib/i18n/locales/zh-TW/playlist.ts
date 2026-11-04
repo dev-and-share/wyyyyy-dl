@@ -273,6 +273,7 @@ export default {
   'playlist.subscribeFailedRiskPrompt': '收藏失敗：網易雲官方有裝置風控限制，推薦使用「轉存為自建播放清單」',
   'playlist.operateExceptionPrompt': '操作異常，推薦使用「轉存為自建播放清單」',
   'playlist.backToGallery': '返回播放清單畫廊',
+  'playlist.backToLocalPlaylists': '返回本地播放清單',
   'playlist.creatorLabel': '建立者: {creator}',
   'playlist.songCountTotal': '共 {count} 首歌曲',
   'playlist.diskStats': '(💻 已載 {downloaded} · 📥 待載 {pending})',

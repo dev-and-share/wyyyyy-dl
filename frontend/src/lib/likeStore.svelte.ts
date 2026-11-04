@@ -1,7 +1,8 @@
 import { api } from './api';
-import { getApiCache, setApiCache, extractRawAudioUrl } from './utils';
+import { getApiCache, setApiCache } from './utils';
 import { showToast } from './toast.svelte';
 import { t } from './i18n';
+import { downloadExternalTrack } from './musicfree/downloadHelper';
 
 export const likeState = $state<{
   likedSet: Set<number>;
@@ -15,12 +16,12 @@ export const likeState = $state<{
  * 判断指定歌曲是否已被收藏（兼容网易云数字 ID 与外部复合字符串 ID / 歌名组合键）
  */
 export function isTrackLiked(id: number | string | undefined | null, name?: string, artist?: string): boolean {
-  if (id == null) return false;
+  if (id == null && !name) return false;
   const num = Number(id);
-  const str = String(id).trim();
+  const str = String(id ?? '').trim();
   const isNetEaseNum = !isNaN(num) && num > 0 && !str.startsWith('mf_') && !str.startsWith('ext_');
   if (isNetEaseNum && likeState.likedSet.has(num)) return true;
-  if (str && likeState.likedExtSet.has(str)) return true;
+  if (str && str !== 'NaN' && str !== 'undefined' && str !== 'null' && likeState.likedExtSet.has(str)) return true;
   if (name && artist) {
     const combo = `${name.trim()}___${artist.trim()}`;
     if (likeState.likedExtSet.has(combo)) return true;
@@ -56,6 +57,7 @@ export async function initLikeList(): Promise<void> {
     if (localFav?.code === '000000' && Array.isArray(localFav.data?.tracks)) {
       for (const tr of localFav.data.tracks) {
         if (tr.id) likeState.likedExtSet.add(String(tr.id));
+        if (tr.historyId) likeState.likedExtSet.add(String(tr.historyId));
         if (tr.name && tr.artist) {
           likeState.likedExtSet.add(`${tr.name.trim()}___${tr.artist.trim()}`);
         }
@@ -70,14 +72,15 @@ export async function initLikeList(): Promise<void> {
  * - 外部歌曲：存入 SQLite 本地内置「❤️ 本地我喜欢的音乐」专属歌单，并联动触发后台落盘
  */
 export async function toggleLike(id: number | string, name?: string, artist?: string, extra?: any): Promise<void> {
-  const strId = String(id || '').trim();
-  const numId = Number(id);
+  const safeName = (name || extra?.name || extra?.songName || '').trim();
+  const safeArtist = (artist || extra?.artist || extra?.ar_name || '').trim();
+  const strId = String(id || extra?.id || extra?.songId || '').trim();
+  const numId = Number(strId);
   const isNetEaseNum = !isNaN(numId) && numId > 0 && !strId.startsWith('mf_') && !strId.startsWith('ext_');
-  const safeName = (name || '').trim();
-  const safeArtist = (artist || '').trim();
   const comboKey = safeName && safeArtist ? `${safeName}___${safeArtist}` : '';
+  const validExtId = strId && strId !== 'NaN' && strId !== 'undefined' && strId !== 'null' ? strId : '';
 
-  const isLiked = isTrackLiked(id, safeName, safeArtist);
+  const isLiked = isTrackLiked(validExtId || (isNetEaseNum ? numId : undefined), safeName, safeArtist);
 
   if (isNetEaseNum) {
     const nextSet = new Set(likeState.likedSet);
@@ -100,17 +103,17 @@ export async function toggleLike(id: number | string, name?: string, artist?: st
     // 🌟 外部歌曲 / MusicFree 音源：存入本地专属系统歌单 (❤️ 本地我喜欢的音乐)
     const nextExt = new Set(likeState.likedExtSet);
     if (isLiked) {
-      if (strId) nextExt.delete(strId);
+      if (validExtId) nextExt.delete(validExtId);
       if (comboKey) nextExt.delete(comboKey);
     } else {
-      if (strId) nextExt.add(strId);
+      if (validExtId) nextExt.add(validExtId);
       if (comboKey) nextExt.add(comboKey);
     }
     likeState.likedExtSet = nextExt;
 
     try {
       if (isLiked) {
-        await api.localPlaylistRemoveTrack('local_favorites', strId);
+        await api.localPlaylistRemoveTrack('local_favorites', validExtId, safeName, safeArtist);
         showToast('已从「❤️ 本地我喜欢的音乐」移除', 'success');
       } else {
         await api.localPlaylistAddTrack('local_favorites', {
@@ -129,10 +132,10 @@ export async function toggleLike(id: number | string, name?: string, artist?: st
     } catch {
       const rollback = new Set(likeState.likedExtSet);
       if (!isLiked) {
-        if (strId) rollback.delete(strId);
+        if (validExtId) rollback.delete(validExtId);
         if (comboKey) rollback.delete(comboKey);
       } else {
-        if (strId) rollback.add(strId);
+        if (validExtId) rollback.add(validExtId);
         if (comboKey) rollback.add(comboKey);
       }
       likeState.likedExtSet = rollback;
@@ -141,30 +144,12 @@ export async function toggleLike(id: number | string, name?: string, artist?: st
   }
 }
 
-async function triggerAutoDownloadForLikedTrack(extra: any, songName: string, artist: string) {
+async function triggerAutoDownloadForLikedTrack(extra: any, _songName: string, _artist: string) {
   try {
-    const raw = extra.raw || extra;
-    let url = extra.url;
-    let headers = extra.headers;
-    const pluginId = extra._pluginId || extra.pluginHash || extra.pluginId;
-    if (!url && pluginId) {
-      const { musicFreeStore } = await import('./musicfree/musicFreeStore.svelte');
-      const media = await musicFreeStore.resolveMediaSource(pluginId, raw);
-      url = media?.url;
-      headers = media?.headers;
-    }
-    const cleanUrl = extractRawAudioUrl(url);
-    if (cleanUrl) {
-      await api.downloadCustom({
-        id: extra.id,
-        name: songName,
-        artist,
-        album: extra.album,
-        url: cleanUrl,
-        coverUrl: extra.cover || extra.artwork || extra.picUrl,
-        headers
-      });
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
-    }
-  } catch {}
+    const raw = extra?.raw || extra;
+    const pluginId = extra?._pluginId || extra?._pluginHash || extra?.pluginHash || extra?.pluginId || raw?._pluginId || raw?.pluginId;
+    await downloadExternalTrack(extra, raw, pluginId);
+  } catch (err) {
+    console.warn('[LikeStore] Auto download failed:', err);
+  }
 }

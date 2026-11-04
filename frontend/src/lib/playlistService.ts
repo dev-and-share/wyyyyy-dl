@@ -24,17 +24,30 @@ export interface PlaylistProvider {
 
 export class LocalPlaylistProvider implements PlaylistProvider {
   readonly type = 'local' as const;
+  private inFlight = new Map<string, Promise<any>>();
 
   canHandle(id: string | number): boolean {
     return isLocalPlaylist(id);
   }
 
   async getDetail(id: string | number): Promise<any> {
-    const res = await api.localPlaylistDetail(String(id));
-    if (res?.code && res.code !== '000000') {
-      throw new Error(res.msg || '获取本地歌单失败');
+    const key = String(id);
+    if (this.inFlight.has(key)) {
+      return this.inFlight.get(key);
     }
-    return res?.data;
+    const promise = (async () => {
+      try {
+        const res = await api.localPlaylistDetail(key);
+        if (res?.code && res.code !== '000000') {
+          throw new Error(res.msg || '获取本地歌单失败');
+        }
+        return res?.data;
+      } finally {
+        this.inFlight.delete(key);
+      }
+    })();
+    this.inFlight.set(key, promise);
+    return promise;
   }
 
   async getTracks(id: string | number): Promise<any[]> {

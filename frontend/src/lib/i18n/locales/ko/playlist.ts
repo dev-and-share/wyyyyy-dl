@@ -273,6 +273,7 @@ export default {
   'playlist.subscribeFailedRiskPrompt': '즐겨찾기 실패: 공식 계정 제한이 있습니다. "내 플레이리스트로 저장"을 이용하세요',
   'playlist.operateExceptionPrompt': '작업 오류. "내 플레이리스트로 저장"을 권장합니다',
   'playlist.backToGallery': '갤러리로 돌아가기',
+  'playlist.backToLocalPlaylists': '로컬 재생목록으로 돌아가기',
   'playlist.creatorLabel': '생성자: {creator}',
   'playlist.songCountTotal': '총 {count}곡',
   'playlist.diskStats': '(💻 다운완료 {downloaded} · 📥 대기 {pending})',

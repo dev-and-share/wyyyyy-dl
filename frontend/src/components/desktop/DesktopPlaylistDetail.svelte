@@ -22,6 +22,8 @@
   import RemoveFromPlaylistModal from '../RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
+  import { isLocalPlaylist } from '../../lib/localPlaylistStore.svelte';
+  import { downloadPlaylistTrack } from '../../lib/playlistTrackDownloadHelper';
   import { toPlayerTrack } from '../../lib/playerHelper';
   import { t } from '../../lib/i18n';
 
@@ -170,30 +172,6 @@
     }
   }
 
-  async function handleDownloadSingle(id: string, name?: string) {
-    try {
-      const res = await api.downloadSingle(id);
-      const task = res?.data;
-      const songName = task?.name || name || t('common.unknownSong');
-      if (task?.status === 'SKIP') {
-        const msg = task.errorMsg || '';
-        if (msg.includes('已存在') || msg.includes('磁盘中')) { // i18n-ignore: backend status check
-          markSongDownloaded(id);
-          showToast(t('download.alreadyInDiskSynced', { name: songName }), 'info', 3000);
-        } else {
-          showToast(t('download.skippedWithName', { name: songName, reason: msg || t('download.skipReasonPreviewOrExist') }), 'warning', 4000);
-        }
-      } else if (task?.status === 'FAILED') {
-        showToast(t('download.failedWithName', { name: songName, reason: task.errorMsg || t('download.failReasonExecuteError') }), 'error', 4000);
-      } else {
-        showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
-      }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
-    } catch (e: any) {
-      showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
-    }
-  }
-
   async function handleCache(item: any) {
     cachingTrackId = item.id;
     try {
@@ -247,7 +225,7 @@
       onclick={onBackToGallery}
     >
       <span>←</span>
-      <span>{t('playlist.backToGallery')}</span>
+      <span>{isLocalPlaylist(playlistId) ? t('playlist.backToLocalPlaylists') : t('playlist.backToGallery')}</span>
     </button>
     <span class="opacity-40 shrink-0">/</span>
     <span class="truncate font-semibold text-[var(--text-main)]">{isCurrentPlaylistLoaded ? playlist.name : (loadError ? t('common.failed') : t('common.loading'))}</span>
@@ -357,8 +335,9 @@
             <tbody class="divide-y divide-[var(--border-subtle)]">
               {#each paged as trackItem, i (trackItem.id)}
                 {@const idx = i + 1}
-                {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}
+                {@const isLocalPl = isLocalPlaylist(playlistId)}
                 {@const artist = formatArtist(trackItem)}
+                {@const status = getTrackSourceStatus(trackItem.id, Boolean(trackItem.isLocal && trackItem.filePath), curTrack, isLocalPl, trackItem.name, artist)}
                 {@const isPlayingThis = isSameTrack(curTrack, trackItem)}
                 <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
                   <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
@@ -373,7 +352,17 @@
                       <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
                         {trackItem.name}
                       </span>
-                      <TrackSourceBadge id={trackItem.id} name={trackItem.name} {artist} path={trackItem.filePath} item={trackItem} isLocal={status.isLocal} {curTrack} class="shrink-0" />
+                      <TrackSourceBadge
+                        id={trackItem.id}
+                        name={trackItem.name}
+                        {artist}
+                        path={trackItem.filePath}
+                        item={trackItem}
+                        isServer={status.isServer}
+                        isPhone={status.isPhone}
+                        {curTrack}
+                        class="shrink-0"
+                      />
                       <TrackLikeBtn liked={isTrackLiked(trackItem.id, trackItem.name, artist)} onclick={() => onToggleLike(trackItem.id, trackItem.name, artist, trackItem)} />
                     </div>
                   </td>
@@ -402,9 +391,9 @@
                         {getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'desktop' })}
                       </SlotBtn>
                       {#if status.isServer}
-                        <SlotBtn onclick={() => onReveal && onReveal({ id: trackItem.id, name: trackItem.name, artist })}>{t('common.reveal')}</SlotBtn>
+                        <SlotBtn onclick={() => onReveal && onReveal({ id: trackItem.id, name: trackItem.name, artist, path: trackItem.filePath })}>{t('common.reveal')}</SlotBtn>
                       {:else}
-                        <SlotBtn onclick={() => handleDownloadSingle(String(trackItem.id), trackItem.name)}>{t('download.downloadSingle')}</SlotBtn>
+                        <SlotBtn onclick={() => downloadPlaylistTrack(trackItem, playlistId, artist)}>{t('download.downloadSingle')}</SlotBtn>
                       {/if}
                       <SlotBtn onclick={() => handleCache(trackItem)}>
                         {status.isPhone ? t('search.cachedShort') : cachingTrackId === trackItem.id ? t('playlist.cachingBadge') : t('search.cacheShort')}
@@ -458,7 +447,7 @@
           class="btn-secondary text-xs px-4 py-1.5 rounded-xl cursor-pointer"
           onclick={onBackToGallery}
         >
-          {t('playlist.backToGallery')}
+          {isLocalPlaylist(playlistId) ? t('playlist.backToLocalPlaylists') : t('playlist.backToGallery')}
         </button>
       </div>
     </div>
