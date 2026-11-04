@@ -132,6 +132,11 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     ")";
             stmt.execute(localPlaylistsSql);
 
+            // 🌟 初始化系统内置专属歌单：❤️ 本地我喜欢的音乐 (保留歌单，置顶展示，不允许删除)
+            String initFavSql = "INSERT OR IGNORE INTO local_playlists (id, name, cover_url) " +
+                    "VALUES ('local_favorites', '❤️ 本地我喜欢的音乐', '/favicon.png')";
+            stmt.execute(initFavSql);
+
             String localPlaylistTracksSql = "CREATE TABLE IF NOT EXISTS local_playlist_tracks (" +
                     autoIncCol + ", " +
                     "playlist_id VARCHAR(64), " +
@@ -1365,7 +1370,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                 "FROM local_playlists p " +
                 "LEFT JOIN local_playlist_tracks t ON p.id = t.playlist_id " +
                 "GROUP BY p.id, p.name, p.cover_url, p.created_at " +
-                "ORDER BY p.created_at DESC";
+                "ORDER BY CASE WHEN p.id = 'local_favorites' THEN 0 ELSE 1 END, p.created_at DESC";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -1401,6 +1406,10 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
     }
 
     public boolean deleteLocalPlaylist(String id) {
+        if ("local_favorites".equals(id)) {
+            log.warn("禁止删除系统内置歌单: {}", id);
+            return false;
+        }
         String delTracksSql = "DELETE FROM local_playlist_tracks WHERE playlist_id = ?";
         String delPlSql = "DELETE FROM local_playlists WHERE id = ?";
         try (Connection conn = getConnection()) {

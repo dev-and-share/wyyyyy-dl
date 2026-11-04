@@ -23,18 +23,13 @@
 
 <div class="w-full h-full flex flex-col p-4 lg:p-6 overflow-y-auto max-w-7xl mx-auto space-y-5 animate-fade-in">
   <!-- 发现中心顶栏 -->
-  <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-4 shrink-0">
-    <div>
-      <h1 class="text-xl lg:text-2xl font-bold flex items-center gap-2.5 text-[var(--text-main)]">
-        <span class="text-2xl">🧩</span> 发现中心 (MusicFree 音源广场与插件)
-      </h1>
-      <p class="text-xs lg:text-sm text-[var(--text-secondary)] mt-1">
-        无须客户端，直接探索各大音源官方排行榜、推荐歌单广场，并通过浏览器沙箱实现即点即播。
-      </p>
-    </div>
+  <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-color)] pb-3 lg:pb-4 shrink-0">
+    <h1 class="text-xl lg:text-2xl font-bold flex items-center gap-2.5 text-[var(--text-main)]">
+      <span class="text-2xl">🧩</span> 发现中心
+    </h1>
 
     <!-- 选项卡切换胶囊 -->
-    <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] shrink-0 self-start sm:self-auto">
+    <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] shrink-0 self-start sm:self-auto overflow-x-auto max-w-full">
       <button
         type="button"
         class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {activeTab === 'toplists' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"

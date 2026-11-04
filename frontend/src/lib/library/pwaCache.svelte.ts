@@ -96,8 +96,12 @@ export function refreshCachedSongIds() {
 if (typeof window !== 'undefined') {
   window.addEventListener('wyyyy:browser-cache-updated', ((e: CustomEvent) => {
     const id = e?.detail?.id;
-    if (id) {
-      cachedSongIdSet.add(Number(id));
+    if (id != null) {
+      const num = Number(id);
+      if (!isNaN(num) && num > 0 && !String(id).startsWith('mf_') && !String(id).startsWith('ext_')) {
+        cachedSongIdSet.add(num);
+      }
+      cachedSongIdSet.add(String(id));
     } else {
       refreshCachedSongIds();
     }
@@ -111,7 +115,10 @@ if (typeof window !== 'undefined') {
  * 检查指定歌曲 ID 是否已在浏览器离线 Cache 中
  */
 export async function isSongCached(id: string | number): Promise<boolean> {
-  if (cachedSongIdSet.has(Number(id))) return true;
+  const num = Number(id);
+  const str = String(id).trim();
+  if (!isNaN(num) && num > 0 && cachedSongIdSet.has(num)) return true;
+  if (str && cachedSongIdSet.has(str)) return true;
   return audioCacheStorage.isCached(id);
 }
 
@@ -168,7 +175,18 @@ export async function cacheTrackToBrowser(
       return { success: false, msg: t('cache.cannotGetAudioStream') };
     }
 
-    const streamResp = await fetch(audioUrl);
+    let streamResp: Response;
+    try {
+      streamResp = await fetch(audioUrl);
+      if (!streamResp.ok) {
+        throw new Error(`HTTP ${streamResp.status}`);
+      }
+    } catch {
+      // 跨域或直连失败，自动回退走后端流代理
+      const proxyUrl = `/v3/stream/online?url=${encodeURIComponent(audioUrl)}`;
+      streamResp = await fetch(proxyUrl);
+    }
+
     if (!streamResp.ok) {
       return { success: false, msg: t('cache.streamFetchFailed', { status: streamResp.status }) };
     }

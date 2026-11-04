@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLrc, getActiveLyric } from './lyricParser';
+import { parseLrc, getActiveLyric, fixLatin1Utf8Garbled } from './lyricParser';
 
 describe('lyricParser', () => {
   const sampleLrc = `
@@ -90,5 +90,23 @@ describe('lyricParser', () => {
     expect(chorusLines.length).toBe(2);
     expect(chorusLines[0].time).toBe(120);
     expect(chorusLines[1].time).toBe(150);
+  });
+
+  it('automatically detects and repairs Latin-1 garbled UTF-8 Chinese lyrics', () => {
+    // 模拟由 atob() 产生的 Latin-1 乱码 (例如米拓果果《多少真心败给无奈》)
+    const originalText = '多少真心败给无奈 - 米拓果果';
+    const utf8Bytes = Buffer.from(originalText, 'utf8');
+    const garbledText = utf8Bytes.toString('latin1');
+
+    // 验证乱码形态包含 UTF-8 前导字符
+    expect(garbledText).toContain('å¤');
+    expect(fixLatin1Utf8Garbled(garbledText)).toBe(originalText);
+
+    // 验证在 parseLrc 中自动自愈
+    const garbledLrc = `[01:56.00]${garbledText}`;
+    const lines = parseLrc(garbledLrc);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].text).toBe(originalText);
+    expect(lines[0].time).toBe(116);
   });
 });

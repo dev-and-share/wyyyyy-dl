@@ -6,6 +6,9 @@
   import { api } from '../../lib/api';
   import { startTaskPolling } from '../../lib/taskStore.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
+  import TrackSourceBadge from '../TrackSourceBadge.svelte';
+  import TrackLikeBtn from '../TrackLikeBtn.svelte';
+  import { isTrackLiked, toggleLike } from '../../lib/likeStore.svelte';
 
   let {
     results = [],
@@ -180,15 +183,8 @@
               <span class="text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-md bg-purple-500/15 text-purple-400 font-medium shrink-0">
                 {pName}
               </span>
-              {#if status.isServer}
-                <span class="text-[9px] sm:text-[10px] px-1 rounded-md bg-emerald-500/15 text-emerald-400 font-medium shrink-0" title="已下载到电脑磁盘">
-                  🖥️
-                </span>
-              {:else if status.isPhone}
-                <span class="text-[9px] sm:text-[10px] px-1 rounded-md bg-blue-500/15 text-blue-400 font-medium shrink-0" title="已离线缓存至浏览器">
-                  📱
-                </span>
-              {/if}
+              <TrackSourceBadge id={trackId} item={item} {curTrack} class="shrink-0" />
+              <TrackLikeBtn liked={isTrackLiked(trackId, item.title, artist)} onclick={() => toggleLike(trackId, item.title, artist, item)} />
               <span class="truncate">{artist}</span>
               {#if item.album}
                 <span class="opacity-40 shrink-0">•</span>
@@ -228,7 +224,7 @@
               title={status.isPhone ? '已离线缓存到浏览器' : '将音频缓存到浏览器 Cache'}
               onclick={() => handleCache(item)}
             >
-              <span>📱</span>
+              <span>{status.isPhone ? '✓' : '💾'}</span>
               <span class="hidden sm:inline">{status.isPhone ? '已存' : '缓存'}</span>
             </button>
 

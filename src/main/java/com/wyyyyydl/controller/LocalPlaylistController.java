@@ -82,6 +82,9 @@ public class LocalPlaylistController {
         if (StringUtils.isBlank(id)) {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单ID不能为空", null);
         }
+        if ("local_favorites".equals(id)) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "系统内置专属歌单不支持删除", null);
+        }
         boolean ok = downloadHistoryDAO.deleteLocalPlaylist(id);
         return ok ? RespEntity.apply(CommonRespInfo.SUCCESS, "删除成功")
                   : RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "删除失败", null);

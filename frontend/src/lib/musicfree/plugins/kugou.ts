@@ -1,6 +1,20 @@
 import { proxyRequest } from './http';
 import type { IMusicFreePlugin, IMusicFreeTrack, IMusicFreeMediaSource } from '../types';
 
+function decodeBase64ToUtf8(base64Str: string): string {
+  try {
+    const binStr = typeof atob !== 'undefined' ? atob(base64Str) : Buffer.from(base64Str, 'base64').toString('latin1');
+    const bytes = Uint8Array.from(binStr, (c) => c.charCodeAt(0) & 0xff);
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch {
+    try {
+      return Buffer.from(base64Str, 'base64').toString('utf8');
+    } catch {
+      return '';
+    }
+  }
+}
+
 /**
  * 🐕 酷狗音乐官方原生插件 (Kugou Official Native Plugin)
  * 100% 直连酷狗官方 CDN 与接口，无需任何第三方中转，支持搜索、官方排行榜与全音质直链
@@ -121,7 +135,7 @@ export const kugouPlugin: IMusicFreePlugin = {
         const dlUrl = `http://krcs.kugou.com/download?ver=1&client=mobi&id=${candidate.id}&accesskey=${candidate.accesskey}&fmt=lrc&charset=utf8`;
         const lrcRes = await proxyRequest<any>(dlUrl);
         if (lrcRes?.content) {
-          const decoded = typeof atob !== 'undefined' ? atob(lrcRes.content) : Buffer.from(lrcRes.content, 'base64').toString('utf8');
+          const decoded = decodeBase64ToUtf8(lrcRes.content);
           return { rawLrc: decoded };
         }
       }

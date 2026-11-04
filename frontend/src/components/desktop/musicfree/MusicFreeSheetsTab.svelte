@@ -5,6 +5,9 @@
   import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
   import { getTrackSourceStatus, isSameTrack } from '../../../lib/player/trackStatus.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
+  import TrackSourceBadge from '../../TrackSourceBadge.svelte';
+  import TrackLikeBtn from '../../TrackLikeBtn.svelte';
+  import { isTrackLiked, toggleLike } from '../../../lib/likeStore.svelte';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
 
   let {
@@ -295,6 +298,7 @@
             {@const trackObj = buildTrack(t)}
             {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, t)}
             {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true)}
+            {@const isLiked = isTrackLiked(trackObj.id, t.title || t.name, t.artist)}
             <div
               class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group"
             >
@@ -304,11 +308,18 @@
                   <span class="text-xs font-semibold text-[var(--text-main)] truncate {isCur ? 'text-purple-400' : ''}">
                     {t.title || t.name}
                   </span>
-                  {#if status.isServer}
-                    <span class="text-[10px] px-1 rounded bg-emerald-500/15 text-emerald-400">🖥️ 本地</span>
-                  {:else if status.isPhone}
-                    <span class="text-[10px] px-1 rounded bg-blue-500/15 text-blue-400">📱 离线</span>
-                  {/if}
+                  <TrackSourceBadge
+                    id={trackObj.id}
+                    name={t.title || t.name}
+                    artist={t.artist}
+                    item={trackObj}
+                    curTrack={curTrack}
+                    class="shrink-0"
+                  />
+                  <TrackLikeBtn
+                    liked={isLiked}
+                    onclick={() => toggleLike(trackObj.id, t.title || t.name, t.artist, trackObj)}
+                  />
                 </div>
                 <div class="text-[11px] text-[var(--text-secondary)] truncate">
                   {t.artist || '未知歌手'}
@@ -326,11 +337,11 @@
                 <button
                   type="button"
                   disabled={status.isPhone}
-                  class="px-2 py-1 rounded-lg text-xs font-medium cursor-pointer border-none bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] disabled:opacity-50"
+                  class="px-2 py-1 rounded-lg text-xs font-medium cursor-pointer border-none bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] disabled:opacity-40"
                   onclick={() => handleCache(t)}
-                  title="离线缓存"
+                  title={status.isPhone ? '已离线缓存到当前设备' : '离线缓存到当前设备'}
                 >
-                  📱
+                  {status.isPhone ? '✓' : '💾'}
                 </button>
                 <button
                   type="button"

@@ -144,8 +144,8 @@
           onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewPlaylist?.(pl.id); } }}
         >
           <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
-              📁
+            <div class="w-10 h-10 rounded-lg {pl.id === 'local_favorites' ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-400'} flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
+              {pl.id === 'local_favorites' ? '❤️' : '📁'}
             </div>
             <div class="flex-1 min-w-0">
               <h4 class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-emerald-400 transition-colors">
@@ -158,18 +158,20 @@
           </div>
 
           <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border-subtle)]">
-            <span class="text-[10px] text-[var(--text-muted)]">本地 SQLite</span>
+            <span class="text-[10px] text-[var(--text-muted)]">{pl.id === 'local_favorites' ? '系统专属' : '本地 SQLite'}</span>
             <div class="flex items-center gap-1.5" onclick={(e) => e.stopPropagation()} role="presentation">
               <SlotBtn
                 onclick={() => onViewPlaylist?.(pl.id)}
               >
                 查看
               </SlotBtn>
-              <SlotBtn
-                onclick={() => handleDelete(pl)}
-              >
-                🗑️
-              </SlotBtn>
+              {#if pl.id !== 'local_favorites'}
+                <SlotBtn
+                  onclick={() => handleDelete(pl)}
+                >
+                  🗑️
+                </SlotBtn>
+              {/if}
             </div>
           </div>
         </div>

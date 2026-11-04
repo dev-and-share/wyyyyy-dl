@@ -9,6 +9,7 @@
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
   import { handleTrackPlayback, resetTrackPlayback } from '../lib/pwaCache.svelte';
+  import { isTrackLiked } from '../lib/likeStore.svelte';
   import type { Track } from '../lib/types';
   import { t } from '../lib/i18n';
   import { platform } from '../lib/platform';
@@ -484,9 +485,9 @@
 {#if showLyric && playerStore.activeTrack}
   <LyricModal
     track={playerStore.activeTrack} currentTime={playerStore.curTime} duration={playerStore.duration}
-    playing={playerStore.playing} playMode={playerStore.playMode} bind:vol={playerStore.vol} isLiked={likedSet.has(Number(playerStore.activeTrack.id))}
+    playing={playerStore.playing} playMode={playerStore.playMode} bind:vol={playerStore.vol} isLiked={isTrackLiked(playerStore.activeTrack.id, playerStore.activeTrack.name, playerStore.activeTrack.artist)}
     onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek} onSeekTime={(t) => applyTargetSeek(t)}
-    onToggleLike={() => onToggleLike(Number(playerStore.activeTrack?.id), playerStore.activeTrack?.name || '')}
+    onToggleLike={() => onToggleLike(playerStore.activeTrack?.id, playerStore.activeTrack?.name || '', playerStore.activeTrack?.artist, playerStore.activeTrack)}
     onTogglePeq={() => showPeq = !showPeq} onToggleDrawer={() => showDrawer = !showDrawer} onClose={() => showLyric = false}
   />
 {/if}

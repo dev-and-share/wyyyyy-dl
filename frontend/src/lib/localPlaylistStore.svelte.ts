@@ -20,6 +20,15 @@ export const localPlaylistState = $state<{
   loading: false
 });
 
+export const SYSTEM_FAVORITES_PLAYLIST_ID = 'local_favorites';
+
+/**
+ * 判断指定歌单是否为系统内置的「❤️ 本地我喜欢的音乐」专属歌单
+ */
+export function isSystemFavoritesPlaylist(id: string | number | undefined | null): boolean {
+  return String(id) === SYSTEM_FAVORITES_PLAYLIST_ID;
+}
+
 /**
  * 判断指定歌单是否为本地专属歌单 (SQLite 隔离存储)
  */
@@ -73,6 +82,9 @@ export async function createLocalPlaylist(name: string, coverUrl?: string): Prom
  * 删除本地歌单
  */
 export async function deleteLocalPlaylist(id: string): Promise<{ success: boolean; msg?: string }> {
+  if (id === SYSTEM_FAVORITES_PLAYLIST_ID) {
+    return { success: false, msg: '系统内置专属歌单不支持删除' };
+  }
   try {
     const res = await api.localPlaylistDelete(id);
     if (res?.code === '000000') {

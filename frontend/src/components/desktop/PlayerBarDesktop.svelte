@@ -7,6 +7,7 @@
   import PlayerIcon from '../PlayerIcon.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
+  import { isTrackLiked } from '../../lib/likeStore.svelte';
   import { skin } from '../../lib/skinStore.svelte';
   import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
@@ -56,7 +57,7 @@
     onMinimize: () => void;
   }>();
 
-  let isLiked = $derived(curTrack ? likedSet.has(Number(curTrack.id)) : false);
+  let isLiked = $derived(curTrack ? isTrackLiked(curTrack.id, curTrack.name, curTrack.artist) : false);
 </script>
 
 <div
