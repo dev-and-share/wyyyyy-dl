@@ -61,10 +61,85 @@
     onClose: () => void;
   }>();
 
-  let showVolPopup = $state(false);
   let showSkinPicker = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let showCommentModal = $state(false);
+
+  // 🌙 沉浸式 3 秒自动渐隐机制
+  let uiVisible = $state(true);
+  let hideTimer: any = null;
+
+  function kickHideTimer() {
+    uiVisible = true;
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      uiVisible = false;
+    }, 3200);
+  }
+
+  function toggleUi(e?: MouseEvent) {
+    // 若点击的是交互式按键，则不在这层拦截
+    const target = e?.target as HTMLElement | null;
+    if (target && (target.closest('button') || target.closest('input') || target.closest('.interactive-el'))) {
+      kickHideTimer();
+      return;
+    }
+    if (uiVisible) {
+      uiVisible = false;
+      clearTimeout(hideTimer);
+    } else {
+      kickHideTimer();
+    }
+  }
+
+  // 📱 下拉阻尼手势关闭 (Swipe-down to Dismiss)
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let dragOffsetY = $state(0);
+  let isDragging = $state(false);
+  let isSwipeDownGesture = false;
+
+  function handleTouchStart(e: TouchEvent) {
+    if (e.touches.length !== 1) return;
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+    isDragging = true;
+    isSwipeDownGesture = false;
+    kickHideTimer();
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!isDragging || e.touches.length !== 1) return;
+    const currentY = e.touches[0].clientY;
+    const currentX = e.touches[0].clientX;
+    const deltaY = currentY - touchStartY;
+    const deltaX = currentX - touchStartX;
+
+    // 仅在明确是向下拉动且纵向移动显著大于横向移动时触发阻尼
+    if (deltaY > 5 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
+      isSwipeDownGesture = true;
+      // 阻尼公式：位移越大阻尼感越强
+      dragOffsetY = Math.pow(deltaY, 0.88);
+      if (dragOffsetY > 0 && e.cancelable) {
+        e.preventDefault();
+      }
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    if (dragOffsetY > 110) {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(12);
+        }
+      } catch {}
+      onClose();
+    }
+    dragOffsetY = 0;
+    isSwipeDownGesture = false;
+  }
 
   const STAGES = {
     vinyl: VinylSkinStage,
@@ -92,6 +167,8 @@
   }
 
   onMount(() => {
+    kickHideTimer();
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showSkinPicker) {
@@ -102,15 +179,25 @@
       }
     };
     window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    return () => {
+      clearTimeout(hideTimer);
+      window.removeEventListener('keydown', handleKey);
+    };
   });
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)] transition-colors duration-500 text-white"
-  style="{skin.cssVars} color-scheme: dark;"
+  style="{skin.cssVars} color-scheme: dark; transform: translateY({dragOffsetY}px); transition: {isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.3s'}; opacity: {1 - Math.min(dragOffsetY / 420, 0.5)};"
+  onclick={toggleUi}
+  ontouchstart={handleTouchStart}
+  ontouchmove={handleTouchMove}
+  ontouchend={handleTouchEnd}
+  ontouchcancel={handleTouchEnd}
 >
-  <!-- 动态全屏皮肤流光层（真正铺满 100vw × 100vh 大画布，不被中间容器截断） -->
+  <!-- 动态全屏皮肤流光层（铺满 100vw × 100vh 大画布） -->
   {#if skin.current === 'aurora'}
     <div class="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
       <div
@@ -138,47 +225,42 @@
       ></div>
     </div>
   {:else if skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter'}
-    <!-- 四季动态全屏微风物理粒子画布 (地平线抬高 110px 避让底部控制条) -->
+    <!-- 四季动态全屏微风物理粒子画布 -->
     <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={110} />
   {/if}
 
-  <!-- 顶部轻盈浮空按钮（无横跨整屏的 bar，纯净大画布） -->
-  <!-- 左上角：皮肤切换入口按钮 -->
-  <button
-    type="button"
-    class="absolute top-[max(14px,env(safe-area-inset-top,0px))] left-4 md:left-8 z-30 w-10 h-10 rounded-full flex items-center justify-center text-base bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-lg transition-all cursor-pointer"
-    onclick={() => showSkinPicker = true}
-    title={t('player.skin')}
-    data-testid="btn-open-skin-picker"
-  >
-    <span class="text-sm">🎨</span>
-  </button>
+  <!-- 顶部轻盈浮空区域：下拉手势指示器 + 皮肤切换 + 关闭按钮 -->
+  <div class="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 md:px-8 pt-[max(12px,env(safe-area-inset-top,0px))] transition-all duration-300 {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}">
+    <!-- 左上角：皮肤切换入口 -->
+    <button
+      type="button"
+      class="interactive-el w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
+      onclick={() => { showSkinPicker = true; kickHideTimer(); }}
+      title={t('player.skin')}
+      data-testid="btn-open-skin-picker"
+    >
+      <span>🎨</span>
+    </button>
 
-  <!-- 右上角：关闭沉浸页按钮 -->
-  <button
-    type="button"
-    class="absolute top-[max(14px,env(safe-area-inset-top,0px))] right-4 md:right-8 z-30 w-10 h-10 rounded-full flex items-center justify-center text-base bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-lg transition-all cursor-pointer"
-    onclick={onClose}
-    title={t('common.close')}
-  >
-    <PlayerIcon name="close" size={17} />
-  </button>
-
-  <!-- 中间主体：动态皮肤舞台 + 右侧滚动歌词 + 左下角快捷交互栏 -->
-  <div class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden px-4 md:px-12 pt-[max(64px,calc(env(safe-area-inset-top,0px)+40px))] pb-28 md:pb-24 gap-4 md:gap-10 max-w-[1240px] w-full mx-auto items-center justify-center">
-    <!-- 移动端专属（md:hidden）：左下角快捷操作栏 -->
-    <div class="absolute left-3.5 bottom-24 z-30 md:hidden">
-      <TrackQuickActions
-        {track}
-        {isLiked}
-        layout="col"
-        {onToggleLike}
-        onOpenComments={() => showCommentModal = true}
-        onAddToPlaylist={handleAddToPlaylist}
-      />
+    <!-- 顶部中央：下拉手势收起指示条 (Pull indicator) -->
+    <div class="flex flex-col items-center justify-center py-1 opacity-70">
+      <div class="w-9 h-1 rounded-full bg-white/40"></div>
     </div>
 
-    <!-- 左侧：动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/春日） -->
+    <!-- 右上角：关闭沉浸页按钮 -->
+    <button
+      type="button"
+      class="interactive-el w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
+      onclick={onClose}
+      title={t('common.close')}
+    >
+      <PlayerIcon name="close" size={15} />
+    </button>
+  </div>
+
+  <!-- 中间主体：动态皮肤舞台 + 满宽无遮挡滚动歌词 -->
+  <div class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden px-4 md:px-12 pt-[max(56px,calc(env(safe-area-inset-top,0px)+34px))] pb-32 md:pb-28 gap-3 md:gap-10 max-w-[1240px] w-full mx-auto items-center justify-center">
+    <!-- 动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/四季） -->
     <Stage
       {track}
       {playing}
@@ -191,13 +273,71 @@
       onAddToPlaylist={handleAddToPlaylist}
     />
 
-    <!-- 右侧：滚动歌词展示面板 -->
-    <LyricPanel {track} {currentTime} {onSeekTime} skinId={skin.current} />
+    <!-- 滚动歌词展示面板（完全恢复 100% 满宽，左侧不再有任何违和遮挡） -->
+    <div class="w-full flex-1 min-h-0 flex flex-col" onclick={() => kickHideTimer()}>
+      <LyricPanel {track} {currentTime} {onSeekTime} skinId={skin.current} />
+    </div>
   </div>
 
-  <!-- 底部：全屏沉浸播放控制条（自然渐隐悬浮，无突兀边框切割） -->
-  <div class="absolute bottom-0 inset-x-0 z-20 w-full px-4 md:px-12 pt-10 pb-[max(14px,env(safe-area-inset-bottom,0px))] bg-gradient-to-t from-black/60 via-black/25 to-transparent flex flex-col items-center gap-2.5">
-    <div class="w-full max-w-[680px]">
+  <!-- 底部：全屏沉浸播放控制条（上下两层结构 + 3秒自动渐隐） -->
+  <div
+    class="interactive-el absolute bottom-0 inset-x-0 z-20 w-full px-4 md:px-12 pt-6 pb-[max(14px,env(safe-area-inset-bottom,0px))] bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center gap-2 transition-all duration-500 {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'}"
+  >
+    <!-- 第一层：轻量级歌曲互动横栏 (喜欢、评论、加歌单、EQ) -->
+    <div class="w-full max-w-[640px] flex items-center justify-between px-2 text-white/80">
+      <div class="flex items-center gap-3">
+        <!-- ❤️ 喜欢 -->
+        <button
+          type="button"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-xs cursor-pointer {isLiked ? 'text-red-400' : 'text-white/80'}"
+          onclick={() => { onToggleLike(); kickHideTimer(); }}
+          title={isLiked ? t('player.likeRemove') : t('player.likeAdd')}
+        >
+          <PlayerIcon name="heart" liked={isLiked} size={15} />
+          <span class="text-[11px] font-medium">{t('player.like')}</span>
+        </button>
+
+        <!-- 💬 评论 -->
+        {#if track?.id}
+          <button
+            type="button"
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-xs cursor-pointer text-white/80"
+            onclick={() => { showCommentModal = true; kickHideTimer(); }}
+            title={t('comment.view')}
+          >
+            <span class="text-xs">💬</span>
+            <span class="text-[11px] font-medium">{t('comment.view')}</span>
+          </button>
+        {/if}
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- ➕ 收藏到歌单 -->
+        <button
+          type="button"
+          class="w-7.5 h-7.5 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-emerald-400 transition-all cursor-pointer"
+          onclick={() => { handleAddToPlaylist(); kickHideTimer(); }}
+          title={t('playlist.collectTo')}
+        >
+          <PlayerIcon name="plus" size={15} />
+        </button>
+
+        <!-- 🎚️ PEQ -->
+        {#if platform.canUseAudioProcessing}
+          <button
+            type="button"
+            class="w-7.5 h-7.5 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white transition-all cursor-pointer"
+            onclick={() => { onTogglePeq(); kickHideTimer(); }}
+            title={t('player.peq')}
+          >
+            <PlayerIcon name="equalizer" size={15} />
+          </button>
+        {/if}
+      </div>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="w-full max-w-[640px]" onclick={() => kickHideTimer()}>
       <PlayerProgressBar
         curTime={currentTime}
         {duration}
@@ -207,103 +347,68 @@
       />
     </div>
 
-    <!-- 控制按键组（高对比度清晰明亮） -->
-    <div class="flex items-center justify-center gap-4 md:gap-6">
+    <!-- 第二层：5个核心播控大拇指操作区 (大间距防误触) -->
+    <div class="flex items-center justify-center gap-5 md:gap-8 pt-1">
+      <!-- 循环模式 -->
       <button
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={onToggleMode}
+        onclick={() => { onToggleMode(); kickHideTimer(); }}
         title={t('player.toggleMode')}
       >
-        <PlayerIcon name={playMode === 'single' ? 'repeat-1' : playMode === 'shuffle' ? 'shuffle' : 'repeat'} size={19} />
+        <PlayerIcon name={playMode === 'single' ? 'repeat-1' : playMode === 'shuffle' ? 'shuffle' : 'repeat'} size={18} />
       </button>
+
+      <!-- 上一首 -->
       <button
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-        onclick={onPrev}
+        onclick={() => { onPrev(); kickHideTimer(); }}
         title={t('player.previous')}
       >
-        <PlayerIcon name="prev" size={20} />
+        <PlayerIcon name="prev" size={19} />
       </button>
+
+      <!-- 播放/暂停核心大键 -->
       <button
         type="button"
-        class="w-11 h-11 rounded-full flex items-center justify-center text-lg bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        onclick={onTogglePlay}
+        class="w-11 h-11 rounded-full flex items-center justify-center bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        onclick={() => { onTogglePlay(); kickHideTimer(); }}
         title={playing ? t('player.pause') : t('player.play')}
       >
-        <PlayerIcon name={playing ? 'pause' : 'play'} size={22} />
+        <PlayerIcon name={playing ? 'pause' : 'play'} size={21} />
       </button>
+
+      <!-- 下一首 -->
       <button
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-        onclick={onNext}
+        onclick={() => { onNext(); kickHideTimer(); }}
         title={t('player.next')}
       >
-        <PlayerIcon name="next" size={20} />
+        <PlayerIcon name="next" size={19} />
       </button>
-      {#if platform.canUseAudioProcessing}
-        <button
-          type="button"
-          class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-          onclick={onTogglePeq}
-          title={t('player.peq')}
-        >
-          <PlayerIcon name="equalizer" size={19} />
-        </button>
-      {/if}
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-emerald-400 hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={handleAddToPlaylist}
-        title={t('playlist.addTo')}
-      >
-        <PlayerIcon name="plus" size={19} />
-      </button>
+
+      <!-- 播放队列 -->
       <button
         type="button"
         class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={onToggleDrawer}
+        onclick={() => { onToggleDrawer(); kickHideTimer(); }}
         title={t('player.playlist')}
       >
-        <PlayerIcon name="list" size={19} />
+        <PlayerIcon name="list" size={18} />
       </button>
-
-      {#if platform.canAdjustVolume}
-        <!-- 音量竖立弹出滑块 -->
-        <div class="relative">
-          <button
-            type="button"
-            class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-            onclick={() => showVolPopup = !showVolPopup}
-            title={t('player.volume')}
-          >
-            <PlayerIcon name={vol === 0 ? 'volume-mute' : vol < 0.4 ? 'volume-low' : 'volume'} size={19} />
-          </button>
-          {#if showVolPopup}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div class="fixed inset-0 z-[100001]" onclick={() => showVolPopup = false}></div>
-            <div class="absolute bottom-11 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-neutral-900/90 border border-white/20 rounded-2xl shadow-2xl z-[100002] flex flex-col items-center gap-1.5 backdrop-blur-2xl">
-              <span class="text-[10px] font-mono text-white/80">{Math.round(vol * 100)}%</span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.02"
-                bind:value={vol}
-                class="w-1.5 h-20 accent-red-500 cursor-pointer"
-                style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
-              />
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <span class="cursor-pointer select-none flex items-center justify-center text-white/80 hover:text-white" onclick={() => { vol = vol > 0 ? 0 : 0.8; }} title={t('player.muteToggle')}>
-                <PlayerIcon name={vol === 0 ? 'volume-mute' : 'volume'} size={15} />
-              </span>
-            </div>
-          {/if}
-        </div>
-      {/if}
     </div>
+  </div>
+
+  <!-- 沉浸模式极细贴底进度指示线 (当界面淡出时优雅静默发光，高 2px) -->
+  <div
+    class="absolute bottom-0 inset-x-0 h-[2px] bg-white/10 pointer-events-none transition-opacity duration-500 z-10 {uiVisible ? 'opacity-0' : 'opacity-100'}"
+  >
+    <div
+      class="h-full bg-gradient-to-r from-red-500 to-rose-400 rounded-r-full transition-all duration-300"
+      style="width: {duration ? Math.min(100, (currentTime / duration) * 100) : 0}%; box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);"
+    ></div>
   </div>
 </div>
 
