@@ -249,7 +249,8 @@
 <AccordionCard title={t('artist.accordionTitle')} bind:open {flat} accent="purple">
   <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
     <input
-      type="text"
+      type="search"
+      enterkeyhint="search"
       placeholder={t('artist.inputIdPlaceholderWithEnter')}
       class="flex-1 min-w-0"
       bind:value={currentArtistId}
