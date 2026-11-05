@@ -231,36 +231,28 @@ describe('DesktopSidebar', () => {
       }
     });
 
-    const createdShadow = getByTestId('sidebar-created-scroll-shadow');
-    const subscribedShadow = getByTestId('sidebar-subscribed-scroll-shadow');
+    const allShadow = getByTestId('sidebar-all-scroll-shadow');
+    expect(allShadow).toBeDefined();
 
-    expect(createdShadow).toBeDefined();
-    expect(subscribedShadow).toBeDefined();
+    // Simulate scroll overflow on all playlists
+    const allContainer = allShadow.previousElementSibling as HTMLElement;
+    Object.defineProperty(allContainer, 'scrollHeight', { configurable: true, value: 500 });
+    Object.defineProperty(allContainer, 'clientHeight', { configurable: true, value: 200 });
+    Object.defineProperty(allContainer, 'scrollTop', { configurable: true, value: 0 });
 
-    // Verify subscribed playlist scroll container does not have pt-0.5 which causes gap bug
-    const subscribedContainer = subscribedShadow.previousElementSibling as HTMLElement;
-    expect(subscribedContainer).toBeDefined();
-    expect(subscribedContainer.className).not.toContain('pt-0.5');
-
-    // Simulate scroll overflow on created playlists
-    const createdContainer = createdShadow.previousElementSibling as HTMLElement;
-    Object.defineProperty(createdContainer, 'scrollHeight', { configurable: true, value: 500 });
-    Object.defineProperty(createdContainer, 'clientHeight', { configurable: true, value: 200 });
-    Object.defineProperty(createdContainer, 'scrollTop', { configurable: true, value: 0 });
-
-    await fireEvent.scroll(createdContainer);
+    await fireEvent.scroll(allContainer);
     await tick();
 
     // Should show gradient shadow when there is more content below
-    expect(createdShadow.className).toContain('opacity-100');
+    expect(allShadow.className).toContain('opacity-100');
 
     // Scroll to the bottom
-    Object.defineProperty(createdContainer, 'scrollTop', { configurable: true, value: 300 });
-    await fireEvent.scroll(createdContainer);
+    Object.defineProperty(allContainer, 'scrollTop', { configurable: true, value: 300 });
+    await fireEvent.scroll(allContainer);
     await tick();
 
     // Should fade out shadow when scrolled to bottom
-    expect(createdShadow.className).toContain('opacity-0');
+    expect(allShadow.className).toContain('opacity-0');
   });
 
   it('hides proxy network icon when proxy is not enabled', () => {
