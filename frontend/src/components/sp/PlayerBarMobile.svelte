@@ -55,13 +55,12 @@
     onMinimize: () => void;
   }>();
 
-  let showVolPopup = $state(false);
   let isLiked = $derived(curTrack ? isTrackLiked(curTrack.id, curTrack.name, curTrack.artist) : false);
 </script>
 
 <div
   data-testid="player-bar-mobile"
-  class="mobile-player-docked-bar fixed left-0 right-0 z-[9995] px-3 pt-2 pb-2 flex flex-col gap-1.5 transition-all duration-300 select-none {skin.current === 'winamp'
+  class="mobile-player-docked-bar fixed left-0 right-0 z-[9995] px-3 pt-1.5 pb-1.5 flex flex-col gap-1 transition-all duration-300 select-none {skin.current === 'winamp'
     ? 'bg-gradient-to-b from-[#2e3441] via-[#21252d] to-[#171920] border-t-2 border-white/25 shadow-2xl'
     : skin.current === 'cassette'
       ? 'bg-[#181a1f] border-t-2 border-[#2b2f38] shadow-2xl'
@@ -208,37 +207,6 @@
             </span>
           </button>
 
-          {#if platform.canAdjustVolume}
-            <div class="relative">
-              <button
-                type="button"
-                class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-                onclick={() => showVolPopup = !showVolPopup}
-                title={vol === 0 ? t('player.mute') : `${t('player.volume')} ${Math.round(vol * 100)}%`}
-              >
-                <PlayerIcon name={vol === 0 ? 'volume-mute' : vol < 0.4 ? 'volume-low' : 'volume'} size={15} />
-              </button>
-              {#if showVolPopup}
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div class="fixed inset-0 z-[10001]" onclick={() => showVolPopup = false}></div>
-                <div class="absolute bottom-9 left-1/2 -translate-x-1/2 w-9 py-2.5 bg-[var(--card-bg-solid,#1e293b)] border border-[var(--border-color,rgba(255,255,255,0.15))] rounded-2xl shadow-xl z-[10002] flex flex-col items-center gap-1.5 backdrop-blur-xl">
-                  <span class="text-[10px] font-mono text-[var(--text-muted)]">{Math.round(vol * 100)}%</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.02"
-                    bind:value={vol}
-                    class="w-1.5 h-20 accent-red-500 cursor-pointer"
-                    style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
-                  />
-                  <PlayerIcon name={vol === 0 ? 'volume-mute' : 'volume'} size={13} class="text-[var(--text-secondary)]" />
-                </div>
-              {/if}
-            </div>
-          {/if}
-
           <button
             type="button"
             class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-red-400 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
@@ -256,17 +224,17 @@
   <PlayerProgressBar
     {curTime}
     {duration}
-    {progressRatio}
+    progressRatio={progressRatio}
     {onSeek}
     skinId={skin.current}
   />
 
-  <!-- 2.3 第三排：5个控制按键 -->
-  <div class="flex items-center justify-between w-full px-2">
+  <!-- 2.3 第三排：5个控制按键 (精致紧凑版) -->
+  <div class="flex items-center justify-between w-full px-2 py-0.5">
     <button
       data-testid="btn-toggle-mode"
       type="button"
-      class="w-8.5 h-8.5 flex items-center justify-center transition-all cursor-pointer {skin.current === 'winamp'
+      class="w-8 h-8 flex items-center justify-center transition-all cursor-pointer {skin.current === 'winamp'
         ? 'rounded-xs bg-[#252a33] border-t border-l border-white/20 border-b-2 border-r-2 border-black/80 text-neutral-300'
         : skin.current === 'cassette'
           ? 'rounded-md bg-[#22262d] border border-neutral-700 text-neutral-400'
@@ -278,12 +246,12 @@
       onclick={onToggleMode}
       title={playMode === 'single' ? t('player.repeatOne') : (playMode === 'shuffle' ? t('player.shuffle') : t('player.repeatAll'))}
     >
-      <PlayerIcon name={playMode === 'single' ? 'repeat-1' : (playMode === 'shuffle' ? 'shuffle' : 'repeat')} size={18} />
+      <PlayerIcon name={playMode === 'single' ? 'repeat-1' : (playMode === 'shuffle' ? 'shuffle' : 'repeat')} size={16} />
     </button>
     <button
       data-testid="btn-prev-track"
       type="button"
-      class="w-10 h-10 flex items-center justify-center transition-all cursor-pointer {skin.current === 'winamp'
+      class="w-8.5 h-8.5 flex items-center justify-center transition-all cursor-pointer {skin.current === 'winamp'
         ? 'rounded-xs bg-gradient-to-b from-[#343a46] to-[#20242b] border-t border-l border-white/30 border-b-2 border-r-2 border-black/90 text-neutral-200'
         : skin.current === 'cassette'
           ? 'rounded-md bg-[#252930] border border-neutral-600 text-neutral-300'
@@ -298,34 +266,34 @@
       {#if skin.current === 'winamp'}
         <span class="text-xs font-mono font-bold leading-none">|◀</span>
       {:else}
-        <PlayerIcon name="prev" size={20} />
+        <PlayerIcon name="prev" size={18} />
       {/if}
     </button>
     <button
       data-testid="btn-play-pause"
       type="button"
       class="flex items-center justify-center transition-all cursor-pointer {skin.current === 'winamp'
-        ? 'w-11 h-9 rounded-xs bg-gradient-to-b from-[#3d4553] to-[#1c2027] border-t-2 border-l-2 border-white/40 border-b-2 border-r-2 border-black text-amber-400'
+        ? 'w-10 h-8 rounded-xs bg-gradient-to-b from-[#3d4553] to-[#1c2027] border-t-2 border-l-2 border-white/40 border-b-2 border-r-2 border-black text-amber-400'
         : skin.current === 'cassette'
-          ? 'w-11 h-10 rounded-md bg-[#2d323b] border-2 border-neutral-500 text-emerald-400'
+          ? 'w-10 h-8.5 rounded-md bg-[#2d323b] border-2 border-neutral-500 text-emerald-400'
           : skin.current === 'aurora'
-            ? 'w-12 h-12 rounded-full bg-gradient-to-r from-[var(--skin-accent,#ef4444)] to-[var(--skin-dominant,#6366f1)] text-white shadow-[0_0_16px_var(--skin-glow,rgba(239,68,68,0.5))]'
+            ? 'w-10 h-10 rounded-full bg-gradient-to-r from-[var(--skin-accent,#ef4444)] to-[var(--skin-dominant,#6366f1)] text-white shadow-[0_0_12px_var(--skin-glow,rgba(239,68,68,0.5))]'
             : skin.current === 'spring'
-              ? 'w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/40'
-              : 'w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40'}"
+              ? 'w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/40'
+              : 'w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md shadow-red-500/40'}"
       onclick={onTogglePlay}
       title={playing ? t('player.pause') : t('player.play')}
     >
       {#if skin.current === 'winamp'}
         <span class="text-xs font-mono font-bold leading-none">{playing ? '❚❚' : '▶'}</span>
       {:else}
-        <PlayerIcon name={playing ? 'pause' : 'play'} size={24} />
+        <PlayerIcon name={playing ? 'pause' : 'play'} size={20} />
       {/if}
     </button>
     <button
       data-testid="btn-next-track"
       type="button"
-      class="w-10 h-10 flex items-center justify-center transition-all cursor-pointer {skin.current === 'winamp'
+      class="w-8.5 h-8.5 flex items-center justify-center transition-all cursor-pointer {skin.current === 'winamp'
         ? 'rounded-xs bg-gradient-to-b from-[#343a46] to-[#20242b] border-t border-l border-white/30 border-b-2 border-r-2 border-black/90 text-neutral-200'
         : skin.current === 'cassette'
           ? 'rounded-md bg-[#252930] border border-neutral-600 text-neutral-300'
@@ -340,20 +308,20 @@
       {#if skin.current === 'winamp'}
         <span class="text-xs font-mono font-bold leading-none">▶|</span>
       {:else}
-        <PlayerIcon name="next" size={20} />
+        <PlayerIcon name="next" size={18} />
       {/if}
     </button>
     <!-- ❤️ 红心按钮 -->
     <button
       type="button"
-      class="w-8.5 h-8.5 rounded-full flex items-center justify-center bg-[var(--btn-slot-bg)] border active:scale-95 transition-all cursor-pointer
+      class="w-8 h-8 rounded-full flex items-center justify-center bg-[var(--btn-slot-bg)] border active:scale-95 transition-all cursor-pointer
         {isLiked
           ? 'border-red-500/40 text-red-500'
           : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-400 hover:border-red-400/30'}"
       onclick={onToggleLike}
       title={isLiked ? t('player.likeRemove') : t('player.likeAdd')}
     >
-      <PlayerIcon name="heart" liked={isLiked} size={18} />
+      <PlayerIcon name="heart" liked={isLiked} size={16} />
     </button>
   </div>
 </div>

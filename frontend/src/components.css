@@ -441,7 +441,7 @@
 
     /* 📱 移动端底栏与吸顶播放器无缝吸附系统 (消除悬空黑缝与底部过大留白) */
     :root {
-        --mobile-nav-height: calc(44px + max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)));
+        --mobile-nav-height: calc(40px + max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)));
     }
 
     .mobile-bottom-tab-bar {
