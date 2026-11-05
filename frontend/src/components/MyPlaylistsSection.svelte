@@ -133,6 +133,14 @@
   <div class="flex items-center justify-between gap-1.5 mb-2.5">
     <div class="flex gap-1.5 items-center flex-wrap">
       <button
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
+        class:ring-2={playlistFilter === 'all'}
+        class:ring-slate-400={playlistFilter === 'all'}
+        onclick={() => loadMyPlaylists('all')}
+      >
+        {t('myPlaylists.tabAll')}
+      </button>
+      <button
         class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'created'}
         class:ring-sky-400={playlistFilter === 'created'}
@@ -147,14 +155,6 @@
         onclick={() => loadMyPlaylists('subscribed')}
       >
         {t('myPlaylists.tabSubscribed')}<span class="hidden sm:inline">{t('myPlaylists.tabSubscribedFull')}</span>
-      </button>
-      <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
-        class:ring-2={playlistFilter === 'all'}
-        class:ring-slate-400={playlistFilter === 'all'}
-        onclick={() => loadMyPlaylists('all')}
-      >
-        {t('myPlaylists.tabAll')}
       </button>
     </div>
 

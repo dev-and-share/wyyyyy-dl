@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { t } from '../../lib/i18n';
   import {
     myPlaylists,
@@ -64,14 +64,17 @@
 
   const filteredPlaylists = $derived(() => {
     const kw = searchKeyword.trim();
-    let list = myPlaylists;
-    if (filter === 'created') list = list.filter(p => !p.subscribed);
-    if (filter === 'subscribed') list = list.filter(p => p.subscribed);
+    const curFilter = filter;
+    return untrack(() => {
+      let list = myPlaylists;
+      if (curFilter === 'created') list = list.filter(p => !p.subscribed);
+      if (curFilter === 'subscribed') list = list.filter(p => p.subscribed);
 
-    if (kw) {
-      list = list.filter(p => matchesKeyword(p.name, kw));
-    }
-    return sortPlaylistsByPlayCount(list);
+      if (kw) {
+        list = list.filter(p => matchesKeyword(p.name, kw));
+      }
+      return sortPlaylistsByPlayCount(list);
+    });
   });
 </script>
 

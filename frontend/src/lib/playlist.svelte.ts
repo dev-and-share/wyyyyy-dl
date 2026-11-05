@@ -7,7 +7,7 @@ import { playlistService } from './playlistService';
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
 export const playlistState = $state({
-  filter: 'created' as any,
+  filter: 'all' as any,
   playlist: null as any,
   curPage: 1,
   loading: false,
@@ -57,17 +57,26 @@ export function hasMoreTracks(): boolean {
   return playlistState.curPage < _totalPages;
 }
 
-export async function loadMyPlaylists(f:any=playlistState.filter){
-  playlistState.filter=f;
-  const cached=getApiCache('my_playlists');
-  if(cached?.data?.playlists){ myPlaylists.length=0; myPlaylists.push(...cached.data.playlists); }
+export async function loadMyPlaylists(f: any = playlistState.filter) {
+  playlistState.filter = f;
+  const cached = getApiCache('my_playlists');
+  if (cached?.data?.playlists) {
+    myPlaylists.length = 0;
+    myPlaylists.push(...cached.data.playlists);
+  }
   if (typeof api?.myPlaylist !== 'function') return;
-  try{
-    const j=await api.myPlaylist();
-    if(j?.code && j.code!=='000000') throw new Error(j.msg);
-    const pls=j?.data?.playlists||[];
-    if(JSON.stringify(pls)!==JSON.stringify(cached?.data?.playlists||[])){ setApiCache('my_playlists', j.data); myPlaylists.length=0; myPlaylists.push(...pls); }
-  }catch(e){ throw e; }
+  try {
+    const j = await api.myPlaylist();
+    if (j?.code && j.code !== '000000') throw new Error(j.msg);
+    const pls = j?.data?.playlists || [];
+    if (JSON.stringify(pls) !== JSON.stringify(cached?.data?.playlists || [])) {
+      setApiCache('my_playlists', j.data);
+      myPlaylists.length = 0;
+      myPlaylists.push(...pls);
+    }
+  } catch (e) {
+    throw e;
+  }
 }
 export function updatePlaylistTrackCount(playlistId: string | number, deltaOrCount: number, isAbsolute = false) {
   if (!playlistId) return;

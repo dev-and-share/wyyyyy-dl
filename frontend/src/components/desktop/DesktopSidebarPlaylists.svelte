@@ -78,10 +78,11 @@
 </script>
 
 <div class="flex-1 min-h-0 flex flex-col px-2 py-2 gap-1 overflow-hidden">
-  <!-- 1. 过滤胶囊选择器：全部 | 我创建的 | 我收藏的 -->
+  <!-- 1. 过滤胶囊选择器：全部 | 自建 | 收藏 -->
   <div class="flex items-center gap-1 p-0.5 rounded-lg bg-[var(--btn-secondary-bg)]/80 shrink-0 text-[10px]">
     <button
       type="button"
+      data-testid="sidebar-filter-all"
       class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'all' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
       onclick={() => filterMode = 'all'}
     >
@@ -89,6 +90,7 @@
     </button>
     <button
       type="button"
+      data-testid="sidebar-filter-created"
       class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'created' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
       onclick={() => filterMode = 'created'}
     >
@@ -96,6 +98,7 @@
     </button>
     <button
       type="button"
+      data-testid="sidebar-filter-subscribed"
       class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'subscribed' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
       onclick={() => filterMode = 'subscribed'}
     >

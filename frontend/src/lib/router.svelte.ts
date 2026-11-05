@@ -9,7 +9,7 @@ function getInitialTab(): ActiveTab {
 
 function getInitialPlaylistId(): string {
   if (typeof window === 'undefined') return '';
-  return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
+  return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || '';
 }
 
 const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyyyy_sidebar_collapsed';
