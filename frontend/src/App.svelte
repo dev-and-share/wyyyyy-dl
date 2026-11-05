@@ -169,8 +169,8 @@
         onOpenSettings={openSettings}
       />
 
-      <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；PC 模式下减少冗余内边距) -->
-      <div class="flex flex-col gap-1 md:gap-3 pb-[140px] md:pb-[80px] lg:pb-4">
+      <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；移动端统一预留 px-3.5 黄金呼吸边距，消灭死贴屏幕边缘) -->
+      <div class="flex flex-col gap-1 md:gap-3 px-3.5 sm:px-4 md:px-0 pb-[140px] md:pb-[80px] lg:pb-4">
     <!-- 📁 歌单 Tab -->
     <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">
       <!-- 💻 PC 桌面端专属：去手风琴画廊与宽屏大表格 (>= 1024px) -->
@@ -265,11 +265,6 @@
         />
       </div>
     </div>
-
-    <!-- 底部低调版本号 (移动端展示，PC 桌面端已移至左侧边栏底部) -->
-    <footer class="text-center text-[11px] text-[var(--text-muted)] font-mono py-3 select-none opacity-40 hover:opacity-80 transition-opacity lg:hidden">
-      {t('app.name')} · PWA v{__APP_VERSION__}
-    </footer>
   </div>
   </div>
   </div>
