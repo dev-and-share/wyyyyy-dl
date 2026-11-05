@@ -152,7 +152,7 @@ export default {
   'cache.cleanThresholdTooltip': '清理阈值（少于此次数将被清理）',
   'cache.clearAllTooltip': '清空全部离线缓存',
   'cache.sortRule': '排序规则：播放次数 ↓ > 缓存时间 ↓ (高频先听，越新越前)',
-  'cache.totalOfflineTracks': '共 {count} 首离线',
+  'cache.totalOfflineTracks': '{count} 首 / {size}',
   'cache.storedOnDeviceTooltip': '已存储在当前手机/浏览器',
   'cache.playCountTooltip': '累计播放 {count} 次',
   'cache.playCountLabel': '🎧 {count}次',

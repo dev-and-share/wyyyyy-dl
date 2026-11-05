@@ -152,7 +152,7 @@ export default {
   'cache.cleanThresholdTooltip': '整理のしきい値（この回数未満が削除されます）',
   'cache.clearAllTooltip': 'すべてのオフラインキャッシュを消去',
   'cache.sortRule': '並び順：再生回数 ↓ > キャッシュ日時 ↓',
-  'cache.totalOfflineTracks': '全 {count} 曲オフライン',
+  'cache.totalOfflineTracks': '{count} 曲 / {size}',
   'cache.storedOnDeviceTooltip': 'この端末 / ブラウザに保存済み',
   'cache.playCountTooltip': '累計再生 {count} 回',
   'cache.playCountLabel': '🎧 {count}回',

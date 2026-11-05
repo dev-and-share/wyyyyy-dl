@@ -152,7 +152,7 @@ export default {
   'cache.cleanThresholdTooltip': '정리 기준 (이 횟수 미만은 정리됨)',
   'cache.clearAllTooltip': '모든 오프라인 캐시 비우기',
   'cache.sortRule': '정렬: 재생 횟수 ↓ > 캐시 일시 ↓',
-  'cache.totalOfflineTracks': '총 {count}곡 오프라인',
+  'cache.totalOfflineTracks': '{count}곡 / {size}',
   'cache.storedOnDeviceTooltip': '현재 기기 / 브라우저에 저장됨',
   'cache.playCountTooltip': '누적 재생 {count}회',
   'cache.playCountLabel': '🎧 {count}회',

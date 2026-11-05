@@ -184,40 +184,43 @@
 </script>
 
 <AccordionCard title={t('cache.accordionTitle')} bind:open {flat} accent="emerald">
-  <!-- Stats & Control Bar -->
+  <!-- Stats & Control Bar (极简两行操作卡片：首行纯按钮操作，首数与体积精简移至下方状态栏) -->
   <div class="cache-stat-bar">
     <div class="stat-top-row">
-      <div class="stat-info">
-        <span>{t('cache.cachedCount', { count: browserCacheList.length })}</span>
-        <span class="stat-divider">·</span>
-        <span>{t('cache.sizeTotal', { size: browserCacheBytes ? formatBytes(browserCacheBytes) : '-' })}</span>
-      </div>
+      <button
+        type="button"
+        class="btn-secondary cache-action-btn"
+        onclick={loadList}
+        disabled={browserCacheLoading}
+        title={t('cache.rescanTooltip')}
+      >
+        {browserCacheLoading ? t('cache.scanning') : '🔄 ' + t('common.refresh')}
+      </button>
 
-      <div class="stat-top-actions">
-        <button
-          type="button"
-          class="btn-secondary cache-action-btn"
-          onclick={loadList}
-          disabled={browserCacheLoading}
-          title={t('cache.rescanTooltip')}
-        >
-          {browserCacheLoading ? t('cache.scanning') : '🔄 ' + t('common.refresh')}
-        </button>
+      <!-- Auto Cache Checkbox -->
+      <label class="auto-cache-toggle" title={t('cache.autoCacheTooltip')}>
+        <input
+          type="checkbox"
+          checked={autoCacheState.enabled}
+          onchange={(e) => {
+            const val = (e.currentTarget as HTMLInputElement).checked;
+            setAutoCacheEnabled(val);
+            showToast(val ? t('cache.autoCacheEnabled') : t('cache.autoCacheDisabled'), 'info', 1500);
+          }}
+        />
+        <span class="font-medium text-[var(--text-main)]">{t('cache.autoCacheTitle')}</span>
+      </label>
 
-        <!-- Auto Cache Checkbox -->
-        <label class="auto-cache-toggle" title={t('cache.autoCacheTooltip')}>
-          <input
-            type="checkbox"
-            checked={autoCacheState.enabled}
-            onchange={(e) => {
-              const val = (e.currentTarget as HTMLInputElement).checked;
-              setAutoCacheEnabled(val);
-              showToast(val ? t('cache.autoCacheEnabled') : t('cache.autoCacheDisabled'), 'info', 1500);
-            }}
-          />
-          <span class="font-medium text-[var(--text-main)]">{t('cache.autoCacheTitle')}</span>
-        </label>
-      </div>
+      <!-- 🗑️ 清空按钮紧凑同行右侧或并列展示 -->
+      <button
+        type="button"
+        class="btn-secondary cache-action-btn btn-danger"
+        onclick={handleClearAll}
+        disabled={browserCacheLoading || browserCacheList.length === 0}
+        title={t('cache.clearAllTooltip')}
+      >
+        🗑️ {t('common.clear')}
+      </button>
     </div>
 
     <div class="stat-actions-row">
@@ -276,26 +279,31 @@
         />
         <span class="clean-unit-text">{t('cache.unitTimes')}</span>
       </div>
-
-      <button
-        type="button"
-        class="btn-secondary cache-action-btn btn-danger"
-        onclick={handleClearAll}
-        disabled={browserCacheLoading || browserCacheList.length === 0}
-        title={t('cache.clearAllTooltip')}
-      >
-        🗑️ {t('common.clear')}
-      </button>
     </div>
   </div>
 
-  <!-- Sorting Hint -->
-  <div class="cache-sort-hint-bar">
-    <div class="hint-text-wrap">
+  <!-- Sorting Hint (SP 移动端紧凑展示，避免长文折行) -->
+  <div class="cache-sort-hint-bar flex items-center justify-between text-[11px] text-[var(--text-muted)] py-1 px-1">
+    <div class="flex items-center gap-1.5 min-w-0" title={t('cache.sortRule')}>
       <span class="hint-icon">📌</span>
-      <span class="hint-label">{t('cache.sortRule')}</span>
+      <span class="hint-label hidden sm:inline truncate">{t('cache.sortRule')}</span>
+      <button
+        type="button"
+        class="inline sm:hidden text-[11px] text-[var(--text-secondary)] opacity-80 cursor-help bg-transparent border-none p-0"
+        onclick={() => showToast?.(t('cache.sortRule'), 'info', 3000)}
+      >
+        高频优先 · 越新越前 ℹ️
+      </button>
     </div>
-    <span class="hint-badge">{t('cache.totalOfflineTracks', { count: browserCacheList.length })}</span>
+    <span
+      class="hint-badge whitespace-nowrap shrink-0 ml-2 font-mono text-[11px]"
+      title={t('cache.cachedCount', { count: browserCacheList.length }) + ' · ' + t('cache.sizeTotal', { size: browserCacheBytes ? formatBytes(browserCacheBytes) : '0 B' })}
+    >
+      {t('cache.totalOfflineTracks', {
+        count: browserCacheList.length,
+        size: browserCacheBytes ? formatBytes(browserCacheBytes) : '0 B'
+      })}
+    </span>
   </div>
 
   <!-- Offline Cache Track List -->
@@ -371,10 +379,7 @@
     margin-bottom: 8px;
     font-size: 13px;
   }
-  .stat-top-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .stat-info { display: inline-flex; align-items: center; gap: 6px; }
-  .stat-divider { color: var(--text-muted); opacity: 0.6; }
-  .stat-top-actions { display: inline-flex; align-items: center; gap: 6px; }
+  .stat-top-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
   .auto-cache-toggle {
     display: inline-flex;
     align-items: center;
@@ -428,7 +433,6 @@
     font-size: 11px;
     color: var(--text-secondary);
   }
-  .hint-text-wrap { display: inline-flex; align-items: center; gap: 4px; }
   .hint-badge {
     background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.06));
     padding: 1px 6px;
