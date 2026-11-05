@@ -6,6 +6,12 @@ import { musicFreeAdapter } from '../../adapters/musicFreeAdapter';
 describe('MusicFreeSheetsTab full flow test', () => {
   it('loads plugins, tags, sheets and selects a sheet without error', async () => {
     try {
+      const withTimeout = <T>(promise: Promise<T>, ms = 4000): Promise<T> =>
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Network timeout')), ms))
+        ]);
+
       const emptyIds = new Set<string>();
       const sheetPlugins = filterAndSortSheetPlugins(musicFreeStore.plugins, emptyIds);
       expect(sheetPlugins.length).toBeGreaterThanOrEqual(2);
@@ -14,8 +20,8 @@ describe('MusicFreeSheetsTab full flow test', () => {
       expect(qq).toBeDefined();
       const pluginId = qq!.id;
 
-      // 1. 获取标签
-      const rawTags = await musicFreeStore.getRecommendSheetTags(pluginId);
+      // 1. 获取标签 (带网络超时兜底)
+      const rawTags = await withTimeout(musicFreeStore.getRecommendSheetTags(pluginId));
       if (!rawTags?.pinned?.length) {
         console.warn('QQ音乐接口未返回标签，可能网络受限，跳过后续步骤');
         return;
@@ -23,7 +29,7 @@ describe('MusicFreeSheetsTab full flow test', () => {
       expect(rawTags.pinned.length).toBeGreaterThan(0);
 
       // 2. 加载歌单列表
-      const sheetsRes = await musicFreeStore.getRecommendSheetsByTag(pluginId, rawTags.pinned[0], 1);
+      const sheetsRes = await withTimeout(musicFreeStore.getRecommendSheetsByTag(pluginId, rawTags.pinned[0], 1));
       if (!sheetsRes?.data?.length) {
         console.warn('QQ音乐接口未返回歌单，可能网络受限，跳过后续步骤');
         return;
@@ -34,7 +40,7 @@ describe('MusicFreeSheetsTab full flow test', () => {
       expect(sheet.id).toBeTruthy();
 
       // 3. 点击歌单详情
-      const detail = await musicFreeStore.getMusicSheetInfo(pluginId, sheet, 1);
+      const detail = await withTimeout(musicFreeStore.getMusicSheetInfo(pluginId, sheet, 1));
       if (!detail?.musicList?.length) {
         return;
       }
@@ -67,9 +73,9 @@ describe('MusicFreeSheetsTab full flow test', () => {
       expect(normalized.id).toContain('mf_');
       expect(normalized.name).toBeTruthy();
     } catch (e: any) {
-      console.warn('QQ音乐外部网络请求失败/被拦截，优雅跳过:', e?.message || e);
+      console.warn('QQ音乐外部网络请求失败/被拦截/超时，优雅跳过:', e?.message || e);
     }
-  }, 20000);
+  }, 10000);
 
   it('preserves isVip attribute and correctly identifies VIP tracks from chartSheetService', async () => {
     const { fetchMusicSheetInfo } = await import('../chartSheetService');
