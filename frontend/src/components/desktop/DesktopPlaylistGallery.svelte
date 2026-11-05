@@ -124,8 +124,8 @@
     {/snippet}
   </DesktopViewHeader>
 
-  <!-- 2. 工具与解析栏：快速链接/ID 解析 + 歌单本地关键词筛选 (右侧 lg:pr-[220px] 避让浮动控制胶囊) -->
-  <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm lg:pr-[220px]">
+  <!-- 2. 工具与解析栏：快速链接/ID 解析 + 歌单本地关键词筛选 -->
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
     <!-- 链接/ID 快捷解析 -->
     <div class="flex items-center gap-2 flex-1 max-w-xl">
       <input

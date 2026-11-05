@@ -26,6 +26,7 @@
   import { downloadPlaylistTrack } from '../../lib/playlistTrackDownloadHelper';
   import { toPlayerTrack } from '../../lib/playerHelper';
   import { t } from '../../lib/i18n';
+  import DesktopHeaderActions from './DesktopHeaderActions.svelte';
 
   let {
     playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
@@ -216,19 +217,23 @@
 
 <!-- 🖥️ PC 桌面端：歌单详情宽屏大表 (Detail View) -->
 <div class="flex flex-col gap-2.5 select-none animate-fade-in" data-testid="desktop-playlist-detail">
-  <!-- 1. 顶部面包屑导航 (与右上角控制胶囊平齐在同一行) -->
-  <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)] min-h-[34px] pr-[215px]">
-    <button
-      type="button"
-      data-testid="btn-back-gallery"
-      class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-main)] border border-[var(--btn-secondary-border)] cursor-pointer transition-colors font-medium shrink-0"
-      onclick={onBackToGallery}
-    >
-      <span>←</span>
-      <span>{isLocalPlaylist(playlistId) ? t('playlist.backToLocalPlaylists') : t('playlist.backToGallery')}</span>
-    </button>
-    <span class="opacity-40 shrink-0">/</span>
-    <span class="truncate font-semibold text-[var(--text-main)]">{isCurrentPlaylistLoaded ? playlist.name : (loadError ? t('common.failed') : t('common.loading'))}</span>
+  <!-- 1. 顶部面包屑导航与全局控制组 -->
+  <div class="flex items-center justify-between gap-3 text-xs text-[var(--text-secondary)] min-h-[34px] pb-1 border-b border-[var(--border-subtle)]">
+    <div class="flex items-center gap-2 min-w-0">
+      <button
+        type="button"
+        data-testid="btn-back-gallery"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-main)] border border-[var(--btn-secondary-border)] cursor-pointer transition-colors font-medium shrink-0"
+        onclick={onBackToGallery}
+      >
+        <span>←</span>
+        <span>{isLocalPlaylist(playlistId) ? t('playlist.backToLocalPlaylists') : t('playlist.backToGallery')}</span>
+      </button>
+      <span class="opacity-40 shrink-0">/</span>
+      <span class="truncate font-semibold text-[var(--text-main)]">{isCurrentPlaylistLoaded ? playlist.name : (loadError ? t('common.failed') : t('common.loading'))}</span>
+    </div>
+
+    <DesktopHeaderActions />
   </div>
 
   {#if isCurrentPlaylistLoaded}

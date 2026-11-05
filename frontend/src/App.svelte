@@ -9,7 +9,7 @@
   import { likeState, initLikeList, toggleLike } from './lib/likeStore.svelte';
   import { taskState, startTaskPolling, initDownloadedSet, getActiveDownloadingCount } from './lib/taskStore.svelte';
   import { fetchGeoProxyConfig } from './lib/geoProxyStore.svelte';
-  import { sheetState } from './lib/ui.svelte';
+  import { sheetState, globalUiState, openSettings, closeSettings, toggleTheme, setThemeMode } from './lib/ui.svelte';
   import { executeReveal } from './lib/revealHelper';
   import { playPlaylistTracks } from './lib/playerHelper';
   import type { SetQueueOptions } from './lib/playerStore.svelte';
@@ -38,10 +38,10 @@
 
   // ---------- 全局状态 ----------
   let repeat = $state(false);
-  let themeMode: ThemeMode = $state(getInitialTheme());
+  let themeMode = $derived(globalUiState.themeMode);
   let revealData: { path: string; msg: string } | null = $state(null);
   let viewingSongId: string | null = $state(null);
-  let showSettings = $state(false);
+  let showSettings = $derived(globalUiState.showSettings);
   let showPlayerPeq = $state(false);
   let isPlayerMinimized = $state(false);
 
@@ -70,13 +70,8 @@
     }
   }
 
-  function toggleTheme() {
-    themeMode = themeMode === 'dark' ? 'light' : themeMode === 'light' ? 'auto' : 'dark';
-    applyTheme(themeMode);
-  }
-
   onMount(() => {
-    applyTheme(themeMode);
+    applyTheme(globalUiState.themeMode);
     const stopRouter = initRouter();
     const stopLayout = initLayoutWatcher();
     startTaskPolling();
@@ -171,7 +166,7 @@
         onToggleTheme={toggleTheme}
         onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
         onRefresh={handleRefresh}
-        onOpenSettings={() => showSettings = true}
+        onOpenSettings={openSettings}
       />
 
       <!-- 内容区 (3 个 Tab 保持常驻 DOM，零重绘、零抖动、瞬时切换；PC 模式下减少冗余内边距) -->
@@ -319,9 +314,9 @@
     {repeat}
     {themeMode}
     onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
-    onSelectTheme={(mode) => { themeMode = mode; applyTheme(mode); }}
+    onSelectTheme={(mode) => setThemeMode(mode)}
     onOpenPeq={() => { showPlayerPeq = true; }}
-    onClose={() => showSettings = false}
+    onClose={() => closeSettings()}
     {showToast}
   />
 {/if}

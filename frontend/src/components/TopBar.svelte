@@ -26,40 +26,7 @@
 </script>
 
 <!-- 顶栏 (TopBar) -->
-{#if isDesktopLayout}
-  <!-- 💻 PC 桌面侧边栏模式：右上角极简控制图标 (只有 icon，hover 悬停时才有反馈) -->
-  <header class="hidden lg:flex absolute right-4 top-4 z-20 items-center justify-end select-none pointer-events-auto wco-no-drag" data-testid="desktop-top-bar">
-    <div class="flex items-center gap-1">
-      <a
-        href="/minimal-player.html"
-        class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200 no-underline"
-        title="极简锁屏播放测试"
-      >
-        🧪
-      </a>
-
-      <button
-        data-testid="btn-toggle-theme"
-        class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"
-        onclick={onToggleTheme}
-        title={t('topbar.toggleTheme')}
-      >
-        {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
-      </button>
-
-      {#if onOpenSettings}
-        <button
-          data-testid="btn-open-settings"
-          class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200"
-          onclick={onOpenSettings}
-          title={t('topbar.settings')}
-        >
-          ⚙️
-        </button>
-      {/if}
-    </div>
-  </header>
-{:else}
+{#if !isDesktopLayout}
   <!-- 📱 移动端：标准顶栏 (撑满两端对齐，支持 PWA 顶栏拖拽与安全区) -->
   <div class="w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region">
     <!-- svelte-ignore a11y_click_events_have_key_events -->

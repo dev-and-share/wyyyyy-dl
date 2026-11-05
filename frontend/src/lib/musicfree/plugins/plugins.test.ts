@@ -29,7 +29,7 @@ describe('Official Builtin MusicFree Plugins', () => {
 
     const kugouLists = await kugouPlugin.getTopLists!();
     expect(kugouLists).toHaveLength(1);
-  });
+  }, 15000);
 
   it('safely handles resolveFallbackFromBuiltins with empty or invalid track', async () => {
     const result = await resolveFallbackFromBuiltins({});

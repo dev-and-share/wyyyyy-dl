@@ -223,8 +223,8 @@
     {/snippet}
   </DesktopViewHeader>
 
-  <!-- 2. 状态与维护工具条 (右侧 lg:pr-[220px] 避让浮动控制胶囊) -->
-  <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs lg:pr-[220px]">
+  <!-- 2. 状态与维护工具条 -->
+  <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs">
     <div class="flex items-center gap-3 flex-wrap">
       {#if (histStats?.missingCount ?? 0) > 0}
         <span class="text-amber-400 font-medium bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">

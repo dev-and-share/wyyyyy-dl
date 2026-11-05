@@ -10,6 +10,11 @@ vi.mock('../api', () => ({
   }
 }));
 
+vi.mock('../musicfree/plugins', () => ({
+  resolveFallbackFromBuiltins: vi.fn().mockResolvedValue(null),
+  builtinPlugins: []
+}));
+
 describe('playerHelper URL resolution & preload contracts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
