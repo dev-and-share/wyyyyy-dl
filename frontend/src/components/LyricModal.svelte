@@ -93,6 +93,7 @@
   }
 
   // 📱 下拉阻尼手势关闭 (Swipe-down to Dismiss)
+  let modalContainerEl = $state<HTMLDivElement | null>(null);
   let touchStartY = 0;
   let touchStartX = 0;
   let dragOffsetY = $state(0);
@@ -101,29 +102,19 @@
 
   function handleTouchStart(e: TouchEvent) {
     if (e.touches.length !== 1) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button, input, select, textarea, .interactive-el')) {
+      return;
+    }
+    const lyricScrollEl = target?.closest('#lyricModalContent') as HTMLElement | null;
+    if (lyricScrollEl && lyricScrollEl.scrollTop > 5) {
+      return;
+    }
     touchStartY = e.touches[0].clientY;
     touchStartX = e.touches[0].clientX;
     isDragging = true;
     isSwipeDownGesture = false;
     kickHideTimer();
-  }
-
-  function handleTouchMove(e: TouchEvent) {
-    if (!isDragging || e.touches.length !== 1) return;
-    const currentY = e.touches[0].clientY;
-    const currentX = e.touches[0].clientX;
-    const deltaY = currentY - touchStartY;
-    const deltaX = currentX - touchStartX;
-
-    // 仅在明确是向下拉动且纵向移动显著大于横向移动时触发阻尼
-    if (deltaY > 5 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
-      isSwipeDownGesture = true;
-      // 阻尼公式：位移越大阻尼感越强
-      dragOffsetY = Math.pow(deltaY, 0.88);
-      if (dragOffsetY > 0 && e.cancelable) {
-        e.preventDefault();
-      }
-    }
   }
 
   function handleTouchEnd() {
@@ -169,6 +160,38 @@
   onMount(() => {
     kickHideTimer();
 
+    // 🛡️ 锁定根节点与底层视图滚动，彻底杜绝 iOS / PWA 双层橡皮筋穿透下拉
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyOverscroll = document.body.style.overscrollBehavior;
+    const prevBodyTouchAction = document.body.style.touchAction;
+    document.documentElement.style.overscrollBehavior = 'none';
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+    document.body.style.touchAction = 'none';
+
+    // 📱 显式在捕获阶段以 non-passive 绑定 touchmove，确保 e.preventDefault() 100% 拦截视口下拉
+    const onTouchMoveNonPassive = (e: TouchEvent) => {
+      if (!isDragging || e.touches.length !== 1) return;
+      const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
+      const deltaY = currentY - touchStartY;
+      const deltaX = currentX - touchStartX;
+
+      // 只要发生明显纵向下划趋势，无论速度多快，立即强力阻止 PWA 视口弹跳
+      if (deltaY > 0 && Math.abs(deltaY) > Math.abs(deltaX) * 0.7) {
+        isSwipeDownGesture = true;
+        if (e.cancelable) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        // 平滑阻尼位移
+        dragOffsetY = Math.pow(deltaY, 0.85);
+      }
+    };
+
+    window.addEventListener('touchmove', onTouchMoveNonPassive, { passive: false, capture: true });
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showSkinPicker) {
@@ -179,8 +202,14 @@
       }
     };
     window.addEventListener('keydown', handleKey);
+
     return () => {
       clearTimeout(hideTimer);
+      document.documentElement.style.overscrollBehavior = prevHtmlOverscroll;
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.overscrollBehavior = prevBodyOverscroll;
+      document.body.style.touchAction = prevBodyTouchAction;
+      window.removeEventListener('touchmove', onTouchMoveNonPassive, { capture: true });
       window.removeEventListener('keydown', handleKey);
     };
   });
@@ -189,11 +218,11 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)] transition-colors duration-500 text-white"
-  style="{skin.cssVars} color-scheme: dark; transform: translateY({dragOffsetY}px); transition: {isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.3s'}; opacity: {1 - Math.min(dragOffsetY / 420, 0.5)};"
+  bind:this={modalContainerEl}
+  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)] transition-colors duration-500 text-white overscroll-none touch-none"
+  style="{skin.cssVars} color-scheme: dark; transform: translateY({dragOffsetY}px); transition: {isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.3s'}; opacity: {1 - Math.min(dragOffsetY / 420, 0.5)}; overscroll-behavior: none; touch-action: none; -webkit-overflow-scrolling: auto;"
   onclick={toggleUi}
   ontouchstart={handleTouchStart}
-  ontouchmove={handleTouchMove}
   ontouchend={handleTouchEnd}
   ontouchcancel={handleTouchEnd}
 >

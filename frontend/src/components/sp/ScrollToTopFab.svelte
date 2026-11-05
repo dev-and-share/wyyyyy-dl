@@ -45,12 +45,12 @@
 </script>
 
 {#if visible}
-  <!-- 📱 滚动回顶 FAB (悬浮于播放器与底栏上方，克制优雅) -->
+  <!-- 📱 滚动回顶 FAB (悬浮于播放器与底栏上方，克制优雅，横线正好穿过 icon 中心) -->
   <button
     type="button"
     data-testid="btn-scroll-top-fab"
-    class="fixed right-3.5 z-[9998] w-9 h-9 rounded-full flex items-center justify-center bg-black/60 dark:bg-neutral-800/85 backdrop-blur-xl border border-white/20 text-white/90 shadow-xl hover:text-white hover:scale-105 active:scale-90 transition-all duration-300 cursor-pointer {isIdle ? 'opacity-40 hover:opacity-100' : 'opacity-100'}"
-    style="bottom: calc(var(--mobile-nav-height, 48px) + {hasPlayer ? '94px' : '16px'});"
+    class="fixed right-3.5 z-[9998] w-8.5 h-8.5 rounded-full flex items-center justify-center bg-black/65 dark:bg-neutral-800/90 backdrop-blur-xl border border-white/20 text-white/90 shadow-xl hover:text-white hover:scale-105 active:scale-90 transition-all duration-300 cursor-pointer {isIdle ? 'opacity-35 hover:opacity-100' : 'opacity-100'}"
+    style="bottom: calc(var(--mobile-nav-height, 40px) + {hasPlayer ? '112px' : '20px'});"
     onclick={() => {
       scrollToPageTop();
       visible = false;
@@ -58,7 +58,7 @@
     aria-label="回到顶部"
     title="回到顶部"
   >
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="18 15 12 9 6 15"></polyline>
     </svg>
   </button>
