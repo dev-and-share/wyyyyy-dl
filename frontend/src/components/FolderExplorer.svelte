@@ -108,28 +108,34 @@
 </script>
 
 <div>
-  <!-- Root Selection -->
-  <div class="flex gap-1.5 flex-wrap mb-2.5">
-    {#each roots as r}
-      <button
-        type="button"
-        class="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all {curRoot?.path === r.path ? 'btn-primary' : 'btn-secondary'}"
-        onclick={() => selectRoot(r)}
-      >
-        {r.name.includes('外部') || r.name.toLowerCase().includes('external') ? '📦 ' + r.name : '📁 ' + r.name} <!-- i18n-ignore: badge icon -->
-      </button>
-    {/each}
-  </div>
+  <!-- 根目录选择与全局搜索整合行 (紧凑同行布局，充分利用右侧横向空间) -->
+  <div class="flex items-center gap-2 mb-2">
+    {#if roots.length > 0}
+      <div class="flex gap-1.5 shrink-0 overflow-x-auto max-w-[50%]">
+        {#each roots as r}
+          <button
+            type="button"
+            class="px-2.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all shrink-0 whitespace-nowrap {curRoot?.path === r.path ? 'btn-primary' : 'btn-secondary'}"
+            onclick={() => selectRoot(r)}
+          >
+            {r.name.includes('外部') || r.name.toLowerCase().includes('external') ? '📦 ' + r.name : '📁 ' + r.name} <!-- i18n-ignore: badge icon -->
+          </button>
+        {/each}
+      </div>
+    {/if}
 
-  <!-- Global Tree Control and Search Bar -->
-  <div class="mb-2.5 flex flex-col gap-2">
-    <div class="w-full">
+    <div class="flex-1 min-w-0">
       <LocalSearchBox
         bind:value={filterKw}
         placeholder={t('folder.searchPlaceholder')}
         historyKey="wyyyy_folder_search_history"
+        hideIcon={true}
       />
     </div>
+  </div>
+
+  <!-- Global Tree Control (全部展开 / 折叠 / 刷新) -->
+  <div class="mb-2.5 flex items-center justify-between gap-1.5 flex-wrap">
     <div class="flex gap-1.5 flex-wrap">
       <button
         type="button"

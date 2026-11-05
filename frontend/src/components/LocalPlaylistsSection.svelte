@@ -72,22 +72,34 @@
 </script>
 
 <div class="flex flex-col gap-3 select-none" data-testid="local-playlists-section">
-  <!-- 顶栏：标题与操作栏 -->
-  <div class="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-[var(--border-subtle)]">
-    <div class="flex items-center gap-2">
-      <span class="text-base text-emerald-400">📁</span>
-      <h3 class="font-bold text-sm text-[var(--text-main)]">本地自建歌单</h3>
-      <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
-        {localPlaylistState.playlists.length}
-      </span>
+  <!-- 顶栏：标题与操作栏 (SP 移动端防撑破自适应优化) -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+    <div class="flex items-center justify-between w-full sm:w-auto gap-2">
+      <div class="flex items-center gap-2">
+        <span class="text-base text-emerald-400">📁</span>
+        <h3 class="font-bold text-sm text-[var(--text-main)]">本地自建歌单</h3>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+          {localPlaylistState.playlists.length}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="sm:hidden px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors flex items-center gap-1 shrink-0 active:scale-95"
+        onclick={() => showCreateInput = !showCreateInput}
+      >
+        <span>➕</span>
+        <span>新建歌单</span>
+      </button>
     </div>
 
-    <div class="flex items-center gap-2">
-      <div class="relative">
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+      <div class="relative flex-1 sm:w-48">
         <input
-          type="text"
+          type="search"
+          enterkeyhint="search"
           placeholder="搜索本地歌单..."
-          class="w-36 sm:w-48 pl-6 pr-2 py-1 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-emerald-500 transition-colors"
+          class="w-full pl-6 pr-2 py-1 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-emerald-500 transition-colors"
           bind:value={searchKw}
         />
         <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none">🔍</span>
@@ -95,7 +107,7 @@
 
       <button
         type="button"
-        class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors flex items-center gap-1"
+        class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors items-center gap-1 shrink-0 active:scale-95"
         onclick={() => showCreateInput = !showCreateInput}
       >
         <span>➕</span>
