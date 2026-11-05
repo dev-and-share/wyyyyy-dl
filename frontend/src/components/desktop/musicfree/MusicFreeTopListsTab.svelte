@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
-  import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
+  import { DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../../lib/utils';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, isVipOrPaidTrack } from '../../../lib/player/trackStatus.svelte';
   import { jumpToMusicFreeSearch } from '../../../lib/router.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
@@ -54,8 +54,21 @@
     await loadCharts();
   });
 
-  async function loadCharts() {
-    loading = true;
+  async function loadCharts(force = false) {
+    // 🌟 Local-First 缓存优先：若本地已有榜单结构且非强制刷新，立即秒显数据，无任何 loading 白屏！
+    const cached = getApiCache('mf_toplists_groups');
+    if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
+      topListGroups = cached.data;
+      if (!activePluginId && topListGroups.length > 0) {
+        activePluginId = topListGroups[0].pluginId;
+      }
+      loading = false;
+      const isStale = !cached.timestamp || (Date.now() - cached.timestamp > 3600 * 1000);
+      if (!isStale && !force) return;
+    } else {
+      loading = true;
+    }
+
     try {
       const groups = await musicFreeStore.getTopLists();
       const filtered = groups.filter((g) => {
@@ -74,40 +87,62 @@
         '小云音乐': 84,
         '猫耳FM': 80
       };
-      topListGroups = filtered.sort((a, b) => {
+      const sorted = filtered.sort((a, b) => {
         const wa = priorityWeights[a.pluginName.trim()] || 0;
         const wb = priorityWeights[b.pluginName.trim()] || 0;
         return wb - wa;
       });
-      if (topListGroups.length > 0 && !activePluginId) {
-        activePluginId = topListGroups[0].pluginId;
+      if (sorted.length > 0) {
+        topListGroups = sorted;
+        setApiCache('mf_toplists_groups', sorted);
+        if (!activePluginId) {
+          activePluginId = sorted[0].pluginId;
+        }
       }
     } catch (e: any) {
       console.warn('获取排行榜失败:', e);
-      topListGroups = [];
+      if (!topListGroups.length) topListGroups = [];
     } finally {
       loading = false;
     }
   }
 
-  async function handleSelectChart(pluginId: string, chart: any) {
+  async function handleSelectChart(pluginId: string, chart: any, force = false) {
     if (!chart || (chart.id == null && !chart.topId)) {
       showToast('该榜单缺少有效 ID', 'warning');
       return;
     }
+    const chartId = chart.id ?? chart.topId;
     selectedTopList = { ...chart, _pluginId: pluginId, pluginName: currentGroup?.pluginName || '' };
-    detailLoading = true;
-    chartTracks = [];
+    const cacheKey = `mf_toplist_detail_${pluginId}_${chartId}`;
+    const cached = getApiCache(cacheKey);
+
+    // 🌟 Local-First 榜单曲目秒显：若已有缓存，瞬间呈现
+    if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0 && !force) {
+      chartTracks = cached.data;
+      detailLoading = false;
+      const isStale = !cached.timestamp || (Date.now() - cached.timestamp > 1800 * 1000);
+      if (!isStale) return;
+    } else {
+      detailLoading = true;
+      chartTracks = [];
+    }
+
     try {
       const detail = await musicFreeStore.getTopListDetail(pluginId, chart);
-      chartTracks = Array.isArray(detail?.musicList) ? detail.musicList : (Array.isArray(detail) ? detail : []);
-      if (chartTracks.length === 0) {
+      const list = Array.isArray(detail?.musicList) ? detail.musicList : (Array.isArray(detail) ? detail : []);
+      if (list.length > 0) {
+        chartTracks = list;
+        setApiCache(cacheKey, list);
+      } else if (!chartTracks.length) {
         showToast('该榜单暂无有效曲目', 'info');
       }
     } catch (e: any) {
       console.warn('获取榜单曲目失败:', e);
-      chartTracks = [];
-      showToast('该榜单曲目解析暂不可用', 'warning');
+      if (!chartTracks.length) {
+        chartTracks = [];
+        showToast('该榜单曲目解析暂不可用', 'warning');
+      }
     } finally {
       detailLoading = false;
     }
@@ -306,16 +341,23 @@
           <span class="text-sm">🏆</span>
           <span class="text-xs font-semibold text-[var(--text-main)]">选择官方榜单音源：</span>
         </div>
-        <select
-          bind:value={activePluginId}
-          class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] text-purple-400 border border-purple-500/30 outline-none cursor-pointer hover:border-purple-500 transition-colors"
-        >
-          {#each topListGroups as grp}
-            <option value={grp.pluginId}>
-              {grp.pluginName} ({grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0)} 个榜单)
-            </option>
-          {/each}
-        </select>
+        <div class="relative">
+          <select
+            bind:value={activePluginId}
+            class="appearance-none pl-3 pr-8 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] text-purple-400 border border-purple-500/30 outline-none cursor-pointer hover:border-purple-500 transition-colors"
+          >
+            {#each topListGroups as grp}
+              <option value={grp.pluginId}>
+                {grp.pluginName} ({grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0)} 个榜单)
+              </option>
+            {/each}
+          </select>
+          <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-purple-400 text-xs opacity-70 flex items-center">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </span>
+        </div>
       </div>
 
       {#if currentGroup}

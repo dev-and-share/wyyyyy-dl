@@ -10,6 +10,7 @@
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
   import { isTrackLiked, toggleLike } from '../../lib/likeStore.svelte';
+  import { openSheet } from '../../lib/ui.svelte';
   import { t } from '../../lib/i18n';
 
   let {
@@ -123,9 +124,9 @@
       未检索到插件音源结果，请尝试更换关键词或在「发现中心」检查插件启用状态
     </div>
   {:else}
-    <div class="text-xs text-[var(--text-muted)] px-1 mb-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-      <span>跨平台插件音源检索共找到 {results.length} 首歌曲</span>
-      <span class="text-[11px] opacity-70">提示：需先下载/缓存后方可加入本地歌单</span>
+    <div class="text-xs text-[var(--text-muted)] px-1 mb-1.5 flex items-center justify-between gap-1">
+      <span class="truncate">找到 {results.length} 首歌曲</span>
+      <span class="text-[11px] opacity-70 hidden sm:inline shrink-0">提示：需先下载/缓存后方可加入本地歌单</span>
     </div>
 
     <div class="flex flex-col gap-1.5">
@@ -210,8 +211,8 @@
             </div>
           </div>
 
-          <!-- 操作按钮栏 (统一 SlotBtn 架构) -->
-          <div class="inline-flex items-center justify-end gap-1.5 shrink-0">
+          <!-- 💻 桌面端快捷操作 (>= sm，平排按钮) -->
+          <div class="hidden sm:inline-flex items-center justify-end gap-1.5 shrink-0">
             <SlotBtn
               playing={isCur && playing}
               onclick={() => handlePlay(item)}
@@ -236,6 +237,54 @@
             <SlotBtn onclick={() => handleAdd(item)}>
               ➕
             </SlotBtn>
+          </div>
+
+          <!-- 📱 移动端 SP 精简操作 (只留 试听 + ··· 抽屉，绝不挤压歌名与歌手) -->
+          <div class="inline-flex sm:hidden items-center justify-end gap-1.5 shrink-0">
+            <SlotBtn
+              playing={isCur && playing}
+              onclick={() => handlePlay(item)}
+            >
+              {isCur && playing ? '⏸' : '▶ 试听'}
+            </SlotBtn>
+            <button
+              type="button"
+              class="w-7 h-7 rounded-lg flex items-center justify-center bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-xs cursor-pointer active:scale-95"
+              onclick={() => openSheet({
+                title: title,
+                subtitle: `${artist} · ${pName}`,
+                actions: [
+                  {
+                    label: isCur && playing ? '⏸ 暂停试听' : '▶️ 试听歌曲',
+                    style: 'primary',
+                    onclick: () => handlePlay(item)
+                  },
+                  ...(status.isServer ? [{
+                    label: '🔍 ' + t('common.reveal'),
+                    style: 'default' as const,
+                    onclick: () => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackId, name: title, artist } }))
+                  }] : [{
+                    label: '📥 ' + t('download.downloadSingle'),
+                    style: 'default' as const,
+                    onclick: () => handleDownload(item)
+                  }]),
+                  {
+                    label: status.isPhone ? '📱 ' + t('search.cachedShort') : '📱 ' + t('search.cacheShort'),
+                    style: 'default',
+                    onclick: () => handleCache(item)
+                  },
+                  {
+                    label: '➕ ' + t('playlist.addTo'),
+                    style: 'default',
+                    onclick: () => handleAdd(item)
+                  }
+                ]
+              })}
+              title={t('common.moreActions')}
+              aria-label={t('common.moreActions')}
+            >
+              ···
+            </button>
           </div>
         </div>
       {/each}

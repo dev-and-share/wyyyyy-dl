@@ -2,25 +2,20 @@
   import { onMount } from 'svelte';
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
-  import { DEFAULT_VINYL_COVER } from '../../../lib/utils';
+  import { DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../../lib/utils';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, isVipOrPaidTrack } from '../../../lib/player/trackStatus.svelte';
   import { jumpToMusicFreeSearch } from '../../../lib/router.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
   import TrackSourceBadge from '../../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../../TrackLikeBtn.svelte';
   import { isTrackLiked, toggleLike } from '../../../lib/likeStore.svelte';
-  import { filterAndSortSheetPlugins, cleanTagTitle } from '../../../lib/musicfree/sheetHelpers';
+  import { filterAndSortSheetPlugins, normalizeTags, buildSheetTrack, extractSheets, extractSheetTracks } from '../../../lib/musicfree/sheetHelpers';
   import { downloadExternalTrack } from '../../../lib/musicfree/downloadHelper';
   import SlotBtn from '../../SlotBtn.svelte';
   import { t } from '../../../lib/i18n';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
 
-  let {
-    curTrack = null,
-    playing = false,
-    onPlayQueue,
-    showToast
-  } = $props<{
+  let { curTrack = null, playing = false, onPlayQueue, showToast } = $props<{
     curTrack?: any;
     playing?: boolean;
     onPlayQueue?: (tracks: any[], opts?: any) => void;
@@ -29,7 +24,6 @@
 
   let loading = $state(false);
   let emptyPluginIds = $state<Set<string>>(new Set());
-
   let sheetPlugins = $derived(filterAndSortSheetPlugins(musicFreeStore.plugins, emptyPluginIds));
   let selectedPluginId = $state<string>('');
   const selectedPlugin = $derived(sheetPlugins.find((p) => p.id === selectedPluginId));
@@ -58,32 +52,34 @@
     await loadTagsAndSheets();
   }
 
-  function normalizeTags(rawTags: any): any[] {
-    if (!rawTags) return [{ id: undefined, title: '全部' }];
-    const list: any[] = [];
-    const add = (item: any) => {
-      if (item && (item.id != null || item.title || item.name)) {
-        list.push({ id: item.id, title: cleanTagTitle(item.title || item.name) });
-      }
-    };
-    if (Array.isArray(rawTags.pinned)) rawTags.pinned.forEach(add);
-    const container = Array.isArray(rawTags) ? rawTags : (Array.isArray(rawTags.data) ? rawTags.data : []);
-    for (const item of container) {
-      if (item && Array.isArray(item.data)) item.data.forEach(add);
-      else add(item);
-    }
-    const seen = new Set<string>();
-    const unique = list.filter(t => !seen.has(`${t.id}_${t.title}`) && seen.add(`${t.id}_${t.title}`));
-    if (!unique.some(t => t.title === '全部')) unique.unshift({ id: undefined, title: '全部' });
-    return unique;
-  }
-
-  async function loadTagsAndSheets() {
+  async function loadTagsAndSheets(force = false) {
     if (!selectedPluginId) return;
-    loading = true;
-    tags = [];
-    selectedTag = null;
-    sheets = [];
+    const tagCacheKey = `mf_sheet_tags_${selectedPluginId}`;
+    const cachedTags = getApiCache(tagCacheKey);
+    let hasTagCache = false;
+
+    if (cachedTags?.data && Array.isArray(cachedTags.data) && cachedTags.data.length > 0) {
+      tags = cachedTags.data;
+      selectedTag = tags[0];
+      hasTagCache = true;
+      const tagId = selectedTag?.id ?? 'all';
+      const sheetCacheKey = `mf_sheets_${selectedPluginId}_${tagId}`;
+      const cachedSheets = getApiCache(sheetCacheKey);
+      if (cachedSheets?.data && Array.isArray(cachedSheets.data) && cachedSheets.data.length > 0) {
+        sheets = cachedSheets.data;
+        loading = false;
+        const isStale = !cachedSheets.timestamp || (Date.now() - cachedSheets.timestamp > 3600 * 1000);
+        if (!isStale && !force) return;
+      }
+    }
+
+    if (!hasTagCache) {
+      loading = true;
+      tags = [];
+      selectedTag = null;
+      sheets = [];
+    }
+
     try {
       let rawTags: any = null;
       try {
@@ -92,11 +88,12 @@
         console.warn('获取推荐歌单标签异常，使用默认全部标签:', err);
       }
       tags = normalizeTags(rawTags);
+      setApiCache(tagCacheKey, tags);
       selectedTag = tags[0];
-      await loadSheets(selectedTag);
+      await loadSheets(selectedTag, force);
     } catch (e: any) {
       console.warn('获取歌单广场失败:', e);
-      markCurrentPluginEmptyAndFallback();
+      if (!sheets.length) markCurrentPluginEmptyAndFallback();
     } finally {
       loading = false;
     }
@@ -118,69 +115,78 @@
     }
   }
 
-  async function loadSheets(tag: any) {
+  async function loadSheets(tag: any, force = false) {
     if (!selectedPluginId) return;
-    loading = true;
     selectedTag = tag;
+    const tagId = tag?.id ?? 'all';
+    const sheetCacheKey = `mf_sheets_${selectedPluginId}_${tagId}`;
+    const cachedSheets = getApiCache(sheetCacheKey);
+
+    if (cachedSheets?.data && Array.isArray(cachedSheets.data) && cachedSheets.data.length > 0 && !force) {
+      sheets = cachedSheets.data;
+      loading = false;
+      const isStale = !cachedSheets.timestamp || (Date.now() - cachedSheets.timestamp > 3600 * 1000);
+      if (!isStale) return;
+    } else {
+      loading = true;
+    }
+
     try {
       const res = await musicFreeStore.getRecommendSheetsByTag(selectedPluginId, tag, 1);
-      const rawData = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      // 过滤无效条目并绑定当前音源插件 ID
-      sheets = rawData
-        .filter((item: any) => item && (item.title || item.name))
-        .map((item: any) => ({ ...item, _pluginId: selectedPluginId }));
-      // 若该音源在默认/全部标签下均返回空，自动标记为空源并切换到健康源
-      if (sheets.length === 0 && (!tag || tag.title === '全部')) {
+      const newSheets = extractSheets(res, selectedPluginId);
+      if (newSheets.length > 0) {
+        sheets = newSheets;
+        setApiCache(sheetCacheKey, newSheets);
+      } else if (!sheets.length && (!tag || tag.title === '全部')) {
         markCurrentPluginEmptyAndFallback();
       }
     } catch (e: any) {
       console.warn('加载歌单列表失败:', e);
-      sheets = [];
-      markCurrentPluginEmptyAndFallback();
+      if (!sheets.length) {
+        sheets = [];
+        markCurrentPluginEmptyAndFallback();
+      }
     } finally {
       loading = false;
     }
   }
 
-  async function handleSelectSheet(sheet: any) {
+  async function handleSelectSheet(sheet: any, force = false) {
     const pluginId = sheet._pluginId || selectedPluginId;
+    const sheetId = sheet.id ?? sheet.sheetId ?? sheet.title;
     selectedSheet = { ...sheet, _pluginId: pluginId };
-    sheetDetailLoading = true;
-    sheetTracks = [];
     displayLimit = 100;
-    console.info(`[MusicFree] 正在加载歌单「${sheet.title || sheet.name}」(pluginId: ${pluginId})...`);
+
+    const detailCacheKey = `mf_sheet_detail_${pluginId}_${sheetId}`;
+    const cached = getApiCache(detailCacheKey);
+
+    if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0 && !force) {
+      sheetTracks = cached.data;
+      sheetDetailLoading = false;
+      const isStale = !cached.timestamp || (Date.now() - cached.timestamp > 1800 * 1000);
+      if (!isStale) return;
+    } else {
+      sheetDetailLoading = true;
+      sheetTracks = [];
+    }
+
     try {
       const detail = await musicFreeStore.getMusicSheetInfo(pluginId, sheet, 1);
-      const rawTracks = Array.isArray(detail?.musicList) ? detail.musicList : (Array.isArray(detail) ? detail : []);
-      sheetTracks = rawTracks.map((t: any) => ({
-        ...t,
-        _pluginId: pluginId,
-        _pluginPlatform: currentPluginName
-      }));
-      console.info(`[MusicFree] 歌单「${sheet.title || sheet.name}」解析成功，共 ${sheetTracks.length} 首歌曲`);
+      const newTracks = extractSheetTracks(detail, pluginId, currentPluginName);
+      if (newTracks.length > 0) {
+        sheetTracks = newTracks;
+        setApiCache(detailCacheKey, newTracks);
+      }
     } catch (e: any) {
       console.error('[MusicFree] 加载歌单详情失败:', e);
-      showToast('获取歌单详情失败: ' + (e?.message || e), 'error');
+      if (!sheetTracks.length) showToast('获取歌单详情失败: ' + (e?.message || e), 'error');
     } finally {
       sheetDetailLoading = false;
     }
   }
 
   function buildTrack(t: any) {
-    const pluginId = selectedSheet?._pluginId || t?._pluginId || selectedPluginId;
-    const rawId = t.id || t.rawId || Math.random().toString(36).substring(2, 9);
-    const compoundId = `mf_${encodeURIComponent(currentPluginName || pluginId || 'sheet')}_${rawId}`;
-    const rawTrack = { ...t, _pluginId: pluginId, _pluginPlatform: currentPluginName, _isMusicFree: true };
-    return musicFreeAdapter.normalizeTrack(rawTrack, {
-      id: compoundId,
-      name: t.title || t.name,
-      artist: t.artist,
-      al: { name: t.album || '', picUrl: t.artwork || t.cover || DEFAULT_VINYL_COVER },
-      cover: t.artwork || t.cover || DEFAULT_VINYL_COVER,
-      raw: rawTrack,
-      _isMusicFree: true,
-      _pluginHash: pluginId
-    } as any);
+    return buildSheetTrack(t, selectedSheet, selectedPluginId, currentPluginName, musicFreeAdapter, DEFAULT_VINYL_COVER);
   }
 
   function handlePlayAll() {
