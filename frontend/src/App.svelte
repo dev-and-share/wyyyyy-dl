@@ -33,6 +33,7 @@
   import ToastContainer from './components/ToastContainer.svelte';
   import SettingsDrawer from './components/SettingsDrawer.svelte';
   import BottomTabBar from './components/sp/BottomTabBar.svelte';
+  import ScrollToTopFab from './components/sp/ScrollToTopFab.svelte';
   import { skin } from './lib/skinStore.svelte';
   import SeasonParticleCanvas from './components/skins/effects/SeasonParticleCanvas.svelte';
 
@@ -324,3 +325,6 @@
 
 <!-- 📱 移动端固定底栏 Tab Bar -->
 <BottomTabBar tab={routerState.tab} onSwitchTab={switchTab} />
+
+<!-- 📱 滚动回顶悬浮按钮 -->
+<ScrollToTopFab />
