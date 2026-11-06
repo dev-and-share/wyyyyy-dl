@@ -110,7 +110,7 @@ else
 fi
 
 # ── 6. docker build + 启动 ───────────────────────────────────────────────────
-$COMPOSE_CMD up -d --build
+$COMPOSE_CMD up -d --build --remove-orphans
 
 echo ""
 echo "=================================================="
