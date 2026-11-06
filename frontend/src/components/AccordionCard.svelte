@@ -129,13 +129,13 @@
 </script>
 
 {#if flat}
-  <div class="bg-[var(--card-bg)] backdrop-blur-md rounded-none md:rounded-[16px] shadow-sm md:shadow-md overflow-hidden border-x-0 md:border border-y md:border-[var(--border-color)] border-[var(--border-color)] p-2.5 md:p-5">
+  <div class="bg-[var(--card-bg)] backdrop-blur-md rounded-2xl shadow-sm md:shadow-md overflow-hidden border border-[var(--border-color)] p-3 md:p-5">
     {#if children}
       {@render children()}
     {/if}
   </div>
 {:else}
-  <div class="bg-[var(--card-bg)] backdrop-blur-md rounded-none md:rounded-[16px] shadow-sm md:shadow-md overflow-hidden border-x-0 md:border border-y md:border-[var(--border-color)] border-[var(--border-color)] transition-all duration-300 relative">
+  <div class="bg-[var(--card-bg)] backdrop-blur-md rounded-2xl shadow-sm md:shadow-md overflow-hidden border border-[var(--border-color)] transition-all duration-300 relative">
     <div
       class="absolute left-0 top-0 bottom-0 w-[3.5px] transition-all duration-300 pointer-events-none z-10 {open ? styles.bar : 'opacity-0 scale-y-50'}"
     ></div>

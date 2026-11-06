@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PlayerStore, shuffleArray } from './playerStore.svelte';
-import type { Track } from './types';
+import type { Track } from '../types';
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -310,6 +310,23 @@ describe('PlayerStore WYSIWYG shuffle & deterministic queue navigation', () => {
       expect(store.queue).toHaveLength(1);
       expect(store.queue[0].name).toBe('告白气球');
       expect(store.qIndex).toBe(0);
+    });
+
+    it('getNextLocalTrackIndex skips online tracks and locates next local/downloaded track', () => {
+      // 构造包含在线未下载与本地已落盘的队列
+      const mixedQueue: Track[] = [
+        { id: 13, name: '名模', artist: '梁咏琪', isLocal: false }, // 0
+        { id: 14, name: '空中小姐', artist: '梁咏琪', isLocal: false }, // 1
+        { id: 15, name: '胆小鬼', artist: '梁咏琪', isLocal: true }, // 2 (本地)
+        { id: 16, name: '花火', artist: '梁咏琪', isLocal: false } // 3
+      ];
+      store.setQueue(mixedQueue, { forceReplace: true });
+      store.qIndex = 0; // 当前在 13 (名模)
+
+      // 方案 2 兜底查找下一首本地曲目
+      const nextLocal = store.getNextLocalTrackIndex();
+      expect(nextLocal).toBe(2);
+      expect(store.queue[nextLocal].name).toBe('胆小鬼');
     });
   });
 });

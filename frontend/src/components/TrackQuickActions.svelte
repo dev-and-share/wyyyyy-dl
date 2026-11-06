@@ -2,6 +2,7 @@
   import { api } from '../lib/api';
   import { t } from '../lib/i18n';
   import PlayerIcon from './PlayerIcon.svelte';
+  import TrackSourceBadge from './TrackSourceBadge.svelte';
 
   let {
     track,
@@ -81,9 +82,13 @@
 {#if layout === 'col'}
   <!-- 移动端专属（md:hidden）：竖立排列，大拇指舒适热区 -->
   <div class="flex flex-col items-center gap-2 select-none pointer-events-auto">
-    {#if track?.isLocal}
-      <span class="audio-source-badge icon-only badge-server shadow-sm" title={t('track.localDisk')}>🖥️</span>
-    {/if}
+    <TrackSourceBadge
+      item={track}
+      id={track?.id}
+      isLocal={track?.isLocal}
+      curTrack={track}
+      variant="tile"
+    />
 
     <!-- 喜欢 -->
     <button
@@ -134,9 +139,14 @@
 {:else}
   <!-- PC 宽屏专属（hidden md:flex）：歌名下方横排 -->
   <div class="flex items-center justify-center gap-2.5 max-w-full">
-    {#if track?.isLocal}
-      <span class="audio-source-badge icon-only badge-server shadow-none" title={t('track.localDisk')}>🖥️</span>
-    {/if}
+    <TrackSourceBadge
+      item={track}
+      id={track?.id}
+      isLocal={track?.isLocal}
+      curTrack={track}
+      variant="badge"
+      class="shadow-none"
+    />
 
     <!-- 喜欢 -->
     <button

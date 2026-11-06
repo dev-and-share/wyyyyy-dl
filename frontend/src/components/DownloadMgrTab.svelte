@@ -7,11 +7,14 @@
   import SlotBtn from './SlotBtn.svelte';
   import FolderExplorer from './FolderExplorer.svelte';
   import BrowserCacheSection from './BrowserCacheSection.svelte';
+  import LocalPlaylistsSection from './LocalPlaylistsSection.svelte';
   import SegmentedTabs, { type SegmentItem } from './sp/SegmentedTabs.svelte';
   import SwipeableTabsView from './sp/SwipeableTabsView.svelte';
   import DownloadAuditModal from './DownloadAuditModal.svelte';
+  import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
+  import { routerState } from '../lib/router.svelte';
   import { t } from '../lib/i18n';
   import type { Track } from '../lib/types';
 
@@ -19,26 +22,41 @@
     curTrack = null,
     playing = false,
     onPlayQueue,
+    onPlaylist,
     onReveal,
     showToast = () => {}
   } = $props<{
     curTrack?: Track | null;
     playing?: boolean;
     onPlayQueue: (tracks: any[], idx?: number) => void;
+    onPlaylist?: (id: string) => void;
     onReveal: (item: any) => void;
     showToast?: (m: string, t?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
   }>();
 
-  let mobileTab = $state<'folder' | 'history' | 'cache'>('history');
-  const SUBTABS: ('folder' | 'history' | 'cache')[] = ['folder', 'history', 'cache'];
+  let mobileTab = $state<'playlists' | 'folder' | 'history' | 'cache'>('playlists');
+  const SUBTABS: ('playlists' | 'folder' | 'history' | 'cache')[] = ['playlists', 'folder', 'history', 'cache'];
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(mobileTab)));
 
-  function setMobileTab(id: 'folder' | 'history' | 'cache') {
+  $effect(() => {
+    if (routerState.downloadSubTab === 'local-playlists') {
+      mobileTab = 'playlists';
+    } else if (routerState.downloadSubTab === 'history') {
+      mobileTab = 'history';
+    } else if (routerState.downloadSubTab === 'browser-cache') {
+      mobileTab = 'cache';
+    }
+  });
+
+  function setMobileTab(id: 'playlists' | 'folder' | 'history' | 'cache') {
     mobileTab = id;
+    if (id === 'playlists') routerState.downloadSubTab = 'local-playlists';
+    else if (id === 'history') routerState.downloadSubTab = 'history';
+    else if (id === 'cache') routerState.downloadSubTab = 'browser-cache';
   }
 
   function handleSwipeIndexChange(newIndex: number) {
-    const nextTab = SUBTABS[newIndex] || 'folder';
+    const nextTab = SUBTABS[newIndex] || 'playlists';
     setMobileTab(nextTab);
   }
 
@@ -257,7 +275,8 @@
   }
 
   const mobileTabs: SegmentItem[] = $derived([
-    { id: 'folder', label: t('download.tabLocal'), icon: '📁', accent: 'red' },
+    { id: 'playlists', label: '歌单', icon: '📁', accent: 'emerald' },
+    { id: 'folder', label: t('download.tabLocal'), icon: '📂', accent: 'red' },
     { id: 'history', label: t('download.tabHistory'), icon: '📥', accent: 'blue' },
     { id: 'cache', label: t('download.tabCache'), icon: '📲', accent: 'emerald' }
   ]);
@@ -273,9 +292,13 @@
 
   <SwipeableTabsView
     activeIndex={activeTabIndex}
-    count={3}
+    count={4}
     onChange={handleSwipeIndexChange}
   >
+    <div class="w-full">
+      <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
+    </div>
+
     <div class="w-full">
       <AccordionCard title={t('download.accordionLocalTree')} flat open={true} accent="red">
         <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
@@ -377,7 +400,14 @@
             <div class="flex-1 overflow-hidden min-w-0 pr-2">
               <div class="font-bold text-xs text-[var(--text-main)] truncate flex items-center">
                 <span>{(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || t('common.unknownSong')}</span>
-                <span class="audio-source-badge icon-only badge-server ml-1.5" title={t('download.localDownloadedTooltip')}>🖥️</span>
+                <TrackSourceBadge
+                  item={h}
+                  id={h.songId || h.id}
+                  isLocal={true}
+                  path={displayPath}
+                  {onReveal}
+                  class="ml-1.5"
+                />
                 {#if h.fileExists === false}
                   <span class="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1 py-0.5 rounded ml-1">{t('download.missingBadge')}</span>
                 {/if}

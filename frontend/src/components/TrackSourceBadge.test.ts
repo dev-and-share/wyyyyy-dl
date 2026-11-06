@@ -84,4 +84,34 @@ describe('TrackSourceBadge Component', () => {
 
     vi.useRealTimers();
   });
+
+  it('renders tile variant for player quick actions and triggers onReveal on click', async () => {
+    markSongDownloaded(99999);
+    const onReveal = vi.fn();
+
+    const { getByTitle } = render(TrackSourceBadge, {
+      props: {
+        id: 99999,
+        name: '夜曲',
+        artist: '周杰伦',
+        variant: 'tile',
+        onReveal
+      }
+    });
+
+    const tile = getByTitle(/已下载到本地服务器磁盘/);
+    expect(tile).toBeDefined();
+    expect(tile.className).toContain('w-[42px]');
+    expect(tile.className).toContain('h-[42px]');
+    expect(tile.className).toContain('rounded-2xl');
+
+    // tile 变体在手机模式下支持直接单触点击呼出文件路径模态框
+    await fireEvent.click(tile);
+    expect(onReveal).toHaveBeenCalledWith({
+      id: 99999,
+      name: '夜曲',
+      artist: '周杰伦',
+      path: ''
+    });
+  });
 });

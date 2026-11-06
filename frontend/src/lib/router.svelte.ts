@@ -1,15 +1,15 @@
-export type ActiveTab = 'playlist' | 'search' | 'download-mgr';
+export type ActiveTab = 'playlist' | 'search' | 'download-mgr' | 'musicfree';
 
 function getInitialTab(): ActiveTab {
   const raw = typeof window !== 'undefined' ? location.hash.replace('#', '').split('?')[0] : '';
-  if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr') return raw;
+  if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr' || raw === 'musicfree') return raw;
   const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_active_tab') : '';
-  return (saved === 'playlist' || saved === 'search' || saved === 'download-mgr') ? saved as ActiveTab : 'playlist';
+  return (saved === 'playlist' || saved === 'search' || saved === 'download-mgr' || saved === 'musicfree') ? saved as ActiveTab : 'playlist';
 }
 
 function getInitialPlaylistId(): string {
   if (typeof window === 'undefined') return '';
-  return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || (typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_last_playlist_id') || '' : '');
+  return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || '';
 }
 
 const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyyyy_sidebar_collapsed';
@@ -27,6 +27,11 @@ export const routerState = $state<{
   sidebarCollapsed: boolean;
   playlistTrigger: number;
   albumTrigger: number;
+  downloadSubTab?: 'local-playlists' | 'history' | 'folder' | 'browser-cache' | 'tasks';
+  downloadTasksTrigger: number;
+  searchKeyword?: string;
+  searchSource?: 'netease' | 'musicfree';
+  searchTrigger: number;
 }>({
   tab: getInitialTab(),
   playlistId: getInitialPlaylistId(),
@@ -34,8 +39,26 @@ export const routerState = $state<{
   albumName: '',
   sidebarCollapsed: getInitialSidebarCollapsed(),
   playlistTrigger: 0,
-  albumTrigger: 0
+  albumTrigger: 0,
+  downloadSubTab: 'history',
+  downloadTasksTrigger: 0,
+  searchKeyword: '',
+  searchSource: 'netease',
+  searchTrigger: 0
 });
+
+export function jumpToMusicFreeSearch(keyword: string): void {
+  routerState.searchKeyword = keyword.trim();
+  routerState.searchSource = 'musicfree';
+  routerState.searchTrigger = (routerState.searchTrigger || 0) + 1;
+  switchTab('search');
+}
+
+export function jumpToDownloadTasks(): void {
+  routerState.downloadSubTab = 'tasks';
+  routerState.downloadTasksTrigger = (routerState.downloadTasksTrigger || 0) + 1;
+  switchTab('download-mgr');
+}
 
 export function toggleSidebarCollapse(): void {
   routerState.sidebarCollapsed = !routerState.sidebarCollapsed;
@@ -114,6 +137,16 @@ export function exitPlaylistToGallery(): void {
   } catch {}
 }
 
+export function exitPlaylistToLocalManager(): void {
+  routerState.playlistId = '';
+  routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
+  routerState.downloadSubTab = 'local-playlists';
+  switchTab('download-mgr');
+  try {
+    localStorage.removeItem('wyyyy_last_playlist_id');
+  } catch {}
+}
+
 export function initRouter(): () => void {
   const syncRoute = () => {
     const raw = typeof location !== 'undefined' ? location.hash.replace('#', '') : '';
@@ -125,7 +158,7 @@ export function initRouter(): () => void {
       routerState.playlistId = '';
     }
     const h = raw.split('?')[0];
-    if (h === 'playlist' || h === 'search' || h === 'download-mgr') {
+    if (h === 'playlist' || h === 'search' || h === 'download-mgr' || h === 'musicfree') {
       routerState.tab = h as ActiveTab;
     }
   };

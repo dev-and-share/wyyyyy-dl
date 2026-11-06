@@ -23,6 +23,9 @@ export interface Track {
   freeTrialDuration?: number;
   unplayable?: boolean;
   unplayableReason?: string;
+  isVip?: boolean;
+  vip?: boolean;
+  raw?: any;
 }
 
 export interface DownloadTask {

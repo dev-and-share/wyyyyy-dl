@@ -75,8 +75,8 @@
 
     /* 8. 全屏沉浸播放 (Immersive Player) */
     --immersive-bg: radial-gradient(circle at center, #1e293b 0%, #0f172a 70%, #090d16 100%);
-    --immersive-header-bg: rgba(15, 23, 42, 0.6);
-    --immersive-footer-bg: rgba(0, 0, 0, 0.3);
+    --immersive-header-bg: rgba(9, 13, 22, 0.3);
+    --immersive-footer-bg: rgba(9, 13, 22, 0.25);
     --immersive-ring-bg: #0f172a;
     --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 0 8px rgba(255, 255, 255, 0.05);
 }

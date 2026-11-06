@@ -5,6 +5,7 @@ import jakarta.annotation.Resource;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,6 +59,12 @@ public class MusicDownloadController {
 	public RespEntity<String> downloadAlbum(@RequestParam(value = "id") Long id) {
 		musicService.downloadAlbumV2(id);
 		return RespEntity.apply(CommonRespInfo.SUCCESS,"OK");
+	}
+
+	@PostMapping("/custom")
+	public RespEntity<DownloadTaskStatus> downloadCustomSong(@RequestBody MusicDownloadService.CustomDownloadRequest req) {
+		DownloadTaskStatus task = musicService.downloadCustomSong(req);
+		return RespEntity.apply(CommonRespInfo.SUCCESS, task);
 	}
 
 	@GetMapping("/tasks")

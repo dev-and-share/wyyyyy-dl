@@ -1,8 +1,25 @@
 import { render, fireEvent } from '@testing-library/svelte';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { tick } from 'svelte';
 import DesktopSidebar from './DesktopSidebar.svelte';
+import { myPlaylists, recordPlaylistPlay, playlistPlayCounts } from '../../lib/playlist.svelte';
+import { geoProxyState, updateGeoProxyState } from '../../lib/geoProxyStore.svelte';
 
 describe('DesktopSidebar', () => {
+  beforeEach(() => {
+    myPlaylists.length = 0;
+    for (const key of Object.keys(playlistPlayCounts)) {
+      delete playlistPlayCounts[key];
+    }
+    updateGeoProxyState({
+      enabled: false,
+      loaded: true,
+      activeProxy: '',
+      activeLocation: '',
+      activeLatencyMs: null,
+      fallbackDirect: false
+    });
+  });
   it('renders navigation tabs and triggers onSwitchTab', async () => {
     const onSwitchTab = vi.fn();
     const onToggleCollapse = vi.fn();
@@ -24,6 +41,31 @@ describe('DesktopSidebar', () => {
     const downloadBtn = getByTestId('sidebar-tab-download-mgr');
     await fireEvent.click(downloadBtn);
     expect(onSwitchTab).toHaveBeenCalledWith('download-mgr');
+
+    const musicfreeBtn = getByTestId('sidebar-tab-musicfree');
+    await fireEvent.click(musicfreeBtn);
+    expect(onSwitchTab).toHaveBeenCalledWith('musicfree');
+  });
+
+  it('triggers onOpenDownloadTasks only when clicking the downloading badge', async () => {
+    const onSwitchTab = vi.fn();
+    const onOpenDownloadTasks = vi.fn();
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        downloadingCount: 271,
+        onSwitchTab,
+        onOpenDownloadTasks,
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const badge = getByTestId('sidebar-downloading-badge');
+    expect(badge.textContent?.trim()).toBe('271');
+    await fireEvent.click(badge);
+    expect(onOpenDownloadTasks).toHaveBeenCalledTimes(1);
   });
 
   it('handles toggle collapse action', async () => {
@@ -96,5 +138,187 @@ describe('DesktopSidebar', () => {
 
     expect(updatedRecommendBtn.className).toContain('bg-[var(--nav-tab-active-bg)]');
     expect(playlistBtn.className).not.toContain('bg-[var(--nav-tab-active-bg)]');
+  });
+
+  it('renders fire play count badge in sidebar when playCount > 0 and supports direct playback', async () => {
+    myPlaylists.push(
+      { id: 101, name: '童一首歌', trackCount: 8, subscribed: false },
+      { id: 102, name: '收藏古典', trackCount: 50, subscribed: true }
+    );
+
+    recordPlaylistPlay(101);
+    recordPlaylistPlay(101);
+    recordPlaylistPlay(101); // 3 次
+    recordPlaylistPlay(102); // 1 次
+
+    const onPlayPlaylist = vi.fn();
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn(),
+        onPlayPlaylist
+      }
+    });
+
+    const fireCreated = getByTestId('sidebar-playcount-101');
+    expect(fireCreated).toBeDefined();
+    expect(fireCreated.textContent).toContain('🔥 3');
+
+    const fireSubscribed = getByTestId('sidebar-playcount-102');
+    expect(fireSubscribed).toBeDefined();
+    expect(fireSubscribed.textContent).toContain('🔥 1');
+
+    const playBtn = getByTestId('sidebar-playbtn-101');
+    expect(playBtn).toBeDefined();
+    await fireEvent.click(playBtn);
+    expect(onPlayPlaylist).toHaveBeenCalledWith('101', '童一首歌');
+  });
+
+  it('preserves sidebar order without jitter when play count updates in current session', async () => {
+    myPlaylists.push(
+      { id: 999, name: '我喜欢的音乐', specialType: 5, subscribed: false },
+      { id: 201, name: '歌单 A', trackCount: 10, subscribed: false },
+      { id: 202, name: '歌单 B', trackCount: 20, subscribed: false }
+    );
+
+    for (let i = 0; i < 5; i++) recordPlaylistPlay(201);
+    for (let i = 0; i < 3; i++) recordPlaylistPlay(202);
+
+    const { getByTestId, container } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    // Check initial order: 201 has 5 plays, 202 has 3 plays
+    let countSpans = container.querySelectorAll('[data-testid^="sidebar-playcount-2"]');
+    expect(countSpans[0].getAttribute('data-testid')).toBe('sidebar-playcount-201');
+    expect(countSpans[1].getAttribute('data-testid')).toBe('sidebar-playcount-202');
+
+    // 202 is played multiple times, reaching 8 plays (> 5)
+    for (let i = 0; i < 5; i++) recordPlaylistPlay(202);
+    await tick();
+
+    // 1. Badge updates immediately: 202 now shows 🔥 8
+    expect(getByTestId('sidebar-playcount-202').textContent).toContain('🔥 8');
+
+    // 2. Sidebar order is preserved (session freeze, no jump)
+    countSpans = container.querySelectorAll('[data-testid^="sidebar-playcount-2"]');
+    expect(countSpans[0].getAttribute('data-testid')).toBe('sidebar-playcount-201');
+    expect(countSpans[1].getAttribute('data-testid')).toBe('sidebar-playcount-202');
+  });
+
+  it('renders bottom scroll shadow indicators and responds to scroll overflow', async () => {
+    myPlaylists.push(
+      { id: 301, name: '自建歌单 1', trackCount: 10, subscribed: false },
+      { id: 302, name: '自建歌单 2', trackCount: 10, subscribed: false },
+      { id: 401, name: '收藏歌单 1', trackCount: 15, subscribed: true },
+      { id: 402, name: '收藏歌单 2', trackCount: 15, subscribed: true }
+    );
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const allShadow = getByTestId('sidebar-all-scroll-shadow');
+    expect(allShadow).toBeDefined();
+
+    // Simulate scroll overflow on all playlists
+    const allContainer = allShadow.previousElementSibling as HTMLElement;
+    Object.defineProperty(allContainer, 'scrollHeight', { configurable: true, value: 500 });
+    Object.defineProperty(allContainer, 'clientHeight', { configurable: true, value: 200 });
+    Object.defineProperty(allContainer, 'scrollTop', { configurable: true, value: 0 });
+
+    await fireEvent.scroll(allContainer);
+    await tick();
+
+    // Should show gradient shadow when there is more content below
+    expect(allShadow.className).toContain('opacity-100');
+
+    // Scroll to the bottom
+    Object.defineProperty(allContainer, 'scrollTop', { configurable: true, value: 300 });
+    await fireEvent.scroll(allContainer);
+    await tick();
+
+    // Should fade out shadow when scrolled to bottom
+    expect(allShadow.className).toContain('opacity-0');
+  });
+
+  it('hides proxy network icon when proxy is not enabled', () => {
+    updateGeoProxyState({ enabled: false, loaded: true });
+    const { queryByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    expect(queryByTestId('sidebar-geo-proxy-icon')).toBeNull();
+  });
+
+  it('shows proxy network icon and details tooltip when proxy is enabled', () => {
+    updateGeoProxyState({
+      enabled: true,
+      loaded: true,
+      activeProxy: '120.232.115.57:3128',
+      activeLocation: '中国 广东 佛山',
+      activeLatencyMs: 274,
+      fallbackDirect: false,
+      mode: 'pool'
+    });
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const icon = getByTestId('sidebar-geo-proxy-icon');
+    expect(icon).toBeDefined();
+    expect(icon.getAttribute('title')).toContain('120.232.115.57:3128');
+    expect(icon.getAttribute('title')).toContain('中国 广东 佛山');
+    expect(icon.getAttribute('title')).toContain('274ms');
+
+    const tooltip = getByTestId('sidebar-proxy-tooltip');
+    expect(tooltip).toBeDefined();
+    expect(tooltip.textContent).toContain('120.232.115.57:3128');
+    expect(tooltip.textContent).toContain('中国 广东 佛山');
+    expect(tooltip.textContent).toContain('274 ms');
+  });
+
+  it('shows collapsed proxy icon when sidebar is collapsed', () => {
+    updateGeoProxyState({
+      enabled: true,
+      loaded: true,
+      activeProxy: '1.2.3.4:8080'
+    });
+
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: true,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    const icon = getByTestId('sidebar-geo-proxy-icon');
+    expect(icon).toBeDefined();
   });
 });

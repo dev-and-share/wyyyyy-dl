@@ -12,6 +12,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { getTrackSourceStatus, markSongDownloaded } from '../lib/trackStatus.svelte';
+  import { isTrackLiked } from '../lib/likeStore.svelte';
 
   let {
     queue = [],
@@ -45,7 +46,7 @@
     onPlayIndex: (index: number) => void;
     onClearQueue: () => void;
     onRemoveItem: (index: number) => void;
-    onToggleLike: (id: number, name: string) => void;
+    onToggleLike: (id: any, name?: string, artist?: string, extra?: any) => void;
     onToggleAutoSkip: (val: boolean) => void;
     onToggleServerOnly: (val: boolean) => void;
     onToggleOfflineOnly: (val: boolean) => void;
@@ -84,6 +85,8 @@
   });
 
   // 统计数
+  const ACTIVE_STATUSES = new Set(['WAITING', 'DOWNLOADING', 'PENDING']);
+  let activeTasksCount = $derived(tasks.filter((t: any) => ACTIVE_STATUSES.has(t.status)).length);
   let countAll = $derived(queue.length);
   let countServer = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isServer).length);
   let countPhone = $derived(queue.filter((t: Track) => getTrackSourceStatus(t.id, t.isLocal, queue[qIndex]).isPhone).length);
@@ -599,8 +602,12 @@
           onclick={() => activeTab = 'tasks'}
         >
           📥 <span class="hidden sm:inline">{t('download.title').slice(0, 2)}</span>{t('drawer.tasks')}
-          {#if tasks.length > 0}
-            <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full leading-tight">
+          {#if activeTasksCount > 0}
+            <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full leading-tight animate-pulse">
+              {activeTasksCount}
+            </span>
+          {:else if tasks.length > 0}
+            <span class="bg-black/10 dark:bg-white/10 text-[var(--text-secondary)] text-[10px] font-medium px-1.5 py-px rounded-full leading-tight">
               {tasks.length}
             </span>
           {/if}
@@ -782,8 +789,8 @@
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                   <TrackLikeBtn
-                    liked={likedSet.has(Number(trackItem.id))}
-                    onclick={() => onToggleLike(Number(trackItem.id), trackItem.name)}
+                    liked={isTrackLiked(trackItem.id, trackItem.name, formatArtist(trackItem.artist))}
+                    onclick={() => onToggleLike(trackItem.id, trackItem.name, formatArtist(trackItem.artist), trackItem)}
                   />
                   <button
                     type="button"

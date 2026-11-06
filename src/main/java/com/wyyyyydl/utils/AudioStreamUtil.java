@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.net.URI;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
@@ -163,8 +164,36 @@ public final class AudioStreamUtil {
         if (StringUtils.isNotBlank(rangeHeader)) {
             httpGet.setHeader("Range", rangeHeader);
         }
-        httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
-        httpGet.setHeader("Referer", "https://music.163.com/");
+
+        String customUa = request.getHeader("X-Stream-User-Agent");
+        if (StringUtils.isBlank(customUa)) {
+            customUa = request.getParameter("ua");
+        }
+        if (StringUtils.isNotBlank(customUa)) {
+            httpGet.setHeader("User-Agent", customUa);
+        } else {
+            httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36");
+        }
+
+        String customReferer = request.getHeader("X-Stream-Referer");
+        if (StringUtils.isBlank(customReferer)) {
+            customReferer = request.getParameter("referer");
+        }
+        if (StringUtils.isNotBlank(customReferer)) {
+            httpGet.setHeader("Referer", customReferer);
+        } else if (url != null && (url.contains("163.com") || url.contains("126.net"))) {
+            httpGet.setHeader("Referer", "https://music.163.com/");
+        } else if (url != null && url.contains("qq.com")) {
+            httpGet.setHeader("Referer", "https://y.qq.com/");
+        } else if (url != null && url.contains("kugou.com")) {
+            httpGet.setHeader("Referer", "https://www.kugou.com/");
+        } else if (url != null && url.contains("kuwo.cn")) {
+            httpGet.setHeader("Referer", "https://www.kuwo.cn/");
+        } else if (url != null && (url.contains("missevan.com") || url.contains("maoercdn.com"))) {
+            httpGet.setHeader("Referer", "https://m.missevan.com/");
+        } else if (url != null && url.contains("bilibili.com")) {
+            httpGet.setHeader("Referer", "https://www.bilibili.com/");
+        }
 
         RequestConfig requestConfig = RequestConfig.custom()
                 .setConnectTimeout(15000)
@@ -172,7 +201,31 @@ public final class AudioStreamUtil {
                 .build();
         httpGet.setConfig(requestConfig);
 
-        try (CloseableHttpResponse clientResp = HttpClientUtil.getInstance().execute(httpGet)) {
+        URI currentUri = URI.create(url);
+        CloseableHttpResponse clientResp = null;
+        try {
+            // 自动跟随 301/302/303/307 重定向 (酷狗、酷我、QQ音乐等 CDN 直链多为带签名临时跳转)
+            for (int i = 0; i < 5; i++) {
+                httpGet.setURI(currentUri);
+                clientResp = HttpClientUtil.getInstance().execute(httpGet);
+                int statusCode = clientResp.getStatusLine().getStatusCode();
+                if (statusCode == 301 || statusCode == 302 || statusCode == 303 || statusCode == 307 || statusCode == 308) {
+                    Header loc = clientResp.getFirstHeader("Location");
+                    if (loc != null && StringUtils.isNotBlank(loc.getValue())) {
+                        URI nextUri = currentUri.resolve(loc.getValue());
+                        clientResp.close();
+                        currentUri = nextUri;
+                        continue;
+                    }
+                }
+                break;
+            }
+
+            if (clientResp == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_GATEWAY);
+                return;
+            }
+
             int statusCode = clientResp.getStatusLine().getStatusCode();
             response.setStatus(statusCode);
 
@@ -205,6 +258,12 @@ public final class AudioStreamUtil {
             }
         } catch (Exception e) {
             log.warn("透传在线音频流异常: url={}, error={}", url, e.getMessage());
+        } finally {
+            if (clientResp != null) {
+                try {
+                    clientResp.close();
+                } catch (Exception ignored) {}
+            }
         }
     }
 }

@@ -327,6 +327,8 @@ public class AnalysisController {
     public void streamAudio(@RequestParam(value = "id", required = false) String idStr,
                             @RequestParam(value = "historyId", required = false) String historyIdStr,
                             @RequestParam(value = "path", required = false) String path,
+                            @RequestParam(value = "name", required = false) String name,
+                            @RequestParam(value = "artist", required = false) String artist,
                             jakarta.servlet.http.HttpServletRequest request,
                             jakarta.servlet.http.HttpServletResponse response) {
         com.wyyyyydl.utils.AudioStreamUtil.applyCorsHeaders(response);
@@ -343,6 +345,9 @@ public class AnalysisController {
         }
         if (localItem == null && id != null && id > 0) {
             localItem = downloadHistoryDAO.findLocalFileBySongId(id);
+        }
+        if (localItem == null && (org.apache.commons.lang3.StringUtils.isNotBlank(name) || (id != null && id > 0))) {
+            localItem = downloadHistoryDAO.findLocalFileBySongOrName(id, name, artist);
         }
 
         // 1. 本地历史记录命中：优先流传输物理文件 (兼顾相对路径与绝对路径)
@@ -374,9 +379,29 @@ public class AnalysisController {
         if (id != null && id > 0) {
             try {
                 SingleMusicAnalysisRespDTO analysis = analysisService.analyzeSingleSong(id, "lossless");
-                if (analysis != null && org.apache.commons.lang3.StringUtils.isNotBlank(analysis.getUrl())) {
-                    storageService.serveOnlineStream(id, analysis.getUrl(), request, response);
-                    return;
+                if (analysis != null) {
+                    // 3.1 尝试通过解析出的歌名 + 歌手再次匹配本地文件 (兜底外部导入无数字 song_id 的曲目)
+                    if (localItem == null) {
+                        localItem = downloadHistoryDAO.findLocalFileBySongOrName(id, analysis.getName(), analysis.getAr_name());
+                        if (localItem != null) {
+                            String targetPath = org.apache.commons.lang3.StringUtils.isNotBlank(localItem.getRelativePath())
+                                    ? localItem.getRelativePath()
+                                    : localItem.getFilePath();
+                            if (org.apache.commons.lang3.StringUtils.isNotBlank(targetPath)) {
+                                storageService.serveMedia(targetPath, request, response);
+                                return;
+                            }
+                        }
+                    }
+
+                    // 3.2 若在线解析出的 URL 存在且为有效网络直链（试听曲目禁止伪装为本地流）
+                    if (org.apache.commons.lang3.StringUtils.isNotBlank(analysis.getUrl()) && !Boolean.TRUE.equals(analysis.getFreeTrial())) {
+                        String rawUrl = analysis.getUrl();
+                        if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+                            storageService.serveOnlineStream(id, rawUrl, request, response);
+                            return;
+                        }
+                    }
                 }
             } catch (Exception ignored) {}
         }

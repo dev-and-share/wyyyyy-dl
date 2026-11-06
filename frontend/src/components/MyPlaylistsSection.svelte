@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { myPlaylists, getPlaylistFilter, loadMyPlaylists, sortPlaylistsByPlayCount, isFavoritePlaylist, getPlaylistPlayCount } from '../lib/playlist.svelte';
+  import { playlistService } from '../lib/playlistService';
   import { api } from '../lib/api';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
@@ -59,12 +61,12 @@
     confirmAction = null;
     try {
       if (type === 'delete') {
-        const j = await api.playlistDelete(targetId);
-        if (j.code === '000000') {
+        const ok = await playlistService.deletePlaylist(targetId);
+        if (ok) {
           showToast(t('myPlaylists.deleted', { name: playlistName }), 'success');
           await loadMyPlaylists('created');
         } else {
-          showToast(j.msg || t('myPlaylists.deleteFailed'), 'warning');
+          showToast(t('myPlaylists.deleteFailed'), 'warning');
         }
       } else if (type === 'unsubscribe') {
         const j = await api.playlistSubscribe(targetId, false);
@@ -83,7 +85,7 @@
   function openPlaylistSheet(pl: any, idx: number) {
     openSheet({
       title: pl.name,
-      subtitle: `${pl.subscribed ? t('myPlaylists.subscribedPl') : t('myPlaylists.createdPl')} · ${t('playlist.trackCount', { count: pl.trackCount || 0 })}`,
+      subtitle: `${pl.isLocal ? '🖥️ 本地自建' : pl.subscribed ? t('myPlaylists.subscribedPl') : t('myPlaylists.createdPl')} · ${t('playlist.trackCount', { count: pl.trackCount || 0 })}`,
       actions: [
         {
           label: t('myPlaylists.playEntire'),
@@ -95,7 +97,15 @@
           style: 'default',
           onclick: () => onViewPlaylist(String(pl.id))
         },
-        ...(pl.subscribed
+        ...(pl.isLocal
+          ? [
+              {
+                label: t('myPlaylists.deleteThis'),
+                style: 'danger' as const,
+                onclick: () => (confirmAction = { type: 'delete', playlistId: String(pl.id), playlistName: pl.name })
+              }
+            ]
+          : pl.subscribed
           ? [
               {
                 label: t('myPlaylists.unsubscribeThis'),
@@ -123,6 +133,14 @@
   <div class="flex items-center justify-between gap-1.5 mb-2.5">
     <div class="flex gap-1.5 items-center flex-wrap">
       <button
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
+        class:ring-2={playlistFilter === 'all'}
+        class:ring-slate-400={playlistFilter === 'all'}
+        onclick={() => loadMyPlaylists('all')}
+      >
+        {t('myPlaylists.tabAll')}
+      </button>
+      <button
         class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'created'}
         class:ring-sky-400={playlistFilter === 'created'}
@@ -138,14 +156,6 @@
       >
         {t('myPlaylists.tabSubscribed')}<span class="hidden sm:inline">{t('myPlaylists.tabSubscribedFull')}</span>
       </button>
-      <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
-        class:ring-2={playlistFilter === 'all'}
-        class:ring-slate-400={playlistFilter === 'all'}
-        onclick={() => loadMyPlaylists('all')}
-      >
-        {t('myPlaylists.tabAll')}
-      </button>
     </div>
 
     <div class="flex items-center gap-1.5 shrink-0">
@@ -159,7 +169,7 @@
       </button>
       <button
         type="button"
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-800/50 shadow-sm inline-flex items-center justify-center gap-1 shrink-0 transition-all active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-red-400 border border-red-500/30 bg-red-950/40 hover:bg-red-800/50 shadow-sm inline-flex items-center justify-center gap-1 shrink-0 transition-all active:scale-95"
         onclick={() => showCreateModal = true}
         title={t('playlist.createTitle')}
       >
@@ -185,7 +195,11 @@
     {#each filteredPlaylists as pl, idx}
       <li class="track-item-card">
         <div class="track-title-row">
-          {#if isFavoritePlaylist(pl)}
+          {#if pl.isLocal}
+            <span class="status-badge shrink-0 !bg-emerald-500/15 !text-emerald-400 font-bold">
+              🖥️ 本地自建
+            </span>
+          {:else if isFavoritePlaylist(pl)}
             <span class="status-badge shrink-0 !bg-red-500/15 !text-red-500 font-bold" title={t('myPlaylists.pinnedTitle')}>
               {t('myPlaylists.pinnedBadge')}
             </span>
@@ -217,7 +231,9 @@
             >
               {t('myPlaylists.playBtn')}
             </SlotBtn>
-            {#if pl.subscribed}
+            {#if pl.isLocal}
+              <SlotBtn onclick={() => confirmAction = { type: 'delete', playlistId: String(pl.id), playlistName: pl.name }}>{t('myPlaylists.deleteBtn')}</SlotBtn>
+            {:else if pl.subscribed}
               <SlotBtn onclick={() => confirmAction = { type: 'unsubscribe', playlistId: String(pl.id), playlistName: pl.name }}>{t('myPlaylists.cancelBtn')}</SlotBtn>
             {:else if !isFavoritePlaylist(pl)}
               <SlotBtn onclick={() => confirmAction = { type: 'delete', playlistId: String(pl.id), playlistName: pl.name }}>{t('myPlaylists.deleteBtn')}</SlotBtn>

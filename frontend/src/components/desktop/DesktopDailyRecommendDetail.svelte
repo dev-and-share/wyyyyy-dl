@@ -18,6 +18,7 @@
   import AddToPlaylistModal from '../AddToPlaylistModal.svelte';
   import Modal from '../Modal.svelte';
   import CreatePlaylistModal from '../CreatePlaylistModal.svelte';
+  import DesktopHeaderActions from './DesktopHeaderActions.svelte';
 
   let {
     curTrack = null,
@@ -176,19 +177,23 @@
 </script>
 
 <div class="flex flex-col gap-4 animate-fade-in" data-testid="desktop-daily-recommend-detail">
-  <!-- 1. Top Breadcrumb Bar -->
-  <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)] min-h-[34px] pr-[215px]">
-    <button
-      type="button"
-      data-testid="btn-back-gallery"
-      class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-main)] border border-[var(--btn-secondary-border)] cursor-pointer transition-colors font-medium shrink-0"
-      onclick={onBackToGallery}
-    >
-      <span>←</span>
-      <span>{t('playlist.backToGallery')}</span>
-    </button>
-    <span class="opacity-40 shrink-0">/</span>
-    <span class="truncate font-semibold text-[var(--text-main)]">{t('recommend.dailyExclusive')}</span>
+  <!-- 1. 顶部面包屑导航与全局控制组 -->
+  <div class="flex items-center justify-between gap-3 text-xs text-[var(--text-secondary)] min-h-[34px] pb-1 border-b border-[var(--border-subtle)]">
+    <div class="flex items-center gap-2 min-w-0">
+      <button
+        type="button"
+        data-testid="btn-back-gallery"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-main)] border border-[var(--btn-secondary-border)] cursor-pointer transition-colors font-medium shrink-0"
+        onclick={onBackToGallery}
+      >
+        <span>←</span>
+        <span>{t('playlist.backToGallery')}</span>
+      </button>
+      <span class="opacity-40 shrink-0">/</span>
+      <span class="truncate font-semibold text-[var(--text-main)]">{t('recommend.dailyExclusive')}</span>
+    </div>
+
+    <DesktopHeaderActions />
   </div>
 
   <!-- 2. Hero Banner -->

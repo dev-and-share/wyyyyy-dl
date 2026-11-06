@@ -42,7 +42,7 @@
   aria-modal="true"
   aria-label={t('player.skin')}
   data-testid="skin-picker-sheet"
-  class="fixed z-[100011] inset-x-0 bottom-0 max-w-[720px] mx-auto rounded-t-[28px] border-t border-[var(--border-color)] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] shadow-2xl p-5 flex flex-col gap-4 transition-transform duration-200 ease-out backdrop-blur-xl"
+  class="fixed z-[100011] inset-x-0 bottom-0 max-w-[820px] max-h-[85vh] overflow-y-auto mx-auto rounded-t-[28px] border-t border-[var(--border-color)] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] shadow-2xl p-5 flex flex-col gap-4 transition-transform duration-200 ease-out backdrop-blur-xl"
   style="transform: {closing ? 'translateY(100%)' : 'translateY(0)'};"
 >
   <!-- 头部：标题与关闭按钮 -->
@@ -61,7 +61,7 @@
     </button>
   </div>
 
-  <!-- 皮肤卡片列表（移动端 2-3 列，桌面端 5 列） -->
+  <!-- 皮肤卡片列表（移动端 3 列，桌面端 4-5 列） -->
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
     {#each SKIN_LIST as item}
       {@const isSelected = skin.current === item.id}
@@ -110,6 +110,38 @@
               <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-emerald-400 blur-xs opacity-60"></div>
               <div class="w-9 h-9 rounded-full bg-emerald-700/80 border border-emerald-300/40 p-1 flex items-center justify-center relative shadow-sm">
                 <div class="w-4 h-4 rounded-full bg-lime-400/90 border border-white/40 flex items-center justify-center text-[9px]">🍃</div>
+              </div>
+            </div>
+          {:else if item.id === 'sakura'}
+            <!-- 春樱初绽迷你预览 (娇艳纯正粉) -->
+            <div class="relative w-full h-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-pink-950 via-rose-900 to-pink-900">
+              <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-pink-400 blur-xs opacity-80"></div>
+              <div class="w-9 h-9 rounded-full bg-pink-900/90 border border-pink-400/70 p-1 flex items-center justify-center relative shadow-sm">
+                <div class="w-4 h-4 rounded-full bg-pink-500/90 border border-pink-200 flex items-center justify-center text-[9px]">🌸</div>
+              </div>
+            </div>
+          {:else if item.id === 'summer'}
+            <!-- 盛夏晴空迷你预览 (海天蔚蓝向日葵) -->
+            <div class="relative w-full h-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-sky-950 via-blue-900 to-cyan-950">
+              <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-sky-400 blur-xs opacity-80"></div>
+              <div class="w-9 h-9 rounded-full bg-sky-900/90 border border-sky-400/70 p-1 flex items-center justify-center relative shadow-sm">
+                <div class="w-4 h-4 rounded-full bg-yellow-400/95 border border-sky-200 flex items-center justify-center text-[9px]">🌻</div>
+              </div>
+            </div>
+          {:else if item.id === 'autumn'}
+            <!-- 金秋落叶迷你预览 (璀璨纯金银杏) -->
+            <div class="relative w-full h-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-amber-950 via-yellow-950 to-amber-900">
+              <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-yellow-400 blur-xs opacity-80"></div>
+              <div class="w-9 h-9 rounded-full bg-amber-900/90 border border-yellow-400/70 p-1 flex items-center justify-center relative shadow-sm">
+                <div class="w-4 h-4 rounded-full bg-yellow-400/95 border border-yellow-200 flex items-center justify-center text-[9px]">🍂</div>
+              </div>
+            </div>
+          {:else if item.id === 'winter'}
+            <!-- 凛冬初雪迷你预览 (银装素裹纯白雪) -->
+            <div class="relative w-full h-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950">
+              <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-white blur-xs opacity-80"></div>
+              <div class="w-9 h-9 rounded-full bg-slate-900/90 border border-white/80 p-1 flex items-center justify-center relative shadow-sm">
+                <div class="w-4 h-4 rounded-full bg-white/95 border border-slate-300 flex items-center justify-center text-[9px]">❄️</div>
               </div>
             </div>
           {:else}

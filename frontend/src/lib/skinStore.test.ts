@@ -49,10 +49,33 @@ describe('skinStore', () => {
     expect(document.documentElement.getAttribute('data-skin')).toBe('spring');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#06140f');
 
+    // 四季动态皮肤测试
+    skin.set('sakura');
+    expect(skin.current).toBe('sakura');
+    expect(localStorage.getItem('player_skin')).toBe('sakura');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#240d1e');
+
+    skin.set('summer');
+    expect(skin.current).toBe('summer');
+    expect(localStorage.getItem('player_skin')).toBe('summer');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#072b4a');
+
+    skin.set('autumn');
+    expect(skin.current).toBe('autumn');
+    expect(localStorage.getItem('player_skin')).toBe('autumn');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#1a1305');
+
+    skin.set('winter');
+    expect(skin.current).toBe('winter');
+    expect(localStorage.getItem('player_skin')).toBe('winter');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0b121e');
+
     // 浅色模式下切换皮肤测试
     document.documentElement.setAttribute('data-theme', 'light');
     skin.set('aurora');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#faf5ff');
+    skin.set('sakura');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fff0f5');
     document.documentElement.removeAttribute('data-theme');
   });
 

@@ -273,45 +273,41 @@
 </script>
 
 <AccordionCard title={t('playlist.sectionDetail')} bind:open flat accent="blue" {onToggle}>
-  {#if showIdInput}
-    <div class="flex items-center gap-1.5 md:gap-2.5 my-2 w-full animate-fade-in p-2 rounded-xl bg-black/5 dark:bg-white/[0.04] border border-[var(--border-subtle)]">
+  <!-- 常驻歌单解析输入框 (标准规范，支持回车/按钮/一键清空) -->
+  <div class="flex items-center gap-1.5 md:gap-2.5 my-2 w-full animate-fade-in p-1.5 rounded-xl bg-black/5 dark:bg-white/[0.04] border border-[var(--border-subtle)]">
+    <div class="relative flex-1 min-w-0">
       <input
-        type="text" placeholder={t('playlist.inputIdPlaceholder')} class="flex-1 min-w-0 !py-1.5 text-xs"
-        bind:value={pidInput} disabled={isPlaylistLoading()}
+        type="search"
+        enterkeyhint="search"
+        placeholder="粘贴歌单链接或输入歌单 ID..."
+        class="w-full pl-3 pr-2 !py-1.5 text-xs rounded-lg"
+        bind:value={pidInput}
+        disabled={isPlaylistLoading()}
         onkeydown={(e) => {
           if (e.key === 'Enter' && !isPlaylistLoading()) {
             onViewPlaylist(pidInput);
-            showIdInput = false;
           }
         }}
       />
-      <button
-        class="btn-primary shrink-0 whitespace-nowrap !py-1.5 !px-3 text-xs flex items-center justify-center gap-1"
-        disabled={isPlaylistLoading()}
-        onclick={() => {
-          onViewPlaylist(pidInput);
-          showIdInput = false;
-        }}
-      >
-        {#if isPlaylistLoading()}
-          <span class="inline-block animate-spin text-xs">⏳</span>
-        {:else}
-          <span>{t('playlist.viewDetailBtn')}</span>
-        {/if}
-      </button>
-      <button type="button" class="btn-secondary !p-1.5 text-xs rounded-lg cursor-pointer" onclick={() => showIdInput = false} title={t('common.close')}>✕</button>
     </div>
-  {:else if !playlist && !isPlaylistLoading()}
-    <div class="py-6 px-4 flex flex-col items-center justify-center gap-2 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2">
+    <button
+      type="button"
+      class="btn-primary shrink-0 whitespace-nowrap !py-1.5 !px-3 text-xs flex items-center justify-center gap-1 cursor-pointer"
+      disabled={isPlaylistLoading() || !pidInput.trim()}
+      onclick={() => onViewPlaylist(pidInput)}
+    >
+      {#if isPlaylistLoading()}
+        <span class="inline-block animate-spin text-xs">⏳</span>
+      {:else}
+        <span>{t('playlist.viewDetailBtn')}</span>
+      {/if}
+    </button>
+  </div>
+
+  {#if !playlist && !isPlaylistLoading()}
+    <div class="py-8 px-4 flex flex-col items-center justify-center gap-2 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2">
       <div class="text-2xl opacity-60">🎼</div>
-      <div class="text-xs text-[var(--text-muted)] text-center">{t('playlist.emptyTabPrompt')}</div>
-      <button
-        type="button"
-        class="mt-1 px-3 py-1.5 rounded-xl text-xs font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-        onclick={() => showIdInput = true}
-      >
-        <span>🔗</span><span>{t('playlist.parseDetail')}</span>
-      </button>
+      <div class="text-xs text-[var(--text-muted)] text-center">可去左侧「我的歌单」挑选，或在上方直接输入 ID / 链接解析</div>
     </div>
   {/if}
 
@@ -390,8 +386,8 @@
       >
         {#each paged as trackItem, i}
         {@const idx = i + 1}
-        {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}
         {@const artist = formatArtist(trackItem)}
+        {@const status = getTrackSourceStatus(trackItem.id, Boolean(trackItem.isLocal && trackItem.filePath), curTrack, false, trackItem.name, artist)}
         {@const isPlayingThis = isSameTrack(curTrack, trackItem)}
         {@const playLabel = getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'short' })}
         <li class="track-item-card" class:is-active-playing={isPlayingThis}>
@@ -403,7 +399,7 @@
             >
               {idx}. {trackItem.name}{artist ? ' - ' + artist : ''}
             </button>
-            <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="ml-1.5" />
+            <TrackSourceBadge id={trackItem.id} name={trackItem.name} {artist} path={trackItem.filePath} item={trackItem} isServer={status.isServer} isPhone={status.isPhone} {curTrack} class="ml-1.5" />
             <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike(Number(trackItem.id), trackItem.name)} />
           </div>
           <div class="track-action-group">
@@ -471,11 +467,6 @@
       </li>
     </ul>
     {/if}
-  {:else}
-    <div class="empty-placeholder-card">
-      <div class="empty-icon">🎼</div>
-      <div class="empty-title">{t('playlist.emptyTabPrompt')}</div>
-    </div>
   {/if}
 </AccordionCard>
 

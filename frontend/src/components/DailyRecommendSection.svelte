@@ -185,20 +185,33 @@
 <AccordionCard title={t('recommend.title')} bind:open {flat} accent="amber" onToggle={onToggle}>
   <!-- 头部控制栏：日期 + 核心快捷动作组 -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 py-1 mb-3 border-b border-[var(--border-subtle)] pb-3">
-    <div class="flex items-center gap-2 flex-wrap">
-      <span class="text-xs font-bold text-amber-500 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 flex items-center gap-1">
-        <span>📅</span>
-        <span>{todayText}</span>
-      </span>
-      <span class="text-xs text-[var(--text-muted)] font-medium">
-        {#if loading}
-          {t('recommend.updating')}
-        {:else if recommendTracks.length}
-          {t('recommend.subtitle', { count: recommendTracks.length })}
-        {:else}
-          {t('recommend.updateTime')}
-        {/if}
-      </span>
+    <!-- 日期与今日私房歌标题 + 右上角固定刷新按钮 -->
+    <div class="flex items-center justify-between gap-2 w-full sm:w-auto">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-bold text-amber-500 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 flex items-center gap-1">
+          <span>📅</span>
+          <span>{todayText}</span>
+        </span>
+        <span class="text-xs text-[var(--text-muted)] font-medium">
+          {#if loading}
+            {t('recommend.updating')}
+          {:else if recommendTracks.length}
+            {t('recommend.subtitle', { count: recommendTracks.length })}
+          {:else}
+            {t('recommend.updateTime')}
+          {/if}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="text-xs py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border border-transparent hover:border-[var(--border-subtle)] cursor-pointer flex items-center gap-1 shrink-0 transition-all active:scale-95"
+        onclick={() => loadRecommend(true)}
+        title={t('recommend.refreshTooltip')}
+      >
+        <span>🔄</span>
+        <span class="hidden sm:inline">{t('common.refresh')}</span>
+      </button>
     </div>
 
     <!-- 快捷操作按钮组 -->
@@ -256,16 +269,6 @@
           </button>
         {/if}
       {/if}
-
-      <button
-        type="button"
-        class="text-xs py-1.5 px-2 text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none cursor-pointer flex items-center gap-1 ml-auto sm:ml-0"
-        onclick={() => loadRecommend(true)}
-        title={t('recommend.refreshTooltip')}
-      >
-        <span>🔄</span>
-        <span class="hidden sm:inline">{t('common.refresh')}</span>
-      </button>
     </div>
   </div>
 
@@ -291,7 +294,7 @@
       </button>
     </div>
   {:else if recommendTracks.length > 0}
-    <ul class="data-list scrollable-list max-h-[520px]">
+    <ul class="data-list scrollable-list md:max-h-[520px]">
       {#each recommendTracks as trackItem, idx}
         {@const artistName = typeof trackItem.artists === 'string' ? trackItem.artists : formatArtist(trackItem.artists || trackItem.ar)}
         {@const status = getTrackSourceStatus(trackItem.id, trackItem.isLocal, curTrack)}

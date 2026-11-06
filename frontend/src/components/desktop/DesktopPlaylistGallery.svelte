@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { t } from '../../lib/i18n';
   import {
     myPlaylists,
@@ -9,6 +9,7 @@
     getPlaylistPlayCount
   } from '../../lib/playlist.svelte';
   import { DEFAULT_VINYL_COVER, formatCoverUrl, matchesKeyword } from '../../lib/utils';
+  import DesktopViewHeader from './DesktopViewHeader.svelte';
 
   let {
     onSelectPlaylist,
@@ -62,22 +63,73 @@
   }
 
   const filteredPlaylists = $derived(() => {
-    let list = myPlaylists;
-    if (filter === 'created') list = list.filter(p => !p.subscribed);
-    if (filter === 'subscribed') list = list.filter(p => p.subscribed);
-
     const kw = searchKeyword.trim();
-    if (kw) {
-      list = list.filter(p => matchesKeyword(p.name, kw));
-    }
-    return sortPlaylistsByPlayCount(list);
+    const curFilter = filter;
+    return untrack(() => {
+      let list = myPlaylists;
+      if (curFilter === 'created') list = list.filter(p => !p.subscribed);
+      if (curFilter === 'subscribed') list = list.filter(p => p.subscribed);
+
+      if (kw) {
+        list = list.filter(p => matchesKeyword(p.name, kw));
+      }
+      return sortPlaylistsByPlayCount(list);
+    });
   });
 </script>
 
 <!-- PC Desktop: Playlist Cover Gallery (Gallery View) -->
 <div class="flex flex-col gap-5 select-none animate-fade-in" data-testid="desktop-playlist-gallery">
-  <!-- 1. Top Action Bar: Fast Input Parsing -->
-  <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm lg:pr-[220px]">
+  <!-- 1. 统一桌面 Header：我的歌单大厅 + 歌单数量 Badge + Sub-Tabs (全部/自建/收藏) -->
+  <DesktopViewHeader
+    icon="📁"
+    title={t('topbar.playlist')}
+    badge={`${myPlaylists.length} 个歌单`}
+    badgeType="default"
+    subtitle="我的云端与收藏歌单"
+  >
+    {#snippet actions()}
+      <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] shrink-0">
+        <button
+          type="button"
+          data-testid="gallery-tab-all"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {filter === 'all' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => filter = 'all'}
+        >
+          {t('playlist.tabAllWithCount', { count: myPlaylists.length })}
+        </button>
+        <button
+          type="button"
+          data-testid="gallery-tab-created"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {filter === 'created' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => filter = 'created'}
+        >
+          {t('playlist.tabCreatedWithCount', { count: myPlaylists.filter(p => !p.subscribed).length })}
+        </button>
+        <button
+          type="button"
+          data-testid="gallery-tab-subscribed"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {filter === 'subscribed' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => filter = 'subscribed'}
+        >
+          {t('playlist.tabSubscribedWithCount', { count: myPlaylists.filter(p => p.subscribed).length })}
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer shrink-0"
+        onclick={handleRefresh}
+        title={t('playlist.syncFromCloudTooltip')}
+      >
+        {loading ? '⏳' : '🔄'}
+      </button>
+    {/snippet}
+  </DesktopViewHeader>
+
+  <!-- 2. 工具与解析栏：快速链接/ID 解析 + 歌单本地关键词筛选 -->
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
+    <!-- 链接/ID 快捷解析 -->
     <div class="flex items-center gap-2 flex-1 max-w-xl">
       <input
         type="text"
@@ -94,50 +146,15 @@
         {t('playlist.parseDetail')}
       </button>
     </div>
-  </div>
 
-  <!-- 2. Categories Tab and Playlist Filter Bar -->
-  <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-2.5">
-    <div class="flex items-center gap-1.5 flex-wrap">
-      <button
-        type="button"
-        class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'all' ? 'bg-red-500/15 text-red-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => filter = 'all'}
-      >
-        {t('playlist.tabAllWithCount', { count: myPlaylists.length })}
-      </button>
-      <button
-        type="button"
-        class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'created' ? 'bg-red-500/15 text-red-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => filter = 'created'}
-      >
-        {t('playlist.tabCreatedWithCount', { count: myPlaylists.filter(p => !p.subscribed).length })}
-      </button>
-      <button
-        type="button"
-        class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border-none {filter === 'subscribed' ? 'bg-red-500/15 text-red-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-        onclick={() => filter = 'subscribed'}
-      >
-        {t('playlist.tabSubscribedWithCount', { count: myPlaylists.filter(p => p.subscribed).length })}
-      </button>
-    </div>
-
-    <!-- Filter and Refresh -->
-    <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+    <!-- 歌单本地快速筛选 -->
+    <div class="flex items-center gap-2 shrink-0">
       <input
         type="text"
         placeholder={t('playlist.searchLocalPlaylistsPlaceholder')}
-        class="w-36 sm:w-44 lg:w-52 px-3 py-1.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
+        class="w-full sm:w-44 lg:w-56 px-3.5 py-2 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
         bind:value={searchKeyword}
       />
-      <button
-        type="button"
-        class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer"
-        onclick={handleRefresh}
-        title={t('playlist.syncFromCloudTooltip')}
-      >
-        {loading ? '⏳' : '🔄'}
-      </button>
     </div>
   </div>
 
@@ -217,6 +234,10 @@
               <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-500/90 text-white backdrop-blur-xs">
                 {t('playlist.favoriteTag')}
               </span>
+            {:else if pl._isLocal}
+              <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600/90 text-white backdrop-blur-xs">
+                🖥️ 本地自建
+              </span>
             {/if}
           </div>
 
@@ -227,7 +248,11 @@
             <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
               <span>{t('playlist.trackCount', { count: pl.trackCount || 0 })}</span>
               {#if playCount > 0}
-                <span class="text-amber-400/80 font-medium">🔥 {playCount}</span>
+                <span
+                  data-testid="gallery-playcount-{pl.id}"
+                  class="text-amber-400/80 font-medium inline-flex items-center gap-0.5"
+                  title={t('myPlaylists.historyPlayTooltip', { count: playCount })}
+                >🔥 {playCount}</span>
               {/if}
             </div>
           </div>

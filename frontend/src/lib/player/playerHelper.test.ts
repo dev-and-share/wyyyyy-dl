@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resolveTrackUrl, preloadNextTrack } from './playerHelper';
-import { api } from './api';
-import type { Track } from './types';
+import { resolveTrackUrl, preloadNextTrack, handleRestrictedAudioCheck } from './playerHelper';
+import { api } from '../api';
+import { taskState } from '../taskStore.svelte';
+import type { Track } from '../types';
 
-vi.mock('./api', () => ({
+vi.mock('../api', () => ({
   api: {
     songV1: vi.fn().mockResolvedValue({ code: '000000', data: {} })
   }
+}));
+
+vi.mock('../musicfree/plugins', () => ({
+  resolveFallbackFromBuiltins: vi.fn().mockResolvedValue(null),
+  builtinPlugins: []
 }));
 
 describe('playerHelper URL resolution & preload contracts', () => {
@@ -80,6 +86,30 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(trialTrack.freeTrialDuration).toBe(30);
   });
 
+  it('correctly identifies online proxy stream (/v3/stream/online) as non-local and keeps freeTrial=true', async () => {
+    const trialTrack: Track = {
+      id: 304,
+      name: 'VIP试听曲目2',
+      artist: '某歌手'
+    };
+
+    (api.songV1 as any).mockResolvedValueOnce({
+      code: '000000',
+      data: {
+        url: '/v3/stream/online?id=304&url=http%3A%2F%2Fm701.music.126.net%2Ftrial.mp3&freeTrial=true',
+        freeTrial: true,
+        freeTrialDuration: 30
+      }
+    });
+
+    await resolveTrackUrl(trialTrack);
+
+    expect(trialTrack.isLocal).toBe(false);
+    expect(trialTrack.freeTrial).toBe(true);
+    expect(trialTrack.freeTrialDuration).toBe(30);
+    expect(taskState.downloadedSet.has(304)).toBe(false);
+  });
+
   it('preloadSurroundingTracks triggers pre-resolution for both next and previous tracks in queue', () => {
     const queue: Track[] = [
       { id: 1, name: '曲目1', artist: '歌手1' }, // prev of index 1
@@ -144,6 +174,53 @@ describe('playerHelper URL resolution & preload contracts', () => {
     // 🛡️ 不应重新拉取接口或重置队列，仅友好提示
     expect(mockOnPlayQueue).not.toHaveBeenCalled();
     expect(mockShowToast).toHaveBeenCalledWith('正在播放《同名歌单》', 'info', 1500);
+  });
+
+  it('playPlaylistTracks correctly fetches and plays local playlist via localPlaylistDetail', async () => {
+    const { playPlaylistTracks } = await import('./playerHelper');
+    const { playerStore } = await import('./playerStore.svelte');
+    playerStore.playlistId = null;
+    playerStore.queue = [];
+    playerStore.playing = false;
+
+    const mockOnPlayQueue = vi.fn();
+    const mockShowToast = vi.fn();
+
+    (api as any).localPlaylistDetail = vi.fn().mockResolvedValue({
+      code: '000000',
+      data: {
+        id: 'local_123456',
+        name: 'test-local',
+        trackCount: 1,
+        tracks: [
+          {
+            id: 1,
+            historyId: 88,
+            name: '本地测试曲目',
+            artist: '本地歌手',
+            url: '/v3/stream?historyId=88',
+            isLocal: true
+          }
+        ]
+      }
+    });
+
+    await playPlaylistTracks('local_123456', 'test-local', mockOnPlayQueue, mockShowToast);
+
+    expect((api as any).localPlaylistDetail).toHaveBeenCalledWith('local_123456');
+    expect(mockOnPlayQueue).toHaveBeenCalledTimes(1);
+    const queued = mockOnPlayQueue.mock.calls[0][0];
+    const options = mockOnPlayQueue.mock.calls[0][1];
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      id: 1,
+      name: '本地测试曲目',
+      artist: '本地歌手',
+      url: '/v3/stream?historyId=88',
+      isLocal: true
+    });
+    expect(options).toEqual({ startIndex: 0, playlistId: 'local_123456', isExplicitTrack: false });
+    expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('已开始播放《test-local》'), 'success', 2000);
   });
 
   it('toPlayerTrack normalizes metadata and preserves isLocal/freeTrial contracts (DRY)', async () => {
@@ -253,6 +330,98 @@ describe('playerHelper URL resolution & preload contracts', () => {
     expect(url).toBe('');
     expect(restrictedTrack.unplayable).toBe(true);
     expect(restrictedTrack.unplayableReason).toBe('因版权保护或所在地区限制暂时无法播放');
+  });
+
+  it('directly provides /v3/stream URL for tracks present in downloadedSet without blocking network call', async () => {
+    const { taskState } = await import('../taskStore.svelte');
+    taskState.downloadedSet.add(888);
+
+    const serverDownloadedTrack: Track = {
+      id: 888,
+      name: '胆小鬼',
+      artist: '梁咏琪',
+      cover: '/cover.png',
+      lyric: '[00:00.00]我在你的眼里'
+    };
+
+    const url = await resolveTrackUrl(serverDownloadedTrack);
+
+    expect(url).toBe('/v3/stream?id=888');
+    expect(serverDownloadedTrack.isLocal).toBe(true);
+    expect(serverDownloadedTrack.unplayable).toBe(false);
+    expect(serverDownloadedTrack.freeTrial).toBe(false);
+    expect(api.songV1).not.toHaveBeenCalled();
+  });
+
+  it('detects 11s kuwo restricted anti-leech audio and marks for skip or fallback', async () => {
+    const restrictedKuwoTrack: any = {
+      id: 'mf_kuwo_12345',
+      name: '你有没有真的爱过我',
+      artist: '阿图表妹',
+      duration: 204000,
+      isLocal: false
+    };
+
+    // 11秒的短音频检测：应当触发受限标记
+    const checkResult = await handleRestrictedAudioCheck(11, restrictedKuwoTrack, true, 'http://antiserver.kuwo.cn/play.mp3');
+    expect(checkResult.isRestricted).toBe(true);
+
+    // 正常长度的本地曲目不应被误判
+    const normalLocalTrack: any = {
+      id: 'mf_kuwo_888',
+      name: '本地歌曲',
+      artist: '歌手',
+      duration: 180000,
+      isLocal: true
+    };
+    const normalResult = await handleRestrictedAudioCheck(11, normalLocalTrack, true, 'http://localhost/stream');
+    expect(normalResult.isRestricted).toBe(false);
+  }, 15000);
+
+  it('isVipOrPaidTrack correctly identifies VIP and paid tracks across platforms', async () => {
+    const { isVipOrPaidTrack } = await import('./trackStatus.svelte');
+
+    // 1. 酷狗付费歌曲 (如《彩云之南》用户抓包数据)
+    expect(isVipOrPaidTrack({
+      name: '彩云之南',
+      raw: { privilege: 10, pay_type: 3, error: '需要付费' }
+    })).toBe(true);
+
+    // 2. 酷狗 VIP 歌曲
+    expect(isVipOrPaidTrack({
+      raw: { privilege: 8, pay_type: 0 }
+    })).toBe(true);
+
+    // 3. 酷狗免费歌曲 (privilege 0, pay_type 0)
+    expect(isVipOrPaidTrack({
+      raw: { privilege: 0, pay_type: 0, fail_process: 0 }
+    })).toBe(false);
+
+    // 4. QQ 音乐 VIP 歌曲 (payplay 1)
+    expect(isVipOrPaidTrack({
+      raw: { pay: { payplay: 1 } }
+    })).toBe(true);
+
+    // 5. QQ 音乐免费歌曲
+    expect(isVipOrPaidTrack({
+      raw: { pay: { payplay: 0 } }
+    })).toBe(false);
+
+    // 6. 通用/网易云 VIP/Fee
+    expect(isVipOrPaidTrack({ fee: 1 })).toBe(true);
+    expect(isVipOrPaidTrack({ freeTrial: true })).toBe(true);
+    expect(isVipOrPaidTrack({ fee: 0 })).toBe(false);
+  });
+
+  it('jumpToMusicFreeSearch properly configures routerState and switches tab', async () => {
+    const { routerState, jumpToMusicFreeSearch } = await import('../router.svelte');
+
+    jumpToMusicFreeSearch('彩云之南 徐千雅');
+
+    expect(routerState.tab).toBe('search');
+    expect(routerState.searchSource).toBe('musicfree');
+    expect(routerState.searchKeyword).toBe('彩云之南 徐千雅');
+    expect(routerState.searchTrigger).toBeGreaterThan(0);
   });
 });
 

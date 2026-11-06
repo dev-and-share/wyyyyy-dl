@@ -12,9 +12,7 @@
 
   async function handleChange(e: Event) {
     const select = e.currentTarget as HTMLSelectElement;
-    const lang = select.value as Locale;
-    if (i18n.locale === lang) return;
-    await setLocale(lang);
+    await setLocale(select.value as Locale);
   }
 </script>
 

@@ -26,14 +26,16 @@
   const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
   const STORAGE_KEY_SUBTAB = 'wyyyy_pl_subtab';
   const getStored = (k: string, def: string) => typeof localStorage !== 'undefined' ? (localStorage.getItem(k) ?? def) : def;
-  const initPlaylistId = () => playlistId || getStored(STORAGE_KEY_PLAYLIST_ID, '');
+  const initPlaylistId = () => playlistId || (typeof window !== 'undefined' ? location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || '' : '');
 
   let pid = $state(initPlaylistId());
   let lastSeenPlaylistId = $state('');
   let lastSeenTrigger = $state(-1);
 
   function initSubtab(): 'my' | 'detail' | 'recommend' {
-    return playlistId ? 'detail' : ((getStored(STORAGE_KEY_SUBTAB, 'my') as any) || 'my');
+    const hashId = typeof window !== 'undefined' ? location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] : '';
+    if (playlistId || hashId) return 'detail';
+    return 'my';
   }
 
   let activeSubtab: 'my' | 'detail' | 'recommend' = $state(initSubtab());
@@ -71,14 +73,14 @@
   // 初始化自动拉取/读取 SWR 缓存
   onMount(() => {
     const isDesktopMode = layoutState.isDesktop;
-    const targetPid = playlistId || (!isDesktopMode ? (pid || getStored(STORAGE_KEY_PLAYLIST_ID, '')) : '');
+    const targetPid = playlistId || (!isDesktopMode ? pid : '');
     if (targetPid && targetPid !== 'daily-recommend') {
       pid = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});
     } else if (targetPid === 'daily-recommend') {
       pid = 'daily-recommend';
     }
-    loadMyPlaylists('created').catch(() => {});
+    loadMyPlaylists().catch(() => {});
   });
 
   // 监听外部传入的歌单 ID 变更与强制刷新触发器

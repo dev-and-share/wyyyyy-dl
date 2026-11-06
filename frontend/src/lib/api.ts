@@ -18,6 +18,15 @@ export function postForm(path: string, params: Record<string, string>) {
   return req(path, { method: 'POST', body: new URLSearchParams(params).toString() });
 }
 
+export async function postJson(path: string, body: any) {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return r.json().catch(() => ({ code: '999999', msg: 'invalid json' }));
+}
+
 export const api = {
   // 🔐 认证与状态
   loginStatus: () => get('/v3/auth/status'),
@@ -56,7 +65,7 @@ export const api = {
   tasksClear: () => req('/v3/download/tasks/clear', { method: 'POST' }),
 
   // 📜 本地历史管理
-  historyList: (kw: string, page: number) => get(`/v3/history/list?keyword=${encodeURIComponent(kw)}&page=${page}&pageSize=10`),
+  historyList: (kw: string, page: number, pageSize = 10) => get(`/v3/history/list?keyword=${encodeURIComponent(kw)}&page=${page}&pageSize=${pageSize}`),
   historyIds: () => get('/v3/history/ids'),
   historyStats: () => get('/v3/history/stats'),
   historyScan: () => req('/v3/history/scan', { method: 'POST' }),
@@ -89,5 +98,40 @@ export const api = {
     if (params.path) q.set('path', params.path);
     if (params.taskId) q.set('taskId', String(params.taskId));
     return get(`/v3/reveal?${q.toString()}`);
-  }
+  },
+
+  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染网易云云端)
+  localPlaylistList: () => get('/v3/local-playlist/list'),
+  localPlaylistCreate: (name: string, coverUrl?: string) => postJson('/v3/local-playlist/create', { name, coverUrl }),
+  localPlaylistDelete: (id: string) => postForm('/v3/local-playlist/delete', { id }),
+  localPlaylistAddTrack: (playlistId: string, track: { historyId?: number; name: string; artist: string; filePath?: string; coverUrl?: string }) =>
+    postJson('/v3/local-playlist/tracks/add', { playlistId, ...track }),
+  localPlaylistRemoveTrack: (playlistId: string, trackId?: number | string, songName?: string, artist?: string) => {
+    const form: Record<string, string> = { playlistId };
+    if (trackId !== undefined && trackId !== null && String(trackId).trim() !== '' && String(trackId) !== 'NaN') {
+      form.trackId = String(trackId);
+    }
+    if (songName) form.songName = songName;
+    if (artist) form.artist = artist;
+    return postForm('/v3/local-playlist/tracks/remove', form);
+  },
+  localPlaylistDetail: (id: string) => get(`/v3/local-playlist/detail?id=${encodeURIComponent(id)}`),
+
+  // 🧩 自定义/插件音源落盘下载
+  downloadCustom: (track: {
+    id?: string;
+    name: string;
+    artist?: string;
+    album?: string;
+    url: string;
+    coverUrl?: string;
+    lyric?: string;
+    headers?: Record<string, string>;
+  }) => postJson('/v3/download/custom', track),
+
+  // 🇨🇳 国内跨区解析代理 (解锁海外版权)
+  getGeoProxyConfig: () => get('/v3/geo-proxy/config'),
+  updateGeoProxyConfig: (config: any) => postJson('/v3/geo-proxy/config', config),
+  testGeoProxy: (proxyUrl?: string) => postJson('/v3/geo-proxy/test', { proxyUrl }),
+  refreshGeoProxyPool: () => postJson('/v3/geo-proxy/refresh', {})
 };

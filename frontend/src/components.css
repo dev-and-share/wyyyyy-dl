@@ -3,7 +3,7 @@
    ========================================================================== */
 
 @layer components {
-    /* 📱 极顺畅滚动列表容器 (Scrollable List Container) */
+    /* 📱 滚动列表容器：桌面端限制最大高度，移动端 SP 彻底解除限制保持自然整页流式滚动 */
     .scrollable-list {
         max-height: 520px;
         overflow-y: auto;
@@ -13,7 +13,8 @@
 
     @media (max-width: 768px) {
         .scrollable-list {
-            max-height: min(65vh, 620px);
+            max-height: none !important;
+            overflow-y: visible !important;
         }
     }
 
@@ -29,14 +30,20 @@
         transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     }
 
-    /* 彻底清除 WebKit / Chromium 原生搜索清除按钮，防止与自定义清除按钮产生双重 ✕ */
-    input[type="search"]::-webkit-search-cancel-button,
-    input[type="search"]::-webkit-search-decoration,
-    input[type="search"]::-webkit-search-results-button,
-    input[type="search"]::-webkit-search-results-decoration {
+    /* 仅在已内置独立 ✕ 按钮的 LocalSearchBox 容器中屏蔽原生按钮，避免双重 ✕ */
+    .local-search-container input[type="search"]::-webkit-search-cancel-button,
+    .local-search-container input[type="search"]::-webkit-search-decoration {
         -webkit-appearance: none;
         appearance: none;
         display: none;
+    }
+
+    /* 普通 input[type="search"] 保留并优化原生清除按钮，便于单手一键清空 */
+    input[type="search"]::-webkit-search-cancel-button {
+        cursor: pointer;
+        -webkit-appearance: searchfield-cancel-button;
+        appearance: auto;
+        display: inline-block;
     }
 
     input[type="text"]::placeholder, input[type="search"]::placeholder, input[type="number"]::placeholder {
@@ -434,7 +441,7 @@
 
     /* 📱 移动端底栏与吸顶播放器无缝吸附系统 (消除悬空黑缝与底部过大留白) */
     :root {
-        --mobile-nav-height: calc(44px + max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)));
+        --mobile-nav-height: calc(40px + max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)));
     }
 
     .mobile-bottom-tab-bar {

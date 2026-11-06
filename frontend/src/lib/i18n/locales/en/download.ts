@@ -152,7 +152,7 @@ export default {
   'cache.cleanThresholdTooltip': 'Clean threshold (tracks below this count will be cleaned)',
   'cache.clearAllTooltip': 'Clear all offline cache',
   'cache.sortRule': 'Sorting: Play count ↓ > Cache time ↓ (frequent first, newest first)',
-  'cache.totalOfflineTracks': '{count} offline tracks total',
+  'cache.totalOfflineTracks': '{count} tracks / {size}',
   'cache.storedOnDeviceTooltip': 'Stored on current device/browser',
   'cache.playCountTooltip': 'Total played {count} times',
   'cache.playCountLabel': '🎧 {count} plays',

@@ -41,7 +41,7 @@ export function normalizeLocale(lang: string | null | undefined): Locale | null 
 }
 
 export function detectLocale(): Locale {
-  // 1. 本地持久化缓存
+  // 1. 本地持久化缓存：只要用户在界面选过，严格以当前标准 key 为准，绝不读取老 key
   try {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem(LOCALE_STORAGE_KEY);

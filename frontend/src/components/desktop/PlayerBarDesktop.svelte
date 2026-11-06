@@ -7,6 +7,7 @@
   import PlayerIcon from '../PlayerIcon.svelte';
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
+  import { isTrackLiked } from '../../lib/likeStore.svelte';
   import { skin } from '../../lib/skinStore.svelte';
   import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
@@ -56,7 +57,7 @@
     onMinimize: () => void;
   }>();
 
-  let isLiked = $derived(curTrack ? likedSet.has(Number(curTrack.id)) : false);
+  let isLiked = $derived(curTrack ? isTrackLiked(curTrack.id, curTrack.name, curTrack.artist) : false);
 </script>
 
 <div
@@ -154,7 +155,12 @@
               {curTrack?.name || t('player.noTrackPlaying')}
             </span>
             {#if curTrack}
-              <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
+              <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1 shrink-0" />
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span class="inline-flex items-center shrink-0 ml-0.5" onclick={(e) => e.stopPropagation()}>
+                <TrackLikeBtn liked={isLiked} onclick={onToggleLike} />
+              </span>
             {/if}
           </div>
           <div
@@ -170,11 +176,6 @@
           </div>
         </div>
       </div>
-
-      <!-- ❤️ 红心按钮 -->
-      {#if curTrack}
-        <TrackLikeBtn liked={isLiked} onclick={onToggleLike} />
-      {/if}
     </div>
 
     <!-- 2. 中间：按皮肤定制的核心控制按键 + 全宽进度条 -->

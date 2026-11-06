@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 vi.mock('../lib/api', () => ({
   api: {
     playlistRemove: vi.fn().mockResolvedValue({ code: '000000', data: { code: 200 } }),
+    localPlaylistRemoveTrack: vi.fn().mockResolvedValue({ code: '000000', data: true }),
     deleteSongFile: vi.fn().mockResolvedValue({ code: '000000', data: true })
   }
 }));
@@ -128,5 +129,29 @@ describe('RemoveFromPlaylistModal', () => {
       removedBrowserCache: true,
       removedServerFile: true
     }));
+  });
+
+  it('routes to localPlaylistRemoveTrack for local playlists like local_favorites', async () => {
+    const onClose = vi.fn();
+    const onSuccess = vi.fn();
+    const showToast = vi.fn();
+
+    const { getByTestId } = render(RemoveFromPlaylistModal, {
+      props: {
+        song: mockSong,
+        playlistId: 'local_favorites',
+        playlistName: '❤️ 本地我喜欢的音乐',
+        onClose,
+        onSuccess,
+        showToast
+      }
+    });
+
+    await fireEvent.click(getByTestId('btn-confirm-remove'));
+    await new Promise(r => setTimeout(r, 100));
+
+    expect(api.localPlaylistRemoveTrack).toHaveBeenCalledWith('local_favorites', 18915, '晴天', '周杰伦');
+    expect(api.playlistRemove).not.toHaveBeenCalled();
+    expect(onSuccess).toHaveBeenCalled();
   });
 });

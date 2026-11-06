@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setupMediaSession, updateMediaSessionPosition, clearMediaSessionPosition, updateMediaSessionMetadata } from './mediaSession';
-import type { Track } from './types';
+import type { Track } from '../types';
 
 // Mock MediaMetadata for jsdom environment
 class MockMediaMetadata {

@@ -1,7 +1,9 @@
 /**
- * Global UI store — bottom sheet & future overlay primitives.
+ * Global UI store — bottom sheet, global drawer & theme control primitives.
  * Module-level $state acts as a singleton (Svelte 5 Runes equivalent of Redux store).
  */
+
+import { getInitialTheme, applyTheme, type ThemeMode } from './theme';
 
 export type SheetActionStyle = 'default' | 'primary' | 'danger' | 'cancel';
 
@@ -26,4 +28,33 @@ export function openSheet(data: SheetData): void {
 
 export function closeSheet(): void {
   sheetState.data = null;
+}
+
+// Global UI controls for settings drawer and theme
+export const globalUiState = $state<{
+  showSettings: boolean;
+  themeMode: ThemeMode;
+}>({
+  showSettings: false,
+  themeMode: getInitialTheme()
+});
+
+export function openSettings(): void {
+  globalUiState.showSettings = true;
+}
+
+export function closeSettings(): void {
+  globalUiState.showSettings = false;
+}
+
+export function toggleTheme(): void {
+  const current = globalUiState.themeMode;
+  const next = current === 'dark' ? 'light' : current === 'light' ? 'auto' : 'dark';
+  globalUiState.themeMode = next;
+  applyTheme(next);
+}
+
+export function setThemeMode(mode: ThemeMode): void {
+  globalUiState.themeMode = mode;
+  applyTheme(mode);
 }

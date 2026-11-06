@@ -42,9 +42,17 @@ public class DownloadHistoryController {
     public RespEntity<String> revealFile(
             @RequestParam(value = "path", required = false) String path,
             @RequestParam(value = "taskId", required = false) Long taskId,
-            @RequestParam(value = "id", required = false) Long songId,
+            @RequestParam(value = "id", required = false) String songIdStr,
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "artist", required = false) String artist) {
+        
+        Long songId = null;
+        if (StringUtils.isNotBlank(songIdStr)) {
+            try {
+                long parsed = Long.parseLong(songIdStr.trim());
+                if (parsed > 0) songId = parsed;
+            } catch (Exception ignored) {}
+        }
         
         String targetPath = path;
         if (StringUtils.isBlank(targetPath) && taskId != null) {

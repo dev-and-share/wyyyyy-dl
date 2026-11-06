@@ -47,6 +47,8 @@
   // 若 track 缺少歌词，自动异步拉取
   async function loadTrackLyric(t: any) {
     if (!t || t.lyric) return;
+    const numId = Number(t.id);
+    if (isNaN(numId) || numId <= 0 || String(t.id).startsWith('mf_')) return;
     try {
       const j = await api.songV1(String(t.id), 'lossless');
       if (j?.data?.lyric) {
@@ -79,10 +81,20 @@
                   ? 'text-lg md:text-xl font-bold text-[var(--skin-accent,#10b981)] scale-105 tracking-wide drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]'
                   : skinId === 'winamp'
                     ? 'text-lg md:text-xl font-bold text-[#10b981] scale-105 tracking-widest drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-                    : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
+                    : skinId === 'spring'
+                      ? 'text-lg md:text-xl font-bold text-emerald-400 scale-105 drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]'
+                      : skinId === 'sakura'
+                        ? 'text-lg md:text-xl font-bold text-pink-300 scale-105 drop-shadow-[0_0_14px_rgba(255,64,129,0.7)]'
+                        : skinId === 'summer'
+                          ? 'text-lg md:text-xl font-bold text-sky-300 scale-105 drop-shadow-[0_0_14px_rgba(56,189,248,0.7)]'
+                          : skinId === 'autumn'
+                            ? 'text-lg md:text-xl font-bold text-yellow-300 scale-105 drop-shadow-[0_0_14px_rgba(250,204,21,0.7)]'
+                            : skinId === 'winter'
+                              ? 'text-lg md:text-xl font-bold text-white scale-105 drop-shadow-[0_0_14px_rgba(255,255,255,0.85)]'
+                              : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
             : (skinId === 'winamp'
-                ? 'text-sm md:text-base text-emerald-500/50 hover:text-[#10b981]'
-                : 'text-sm md:text-base text-[var(--text-muted)] hover:text-[var(--text-main)]')}"
+                ? 'text-sm md:text-base text-emerald-400/50 hover:text-[#10b981]'
+                : 'text-sm md:text-base text-white/45 hover:text-white/90')}"
           onclick={() => { userSeekedAt = Date.now(); onSeekTime(l.time); }}
         >
           {l.text}
@@ -91,11 +103,11 @@
     {:else if rawLyricText}
       {#each rawLyricText.split(/\r?\n/) as lineStr}
         {#if lineStr.trim()}
-          <p class="text-sm md:text-base text-[var(--text-muted)] my-1 leading-relaxed break-words px-2">{lineStr}</p>
+          <p class="text-sm md:text-base text-white/50 my-1 leading-relaxed break-words px-2">{lineStr}</p>
         {/if}
       {/each}
     {:else}
-      <div class="py-16 text-[var(--text-muted)] text-sm">{t('player.lyricEmpty')}</div>
+      <div class="py-16 text-white/40 text-sm">{t('player.lyricEmpty')}</div>
     {/if}
   </div>
 </div>

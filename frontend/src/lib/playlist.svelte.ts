@@ -1,11 +1,13 @@
+import { untrack } from 'svelte';
 import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 import { t } from './i18n';
+import { playlistService } from './playlistService';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
 export const playlistState = $state({
-  filter: 'created' as any,
+  filter: 'all' as any,
   playlist: null as any,
   curPage: 1,
   loading: false,
@@ -55,16 +57,26 @@ export function hasMoreTracks(): boolean {
   return playlistState.curPage < _totalPages;
 }
 
-export async function loadMyPlaylists(f:any=playlistState.filter){
-  playlistState.filter=f;
-  const cached=getApiCache('my_playlists');
-  if(cached?.data?.playlists){ myPlaylists.length=0; myPlaylists.push(...cached.data.playlists); }
-  try{
-    const j=await api.myPlaylist();
-    if(j?.code && j.code!=='000000') throw new Error(j.msg);
-    const pls=j?.data?.playlists||[];
-    if(JSON.stringify(pls)!==JSON.stringify(cached?.data?.playlists||[])){ setApiCache('my_playlists', j.data); myPlaylists.length=0; myPlaylists.push(...pls); }
-  }catch(e){ throw e; }
+export async function loadMyPlaylists(f: any = playlistState.filter) {
+  playlistState.filter = f;
+  const cached = getApiCache('my_playlists');
+  if (cached?.data?.playlists) {
+    myPlaylists.length = 0;
+    myPlaylists.push(...cached.data.playlists);
+  }
+  if (typeof api?.myPlaylist !== 'function') return;
+  try {
+    const j = await api.myPlaylist();
+    if (j?.code && j.code !== '000000') throw new Error(j.msg);
+    const pls = j?.data?.playlists || [];
+    if (JSON.stringify(pls) !== JSON.stringify(cached?.data?.playlists || [])) {
+      setApiCache('my_playlists', j.data);
+      myPlaylists.length = 0;
+      myPlaylists.push(...pls);
+    }
+  } catch (e) {
+    throw e;
+  }
 }
 export function updatePlaylistTrackCount(playlistId: string | number, deltaOrCount: number, isAbsolute = false) {
   if (!playlistId) return;
@@ -111,6 +123,13 @@ export function removeTrackFromCurrentPlaylist(playlistId: string | number, trac
 
   // 3. 同步递减该歌单的曲目计数（内存 + my_playlists 缓存）
   updatePlaylistTrackCount(pIdStr, -1);
+
+  // 4. 同步更新本地歌单缓存
+  const localCache = getApiCache('local_pl_' + pIdStr);
+  if (localCache?.data?.tracks && Array.isArray(localCache.data.tracks)) {
+    localCache.data.tracks = localCache.data.tracks.filter((t: any) => String(t.id) !== tIdStr);
+    setApiCache('local_pl_' + pIdStr, localCache.data);
+  }
 
   // 4. 同步更新本地持久化缓存 playlist_${pIdStr}
   const cacheKey = 'playlist_' + pIdStr;
@@ -180,6 +199,53 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
   if (pidStr === 'daily-recommend') {
     return null;
   }
+
+  // 📁 本地自建隔离歌单分支 (通过 Provider 自动处理)
+  const provider = playlistService.getProvider(pidStr);
+  if (provider.type === 'local') {
+    activeTargetPlaylistId = pidStr;
+    const requestId = ++currentLoadRequestId;
+    const localCacheKey = 'local_pl_' + pidStr;
+    const cached = getApiCache(localCacheKey);
+    const hasCache = !!(cached?.data?.tracks?.length);
+
+    // 1. Cache First: 若已有本地缓存且非强制刷新，立即秒显数据，无任何 loading 白屏！
+    if (hasCache && !force) {
+      renderPlaylist(cached.data);
+      // 后台静默调用 API 进行 Revalidate，更新最新数据与本地缓存
+      provider.getDetail(pidStr).then((pl) => {
+        if (pl && Array.isArray(pl.tracks)) {
+          setApiCache(localCacheKey, pl);
+          if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
+            renderPlaylist(pl);
+          }
+        }
+      }).catch(() => {});
+      return cached.data;
+    }
+
+    playlistState.loading = true;
+    playlistState.loadingId = pidStr;
+    try {
+      if (playlistState.playlist && String(playlistState.playlist.id) !== pidStr) {
+        playlistState.playlist = null;
+        allTracks.length = 0;
+      }
+      const pl = await provider.getDetail(pidStr);
+      if (!pl) throw new Error(t('playlist.emptyOrNotFound'));
+      setApiCache(localCacheKey, pl);
+      if (activeTargetPlaylistId === pidStr && requestId === currentLoadRequestId) {
+        renderPlaylist(pl);
+      }
+      return pl;
+    } finally {
+      if (requestId === currentLoadRequestId) {
+        playlistState.loading = false;
+        playlistState.loadingId = '';
+      }
+    }
+  }
+
   const key = 'playlist_' + pidStr;
 
   activeTargetPlaylistId = pidStr;
@@ -287,8 +353,10 @@ export function sortPlaylistsByPlayCount(list: any[]): any[] {
       if (isFavA && isFavB) return a.originalIndex - b.originalIndex;
 
       // 其余歌单按播放次数降序排序：播放越多越靠前
-      const countA = getPlaylistPlayCount(a.item.id);
-      const countB = getPlaylistPlayCount(b.item.id);
+      // ⚡ 会话冻结 (Session Freeze)：使用 untrack 读取播放量，确保当前会话期间列表顺序稳定冻结
+      // 点击播放时计数 +1 实时反映在 UI 徽标上，但绝不触发列表同步跳跃抖动
+      const countA = untrack(() => getPlaylistPlayCount(a.item.id));
+      const countB = untrack(() => getPlaylistPlayCount(b.item.id));
 
       if (countB !== countA) {
         return countB - countA;

@@ -8,7 +8,7 @@ import {
   getF3TimeoutMinutes,
   setF3TimeoutMinutes
 } from './iosF3KeepAlive';
-import * as platformModule from './platform';
+import * as platformModule from '../platform';
 
 class MockMediaMetadata {
   title: string;

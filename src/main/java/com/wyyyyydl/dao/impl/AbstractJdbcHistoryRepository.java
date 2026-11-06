@@ -10,6 +10,7 @@ import com.wyyyyydl.service.storage.IStorageService;
 import com.wyyyyydl.utils.TagUtils;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -124,7 +125,46 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     ")";
             stmt.execute(configSql);
 
+            String localPlaylistsSql = "CREATE TABLE IF NOT EXISTS local_playlists (" +
+                    "id VARCHAR(64) PRIMARY KEY, " +
+                    "name TEXT NOT NULL, " +
+                    "cover_url TEXT, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                    ")";
+            stmt.execute(localPlaylistsSql);
+
+            // 🌟 初始化系统内置专属歌单：❤️ 本地我喜欢的音乐 (保留歌单，置顶展示，不允许删除)
+            String initFavSql = "INSERT OR IGNORE INTO local_playlists (id, name, cover_url) " +
+                    "VALUES ('local_favorites', '❤️ 本地我喜欢的音乐', '/favicon.png')";
+            stmt.execute(initFavSql);
+
+            String localPlaylistTracksSql = "CREATE TABLE IF NOT EXISTS local_playlist_tracks (" +
+                    autoIncCol + ", " +
+                    "playlist_id VARCHAR(64), " +
+                    "history_id BIGINT, " +
+                    "song_name TEXT, " +
+                    "artist TEXT, " +
+                    "file_path TEXT, " +
+                    "cover_url TEXT, " +
+                    "order_num INT DEFAULT 0, " +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                    ")";
+            stmt.execute(localPlaylistTracksSql);
+
             createIndexesSafely(stmt);
+            cleanDuplicatePlaylistTracksSafely(stmt);
+        }
+    }
+
+    protected void cleanDuplicatePlaylistTracksSafely(Statement stmt) {
+        try {
+            // 清理历史累积的重复歌曲（按歌单 + 歌名 + 歌手去重，保留最早一条）
+            String dedupeSql = "DELETE FROM local_playlist_tracks WHERE id NOT IN (" +
+                    "SELECT MIN(id) FROM local_playlist_tracks " +
+                    "GROUP BY playlist_id, song_name, COALESCE(artist, '')" +
+                    ")";
+            stmt.execute(dedupeSql);
+        } catch (Exception ignored) {
         }
     }
 
@@ -132,7 +172,8 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         String[] indexes = {
                 "CREATE INDEX IF NOT EXISTS idx_dh_song_id ON download_history(song_id)",
                 "CREATE INDEX IF NOT EXISTS idx_dh_name_artist ON download_history(song_name, artist)",
-                "CREATE INDEX IF NOT EXISTS idx_dh_created_at ON download_history(created_at)"
+                "CREATE INDEX IF NOT EXISTS idx_dh_created_at ON download_history(created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_lpt_playlist_id ON local_playlist_tracks(playlist_id)"
         };
         for (String idxSql : indexes) {
             try {
@@ -541,32 +582,36 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
             String targetArtist = (artist != null) ? artist.trim() : "";
 
             if (!targetNormName.isEmpty()) {
-                String sql = "SELECT * FROM download_history ORDER BY id DESC";
+                // 🌟 性能核心优化：使用 SQL 条件缩小候选集至最多 20 条，绝不无脑全表磁盘 stat 扫描
+                String sql = "SELECT * FROM download_history WHERE song_name = ? OR song_name LIKE ? ORDER BY id DESC LIMIT 20";
                 try (Connection conn = getConnection();
-                     Statement stmt = conn.createStatement();
-                     ResultSet rs = stmt.executeQuery(sql)) {
-                    while (rs.next()) {
-                        DownloadHistoryItem item = mapItemFromRs(rs);
-                        if (Boolean.TRUE.equals(item.getFileExists())) {
-                            String localName = item.getSongName() != null ? item.getSongName().trim() : "";
-                            String localNormName = normalizeTrackName(localName);
+                     PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, targetCleanName);
+                    pstmt.setString(2, targetNormName + "%");
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        while (rs.next()) {
+                            DownloadHistoryItem item = mapItemFromRs(rs);
+                            if (Boolean.TRUE.equals(item.getFileExists())) {
+                                String localName = item.getSongName() != null ? item.getSongName().trim() : "";
+                                String localNormName = normalizeTrackName(localName);
 
-                            // 核心歌名（去除括号版本后缀后）必须完全相等
-                            if (targetNormName.equals(localNormName)) {
-                                String localArtist = item.getArtist() != null ? item.getArtist().trim() : "";
+                                // 核心歌名（去除括号版本后缀后）必须完全相等
+                                if (targetNormName.equals(localNormName)) {
+                                    String localArtist = item.getArtist() != null ? item.getArtist().trim() : "";
 
-                                // Case A: 双方都有歌手信息，必须歌手匹配
-                                if (isArtistMatch(targetArtist, localArtist)) {
-                                    log.info("🎯 跨专辑/版本精准命中本地音轨: 《{}》({}) -> 《{}》({}), path: {}",
-                                            targetCleanName, targetArtist, localName, localArtist, item.getFilePath());
-                                    return item;
-                                }
-                                // Case B: 未剥离括号的完整歌名严格全字相等，且一方缺少歌手，且歌名长度 >= 4 字符
-                                else if ((targetArtist.isEmpty() || localArtist.isEmpty()) 
-                                        && targetCleanName.equalsIgnoreCase(localName) 
-                                        && targetNormName.length() >= 4) {
-                                    log.info("🎯 歌名全字精确命中无歌手音轨: 《{}》 -> 《{}》, path: {}", targetCleanName, localName, item.getFilePath());
-                                    return item;
+                                    // Case A: 双方都有歌手信息，必须歌手匹配
+                                    if (isArtistMatch(targetArtist, localArtist)) {
+                                        log.info("🎯 跨专辑/版本精准命中本地音轨: 《{}》({}) -> 《{}》({}), path: {}",
+                                                targetCleanName, targetArtist, localName, localArtist, item.getFilePath());
+                                        return item;
+                                    }
+                                    // Case B: 未剥离括号的完整歌名严格全字相等，且一方缺少歌手，且歌名长度 >= 4 字符
+                                    else if ((targetArtist.isEmpty() || localArtist.isEmpty()) 
+                                            && targetCleanName.equalsIgnoreCase(localName) 
+                                            && targetNormName.length() >= 4) {
+                                        log.info("🎯 歌名全字精确命中无歌手音轨: 《{}》 -> 《{}》, path: {}", targetCleanName, localName, item.getFilePath());
+                                        return item;
+                                    }
                                 }
                             }
                         }
@@ -1332,5 +1377,276 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
         int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
         return new java.text.DecimalFormat("#,##0.00").format(size / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+    }
+
+    // ==========================================
+    // 7. 本地专属自建歌单 (Local Playlists)
+    // ==========================================
+    public List<Map<String, Object>> listLocalPlaylists() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = "SELECT p.id, p.name, p.cover_url, p.created_at, COUNT(t.id) as track_count " +
+                "FROM local_playlists p " +
+                "LEFT JOIN local_playlist_tracks t ON p.id = t.playlist_id " +
+                "GROUP BY p.id, p.name, p.cover_url, p.created_at " +
+                "ORDER BY CASE WHEN p.id = 'local_favorites' THEN 0 ELSE 1 END, p.created_at DESC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", rs.getString("id"));
+                map.put("name", rs.getString("name"));
+                map.put("coverImgUrl", rs.getString("cover_url"));
+                map.put("trackCount", rs.getInt("track_count"));
+                map.put("isLocal", true);
+                map.put("subscribed", false);
+                map.put("createdAt", rs.getString("created_at"));
+                list.add(map);
+            }
+        } catch (Exception e) {
+            log.error("查询本地歌单列表失败", e);
+        }
+        return list;
+    }
+
+    public boolean createLocalPlaylist(String id, String name, String coverUrl) {
+        String sql = "INSERT INTO local_playlists (id, name, cover_url) VALUES (?, ?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id);
+            ps.setString(2, name);
+            ps.setString(3, coverUrl);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            log.error("创建本地歌单失败: id={}, name={}", id, name, e);
+            return false;
+        }
+    }
+
+    public boolean deleteLocalPlaylist(String id) {
+        if ("local_favorites".equals(id)) {
+            log.warn("禁止删除系统内置歌单: {}", id);
+            return false;
+        }
+        String delTracksSql = "DELETE FROM local_playlist_tracks WHERE playlist_id = ?";
+        String delPlSql = "DELETE FROM local_playlists WHERE id = ?";
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps1 = conn.prepareStatement(delTracksSql);
+                 PreparedStatement ps2 = conn.prepareStatement(delPlSql)) {
+                ps1.setString(1, id);
+                ps1.executeUpdate();
+                ps2.setString(1, id);
+                ps2.executeUpdate();
+                conn.commit();
+                return true;
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            log.error("删除本地歌单失败: id={}", id, e);
+            return false;
+        }
+    }
+
+    public boolean addTrackToLocalPlaylist(String playlistId, Long historyId, String songName, String artist, String filePath, String coverUrl) {
+        if (StringUtils.isBlank(playlistId) || StringUtils.isBlank(songName)) {
+            return false;
+        }
+        String cleanSongName = songName.trim();
+        String cleanArtist = StringUtils.isNotBlank(artist) ? artist.trim() : null;
+
+        // 🌟 1. 幂等去重检查：该歌单下若已存在相同曲目（同 historyId、同 filePath、或同名同歌手/同名但旧数据缺失歌手）
+        String checkSql = "SELECT id, artist, file_path, cover_url FROM local_playlist_tracks WHERE playlist_id = ? AND (" +
+                "(? IS NOT NULL AND history_id = ?) OR " +
+                "(? IS NOT NULL AND ? != '' AND file_path = ?) OR " +
+                "(song_name = ? AND (artist = ? OR artist IS NULL OR ? IS NULL OR artist = '未知歌手' OR artist = '未知' OR artist = ''))" +
+                ") ORDER BY id ASC LIMIT 1";
+
+        try (Connection conn = getConnection()) {
+            Long existingId = null;
+            String existingArtist = null;
+            String existingFilePath = null;
+            String existingCover = null;
+
+            try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
+                checkPs.setObject(1, playlistId);
+                checkPs.setObject(2, historyId);
+                checkPs.setObject(3, historyId);
+                checkPs.setString(4, filePath);
+                checkPs.setString(5, filePath);
+                checkPs.setString(6, filePath);
+                checkPs.setString(7, cleanSongName);
+                checkPs.setString(8, cleanArtist);
+                checkPs.setString(9, cleanArtist);
+                try (ResultSet rs = checkPs.executeQuery()) {
+                    if (rs.next()) {
+                        existingId = rs.getLong("id");
+                        existingArtist = rs.getString("artist");
+                        existingFilePath = rs.getString("file_path");
+                        existingCover = rs.getString("cover_url");
+                    }
+                }
+            }
+
+            if (existingId != null) {
+                // 已存在，若新传入的信息更完整（例如纠正了"未知歌手"或补充了物理文件路径/封面），做增量补充更新
+                boolean needUpdate = false;
+                if (StringUtils.isNotBlank(cleanArtist) && ("未知歌手".equals(existingArtist) || "未知".equals(existingArtist) || StringUtils.isBlank(existingArtist))) {
+                    needUpdate = true;
+                }
+                if (StringUtils.isNotBlank(filePath) && StringUtils.isBlank(existingFilePath)) {
+                    needUpdate = true;
+                }
+                if (StringUtils.isNotBlank(coverUrl) && StringUtils.isBlank(existingCover)) {
+                    needUpdate = true;
+                }
+                if (needUpdate) {
+                    String updateSql = "UPDATE local_playlist_tracks SET " +
+                            "artist = COALESCE(NULLIF(?, ''), artist), " +
+                            "file_path = COALESCE(NULLIF(?, ''), file_path), " +
+                            "cover_url = COALESCE(NULLIF(?, ''), cover_url) " +
+                            "WHERE id = ?";
+                    try (PreparedStatement updPs = conn.prepareStatement(updateSql)) {
+                        updPs.setString(1, StringUtils.isNotBlank(cleanArtist) && !"未知歌手".equals(cleanArtist) ? cleanArtist : null);
+                        updPs.setString(2, filePath);
+                        updPs.setString(3, coverUrl);
+                        updPs.setLong(4, existingId);
+                        updPs.executeUpdate();
+                    }
+                }
+                return true;
+            }
+
+            // 2. 插入全新曲目
+            String sql = "INSERT INTO local_playlist_tracks (playlist_id, history_id, song_name, artist, file_path, cover_url) VALUES (?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, playlistId);
+                ps.setObject(2, historyId);
+                ps.setString(3, cleanSongName);
+                ps.setString(4, cleanArtist);
+                ps.setString(5, filePath);
+                ps.setString(6, coverUrl);
+                return ps.executeUpdate() > 0;
+            }
+        } catch (Exception e) {
+            log.error("向本地歌单添加歌曲失败: plId={}, song={}", playlistId, songName, e);
+            return false;
+        }
+    }
+
+    public boolean removeTrackFromLocalPlaylist(String playlistId, Long trackId) {
+        return removeTrackFromLocalPlaylist(playlistId, trackId, null, null);
+    }
+
+    public boolean removeTrackFromLocalPlaylist(String playlistId, Long trackId, String songName, String artist) {
+        if (StringUtils.isBlank(playlistId)) return false;
+        StringBuilder sql = new StringBuilder("DELETE FROM local_playlist_tracks WHERE playlist_id = ? AND (");
+        List<Object> params = new ArrayList<>();
+        params.add(playlistId);
+
+        boolean hasCondition = false;
+        if (trackId != null && trackId > 0) {
+            sql.append("(id = ? OR history_id = ?)");
+            params.add(trackId);
+            params.add(trackId);
+            hasCondition = true;
+        }
+        if (StringUtils.isNotBlank(songName)) {
+            if (hasCondition) sql.append(" OR ");
+            String cleanSong = songName.trim();
+            String cleanAr = StringUtils.isNotBlank(artist) ? artist.trim() : null;
+            if (cleanAr != null && !"未知歌手".equals(cleanAr) && !"未知".equals(cleanAr)) {
+                sql.append("(song_name = ? AND (artist = ? OR artist = '未知歌手' OR artist = '未知' OR artist IS NULL))");
+                params.add(cleanSong);
+                params.add(cleanAr);
+            } else {
+                sql.append("song_name = ?");
+                params.add(cleanSong);
+            }
+            hasCondition = true;
+        }
+        sql.append(")");
+
+        if (!hasCondition) return false;
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            log.error("从本地歌单移除歌曲失败: plId={}, trackId={}, song={}", playlistId, trackId, songName, e);
+            return false;
+        }
+    }
+
+    public List<Map<String, Object>> getLocalPlaylistTracks(String playlistId) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = "SELECT id, history_id, song_name, artist, file_path, cover_url, created_at " +
+                "FROM local_playlist_tracks WHERE playlist_id = ? ORDER BY id ASC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, playlistId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> map = new HashMap<>();
+                    long autoId = rs.getLong("id");
+                    Long historyId = rs.getObject("history_id") != null ? rs.getLong("history_id") : null;
+                    String filePath = rs.getString("file_path");
+                    String songName = rs.getString("song_name");
+                    String artist = rs.getString("artist");
+                    String coverUrl = rs.getString("cover_url");
+
+                    // 🌟 若本地关联路径为空，自动从 download_history 中反查是否已完成落盘
+                    if ((org.apache.commons.lang3.StringUtils.isBlank(filePath) || historyId == null) && org.apache.commons.lang3.StringUtils.isNotBlank(songName)) {
+                        com.wyyyyydl.models.dtos.DownloadHistoryItem found = findLocalFileBySongOrName(historyId, songName, artist);
+                        if (found != null && org.apache.commons.lang3.StringUtils.isNotBlank(found.getFilePath())) {
+                            filePath = found.getFilePath();
+                            historyId = found.getId();
+                            try (PreparedStatement updatePs = conn.prepareStatement("UPDATE local_playlist_tracks SET file_path = ?, history_id = ? WHERE id = ?")) {
+                                updatePs.setString(1, filePath);
+                                updatePs.setObject(2, historyId);
+                                updatePs.setLong(3, autoId);
+                                updatePs.executeUpdate();
+                            } catch (Exception updateEx) {
+                                log.warn("回写更新本地歌单曲目物理文件失败: id={}", autoId, updateEx);
+                            }
+                        }
+                    }
+
+                    boolean isPhysicalLocal = org.apache.commons.lang3.StringUtils.isNotBlank(filePath) && resolveFile(filePath) != null && resolveFile(filePath).exists();
+
+                    map.put("id", autoId);
+                    map.put("historyId", historyId);
+                    map.put("name", songName);
+                    map.put("artist", artist);
+                    map.put("filePath", filePath);
+                    map.put("cover", coverUrl);
+                    map.put("picUrl", coverUrl);
+                    map.put("isLocal", isPhysicalLocal);
+                    Map<String, Object> arMap = new HashMap<>();
+                    arMap.put("name", artist != null ? artist : "未知");
+                    map.put("ar", List.of(arMap));
+                    Map<String, Object> alMap = new HashMap<>();
+                    alMap.put("name", "本地歌单");
+                    alMap.put("picUrl", coverUrl);
+                    map.put("al", alMap);
+                    if (isPhysicalLocal && historyId != null && historyId > 0) {
+                        map.put("url", "/v3/stream?historyId=" + historyId);
+                    } else if (isPhysicalLocal && filePath != null) {
+                        map.put("url", "/v3/stream?path=" + filePath);
+                    }
+                    list.add(map);
+                }
+            }
+        } catch (Exception e) {
+            log.error("查询本地歌单曲目明细失败: plId={}", playlistId, e);
+        }
+        return list;
     }
 }

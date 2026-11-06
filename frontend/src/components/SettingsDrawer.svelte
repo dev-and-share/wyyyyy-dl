@@ -8,6 +8,7 @@
   import SettingsMaintenanceSection from './settings/SettingsMaintenanceSection.svelte';
   import SettingsLanguageSection from './settings/SettingsLanguageSection.svelte';
   import SettingsSleepTimerSection from './settings/SettingsSleepTimerSection.svelte';
+  import SettingsGeoProxySection from './settings/SettingsGeoProxySection.svelte';
   import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
   import { t } from '../lib/i18n';
 
@@ -283,6 +284,9 @@
 
     <!-- Section 5: Account & Auth -->
     <SettingsAccountSection {showToast} />
+
+    <!-- Section: 海外版权跨区解析代理 -->
+    <SettingsGeoProxySection {showToast} />
 
     <!-- Section 6: Maintenance -->
     <SettingsMaintenanceSection {showToast} />

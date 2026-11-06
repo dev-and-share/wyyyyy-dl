@@ -1,6 +1,7 @@
 import { render, fireEvent } from '@testing-library/svelte';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import DesktopDownloadMgrView from './DesktopDownloadMgrView.svelte';
+import { routerState } from '../../lib/router.svelte';
 
 vi.mock('../../lib/api', () => ({
   api: {
@@ -32,7 +33,12 @@ vi.mock('../../lib/api', () => ({
 }));
 
 describe('DesktopDownloadMgrView', () => {
-  it('renders two-column workbench and loads history', async () => {
+  beforeEach(() => {
+    routerState.downloadSubTab = 'local-playlists';
+    routerState.downloadTasksTrigger = 0;
+  });
+
+  it('renders workbench with local-playlists subtab as default', async () => {
     const { getByTestId, findByText } = render(DesktopDownloadMgrView, {
       props: {
         onPlayQueue: vi.fn(),
@@ -42,11 +48,16 @@ describe('DesktopDownloadMgrView', () => {
     });
 
     expect(getByTestId('desktop-download-mgr-view')).toBeInTheDocument();
+    expect(getByTestId('subtab-local-playlists')).toHaveClass('bg-emerald-600');
+    expect(getByTestId('local-playlists-section')).toBeInTheDocument();
+
+    const historySubTab = getByTestId('subtab-history');
+    await fireEvent.click(historySubTab);
     const songName = await findByText('晴天');
     expect(songName).toBeInTheDocument();
   });
 
-  it('switches between history and browser cache subtabs', async () => {
+  it('switches between history, browser cache, and local playlists subtabs', async () => {
     const { getByTestId, getByText } = render(DesktopDownloadMgrView, {
       props: {
         onPlayQueue: vi.fn(),
@@ -62,5 +73,40 @@ describe('DesktopDownloadMgrView', () => {
     const historySubTab = getByTestId('subtab-history');
     await fireEvent.click(historySubTab);
     expect(getByTestId('subtab-history')).toHaveClass('bg-red-500');
+
+    const tasksSubTab = getByTestId('subtab-tasks');
+    await fireEvent.click(tasksSubTab);
+    expect(getByTestId('subtab-tasks')).toHaveClass('bg-red-500');
+
+    const localPlaylistsSubTab = getByTestId('subtab-local-playlists');
+    await fireEvent.click(localPlaylistsSubTab);
+    expect(getByTestId('subtab-local-playlists')).toHaveClass('bg-emerald-600');
+    expect(getByTestId('local-playlists-section')).toBeInTheDocument();
+
+    const folderSubTab = getByTestId('subtab-folder');
+    await fireEvent.click(folderSubTab);
+    expect(folderSubTab).toHaveClass('bg-sky-600');
+  });
+
+  it('switches to tasks tab when tasksTrigger changes', async () => {
+    const { getByTestId, rerender } = render(DesktopDownloadMgrView, {
+      props: {
+        onPlayQueue: vi.fn(),
+        onReveal: vi.fn(),
+        showToast: vi.fn(),
+        tasksTrigger: 0
+      }
+    });
+
+    expect(getByTestId('subtab-local-playlists')).toHaveClass('bg-emerald-600');
+
+    await rerender({
+      onPlayQueue: vi.fn(),
+      onReveal: vi.fn(),
+      showToast: vi.fn(),
+      tasksTrigger: 1
+    });
+
+    expect(getByTestId('subtab-tasks')).toHaveClass('bg-red-500');
   });
 });
