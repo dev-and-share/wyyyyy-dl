@@ -135,7 +135,7 @@ export async function cacheTrackToBrowser(
     url?: string;
     freeTrial?: boolean;
   },
-  options?: { skipTrial?: boolean; silent?: boolean }
+  options?: { skipTrial?: boolean; silent?: boolean; signal?: AbortSignal }
 ): Promise<{ success: boolean; msg: string; isTrial?: boolean }> {
   // 1. Skip trial if configured
   if (options?.skipTrial && track.freeTrial === true) {
@@ -177,14 +177,15 @@ export async function cacheTrackToBrowser(
 
     let streamResp: Response;
     try {
-      streamResp = await fetch(audioUrl);
+      streamResp = await fetch(audioUrl, { signal: options?.signal });
       if (!streamResp.ok) {
         throw new Error(`HTTP ${streamResp.status}`);
       }
-    } catch {
+    } catch (fetchErr: any) {
+      if (fetchErr?.name === 'AbortError') throw fetchErr;
       // 跨域或直连失败，自动回退走后端流代理
       const proxyUrl = `/v3/stream/online?url=${encodeURIComponent(audioUrl)}`;
-      streamResp = await fetch(proxyUrl);
+      streamResp = await fetch(proxyUrl, { signal: options?.signal });
     }
 
     if (!streamResp.ok) {
@@ -251,6 +252,7 @@ export async function cacheTrackToBrowser(
 // ---------- 边听边存播放监听状态机 ----------
 let currentPlayingTrackId: string | number | null = null;
 let autoCacheTimer: any = null;
+let currentDownloadAbort: AbortController | null = null;
 
 let activeBlobUrl: string | null = null;
 
@@ -299,6 +301,10 @@ export async function getCachedAudioBlobUrl(idOrUrl: string | number): Promise<s
 export function resetTrackPlayback() {
   currentPlayingTrackId = null;
   revokeActiveBlobUrl();
+  if (currentDownloadAbort) {
+    try { currentDownloadAbort.abort(); } catch {}
+    currentDownloadAbort = null;
+  }
   if (autoCacheTimer) {
     clearTimeout(autoCacheTimer);
     autoCacheTimer = null;
@@ -334,10 +340,22 @@ export function handleTrackPlayback(track: any, isStillPlaying?: () => boolean) 
     if (track.freeTrial === true) return;
     if (cachedSongIdSet.has(Number(songId))) return;
 
+    if (currentDownloadAbort) {
+      currentDownloadAbort.abort();
+    }
+    currentDownloadAbort = new AbortController();
+    const abortSignal = currentDownloadAbort.signal;
+
     try {
-      await cacheTrackToBrowser(track, { skipTrial: true, silent: true });
-    } catch (err) {
-      console.warn('[AutoCache] Failed to auto cache track:', err);
+      await cacheTrackToBrowser(track, { skipTrial: true, silent: true, signal: abortSignal });
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.warn('[AutoCache] Failed to auto cache track:', err);
+      }
+    } finally {
+      if (currentDownloadAbort?.signal === abortSignal) {
+        currentDownloadAbort = null;
+      }
     }
   }, 2500);
 }
