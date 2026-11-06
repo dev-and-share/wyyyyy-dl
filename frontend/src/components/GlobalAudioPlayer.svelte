@@ -41,7 +41,7 @@
     playing = playerStore.playing;
     isOverlayOpen = showDrawer || showLyric || showPeq;
     if (audioEl && platform.canAdjustVolume) audioEl.volume = playerStore.vol;
-    try { localStorage.setItem('wyyyy_player_vol', String(playerStore.vol)); } catch {}
+    try { localStorage.setItem('wyy_player_vol', String(playerStore.vol)); } catch {}
   });
   $effect(() => {
     const tr = playerStore.activeTrack;
@@ -289,7 +289,7 @@
       } else if (!targetTrack.freeTrial) {
         api.downloadSingle(String(targetTrack.id)).then(() => {
           showToast(t('player.addedAutoDownload', { name: targetTrack.name || t('common.song') }), 'info', 2000);
-          window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+          window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
         }).catch(() => {});
       }
     }
@@ -355,11 +355,11 @@
     };
 
     window.addEventListener('svelte:playFolder', onPlayFolder as EventListener);
-    window.addEventListener('wyyyy:sleep-timer-trigger', handleSleepTimerTrigger);
+    window.addEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
     return () => {
       window.removeEventListener('beforeunload', () => playerStore.save());
       window.removeEventListener('svelte:playFolder', onPlayFolder as EventListener);
-      window.removeEventListener('wyyyy:sleep-timer-trigger', handleSleepTimerTrigger);
+      window.removeEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   });
@@ -397,7 +397,7 @@
       playerStore.duration = a.duration;
       if (getLastPositionSyncedKey() !== getCurrentTrackKey() && a.duration > 0) updateMediaSessionPosition(a);
     }
-    if (playerStore.curTime > 0) { try { localStorage.setItem('wyyyy_player_time', String(playerStore.curTime)); } catch {} }
+    if (playerStore.curTime > 0) { try { localStorage.setItem('wyy_player_time', String(playerStore.curTime)); } catch {} }
     if (parsedLyrics.length > 0 && playerStore.activeTrack) {
       const activeLyric = getActiveLyric(parsedLyrics, a.currentTime);
       if (activeLyric.index !== lastLyricIndex) {

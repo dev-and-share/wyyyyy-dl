@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# wyyyyy-dl 云端全量端到端冒烟测试套件 (E2E Smoke Test Suite)
+# WYY 云端全量端到端冒烟测试套件 (E2E Smoke Test Suite)
 # 
 # 🛡️ 安全保证：
 #   - 默认模式：【绝对零写入纯读模式 (Zero-Write)】，绝不改写任何数据！
@@ -52,7 +52,7 @@ fi
 TARGET_URL="${TARGET_URL%/}"
 
 echo "======================================================================"
-echo "🚀 开始执行 wyyyyy-dl 云端端到端全量冒烟巡检"
+echo "🚀 开始执行 WYY 云端端到端全量冒烟巡检"
 echo "🎯 目标域名: $TARGET_URL"
 if [ -n "$AUTH_USER_PASS" ]; then
   echo "🔐 鉴权: 已启用 HTTP Basic Auth 保护"

@@ -52,7 +52,7 @@
       showToast(t('playlist.forkSuccess', { count: trackIds.length, name: trimmed }), 'success', 4000);
 
       // notify playlist created
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
 
       if (onSuccess) {
         onSuccess(newId, trimmed);

@@ -1,6 +1,6 @@
 export default {
-  'app.name': '网易云音乐下载器',
-  'topbar.title': '网易云下载器',
+  'app.name': 'WYY',
+  'topbar.title': 'WYY',
   'topbar.refresh': '点击刷新数据',
   'topbar.toggleTheme': '切换主题',
   'topbar.settings': '系统偏好设置',

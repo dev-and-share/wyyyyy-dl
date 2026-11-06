@@ -73,7 +73,7 @@
       <LocalSearchBox
         bind:value={histKw}
         placeholder={t('download.searchHistoryPlaceholder')}
-        historyKey="wyyyy_history_search_history"
+        historyKey="wyy_history_search_history"
         onSearch={() => loadHistory(1)}
         onClear={() => loadHistory(1)}
       />

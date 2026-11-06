@@ -52,7 +52,7 @@ export function isKugouVip(item: any): boolean {
 export const kugouPlugin: IMusicFreePlugin = {
   platform: '酷狗音乐 (官方)',
   version: '1.0.0',
-  author: 'wyyyyy-dl 官方',
+  author: 'WYY 官方',
   srcUrl: 'https://www.kugou.com/',
   supportedSearchType: ['music'],
 
@@ -110,7 +110,7 @@ export const kugouPlugin: IMusicFreePlugin = {
       url: playUrl,
       headers: {
         referer: 'https://www.kugou.com/',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) wyyyyy-dl'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WYY'
       }
     };
   },

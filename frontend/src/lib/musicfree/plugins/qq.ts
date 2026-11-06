@@ -43,7 +43,7 @@ export function isQQVip(item: any): boolean {
 export const qqPlugin: IMusicFreePlugin = {
   platform: 'QQ音乐 (官方)',
   version: '1.0.0',
-  author: 'wyyyyy-dl 官方',
+  author: 'WYY 官方',
   srcUrl: 'https://y.qq.com/',
   supportedSearchType: ['music'],
 
@@ -139,7 +139,7 @@ export const qqPlugin: IMusicFreePlugin = {
       url: playUrl,
       headers: {
         referer: 'https://y.qq.com/',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) wyyyyy-dl'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WYY'
       }
     };
   },

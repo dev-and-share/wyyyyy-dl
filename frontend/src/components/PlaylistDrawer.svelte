@@ -115,7 +115,7 @@
       } else {
         showToast(t('drawer.downloadSubmitted', { name: track.name }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (err: any) {
       showToast(t('drawer.downloadError', { error: err?.message || err }), 'error', 3000);
     } finally {
@@ -148,7 +148,7 @@
         downloadingIds = nextSet;
       });
     }
-    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     showToast(t('drawer.batchSubmitted', { count: pendingTracks.length }), 'success', 2500);
   }
 
@@ -197,13 +197,13 @@
     window.addEventListener('resize', checkDesktop);
 
     try {
-      const savedSize = localStorage.getItem('wyyyy_drawer_size');
+      const savedSize = localStorage.getItem('wyy_drawer_size');
       if (savedSize) {
         const parsed = JSON.parse(savedSize);
         if (parsed?.w >= MIN_WIDTH) drawerWidth = Math.min(parsed.w, window.innerWidth - 20);
         if (parsed?.h >= MIN_HEIGHT) drawerHeight = Math.min(parsed.h, window.innerHeight - 20);
       }
-      const savedPos = localStorage.getItem('wyyyy_drawer_pos');
+      const savedPos = localStorage.getItem('wyy_drawer_pos');
       if (savedPos) {
         const parsed = JSON.parse(savedPos);
         if (typeof parsed?.x === 'number' && typeof parsed?.y === 'number') {
@@ -297,7 +297,7 @@
       window.removeEventListener('mouseup', onMouseUp);
       cleanUpDrag = null;
       try {
-        localStorage.setItem('wyyyy_drawer_pos', JSON.stringify(drawerPos));
+        localStorage.setItem('wyy_drawer_pos', JSON.stringify(drawerPos));
       } catch {}
     };
 
@@ -320,8 +320,8 @@
     drawerWidth = DEFAULT_WIDTH;
     drawerHeight = DEFAULT_HEIGHT;
     try {
-      localStorage.removeItem('wyyyy_drawer_pos');
-      localStorage.removeItem('wyyyy_drawer_size');
+      localStorage.removeItem('wyy_drawer_pos');
+      localStorage.removeItem('wyy_drawer_size');
     } catch {}
     showToast(t('drawer.resetPosToast'), 'info', 1500);
   }
@@ -405,8 +405,8 @@
       window.removeEventListener('mouseup', onMouseUp);
       cleanUpResize = null;
       try {
-        localStorage.setItem('wyyyy_drawer_size', JSON.stringify({ w: drawerWidth, h: drawerHeight }));
-        localStorage.setItem('wyyyy_drawer_pos', JSON.stringify(drawerPos));
+        localStorage.setItem('wyy_drawer_size', JSON.stringify({ w: drawerWidth, h: drawerHeight }));
+        localStorage.setItem('wyy_drawer_pos', JSON.stringify(drawerPos));
       } catch {}
     };
 

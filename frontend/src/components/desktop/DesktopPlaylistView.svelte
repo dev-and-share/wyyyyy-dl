@@ -4,7 +4,7 @@
   import DesktopDailyRecommendDetail from './DesktopDailyRecommendDetail.svelte';
   import { playPlaylistTracks } from '../../lib/playerHelper';
   import { resetActiveTargetPlaylist } from '../../lib/playlist.svelte';
-  import { exitPlaylistToGallery, exitPlaylistToLocalManager, jumpToPlaylist } from '../../lib/router.svelte';
+  import { exitPlaylistToGallery, exitPlaylistToLocalManager, jumpToPlaylist, isDailyRecommendRoute } from '../../lib/router.svelte';
   import { isLocalPlaylist } from '../../lib/localPlaylistStore.svelte';
 
   let {
@@ -84,7 +84,7 @@
 </script>
 
 <div class="w-full flex flex-col gap-4 animate-fade-in" data-testid="desktop-playlist-view">
-  {#if activePlaylistId === 'daily-recommend'}
+  {#if isDailyRecommendRoute(activePlaylistId)}
     <DesktopDailyRecommendDetail
       {curTrack}
       {playing}

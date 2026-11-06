@@ -61,21 +61,11 @@
   const PULL_THRESHOLD = 36;
 
   function triggerScrollToTop() {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
     const mainEl = typeof document !== 'undefined' ? document.querySelector('.app-main-container') : null;
-    if (mainEl) {
-      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    if (listContainerEl) {
-      listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    try {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(12);
-      }
-    } catch {}
+    if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    if (listContainerEl) listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
+    try { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12); } catch {}
   }
 
   function handleTouchStart(e: TouchEvent) {
@@ -130,9 +120,9 @@
         listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
-    window.addEventListener('wyyyy:scroll-list-top', handleScrollListTop);
+    window.addEventListener('wyy:scroll-list-top', handleScrollListTop);
     return () => {
-      window.removeEventListener('wyyyy:scroll-list-top', handleScrollListTop);
+      window.removeEventListener('wyy:scroll-list-top', handleScrollListTop);
     };
   });
 
@@ -140,36 +130,57 @@
     pidInput = pid;
   });
 
-  function loadNextPage() {
+  let lastLoadTime = 0;
+  const NEXT_PAGE_COOLDOWN_MS = 250;
+  const MAX_AUTO_FILL_PAGES = 3;
+  let scrollRafId = 0;
+
+  function loadNextPage(isInitialAutoFill = false) {
+    const now = Date.now();
     if (!hasMore || isLoadingNext) return;
+    if (now - lastLoadTime < NEXT_PAGE_COOLDOWN_MS) return;
+
     isLoadingNext = true;
+    lastLoadTime = now;
     incPage(1);
-    tick().then(() => {
+
+    setTimeout(() => {
       isLoadingNext = false;
-      checkSentinel();
-    });
+      // 🛡️ 仅在视口初次尚未填满且未达到安全上限 (3页/60首) 时受控补满，绝不无限制自激翻页
+      if (isInitialAutoFill && curPage < MAX_AUTO_FILL_PAGES) {
+        checkSentinel(true);
+      }
+    }, NEXT_PAGE_COOLDOWN_MS);
   }
 
-  function checkSentinel() {
+  function checkSentinel(isInitialAutoFill = false) {
     if (!hasMore || isLoadingNext) return;
     if (listContainerEl) {
       const { scrollTop, scrollHeight, clientHeight } = listContainerEl;
       if (scrollTop + clientHeight >= scrollHeight - 120) {
-        loadNextPage();
+        loadNextPage(isInitialAutoFill);
         return;
       }
     }
     if (sentinelEl) {
       const rect = sentinelEl.getBoundingClientRect();
       const vh = window.innerHeight || document.documentElement.clientHeight;
-      if (rect.top <= vh + 150) {
-        loadNextPage();
+      if (rect.top <= vh + 120 && rect.bottom >= -50) {
+        loadNextPage(isInitialAutoFill);
       }
     }
   }
 
+  function throttledCheckSentinel() {
+    if (scrollRafId) return;
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = 0;
+      checkSentinel(false);
+    });
+  }
+
   function handleListScroll() {
-    checkSentinel();
+    throttledCheckSentinel();
   }
 
   $effect(() => {
@@ -177,18 +188,20 @@
     const observer = new IntersectionObserver((entries) => {
       const entry = entries[0];
       if (entry && entry.isIntersecting) {
-        loadNextPage();
+        loadNextPage(false);
       }
     }, {
       root: listContainerEl,
       rootMargin: '120px'
     });
     observer.observe(sentinelEl);
-    window.addEventListener('scroll', checkSentinel, { passive: true });
-    checkSentinel();
+    window.addEventListener('scroll', throttledCheckSentinel, { passive: true });
+    // 页面初次进入时，仅执行一次受控初次探测
+    checkSentinel(true);
     return () => {
       observer.disconnect();
-      window.removeEventListener('scroll', checkSentinel);
+      if (scrollRafId) cancelAnimationFrame(scrollRafId);
+      window.removeEventListener('scroll', throttledCheckSentinel);
     };
   });
 
@@ -196,7 +209,7 @@
     try {
       await api.downloadPlaylist(id);
       showToast(t('download.submittedTask'), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e.message || e }), 'error');
     }
@@ -213,7 +226,7 @@
       }
       playlist.subscribed = nextSub;
       showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
     } catch (e: any) {
       showToast(t('playlist.riskTip'), 'warning', 4000);
     }
@@ -236,7 +249,7 @@
       } else {
         showToast(t('drawer.downloadSubmitted', { name: task?.name || name || t('comment.defaultSong') }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e.message || e }), 'error');
     }

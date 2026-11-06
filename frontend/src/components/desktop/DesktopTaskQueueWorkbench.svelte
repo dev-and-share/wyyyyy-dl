@@ -99,7 +99,7 @@
     try {
       await api.downloadSingle(songId);
       showToast(t('drawer.downloadSubmitted', { name: item.name || songId }), 'info');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       startTaskPolling();
       await fetchTasks();
     } catch (err: any) {
@@ -128,7 +128,7 @@
     });
 
     showToast(t('drawer.batchSubmitting', { count: failedItems.length }), 'info', 2000);
-    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     startTaskPolling();
 
     // 🛡️ 智能节流提交队列：依次间隔 120ms 错开派发，避免瞬间并发打爆网易云解析接口
@@ -244,7 +244,7 @@
       <LocalSearchBox
         bind:value={searchKw}
         placeholder={t('download.searchHistoryPlaceholder')}
-        historyKey="wyyyy_tasks_search_history"
+        historyKey="wyy_tasks_search_history"
         onSearch={() => {}}
         onClear={() => searchKw = ''}
       />

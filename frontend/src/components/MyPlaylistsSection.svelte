@@ -184,7 +184,7 @@
       <LocalSearchBox
         bind:value={playlistSearchKw}
         placeholder={t('myPlaylists.searchPlaceholder')}
-        historyKey="wyyyy_playlist_search_history"
+        historyKey="wyy_playlist_search_history"
         hideIcon={true}
         onClear={() => { playlistSearchKw = ''; showSearch = false; }}
       />

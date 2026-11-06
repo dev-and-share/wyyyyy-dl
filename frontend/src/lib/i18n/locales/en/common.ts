@@ -1,6 +1,6 @@
 export default {
-  'app.name': 'Netease Music Downloader',
-  'topbar.title': 'Wyyyyy Downloader',
+  'app.name': 'WYY',
+  'topbar.title': 'WYY Player',
   'topbar.refresh': 'Click to refresh data',
   'topbar.toggleTheme': 'Toggle Theme',
   'topbar.settings': 'System Preferences',

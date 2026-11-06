@@ -39,10 +39,10 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  const STORAGE_KEY_KW = 'wyyyy_search_kw';
-  const STORAGE_KEY_TYPE = 'wyyyy_search_type';
-  const STORAGE_KEY_SOURCE = 'wyyyy_search_source';
-  const STORAGE_KEY_HISTORY = 'wyyyy_desktop_search_history';
+  const STORAGE_KEY_KW = 'wyy_search_kw';
+  const STORAGE_KEY_TYPE = 'wyy_search_type';
+  const STORAGE_KEY_SOURCE = 'wyy_search_source';
+  const STORAGE_KEY_HISTORY = 'wyy_desktop_search_history';
 
   let kw = $state('');
   let sType = $state('1'); // 1: song, 10: album, 1000: playlist, 100: artist
@@ -210,7 +210,7 @@
       } else {
         showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
@@ -220,7 +220,7 @@
     try {
       await api.downloadPlaylist(id);
       showToast(t('search.submittedPlaylist', { name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e?.message || e }), 'error');
     }
@@ -230,7 +230,7 @@
     try {
       await api.downloadAlbum(id);
       showToast(t('search.submittedAlbum', { name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e?.message || e }), 'error');
     }

@@ -1,6 +1,6 @@
 export default {
-  'app.name': '網易雲音樂下載器',
-  'topbar.title': '網易雲下載器',
+  'app.name': 'WYY',
+  'topbar.title': 'WYY',
   'topbar.refresh': '點擊重新整理資料',
   'topbar.toggleTheme': '切換主題',
   'topbar.settings': '偏好設定',

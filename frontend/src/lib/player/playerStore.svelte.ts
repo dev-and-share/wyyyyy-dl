@@ -53,7 +53,7 @@ export class PlayerStore {
 
   constructor() {
     if (typeof localStorage !== 'undefined') {
-      const savedVol = Number(localStorage.getItem('wyyyy_player_vol'));
+      const savedVol = Number(localStorage.getItem('wyy_player_vol'));
       if (!isNaN(savedVol) && savedVol > 0 && savedVol <= 1) {
         this.vol = savedVol;
       }

@@ -8,7 +8,7 @@ import { platform } from '../platform';
 import type { Track } from '../types';
 import { updateMediaSessionMetadata, updateMediaSessionPlaybackState } from './mediaSession';
 
-export const STORAGE_KEY_IOS_F3_TIMEOUT = 'wyyyy_ios_f3_timeout_min';
+export const STORAGE_KEY_IOS_F3_TIMEOUT = 'wyy_ios_f3_timeout_min';
 export const DEFAULT_IOS_F3_TIMEOUT_MIN = 5;
 
 let currentKeeper: SilentHoldKeeper | null = null;

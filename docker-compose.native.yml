@@ -1,12 +1,12 @@
-name: netease-music-native
+name: wyy-native
 
 services:
-  netease-music-dl-native:
+  wyy-native:
     build:
       context: .
       dockerfile: Dockerfile.native
-    image: wyyyyy-dl:native
-    container_name: netease-music-dl-native-test
+    image: wyy:native
+    container_name: wyy-native-test
     restart: unless-stopped
     ports:
       # 映射到宿主机 8081 端口，完全隔离现有 8080 开发容器
