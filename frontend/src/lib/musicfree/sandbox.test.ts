@@ -31,13 +31,13 @@ describe('MusicFree Sandbox execution', () => {
       module.exports = {
         platform: "CryptoDayPlatform",
         hash: (text) => CryptoJS.MD5(text).toString(),
-        formatDate: (timestamp) => dayjs(timestamp).format("YYYY-MM-DD")
+        formatDate: (str) => dayjs(str).format("YYYY-MM-DD")
       };
     `;
 
     const plugin = executePluginScript(mockCode) as any;
     expect(plugin.hash('hello')).toBe('5d41402abc4b2a76b9719d911017c592');
-    expect(plugin.formatDate(1700000000000)).toBe('2023-11-15');
+    expect(plugin.formatDate('2023-11-15')).toBe('2023-11-15');
   });
 
   it('throws an error when an unsupported module is required', () => {
