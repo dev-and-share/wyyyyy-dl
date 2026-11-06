@@ -10,7 +10,7 @@ describe('Official Builtin MusicFree Plugins', () => {
     expect(platforms).toContain('酷狗音乐 (官方)');
 
     for (const plugin of builtinPlugins) {
-      expect(plugin.author).toBe('wyyyyy-dl 官方');
+      expect(plugin.author).toBe('WYY 官方');
       expect(plugin.version).toBe('1.0.0');
       expect(typeof plugin.search).toBe('function');
       expect(typeof plugin.getMediaSource).toBe('function');

@@ -1,6 +1,6 @@
 export default {
-  'app.name': 'NetEase Music ダウンローダー',
-  'topbar.title': 'Wyyyyy ダウンローダー',
+  'app.name': 'WYY',
+  'topbar.title': 'WYY プレーヤー',
   'topbar.refresh': 'クリックして更新',
   'topbar.toggleTheme': 'テーマ切り替え',
   'topbar.settings': '環境設定',

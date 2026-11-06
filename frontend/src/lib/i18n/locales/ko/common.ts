@@ -1,6 +1,6 @@
 export default {
-  'app.name': 'NetEase Music 다운로더',
-  'topbar.title': 'Wyyyyy 다운로더',
+  'app.name': 'WYY',
+  'topbar.title': 'WYY 플레이어',
   'topbar.refresh': '새로고침',
   'topbar.toggleTheme': '테마 전환',
   'topbar.settings': '환경설정',

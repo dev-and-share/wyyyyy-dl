@@ -1,7 +1,7 @@
 # AWS Lambda SnapStart Serverless 部署操作指南
 
 > 📖 **方案概述**：  
-> 本指南支持将 `wyyyyy-dl` 部署为全托管 AWS 云原生应用。  
+> 本指南支持将 `wyy` 部署为全托管 AWS 云原生应用。  
 > 我们在同个代码库中提供了**三套开箱即用的部署方案**，代码已完成三模自适应（本地 SQLite / RDS PostgreSQL / DynamoDB），按需挑选即可：
 > - 🏆 **方案 A：DynamoDB 纯血版 (首推 ⭐⭐⭐⭐⭐)** — `AWS Lambda SnapStart + S3 + CloudFront + DynamoDB`（全 AWS 原生无状态，零第三方依赖，永久免休眠，$0.00 / 月）
 > - 🌟 **方案 B：Supabase 极速版** — `AWS 东京 Lambda SnapStart + S3 + CloudFront + Supabase (东京区)`（**物理同在东京，延迟仅 1~2ms，待机月费 $0.00**，免 VPC、免 NAT 网关，标准 SQL）
@@ -38,13 +38,13 @@
 无论采用哪种方案，编译与打包只需在项目根目录下执行一次：
 
 ```bash
-cd wyyyyy-dl
+cd wyy
 
 # 执行打包任务 (生成包含 Java 21 class 与所有第三方依赖的标准 Zip)
 ./gradlew buildAwsZip
 ```
 
-生成的部署包位置：`build/distributions/wyyyyy-dl-aws.zip` (~56MB)。
+生成的部署包位置：`build/distributions/wyy-aws.zip` (~56MB)。
 
 ---
 
@@ -59,7 +59,7 @@ cd terraform/serverless-supabase
 打开 `terraform.tfvars`，将你的 Supabase 数据库密码填入：
 ```hcl
 aws_region   = "ap-northeast-1"
-project_name = "wyyyyy-dl"
+project_name = "wyy"
 environment  = "prod"
 
 # Supabase 连接信息 (已自动为你预填)
@@ -130,7 +130,7 @@ curl -I "${CDN_URL}/v3/history/stream?path=186016.mp3"
 
 打开你的 **Uptime Kuma** 控制台，添加一个新监控项：
 - **Monitor Type**：`HTTP(s)`
-- **Friendly Name**：`wyyyyy-dl-supabase-keepalive`
+- **Friendly Name**：`wyy-supabase-keepalive`
 - **URL**：填入部署输出的 `https://${CDN_URL}/v3/history/list`
 - **Heartbeat Interval**：`43200` 秒（即每 12 小时 ping 一次）或每天一次。
 
@@ -164,9 +164,9 @@ terraform apply
 
 | 方案 | S3 媒体桶命名 | Lambda 函数名 | 隔离标签 (Flavor) | 一键单独销毁命令 |
 |---|---|---|---|---|
-| **A: DynamoDB** | `wyyyyy-dl-music-ddb-*` | `wyyyyy-dl-backend-ddb-*` | `Flavor = "dynamodb"` | `cd terraform/serverless-dynamodb && terraform destroy` |
-| **B: Supabase** | `wyyyyy-dl-music-supa-*` | `wyyyyy-dl-backend-supa-*` | `Flavor = "supabase"` | `cd terraform/serverless-supabase && terraform destroy` |
-| **C: VPC-RDS** | `wyyyyy-dl-music-rds-*` | `wyyyyy-dl-backend-rds-*` | `Flavor = "vpc-rds"` | `cd terraform/vpc-rds && terraform destroy` |
+| **A: DynamoDB** | `wyy-music-ddb-*` | `wyy-backend-ddb-*` | `Flavor = "dynamodb"` | `cd terraform/serverless-dynamodb && terraform destroy` |
+| **B: Supabase** | `wyy-music-supa-*` | `wyy-backend-supa-*` | `Flavor = "supabase"` | `cd terraform/serverless-supabase && terraform destroy` |
+| **C: VPC-RDS** | `wyy-music-rds-*` | `wyy-backend-rds-*` | `Flavor = "vpc-rds"` | `cd terraform/vpc-rds && terraform destroy` |
 
 > 💡 **S3 干净销毁保障**：  
 > 所有 3 个方案的 S3 存储桶均已配置 `force_destroy = true`。执行单独 `terraform destroy` 时，会自动连同上传的 Lambda 部署包及测试媒体文件彻底删除，**绝不会因为 Bucket 非空而报错阻塞销毁流程**！

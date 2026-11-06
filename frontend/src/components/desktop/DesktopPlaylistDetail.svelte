@@ -167,7 +167,7 @@
     try {
       await api.downloadPlaylist(playlistId);
       showToast(t('playlist.submittedBatchDownload'), 'success', 2000);
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
@@ -202,7 +202,7 @@
       }
       playlist.subscribed = nextSub;
       showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
     } catch (e: any) {
       showToast(t('playlist.operateExceptionPrompt'), 'warning', 4000);
     }

@@ -296,7 +296,7 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
   }
 }
 
-const STORAGE_KEY_PLAYLIST_PLAY_COUNTS = 'wyyyy_playlist_play_counts';
+const STORAGE_KEY_PLAYLIST_PLAY_COUNTS = 'wyy_playlist_play_counts';
 
 function loadPlayCounts(): Record<string, number> {
   if (typeof localStorage === 'undefined') return {};
@@ -366,7 +366,7 @@ export function sortPlaylistsByPlayCount(list: any[]): any[] {
     .map(wrapper => wrapper.item);
 }
 
-const STORAGE_KEY_LAST_BACKUP_PLAYLIST = 'wyyyy_last_backup_playlist';
+const STORAGE_KEY_LAST_BACKUP_PLAYLIST = 'wyy_last_backup_playlist';
 
 export function getLastBackupPlaylist(): { id: string; name: string } | null {
   if (typeof localStorage === 'undefined') return null;

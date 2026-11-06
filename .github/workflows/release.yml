@@ -65,7 +65,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: "Release ${{ steps.tag_info.outputs.tag }}"
-          files: build/libs/wyyyyy-dl-*.jar
+          files: build/libs/wyy-*.jar
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -163,16 +163,16 @@ jobs:
       - name: Extract native binary from Docker image
         run: |
           docker create --name temp-native-container ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
-          docker cp temp-native-container:/app/wyyyyy-dl ./wyyyyy-dl-linux-${{ matrix.arch }}
+          docker cp temp-native-container:/app/wyy ./wyy-linux-${{ matrix.arch }}
           docker rm temp-native-container
-          chmod +x ./wyyyyy-dl-linux-${{ matrix.arch }}
-          ls -lh ./wyyyyy-dl-linux-${{ matrix.arch }}
+          chmod +x ./wyy-linux-${{ matrix.arch }}
+          ls -lh ./wyy-linux-${{ matrix.arch }}
 
       - name: Upload native binary to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: ./wyyyyy-dl-linux-${{ matrix.arch }}
+          files: ./wyy-linux-${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

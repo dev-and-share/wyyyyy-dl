@@ -3,7 +3,7 @@ export type ActiveTab = 'playlist' | 'search' | 'download-mgr' | 'musicfree';
 function getInitialTab(): ActiveTab {
   const raw = typeof window !== 'undefined' ? location.hash.replace('#', '').split('?')[0] : '';
   if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr' || raw === 'musicfree') return raw;
-  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('wyyyy_active_tab') : '';
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('wyy_active_tab') : '';
   return (saved === 'playlist' || saved === 'search' || saved === 'download-mgr' || saved === 'musicfree') ? saved as ActiveTab : 'playlist';
 }
 
@@ -12,7 +12,7 @@ function getInitialPlaylistId(): string {
   return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || '';
 }
 
-const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyyyy_sidebar_collapsed';
+const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyy_sidebar_collapsed';
 
 function getInitialSidebarCollapsed(): boolean {
   if (typeof localStorage === 'undefined') return false;
@@ -70,7 +70,7 @@ export function toggleSidebarCollapse(): void {
 export function scrollToPageTop(): void {
   if (typeof window !== 'undefined') {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    window.dispatchEvent(new CustomEvent('wyyyy:scroll-list-top'));
+    window.dispatchEvent(new CustomEvent('wyy:scroll-list-top'));
   }
   const mainEl = typeof document !== 'undefined' ? document.querySelector('.app-main-container') : null;
   if (mainEl) {
@@ -95,7 +95,7 @@ export function switchTab(n: ActiveTab): void {
     history.pushState(null, '', '#' + n);
   }
   try {
-    localStorage.setItem('wyyyy_active_tab', n);
+    localStorage.setItem('wyy_active_tab', n);
   } catch {}
 }
 
@@ -117,9 +117,9 @@ export function jumpToPlaylist(id: string): void {
     history.pushState(null, '', '#playlist');
   }
   try {
-    localStorage.setItem('wyyyy_active_tab', 'playlist');
+    localStorage.setItem('wyy_active_tab', 'playlist');
     if (pid) {
-      localStorage.setItem('wyyyy_last_playlist_id', pid);
+      localStorage.setItem('wyy_last_playlist_id', pid);
     }
   } catch {}
 }
@@ -133,7 +133,7 @@ export function exitPlaylistToGallery(): void {
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
   history.pushState(null, '', '#playlist');
   try {
-    localStorage.removeItem('wyyyy_last_playlist_id');
+    localStorage.removeItem('wyy_last_playlist_id');
   } catch {}
 }
 
@@ -143,7 +143,7 @@ export function exitPlaylistToLocalManager(): void {
   routerState.downloadSubTab = 'local-playlists';
   switchTab('download-mgr');
   try {
-    localStorage.removeItem('wyyyy_last_playlist_id');
+    localStorage.removeItem('wyy_last_playlist_id');
   } catch {}
 }
 

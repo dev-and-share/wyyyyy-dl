@@ -1,7 +1,7 @@
 {
-  "name": "网易云音乐下载器",
-  "short_name": "网易云下载",
-  "description": "网易云音乐个人下载管理与离线播放器",
+  "name": "WYY 音乐工作台",
+  "short_name": "WYY",
+  "description": "WYY · 现代化全能音乐与离线工作台",
   "start_url": "/",
   "display": "standalone",
   "display_override": [

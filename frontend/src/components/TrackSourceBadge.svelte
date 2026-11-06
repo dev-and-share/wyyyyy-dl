@@ -75,7 +75,7 @@
       onReveal(targetItem);
     }
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: targetItem }));
+      window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: targetItem }));
     }
   }
 

@@ -30,13 +30,13 @@
     onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
 
-  const STORAGE_KEY_SEARCH_KW = 'wyyyy_search_kw';
-  const STORAGE_KEY_SEARCH_TYPE = 'wyyyy_search_type';
-  const STORAGE_KEY_SEARCH_SOURCE = 'wyyyy_search_source';
-  const STORAGE_KEY_ALBUM_ID = 'wyyyy_search_album_id';
-  const STORAGE_KEY_SUBTAB = 'wyyyy_search_subtab';
-  const STORAGE_KEY_ACC_SEARCH = 'wyyyy_search_acc_search';
-  const STORAGE_KEY_ACC_ALBUM = 'wyyyy_search_acc_album';
+  const STORAGE_KEY_SEARCH_KW = 'wyy_search_kw';
+  const STORAGE_KEY_SEARCH_TYPE = 'wyy_search_type';
+  const STORAGE_KEY_SEARCH_SOURCE = 'wyy_search_source';
+  const STORAGE_KEY_ALBUM_ID = 'wyy_search_album_id';
+  const STORAGE_KEY_SUBTAB = 'wyy_search_subtab';
+  const STORAGE_KEY_ACC_SEARCH = 'wyy_search_acc_search';
+  const STORAGE_KEY_ACC_ALBUM = 'wyy_search_acc_album';
 
   function getStored(key: string, def: string) {
     if (typeof localStorage === 'undefined') return def;
@@ -241,7 +241,7 @@
     try {
       await api.downloadPlaylist(id);
       showToast(t('search.submittedPlaylist', { name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e.message || e }), 'error');
     }
@@ -311,7 +311,7 @@
     try {
       await api.downloadAlbum(String(album.id || currentAlbumId));
       showToast(t('download.submittedFullAlbum'), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e.message || e }), 'error');
     }
@@ -347,7 +347,7 @@
       } else {
         showToast(t('download.submittedTask'), 'info', 1500);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitSingleFailedWithMsg', { message: e.message || e }), 'error');
     }

@@ -303,7 +303,7 @@
                   🧩 聚合搜
                 </SlotBtn>
                 {#if status.isServer}
-                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
+                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
                     {t('common.reveal')}
                   </SlotBtn>
                 {:else}

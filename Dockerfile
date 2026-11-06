@@ -27,8 +27,8 @@ RUN ./gradlew bootJar -x test --no-daemon
 # ==============================================================================
 FROM eclipse-temurin:21-jre
 RUN mkdir -p /app/java/ /media/music
-ENV auther=wyyyyy-dl
+ENV auther=wyy
 WORKDIR /app/java/
-COPY --from=jar-builder /build/build/libs/wyyyyy-dl-*.jar /app/java/app.jar
+COPY --from=jar-builder /build/build/libs/wyy-*.jar /app/java/app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

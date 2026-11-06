@@ -15,7 +15,7 @@ describe('router navigation and URL sync contracts', () => {
     expect(routerState.playlistId).toBe('123456');
     expect(routerState.tab).toBe('playlist');
     expect(location.hash).toBe('#playlist?id=123456');
-    expect(localStorage.getItem('wyyyy_last_playlist_id')).toBe('123456');
+    expect(localStorage.getItem('wyy_last_playlist_id')).toBe('123456');
   });
 
   it('resets URL hash and clears playlistId when exitPlaylistToGallery is called', () => {
@@ -26,7 +26,7 @@ describe('router navigation and URL sync contracts', () => {
 
     expect(routerState.playlistId).toBe('');
     expect(location.hash).toBe('#playlist');
-    expect(localStorage.getItem('wyyyy_last_playlist_id')).toBeNull();
+    expect(localStorage.getItem('wyy_last_playlist_id')).toBeNull();
   });
 
   it('resets URL hash and switches to download-mgr with local-playlists subtab when exitPlaylistToLocalManager is called', () => {
@@ -39,7 +39,7 @@ describe('router navigation and URL sync contracts', () => {
     expect(routerState.tab).toBe('download-mgr');
     expect(routerState.downloadSubTab).toBe('local-playlists');
     expect(location.hash).toBe('#download-mgr');
-    expect(localStorage.getItem('wyyyy_last_playlist_id')).toBeNull();
+    expect(localStorage.getItem('wyy_last_playlist_id')).toBeNull();
   });
 
   it('syncs playlistId from URL hash on route change', () => {

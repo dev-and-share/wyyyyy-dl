@@ -68,7 +68,7 @@
             serverFileRemoved = true;
             unmarkSongDownloaded(song.id);
             if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+              window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
             }
           }
         } catch (e) {

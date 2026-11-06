@@ -36,7 +36,7 @@ export async function downloadPlaylistTrack(
       } else {
         showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }

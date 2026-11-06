@@ -5,8 +5,8 @@ plugins {
     id 'org.graalvm.buildtools.native' version '0.9.28'
 }
 
-group = 'com.wyyyyydl'
-version = '5.4.0'
+group = 'com.wyy'
+version = '5.5.0'
 sourceCompatibility = '21'
 targetCompatibility = '21'
 
@@ -88,7 +88,7 @@ wrapper {
 graalvmNative {
     binaries {
         main {
-            imageName = 'wyyyyy-dl-native'
+            imageName = 'wyy-native'
             buildArgs.add('--verbose')
             // 放宽 native 构建限制，兼容 sqlite/jaudiotagger/fastjson
             buildArgs.add('-H:+AllowIncompleteClasspath')
@@ -106,7 +106,7 @@ graalvmNative {
 
 // build-image 使用 Paketo + Java21
 tasks.named("bootBuildImage") {
-    imageName = "wyyyyy-dl:native"
+    imageName = "wyy:native"
     builder = "paketobuildpacks/builder-jammy-tiny"
     environment = ["BP_NATIVE_IMAGE": "true"]
     pullPolicy = "IF_NOT_PRESENT"
@@ -126,7 +126,7 @@ tasks.register('buildFrontend', Exec) {
 // AWS Lambda Serverless ZIP 打包任务 (符合 AWS Lambda Java 21 标准 Classpath 规范)
 tasks.register('buildAwsZip', Zip) {
     dependsOn 'buildFrontend'
-    archiveBaseName.set('wyyyyy-dl-aws')
+    archiveBaseName.set('wyy-aws')
     archiveVersion.set('')
     from compileJava
     from processResources

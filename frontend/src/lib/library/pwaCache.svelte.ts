@@ -4,8 +4,8 @@ import { AudioCacheStorage } from 'pwa-audio-player';
 
 export const PWA_CACHE_NAME = 'netease-music-audio-v1';
 export const PWA_TRACK_META_KEY = 'pwa_cached_tracks_meta_v1';
-export const PWA_AUTO_CACHE_KEY = 'wyyyy_auto_cache_while_listening';
-export const PWA_SONG_PLAY_COUNTS_KEY = 'wyyyy_song_play_counts';
+export const PWA_AUTO_CACHE_KEY = 'wyy_auto_cache_while_listening';
+export const PWA_SONG_PLAY_COUNTS_KEY = 'wyy_song_play_counts';
 
 export const audioCacheStorage = new AudioCacheStorage({
   cacheName: PWA_CACHE_NAME,
@@ -52,7 +52,7 @@ export function recordSongPlay(idOrKey: string | number): number {
   const count = audioCacheStorage.recordPlayCount(idOrKey);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
-      new CustomEvent('wyyyy:song-play-updated', {
+      new CustomEvent('wyy:song-play-updated', {
         detail: { id: String(idOrKey), playCount: count }
       })
     );
@@ -94,7 +94,7 @@ export function refreshCachedSongIds() {
 
 // 自动响应离线缓存更新/删除事件
 if (typeof window !== 'undefined') {
-  window.addEventListener('wyyyy:browser-cache-updated', ((e: CustomEvent) => {
+  window.addEventListener('wyy:browser-cache-updated', ((e: CustomEvent) => {
     const id = e?.detail?.id;
     if (id != null) {
       const num = Number(id);
@@ -237,7 +237,7 @@ export async function cacheTrackToBrowser(
     localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
 
     // Dispatch global event to notify offline track list
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id, meta } }));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated', { detail: { id, meta } }));
 
     if (isTrial) {
       return { success: true, isTrial: true, msg: t('cache.cachedTrialNotice', { name: sName }) };

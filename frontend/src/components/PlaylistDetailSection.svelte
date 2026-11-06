@@ -130,9 +130,9 @@
         listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
-    window.addEventListener('wyyyy:scroll-list-top', handleScrollListTop);
+    window.addEventListener('wyy:scroll-list-top', handleScrollListTop);
     return () => {
-      window.removeEventListener('wyyyy:scroll-list-top', handleScrollListTop);
+      window.removeEventListener('wyy:scroll-list-top', handleScrollListTop);
     };
   });
 
@@ -196,7 +196,7 @@
     try {
       await api.downloadPlaylist(id);
       showToast(t('download.submittedTask'), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e.message || e }), 'error');
     }
@@ -213,7 +213,7 @@
       }
       playlist.subscribed = nextSub;
       showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
     } catch (e: any) {
       showToast(t('playlist.riskTip'), 'warning', 4000);
     }
@@ -236,7 +236,7 @@
       } else {
         showToast(t('drawer.downloadSubmitted', { name: task?.name || name || t('comment.defaultSong') }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e.message || e }), 'error');
     }

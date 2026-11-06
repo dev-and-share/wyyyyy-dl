@@ -23,8 +23,8 @@
     onReveal?: (item: any) => void; onSong?: (id: string) => void; showToast: (m: string, t?: string) => void;
   }>();
 
-  const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
-  const STORAGE_KEY_SUBTAB = 'wyyyy_pl_subtab';
+  const STORAGE_KEY_PLAYLIST_ID = 'wyy_last_playlist_id';
+  const STORAGE_KEY_SUBTAB = 'wyy_pl_subtab';
   const getStored = (k: string, def: string) => typeof localStorage !== 'undefined' ? (localStorage.getItem(k) ?? def) : def;
   const initPlaylistId = () => playlistId || (typeof window !== 'undefined' ? location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || '' : '');
 

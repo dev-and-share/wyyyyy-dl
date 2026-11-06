@@ -94,8 +94,8 @@ echo "✅ package.json 与 build.gradle 已更新"
 
 # ── 4. 同步更新 sw.js 的 CACHE_NAME（触发浏览器检测到 SW 变更，清除旧缓存）────
 SW_FILE="src/main/resources/static/sw.js"
-sed -i '' "s/const CACHE_NAME = 'wyyyyy-dl-v[^']*'/const CACHE_NAME = 'wyyyyy-dl-v$NEW_VERSION'/" "$SW_FILE"
-echo "✅ sw.js CACHE_NAME 已更新为 wyyyyy-dl-v$NEW_VERSION"
+sed -i '' "s/const CACHE_NAME = 'wyy-v[^']*'/const CACHE_NAME = 'wyy-v$NEW_VERSION'/" "$SW_FILE"
+echo "✅ sw.js CACHE_NAME 已更新为 wyy-v$NEW_VERSION"
 
 # ── 5. git commit + tag + push ───────────────────────────────────────────────
 if [ "$IS_RELEASE" = false ]; then

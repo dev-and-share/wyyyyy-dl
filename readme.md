@@ -1,7 +1,7 @@
-# 🎵 wyyyyy-dl (网易云音乐全能下载器 & 离线 Web Player)
+# 🎵 WYY (Whatever You Yearn · 现代化全能音乐工作台 & 离线 Web Player)
 
 <p align="center">
-  <img src="src/main/resources/static/favicon.png" width="96" height="96" alt="wyyyyy-dl Logo" />
+  <img src="src/main/resources/static/favicon.png" width="96" height="96" alt="WYY Logo" />
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/dev-and-share/wyyyyy-dl/releases"><img src="https://img.shields.io/github/v/release/dev-and-share/wyyyyy-dl?color=blue&label=Release" alt="Release" /></a>
+  <a href="https://github.com/dev-and-share/wyy/releases"><img src="https://img.shields.io/github/v/release/dev-and-share/wyy?color=blue&label=Release" alt="Release" /></a>
   <img src="https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg" alt="Spring Boot 3" />
   <img src="https://img.shields.io/badge/Java-21-orange.svg" alt="Java 21" />
   <img src="https://img.shields.io/badge/Svelte-5-ff3e00.svg" alt="Svelte 5" />
@@ -37,22 +37,22 @@
 
 ```bash
 docker run -d \
-  --name=wyyyyy-dl \
+  --name=wyy \
   -p 8080:8080 \
   -v /your/music/path:/media/music \
   -e HOST_DOWNLOAD_PATH="/your/music/path" \
   -e TZ=Asia/Shanghai \
   --restart unless-stopped \
-  ghcr.io/dev-and-share/wyyyyy-dl:latest
+  ghcr.io/dev-and-share/wyy:latest
 ```
 
 或使用 **Docker Compose**（创建 `docker-compose.yml`）：
 
 ```yaml
 services:
-  wyyyyy-dl:
-    image: ghcr.io/dev-and-share/wyyyyy-dl:latest
-    container_name: wyyyyy-dl
+  wyy:
+    image: ghcr.io/dev-and-share/wyy:latest
+    container_name: wyy
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -74,10 +74,10 @@ docker compose up -d
 
 ### 方式 2：直接下载可执行 JAR (需本地安装 Java 21)
 
-1. 前往 [Releases 页面](https://github.com/dev-and-share/wyyyyy-dl/releases) 下载最新版的 `wyyyyy-dl-*.jar`；
+1. 前往 [Releases 页面](https://github.com/dev-and-share/wyy/releases) 下载最新版的 `wyy-*.jar`；
 2. 一键启动：
    ```bash
-   java -jar wyyyyy-dl-5.0.0.jar --download.path=/your/music/path
+   java -jar wyy-5.3.8.jar --download.path=/your/music/path
    ```
 3. 打开浏览器访问 `http://localhost:8080`。
 
@@ -148,8 +148,8 @@ docker compose up -d
 ### 本地启动
 ```bash
 # 1. 克隆项目
-git clone https://github.com/dev-and-share/wyyyyy-dl.git
-cd wyyyyy-dl
+git clone https://github.com/dev-and-share/wyy.git
+cd wyy
 
 # 2. 启动前端开发服务器 (支持热重载，自动代理后端接口)
 cd frontend
@@ -174,13 +174,13 @@ cd frontend && npm run check && npm run test && npm run build
 ## 📂 工程架构
 
 ```
-wyyyyy-dl/
+wyy/
 ├── frontend/               # Svelte 5 + Vite + Tailwind v4 现代前端
 │   ├── src/
 │   │   ├── components/     # 播放器、歌单、桌面侧边栏等 UI 组件 (<500行)
 │   │   └── lib/            # Runes 状态管理、PWA Cache、API 客户端
 │   └── tests/              # Vitest 单元测试 & Playwright E2E 测试
-├── src/main/java/com/wyyyyydl/ # Spring Boot 3 后端源码
+├── src/main/java/com/wyy/  # Spring Boot 3 后端源码
 │   ├── config/             # 全局异常处理与过滤器
 │   ├── controller/         # /v3/ RESTful API 控制器层
 │   ├── service/            # 网易云解析与多线程下载调度服务

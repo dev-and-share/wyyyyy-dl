@@ -86,24 +86,24 @@
 
     // Listen to download submission event to refresh tasks
     const onDownloadSubmit = () => startTaskPolling();
-    window.addEventListener('wyyyy:download-submitted', onDownloadSubmit);
+    window.addEventListener('wyy:download-submitted', onDownloadSubmit);
 
     // Listen to global reveal events
     const onGlobalReveal = (e: any) => {
       if (e?.detail) handleReveal(e.detail);
     };
-    window.addEventListener('wyyyy:reveal', onGlobalReveal);
+    window.addEventListener('wyy:reveal', onGlobalReveal);
 
     // Listen to PWA update available event
     const onPwaUpdate = () => showToast(t('app.pwaUpdateFound'), 'info', 6000);
-    window.addEventListener('wyyyy:pwa-update-available', onPwaUpdate);
+    window.addEventListener('wyy:pwa-update-available', onPwaUpdate);
 
     return () => {
       stopRouter();
       stopLayout();
-      window.removeEventListener('wyyyy:download-submitted', onDownloadSubmit);
-      window.removeEventListener('wyyyy:reveal', onGlobalReveal);
-      window.removeEventListener('wyyyy:pwa-update-available', onPwaUpdate);
+      window.removeEventListener('wyy:download-submitted', onDownloadSubmit);
+      window.removeEventListener('wyy:reveal', onGlobalReveal);
+      window.removeEventListener('wyy:pwa-update-available', onPwaUpdate);
     };
   });
 

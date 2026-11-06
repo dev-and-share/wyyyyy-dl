@@ -84,7 +84,7 @@
       if (res?.code === '000000') {
         showToast(`已提交「${songName}」下载任务到服务器`, 'success');
         startTaskPolling();
-        window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+        window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       } else {
         showToast(res?.msg || '提交下载任务失败', 'error');
       }
@@ -221,7 +221,7 @@
             </SlotBtn>
 
             {#if status.isServer}
-              <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackId, name: title, artist } }))}>
+              <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackId, name: title, artist } }))}>
                 {t('common.reveal')}
               </SlotBtn>
             {:else}
@@ -262,7 +262,7 @@
                   ...(status.isServer ? [{
                     label: '🔍 ' + t('common.reveal'),
                     style: 'default' as const,
-                    onclick: () => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackId, name: title, artist } }))
+                    onclick: () => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackId, name: title, artist } }))
                   }] : [{
                     label: '📥 ' + t('download.downloadSingle'),
                     style: 'default' as const,
