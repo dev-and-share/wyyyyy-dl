@@ -10,7 +10,11 @@ vi.mock('../lib/api', () => ({
     historyScan: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
     historyScanExternal: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
     historyImportUntracked: vi.fn().mockResolvedValue({ code: '000000', data: 5 }),
-    historyCleanMissing: vi.fn().mockResolvedValue({ code: '000000', data: 3 })
+    historyCleanMissing: vi.fn().mockResolvedValue({ code: '000000', data: 3 }),
+    getGeoProxyConfig: vi.fn().mockResolvedValue({ code: '000000', data: { enabled: false } }),
+    saveGeoProxyConfig: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
+    testGeoProxy: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
+    refreshGeoProxyPool: vi.fn().mockResolvedValue({ code: '000000', data: {} })
   }
 }));
 
