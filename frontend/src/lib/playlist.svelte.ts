@@ -3,6 +3,7 @@ import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 import { t } from './i18n';
 import { playlistService } from './playlistService';
+import { isDailyRecommendRoute } from './router.svelte';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
@@ -196,7 +197,7 @@ export function resetActiveTargetPlaylist(): void {
 export async function loadPlaylistDetail(playlistId: string, force = false){
   if(!playlistId) throw new Error(t('playlist.enterPlaylistId'));
   const pidStr = String(playlistId).trim();
-  if (pidStr === 'daily-recommend') {
+  if (isDailyRecommendRoute(pidStr)) {
     return null;
   }
 

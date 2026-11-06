@@ -1,22 +1,121 @@
-export type ActiveTab = 'playlist' | 'search' | 'download-mgr' | 'musicfree';
+/**
+ * 核心主路由 Tab 枚举 / 常量
+ */
+export const AppRoute = {
+  PLAYLIST: 'playlist',
+  SEARCH: 'search',
+  DOWNLOAD_MGR: 'download-mgr',
+  MUSICFREE: 'musicfree',
+} as const;
+
+export type ActiveTab = typeof AppRoute[keyof typeof AppRoute];
+
+/**
+ * 歌单模块子 Tab 枚举
+ */
+export const PlaylistSubTab = {
+  MY: 'my',
+  DETAIL: 'detail',
+  RECOMMEND: 'recommend',
+} as const;
+
+export type PlaylistSubTabType = typeof PlaylistSubTab[keyof typeof PlaylistSubTab];
+
+/**
+ * 系统级虚拟路由 ID 常量
+ */
+export const SpecialRouteId = {
+  DAILY_RECOMMEND: 'daily-recommend',
+} as const;
+
+/**
+ * 统一 LocalStorage 存储键名
+ */
+export const STORAGE_KEYS = {
+  ACTIVE_TAB: 'wyy_active_tab',
+  LAST_PLAYLIST_ID: 'wyy_last_playlist_id',
+  SIDEBAR_COLLAPSED: 'wyy_sidebar_collapsed',
+  PLAYLIST_SUBTAB: 'wyy_pl_subtab',
+} as const;
+
+/**
+ * 统一路由 URL 构建器（收口所有 Hash 与查询参数组装）
+ */
+export const RouteUrl = {
+  tab: (tab: ActiveTab): string => `#${tab}`,
+  playlist: (id?: string): string => {
+    const cleanId = String(id || '').trim();
+    if (!cleanId) return `#${AppRoute.PLAYLIST}`;
+    return `#${AppRoute.PLAYLIST}?id=${cleanId}`;
+  },
+  playlistSubTab: (subTab: PlaylistSubTabType, pid?: string): string => {
+    if (subTab === PlaylistSubTab.MY) {
+      return `#${AppRoute.PLAYLIST}`;
+    }
+    if (subTab === PlaylistSubTab.RECOMMEND) {
+      return `#${AppRoute.PLAYLIST}?id=${SpecialRouteId.DAILY_RECOMMEND}`;
+    }
+    if (subTab === PlaylistSubTab.DETAIL) {
+      const cleanPid = String(pid || '').trim();
+      return cleanPid && cleanPid !== SpecialRouteId.DAILY_RECOMMEND
+        ? `#${AppRoute.PLAYLIST}?id=${cleanPid}`
+        : `#${AppRoute.PLAYLIST}?subtab=detail`;
+    }
+    return `#${AppRoute.PLAYLIST}`;
+  },
+  dailyRecommend: (): string => `#${AppRoute.PLAYLIST}?id=${SpecialRouteId.DAILY_RECOMMEND}`,
+  search: (): string => `#${AppRoute.SEARCH}`,
+  downloadMgr: (): string => `#${AppRoute.DOWNLOAD_MGR}`,
+  musicFree: (): string => `#${AppRoute.MUSICFREE}`,
+} as const;
+
+/**
+ * 判断是否为每日推荐路由/虚拟 ID
+ */
+export function isDailyRecommendRoute(id: string | null | undefined): boolean {
+  return String(id || '').trim() === SpecialRouteId.DAILY_RECOMMEND;
+}
+
+/**
+ * 解析 URL Hash 结构
+ */
+export function parseRouteFromHash(hashStr: string): {
+  tab: ActiveTab;
+  playlistId: string;
+  subTab?: string;
+} {
+  const raw = (hashStr || '').replace(/^#/, '');
+  const [path, queryString] = raw.split('?');
+  const params = new URLSearchParams(queryString || '');
+
+  let tab: ActiveTab = AppRoute.PLAYLIST;
+  if (path === AppRoute.SEARCH || path === AppRoute.DOWNLOAD_MGR || path === AppRoute.MUSICFREE) {
+    tab = path;
+  }
+
+  const playlistId = params.get('id') || '';
+  const subTab = params.get('subtab') || undefined;
+
+  return { tab, playlistId, subTab };
+}
 
 function getInitialTab(): ActiveTab {
-  const raw = typeof window !== 'undefined' ? location.hash.replace('#', '').split('?')[0] : '';
-  if (raw === 'playlist' || raw === 'search' || raw === 'download-mgr' || raw === 'musicfree') return raw;
-  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('wyy_active_tab') : '';
-  return (saved === 'playlist' || saved === 'search' || saved === 'download-mgr' || saved === 'musicfree') ? saved as ActiveTab : 'playlist';
+  if (typeof window !== 'undefined') {
+    const { tab } = parseRouteFromHash(location.hash);
+    if (Object.values(AppRoute).includes(tab)) return tab;
+  }
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB) : '';
+  return Object.values(AppRoute).includes(saved as ActiveTab) ? (saved as ActiveTab) : AppRoute.PLAYLIST;
 }
 
 function getInitialPlaylistId(): string {
   if (typeof window === 'undefined') return '';
-  return location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || '';
+  return parseRouteFromHash(location.hash).playlistId;
 }
-
-const STORAGE_KEY_SIDEBAR_COLLAPSED = 'wyy_sidebar_collapsed';
 
 function getInitialSidebarCollapsed(): boolean {
   if (typeof localStorage === 'undefined') return false;
-  return localStorage.getItem(STORAGE_KEY_SIDEBAR_COLLAPSED) === 'true';
+  return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true';
 }
 
 export const routerState = $state<{
@@ -51,19 +150,19 @@ export function jumpToMusicFreeSearch(keyword: string): void {
   routerState.searchKeyword = keyword.trim();
   routerState.searchSource = 'musicfree';
   routerState.searchTrigger = (routerState.searchTrigger || 0) + 1;
-  switchTab('search');
+  switchTab(AppRoute.SEARCH);
 }
 
 export function jumpToDownloadTasks(): void {
   routerState.downloadSubTab = 'tasks';
   routerState.downloadTasksTrigger = (routerState.downloadTasksTrigger || 0) + 1;
-  switchTab('download-mgr');
+  switchTab(AppRoute.DOWNLOAD_MGR);
 }
 
 export function toggleSidebarCollapse(): void {
   routerState.sidebarCollapsed = !routerState.sidebarCollapsed;
   try {
-    localStorage.setItem(STORAGE_KEY_SIDEBAR_COLLAPSED, String(routerState.sidebarCollapsed));
+    localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(routerState.sidebarCollapsed));
   } catch {}
 }
 
@@ -89,13 +188,13 @@ export function switchTab(n: ActiveTab): void {
     return;
   }
   routerState.tab = n;
-  if (n === 'playlist' && routerState.playlistId) {
-    history.pushState(null, '', `#playlist?id=${routerState.playlistId}`);
+  if (n === AppRoute.PLAYLIST && routerState.playlistId) {
+    history.pushState(null, '', RouteUrl.playlist(routerState.playlistId));
   } else {
-    history.pushState(null, '', '#' + n);
+    history.pushState(null, '', RouteUrl.tab(n));
   }
   try {
-    localStorage.setItem('wyy_active_tab', n);
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, n);
   } catch {}
 }
 
@@ -103,37 +202,33 @@ export function jumpToAlbum(id: string, name?: string): void {
   routerState.albumId = String(id || '').trim();
   routerState.albumName = String(name || '').trim();
   routerState.albumTrigger = (routerState.albumTrigger || 0) + 1;
-  switchTab('search');
+  switchTab(AppRoute.SEARCH);
 }
 
 export function jumpToPlaylist(id: string): void {
   const pid = String(id || '').trim();
   routerState.playlistId = pid;
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
-  routerState.tab = 'playlist';
-  if (pid) {
-    history.pushState(null, '', `#playlist?id=${pid}`);
-  } else {
-    history.pushState(null, '', '#playlist');
-  }
+  routerState.tab = AppRoute.PLAYLIST;
+  history.pushState(null, '', RouteUrl.playlist(pid));
   try {
-    localStorage.setItem('wyy_active_tab', 'playlist');
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, AppRoute.PLAYLIST);
     if (pid) {
-      localStorage.setItem('wyy_last_playlist_id', pid);
+      localStorage.setItem(STORAGE_KEYS.LAST_PLAYLIST_ID, pid);
     }
   } catch {}
 }
 
 export function jumpToDailyRecommend(): void {
-  jumpToPlaylist('daily-recommend');
+  jumpToPlaylist(SpecialRouteId.DAILY_RECOMMEND);
 }
 
 export function exitPlaylistToGallery(): void {
   routerState.playlistId = '';
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
-  history.pushState(null, '', '#playlist');
+  history.pushState(null, '', RouteUrl.playlist());
   try {
-    localStorage.removeItem('wyy_last_playlist_id');
+    localStorage.removeItem(STORAGE_KEYS.LAST_PLAYLIST_ID);
   } catch {}
 }
 
@@ -141,26 +236,18 @@ export function exitPlaylistToLocalManager(): void {
   routerState.playlistId = '';
   routerState.playlistTrigger = (routerState.playlistTrigger || 0) + 1;
   routerState.downloadSubTab = 'local-playlists';
-  switchTab('download-mgr');
+  switchTab(AppRoute.DOWNLOAD_MGR);
   try {
-    localStorage.removeItem('wyy_last_playlist_id');
+    localStorage.removeItem(STORAGE_KEYS.LAST_PLAYLIST_ID);
   } catch {}
 }
 
 export function initRouter(): () => void {
   const syncRoute = () => {
-    const raw = typeof location !== 'undefined' ? location.hash.replace('#', '') : '';
-    const m = raw.match(/id=([0-9a-zA-Z_-]+)/);
-    if (m?.[1]) {
-      routerState.playlistId = m[1];
-    } else if (raw.startsWith('playlist')) {
-      // 当 URL 是 #playlist 且没有 id 时，回到歌单画廊
-      routerState.playlistId = '';
-    }
-    const h = raw.split('?')[0];
-    if (h === 'playlist' || h === 'search' || h === 'download-mgr' || h === 'musicfree') {
-      routerState.tab = h as ActiveTab;
-    }
+    if (typeof location === 'undefined') return;
+    const parsed = parseRouteFromHash(location.hash);
+    routerState.playlistId = parsed.playlistId;
+    routerState.tab = parsed.tab;
   };
 
   syncRoute();

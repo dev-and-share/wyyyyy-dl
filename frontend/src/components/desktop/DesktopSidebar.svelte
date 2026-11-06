@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../lib/i18n';
-  import { jumpToDownloadTasks, type ActiveTab } from '../../lib/router.svelte';
+  import { jumpToDownloadTasks, type ActiveTab, AppRoute, SpecialRouteId, isDailyRecommendRoute } from '../../lib/router.svelte';
   import { geoProxyState, fetchGeoProxyConfig } from '../../lib/geoProxyStore.svelte';
   import DesktopSidebarPlaylists from './DesktopSidebarPlaylists.svelte';
 
@@ -31,8 +31,8 @@
     showToast?: (m: string, t?: string) => void;
   }>();
 
-  const isRecommendActive = $derived(tab === 'playlist' && currentPlaylistId === 'daily-recommend');
-  const isPlaylistActive = $derived(tab === 'playlist' && currentPlaylistId !== 'daily-recommend');
+  const isRecommendActive = $derived(tab === AppRoute.PLAYLIST && isDailyRecommendRoute(currentPlaylistId));
+  const isPlaylistActive = $derived(tab === AppRoute.PLAYLIST && !isDailyRecommendRoute(currentPlaylistId));
 
   onMount(() => {
     if (!geoProxyState.loaded) {
@@ -112,10 +112,10 @@
       data-testid="sidebar-tab-playlist"
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {isPlaylistActive ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => {
-        if (currentPlaylistId === 'daily-recommend') {
-          onViewPlaylist ? onViewPlaylist('') : onSwitchTab('playlist');
+        if (isDailyRecommendRoute(currentPlaylistId)) {
+          onViewPlaylist ? onViewPlaylist('') : onSwitchTab(AppRoute.PLAYLIST);
         } else {
-          onSwitchTab('playlist');
+          onSwitchTab(AppRoute.PLAYLIST);
         }
       }}
       title={t('topbar.playlist')}
@@ -133,9 +133,9 @@
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {isRecommendActive ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => {
         if (onViewPlaylist) {
-          onViewPlaylist('daily-recommend');
+          onViewPlaylist(SpecialRouteId.DAILY_RECOMMEND);
         } else {
-          onSwitchTab('playlist');
+          onSwitchTab(AppRoute.PLAYLIST);
         }
       }}
       title={t('recommend.dailyExclusive')}

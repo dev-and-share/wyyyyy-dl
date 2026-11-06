@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { t } from '../../lib/i18n';
+  import { SpecialRouteId } from '../../lib/router.svelte';
   import {
     myPlaylists,
     loadMyPlaylists,
@@ -168,8 +169,8 @@
           class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-red-400/40 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-lg hover:-translate-y-1"
           role="button"
           tabindex="0"
-          onclick={() => onSelectPlaylist('daily-recommend')}
-          onkeydown={(e) => e.key === 'Enter' && onSelectPlaylist('daily-recommend')}
+          onclick={() => onSelectPlaylist(SpecialRouteId.DAILY_RECOMMEND)}
+          onkeydown={(e) => e.key === 'Enter' && onSelectPlaylist(SpecialRouteId.DAILY_RECOMMEND)}
         >
           <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-red-500 to-rose-600 shadow-inner flex flex-col select-none group-hover:scale-105 transition-transform duration-300">
             <div class="bg-red-700/80 text-white text-[10px] font-bold text-center py-1 tracking-wider uppercase">
