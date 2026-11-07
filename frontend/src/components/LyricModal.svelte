@@ -294,12 +294,19 @@
     <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={110} />
   {/if}
 
-  <!-- 顶部轻盈浮空区域：下拉手势指示器 + 皮肤切换 + 关闭按钮 -->
-  <div class="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 md:px-8 pt-[max(12px,env(safe-area-inset-top,0px))] transition-all duration-300 {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}">
-    <!-- 左上角：皮肤切换入口 -->
+  <!-- 顶部轻盈浮空区域：下拉手势指示器 + 皮肤切换 + 关闭按钮 (全面适配 PWA WCO 窗口控制遮罩) -->
+  <div
+    class="absolute top-0 inset-x-0 z-30 flex items-center justify-between transition-all duration-300 wco-drag-region {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}"
+    style="
+      padding-top: max(14px, var(--wco-height, env(titlebar-area-height, 0px)), env(safe-area-inset-top, 0px));
+      padding-left: max(16px, var(--wco-left, env(titlebar-area-x, 0px)), env(safe-area-inset-left, 0px));
+      padding-right: max(16px, var(--wco-right, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))), env(safe-area-inset-right, 0px));
+    "
+  >
+    <!-- 左上角：皮肤切换入口 (避开 macOS 交通灯 🔴🟡🟢) -->
     <button
       type="button"
-      class="interactive-el w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
+      class="interactive-el wco-no-drag w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
       onclick={() => { showSkinPicker = true; kickHideTimer(); }}
       title={t('player.skin')}
       data-testid="btn-open-skin-picker"
@@ -312,10 +319,10 @@
       <div class="w-9 h-1 rounded-full bg-white/40"></div>
     </div>
 
-    <!-- 右上角：关闭沉浸页按钮 -->
+    <!-- 右上角：关闭沉浸页按钮 (避开 Chrome / Windows 窗口控制按钮) -->
     <button
       type="button"
-      class="interactive-el w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
+      class="interactive-el wco-no-drag w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
       onclick={onClose}
       title={t('common.close')}
     >
@@ -324,7 +331,10 @@
   </div>
 
   <!-- 中间主体：动态皮肤舞台 + 满宽无遮挡滚动歌词 -->
-  <div class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden px-4 md:px-12 pt-[max(56px,calc(env(safe-area-inset-top,0px)+34px))] pb-32 md:pb-28 gap-3 md:gap-10 max-w-[1240px] w-full mx-auto items-center justify-center">
+  <div
+    class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden px-4 md:px-12 pb-32 md:pb-28 gap-3 md:gap-10 max-w-[1240px] w-full mx-auto items-center justify-center"
+    style="padding-top: max(56px, calc(var(--wco-height, env(titlebar-area-height, 0px)) + 36px), calc(env(safe-area-inset-top, 0px) + 36px));"
+  >
     <!-- 左侧列：动态皮肤舞台 + PC 宽屏专属低调 mini 播放器控制面板 -->
     <div class="flex flex-col items-center justify-center shrink-0 max-w-[440px] w-full md:w-auto self-center">
       <!-- 动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/四季） -->

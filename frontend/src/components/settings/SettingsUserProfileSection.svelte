@@ -54,17 +54,18 @@
       <!-- 角色身份徽章 -->
       <div class="shrink-0 flex items-center">
         {#if !authStore.authEnabled}
-          <span class="text-[11px] font-semibold px-2 py-0.8 rounded-full bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/20">
-            {t('settings.roleOpen')}
+          <span class="text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-400/20 flex items-center gap-1.5 shadow-sm">
+            <span class="text-xs">🔓</span>
+            <span>{t('settings.roleOpen')}</span>
           </span>
         {:else if authStore.isAdmin}
-          <span class="text-[11px] font-bold px-2.5 py-0.8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shadow-sm">
-            <span>👑</span>
+          <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-orange-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 flex items-center gap-1.5 shadow-[0_1px_3px_rgba(245,158,11,0.15)]">
+            <span class="text-xs">👑</span>
             <span>{t('settings.roleAdmin')}</span>
           </span>
         {:else}
-          <span class="text-[11px] font-semibold px-2.5 py-0.8 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1 shadow-sm">
-            <span>🎧</span>
+          <span class="text-[11px] font-semibold px-2.5 py-0.8 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 shadow-sm">
+            <span class="text-xs">🎧</span>
             <span>{t('settings.roleGuest')}</span>
           </span>
         {/if}
