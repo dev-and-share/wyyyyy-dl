@@ -133,9 +133,9 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     ")";
             stmt.execute(localPlaylistsSql);
 
-            // 🌟 初始化系统内置专属歌单：❤️ 本地我喜欢的音乐 (保留歌单，置顶展示，不允许删除)
+            // 🌟 初始化系统内置专属歌单：本地我喜欢的音乐 (保留歌单，置顶展示，不允许删除)
             String initFavSql = "INSERT OR IGNORE INTO local_playlists (id, name, cover_url) " +
-                    "VALUES ('local_favorites', '❤️ 本地我喜欢的音乐', '/favicon.png')";
+                    "VALUES ('local_favorites', '本地我喜欢的音乐', '/favicon.png')";
             stmt.execute(initFavSql);
 
             String localPlaylistTracksSql = "CREATE TABLE IF NOT EXISTS local_playlist_tracks (" +
@@ -165,6 +165,11 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         }
         try {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_lp_user_email ON local_playlists(user_email)");
+        } catch (Exception ignored) {
+        }
+        try {
+            // 清理并更新旧版本地红心歌单名称中冗余的 ❤️ 前缀
+            stmt.executeUpdate("UPDATE local_playlists SET name = '本地我喜欢的音乐' WHERE id LIKE 'local_favorites%' AND (name = '❤️ 本地我喜欢的音乐' OR name LIKE '❤️ %')");
         } catch (Exception ignored) {
         }
     }
@@ -1424,7 +1429,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
             // 🌟 访客模式：确保自动初始化属于访客个人的专属红心歌单
             String userFavId = getFavoritesPlaylistId(cleanEmail, true, false);
             String initFavSql = "INSERT OR IGNORE INTO local_playlists (id, name, cover_url, user_email) " +
-                    "VALUES (?, '❤️ 本地我喜欢的音乐', '/favicon.png', ?)";
+                    "VALUES (?, '本地我喜欢的音乐', '/favicon.png', ?)";
             try (Connection conn = getConnection();
                  PreparedStatement initPs = conn.prepareStatement(initFavSql)) {
                 initPs.setString(1, userFavId);
@@ -1471,7 +1476,11 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                 while (rs.next()) {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", rs.getString("id"));
-                    map.put("name", rs.getString("name"));
+                    String name = rs.getString("name");
+                    if (name != null && (name.startsWith("❤️ ") || name.startsWith("❤️"))) {
+                        name = name.replaceFirst("^❤️\\s*", "");
+                    }
+                    map.put("name", name);
                     map.put("coverImgUrl", rs.getString("cover_url"));
                     map.put("trackCount", rs.getInt("track_count"));
                     map.put("isLocal", true);

@@ -74,6 +74,8 @@ export default {
   'sidebar.noMatch': 'No match',
   'sidebar.subscribedPlaylists': 'Subscribed Playlists',
   'sidebar.noSubscribedPlaylists': 'No subscribed playlists',
+  'sidebar.localPlaylists': 'Local Playlists',
+  'sidebar.noLocalPlaylists': 'No local playlists yet',
   'common.notice': 'Notice',
   'common.status': 'Status',
   'common.remark': 'Remark',

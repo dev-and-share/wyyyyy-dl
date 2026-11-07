@@ -4,6 +4,7 @@ import { api } from './api';
 import { t } from './i18n';
 import { playlistService } from './playlistService';
 import { isDailyRecommendRoute } from './router.svelte';
+import { loadLocalPlaylists } from './localPlaylistStore.svelte';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
@@ -60,6 +61,7 @@ export function hasMoreTracks(): boolean {
 
 export async function loadMyPlaylists(f: any = playlistState.filter) {
   playlistState.filter = f;
+  loadLocalPlaylists().catch(() => {});
   const cached = getApiCache('my_playlists');
   if (cached?.data?.playlists) {
     myPlaylists.length = 0;

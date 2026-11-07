@@ -74,6 +74,8 @@ export default {
   'sidebar.noMatch': '無相符',
   'sidebar.subscribedPlaylists': '收藏播放清單',
   'sidebar.noSubscribedPlaylists': '暫無收藏播放清單',
+  'sidebar.localPlaylists': '本地播放清單',
+  'sidebar.noLocalPlaylists': '暫無本地專屬播放清單',
   'common.notice': '說明',
   'common.status': '狀態',
   'common.remark': '備註',

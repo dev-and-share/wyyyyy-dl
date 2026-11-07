@@ -23,10 +23,23 @@ export const localPlaylistState = $state<{
 export const SYSTEM_FAVORITES_PLAYLIST_ID = 'local_favorites';
 
 /**
- * 判断指定歌单是否为系统内置的「❤️ 本地我喜欢的音乐」专属歌单
+ * 判断指定歌单是否为系统内置的「本地我喜欢的音乐」专属歌单
  */
 export function isSystemFavoritesPlaylist(id: string | number | undefined | null): boolean {
-  return String(id) === SYSTEM_FAVORITES_PLAYLIST_ID;
+  if (!id) return false;
+  const s = String(id);
+  return s === SYSTEM_FAVORITES_PLAYLIST_ID || s.startsWith('local_favorites');
+}
+
+/**
+ * 清除歌单名称前缀中冗余的红心 Emoji (防止图标与标题双重显示红心)
+ */
+export function cleanPlaylistDisplayName(pl: { id?: any; name?: string } | null | undefined): string {
+  if (!pl || !pl.name) return '';
+  if (isSystemFavoritesPlaylist(pl.id)) {
+    return pl.name.replace(/^[❤️♥️]\s*/, '');
+  }
+  return pl.name;
 }
 
 /**
@@ -46,8 +59,12 @@ export async function loadLocalPlaylists(): Promise<LocalPlaylist[]> {
     if (typeof api?.localPlaylistList === 'function') {
       const res = await api.localPlaylistList();
       if (res?.code === '000000' && Array.isArray(res.data)) {
-        localPlaylistState.playlists = res.data;
-        return res.data;
+        const cleaned = res.data.map((p: any) => ({
+          ...p,
+          name: isSystemFavoritesPlaylist(p.id) ? (p.name || '').replace(/^[❤️♥️]\s*/, '') : p.name
+        }));
+        localPlaylistState.playlists = cleaned;
+        return cleaned;
       }
     }
   } catch (e) {

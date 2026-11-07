@@ -74,6 +74,8 @@ export default {
   'sidebar.noMatch': '일치 항목 없음',
   'sidebar.subscribedPlaylists': '즐겨찾기한 플레이리스트',
   'sidebar.noSubscribedPlaylists': '즐겨찾기한 플레이리스트 없음',
+  'sidebar.localPlaylists': '로컬 플레이리스트',
+  'sidebar.noLocalPlaylists': '로컬 플레이리스트가 없습니다',
   'common.notice': '설명',
   'common.status': '상태',
   'common.remark': '비고',

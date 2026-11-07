@@ -5,6 +5,8 @@
     loadLocalPlaylists,
     createLocalPlaylist,
     deleteLocalPlaylist,
+    isSystemFavoritesPlaylist,
+    cleanPlaylistDisplayName,
     type LocalPlaylist
   } from '../lib/localPlaylistStore.svelte';
   import { matchesKeyword } from '../lib/utils';
@@ -156,12 +158,12 @@
           onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewPlaylist?.(pl.id); } }}
         >
           <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-lg {pl.id === 'local_favorites' ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-400'} flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
-              {pl.id === 'local_favorites' ? '❤️' : '📁'}
+            <div class="w-10 h-10 rounded-lg {isSystemFavoritesPlaylist(pl.id) ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-400'} flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
+              {isSystemFavoritesPlaylist(pl.id) ? '❤️' : '📁'}
             </div>
             <div class="flex-1 min-w-0">
               <h4 class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-emerald-400 transition-colors">
-                {pl.name}
+                {cleanPlaylistDisplayName(pl)}
               </h4>
               <p class="text-[11px] text-[var(--text-muted)] mt-1">
                 {pl.trackCount || 0} 首曲目
@@ -170,14 +172,14 @@
           </div>
 
           <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border-subtle)]">
-            <span class="text-[10px] text-[var(--text-muted)]">{pl.id === 'local_favorites' ? '系统专属' : '本地 SQLite'}</span>
+            <span class="text-[10px] text-[var(--text-muted)]">{isSystemFavoritesPlaylist(pl.id) ? '系统专属' : '本地 SQLite'}</span>
             <div class="flex items-center gap-1.5" onclick={(e) => e.stopPropagation()} role="presentation">
               <SlotBtn
                 onclick={() => onViewPlaylist?.(pl.id)}
               >
                 查看
               </SlotBtn>
-              {#if pl.id !== 'local_favorites'}
+              {#if !isSystemFavoritesPlaylist(pl.id)}
                 <SlotBtn
                   onclick={() => handleDelete(pl)}
                 >

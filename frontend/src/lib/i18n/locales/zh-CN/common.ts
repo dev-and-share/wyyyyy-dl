@@ -74,6 +74,8 @@ export default {
   'sidebar.noMatch': '无匹配',
   'sidebar.subscribedPlaylists': '收藏歌单',
   'sidebar.noSubscribedPlaylists': '暂无收藏歌单',
+  'sidebar.localPlaylists': '本地歌单',
+  'sidebar.noLocalPlaylists': '暂无本地专属歌单',
   'common.notice': '说明',
   'common.status': '状态',
   'common.remark': '备注',

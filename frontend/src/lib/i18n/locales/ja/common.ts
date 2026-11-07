@@ -74,6 +74,8 @@ export default {
   'sidebar.noMatch': '一致なし',
   'sidebar.subscribedPlaylists': 'お気に入りプレイリスト',
   'sidebar.noSubscribedPlaylists': 'お気に入りプレイリストなし',
+  'sidebar.localPlaylists': 'ローカルプレイリスト',
+  'sidebar.noLocalPlaylists': 'ローカルプレイリストはありません',
   'common.notice': '説明',
   'common.status': '状態',
   'common.remark': '備考',

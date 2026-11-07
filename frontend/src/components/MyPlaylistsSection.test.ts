@@ -40,14 +40,15 @@ describe('MyPlaylistsSection (SP) Tab Ordering Contracts', () => {
       }
     });
 
-    // 1. Check tab button order in DOM: All -> Created -> Subscribed
+    // 1. Check tab button order in DOM: All -> Created -> Subscribed -> Local
     const tabContainer = container.querySelector('.flex.gap-1\\.5.items-center.flex-wrap');
     expect(tabContainer).not.toBeNull();
     const buttons = tabContainer?.querySelectorAll('button') || [];
-    expect(buttons.length).toBe(3);
+    expect(buttons.length).toBe(4);
     expect(buttons[0].textContent).toContain('全部');
     expect(buttons[1].textContent).toContain('创建');
     expect(buttons[2].textContent).toContain('收藏');
+    expect(buttons[3].textContent).toContain('本地');
 
     // Default tab is "All" (全部) with ring-2 active class
     expect(buttons[0].className).toContain('ring-2');

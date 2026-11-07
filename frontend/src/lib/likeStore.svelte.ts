@@ -114,7 +114,7 @@ export async function toggleLike(id: number | string, name?: string, artist?: st
     try {
       if (isLiked) {
         await api.localPlaylistRemoveTrack('local_favorites', validExtId, safeName, safeArtist);
-        showToast('已从「❤️ 本地我喜欢的音乐」移除', 'success');
+        showToast('已从「本地我喜欢的音乐」移除', 'success');
       } else {
         await api.localPlaylistAddTrack('local_favorites', {
           name: safeName || '未知歌曲',
@@ -122,7 +122,7 @@ export async function toggleLike(id: number | string, name?: string, artist?: st
           coverUrl: extra?.cover || extra?.artwork || extra?.picUrl,
           filePath: extra?.filePath
         });
-        showToast(`已收藏《${safeName}》到「❤️ 本地我喜欢的音乐」`, 'success');
+        showToast(`已收藏《${safeName}》到「本地我喜欢的音乐」`, 'success');
 
         // 联动后台下载落盘
         if (extra?.url || extra?.raw) {

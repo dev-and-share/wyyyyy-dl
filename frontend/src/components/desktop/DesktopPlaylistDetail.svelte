@@ -22,7 +22,7 @@
   import RemoveFromPlaylistModal from '../RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
-  import { isLocalPlaylist } from '../../lib/localPlaylistStore.svelte';
+  import { isLocalPlaylist, cleanPlaylistDisplayName } from '../../lib/localPlaylistStore.svelte';
   import { downloadPlaylistTrack } from '../../lib/playlistTrackDownloadHelper';
   import { toPlayerTrack } from '../../lib/playerHelper';
   import { t } from '../../lib/i18n';
@@ -258,7 +258,7 @@
           <span class="text-xs text-[var(--text-muted)]">ID: {playlist.id}</span>
         </div>
         <h1 class="text-lg sm:text-xl font-bold text-[var(--text-main)] truncate tracking-tight">
-          {playlist.name}
+          {cleanPlaylistDisplayName(playlist)}
         </h1>
         <p class="text-xs text-[var(--text-secondary)] flex items-center gap-2 flex-wrap">
           <span>{t('playlist.creatorLabel', { creator: playlist.creator || t('playlist.defaultCreator') })}</span>
