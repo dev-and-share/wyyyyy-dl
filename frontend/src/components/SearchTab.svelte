@@ -408,7 +408,7 @@
           type="search"
           enterkeyhint="search"
           placeholder={searchSource === 'musicfree' ? '输入歌曲或歌手，跨插件并行检索...' : t('search.inputPlaceholderWithShortcut')}
-          class="flex-1 min-w-0"
+          class="flex-1 min-w-0 placeholder:text-[var(--text-muted)]/60 placeholder:italic placeholder:transition-opacity"
           bind:value={kw}
           onkeydown={(e) => {
             if (e.key === 'Enter') {

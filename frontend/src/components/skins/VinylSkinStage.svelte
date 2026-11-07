@@ -77,6 +77,25 @@
         style="background: conic-gradient(from 45deg, transparent 0deg, rgba(255,255,255,0.3) 45deg, transparent 90deg, transparent 180deg, rgba(255,255,255,0.3) 225deg, transparent 270deg);"
       ></div>
 
+      <!-- 黑胶内圈 Dead Wax (Run-out Groove) 工艺刻字彩蛋: 随黑胶同轴旋转，微弱母带刻印代码 -->
+      <svg
+        class="absolute inset-0 w-full h-full pointer-events-none select-none z-10 {playing ? 'animate-[spin_20s_linear_infinite]' : ''}"
+        viewBox="0 0 230 230"
+        aria-hidden="true"
+      >
+        <defs>
+          <path
+            id="dead-wax-matrix-path"
+            d="M 115, 115 m -77, 0 a 77,77 0 1,1 154,0 a 77,77 0 1,1 -154,0"
+          />
+        </defs>
+        <text class="fill-white/20 font-mono uppercase tracking-[2.5px] text-[6.5px]">
+          <textPath href="#dead-wax-matrix-path" xlink:href="#dead-wax-matrix-path" startOffset="50%" text-anchor="middle">
+            WYY · WHATEVER YOU YEARN · MATRIX 2026
+          </textPath>
+        </text>
+      </svg>
+
       <!-- 中心圆标旋转封面 -->
       <div
         class="w-[90px] h-[90px] md:w-[136px] md:h-[136px] rounded-full overflow-hidden p-1 bg-[#1e293b] ring-2 ring-black/40 shadow-inner flex items-center justify-center z-10"

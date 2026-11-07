@@ -153,4 +153,19 @@ describe('TopBar & SettingsDrawer Integration', () => {
     expect(backdrop.className).toContain('z-[100049]');
     expect(backdrop.className).toContain('backdrop-blur-md');
   });
+
+  it('renders footer easter egg version badge and slogan', () => {
+    render(SettingsDrawer, {
+      repeat: false,
+      themeMode: 'dark',
+      onToggleRepeat: vi.fn(),
+      onSelectTheme: vi.fn(),
+      onOpenPeq: vi.fn(),
+      onClose: vi.fn()
+    });
+
+    const easterEgg = screen.getByTestId('settings-version-easter-egg');
+    expect(easterEgg).toBeTruthy();
+    expect(easterEgg.textContent).toContain('Whatever You Yearn');
+  });
 });

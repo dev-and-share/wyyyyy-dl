@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../lib/i18n/index.svelte';
   import { scrollToPageTop, type ActiveTab } from '../lib/router.svelte';
+  import WyyLogo from './WyyLogo.svelte';
 
   let {
     tab,
@@ -27,12 +28,17 @@
 
 <!-- 顶栏 (TopBar) -->
 {#if !isDesktopLayout}
-  <!-- 📱 移动端：标准顶栏 (撑满两端对齐，支持 PWA 顶栏拖拽与安全区) -->
-  <div class="w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region">
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="flex items-center gap-1.5 pl-1 shrink-0 select-none cursor-pointer"
+  <!-- 📱 移动端 / 窄屏：标准顶栏 (撑满两端对齐，全面适配 PWA WCO 顶栏拖拽与安全区) -->
+  <div
+    class="w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region"
+    style="
+      margin-top: max(0px, var(--wco-height, env(titlebar-area-height, 0px)), env(safe-area-inset-top, 0px));
+      padding-left: max(14px, var(--wco-left, env(titlebar-area-x, 0px)), env(safe-area-inset-left, 0px));
+      padding-right: max(14px, var(--wco-right, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))), env(safe-area-inset-right, 0px));
+    "
+  >
+    <WyyLogo
+      class="pl-1 shrink-0"
       onclick={() => {
         if (typeof window !== 'undefined' && window.scrollY > 20) {
           scrollToPageTop();
@@ -41,10 +47,7 @@
         }
       }}
       title={t('topbar.refresh')}
-    >
-      <span class="text-lg leading-none">🎵</span>
-      <span class="font-bold text-sm text-[var(--text-main)] tracking-[-0.2px] whitespace-nowrap">{t('topbar.title')}</span>
-    </div>
+    />
     <div class="hidden md:flex bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-[520px] justify-center">
       <button
         data-testid="tab-playlist"

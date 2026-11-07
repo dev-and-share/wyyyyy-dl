@@ -294,6 +294,25 @@
         </button>
       </div>
     </section>
+
+    <!-- 品牌极客彩蛋: 抽屉底部版本信息与 Hover 展开微交互 -->
+    <div class="pt-4 pb-2 flex flex-col items-center justify-center gap-1 border-t border-[var(--border-color)]/40 mt-2 select-none">
+      <div
+        data-testid="settings-version-easter-egg"
+        class="group flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--text-muted)]/5 hover:bg-[var(--text-muted)]/10 border border-[var(--border-color)]/60 transition-all duration-300 cursor-default"
+        title="WYY · Whatever You Yearn"
+      >
+        <span class="text-[11px] font-mono font-medium text-[var(--text-muted)] group-hover:text-[var(--text-main)] transition-colors">
+          v{__APP_VERSION__}
+        </span>
+        <span class="hidden group-hover:inline-block text-[11px] font-serif italic text-red-500 dark:text-red-400 transition-all duration-300">
+          · Whatever You Yearn
+        </span>
+      </div>
+      <span class="text-[10px] text-[var(--text-muted)]/60 font-sans tracking-wide">
+        Crafted with Svelte 5 Runes & Spring Boot 3
+      </span>
+    </div>
   </div>
 </div>
 

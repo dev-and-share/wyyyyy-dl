@@ -323,7 +323,7 @@
             type="search"
             data-testid="desktop-search-input"
             placeholder={searchSource === 'musicfree' ? '输入歌曲或歌手，跨所有启用插件并行检索...' : t('search.desktopInputPlaceholder')}
-            class="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
+            class="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors placeholder:text-[var(--text-muted)]/60 placeholder:italic placeholder:transition-opacity"
             bind:value={kw}
             onkeydown={(e) => e.key === 'Enter' && executeSearch()}
           />
