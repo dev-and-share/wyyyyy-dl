@@ -121,4 +121,5 @@ export default {
   'player.playingWithName': '「{name}」 재생 중',
   'player.playNow': '지금 재생',
   'player.playing': '재생 중',
+  'player.expandControls': '재생 제어판 펼치기',
 } as const;

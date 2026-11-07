@@ -10,6 +10,8 @@
   import LyricPanel from './LyricPanel.svelte';
   import TrackQuickActions from './TrackQuickActions.svelte';
   import SkinPickerSheet from './SkinPickerSheet.svelte';
+  import ImmersiveMiniPlayer from './ImmersiveMiniPlayer.svelte';
+  import LyricBottomBar from './LyricBottomBar.svelte';
   import { skin } from '../lib/skinStore.svelte';
   import VinylSkinStage from './skins/VinylSkinStage.svelte';
   import AuroraSkinStage from './skins/AuroraSkinStage.svelte';
@@ -65,16 +67,48 @@
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let showCommentModal = $state(false);
 
-  // 🌙 沉浸式 3 秒自动渐隐机制
+  // 🌙 沉浸式 3 秒自动渐隐机制（鼠标悬停播放器面板时不消失）
   let uiVisible = $state(true);
   let hideTimer: any = null;
+  let isHoveringBottomControls = $state(false);
 
   function kickHideTimer() {
     uiVisible = true;
     clearTimeout(hideTimer);
+    if (isHoveringBottomControls) {
+      return;
+    }
     hideTimer = setTimeout(() => {
-      uiVisible = false;
+      if (!isHoveringBottomControls) {
+        uiVisible = false;
+      }
     }, 3200);
+  }
+
+  function handleControlsMouseEnter() {
+    isHoveringBottomControls = true;
+    clearTimeout(hideTimer);
+    uiVisible = true;
+  }
+
+  function handleControlsMouseLeave() {
+    isHoveringBottomControls = false;
+    kickHideTimer();
+  }
+
+  function handleBottomZoneEnter() {
+    isHoveringBottomControls = true;
+    clearTimeout(hideTimer);
+    uiVisible = true;
+  }
+
+  let lastMoveTime = 0;
+  function handleMouseMove() {
+    const now = Date.now();
+    if (now - lastMoveTime > 200) {
+      lastMoveTime = now;
+      kickHideTimer();
+    }
   }
 
   function toggleUi(e?: MouseEvent) {
@@ -86,6 +120,7 @@
     }
     if (uiVisible) {
       uiVisible = false;
+      isHoveringBottomControls = false;
       clearTimeout(hideTimer);
     } else {
       kickHideTimer();
@@ -222,6 +257,7 @@
   class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)] transition-colors duration-500 text-white overscroll-none touch-none"
   style="{skin.cssVars} color-scheme: dark; transform: translateY({dragOffsetY}px); transition: {isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.3s'}; opacity: {1 - Math.min(dragOffsetY / 420, 0.5)}; overscroll-behavior: none; touch-action: none; -webkit-overflow-scrolling: auto;"
   onclick={toggleUi}
+  onmousemove={handleMouseMove}
   ontouchstart={handleTouchStart}
   ontouchend={handleTouchEnd}
   ontouchcancel={handleTouchEnd}
@@ -289,156 +325,71 @@
 
   <!-- 中间主体：动态皮肤舞台 + 满宽无遮挡滚动歌词 -->
   <div class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden px-4 md:px-12 pt-[max(56px,calc(env(safe-area-inset-top,0px)+34px))] pb-32 md:pb-28 gap-3 md:gap-10 max-w-[1240px] w-full mx-auto items-center justify-center">
-    <!-- 动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/四季） -->
-    <Stage
-      {track}
-      {playing}
-      {currentTime}
-      {duration}
-      palette={skin.palette}
-      {isLiked}
-      {onToggleLike}
-      onOpenComments={() => showCommentModal = true}
-      onAddToPlaylist={handleAddToPlaylist}
-    />
+    <!-- 左侧列：动态皮肤舞台 + PC 宽屏专属低调 mini 播放器控制面板 -->
+    <div class="flex flex-col items-center justify-center shrink-0 max-w-[440px] w-full md:w-auto self-center">
+      <!-- 动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/四季） -->
+      <Stage
+        {track}
+        {playing}
+        {currentTime}
+        {duration}
+        palette={skin.palette}
+        {isLiked}
+        {onToggleLike}
+        onOpenComments={() => showCommentModal = true}
+        onAddToPlaylist={handleAddToPlaylist}
+      />
 
-    <!-- 滚动歌词展示面板（完全恢复 100% 满宽，左侧不再有任何违和遮挡） -->
-    <div class="w-full flex-1 min-h-0 flex flex-col" onclick={() => kickHideTimer()}>
+      <!-- PC 宽屏专属：低调 mini 播放器控制面板（填补左侧留白空闲区） -->
+      <div class="hidden md:flex flex-col items-center w-full mt-3">
+        <ImmersiveMiniPlayer
+          {playing}
+          curTime={currentTime}
+          {duration}
+          {playMode}
+          skinId={skin.current}
+          {onTogglePlay}
+          {onPrev}
+          {onNext}
+          {onToggleMode}
+          {onSeek}
+          {onSeekTime}
+          {onToggleDrawer}
+        />
+      </div>
+    </div>
+
+    <!-- 滚动歌词展示面板（严格限制在视口高度内，隔离外层滚动） -->
+    <div class="w-full flex-1 min-w-0 min-h-0 h-full max-h-full flex flex-col overflow-hidden self-stretch" onclick={() => kickHideTimer()}>
       <LyricPanel {track} {currentTime} {onSeekTime} skinId={skin.current} />
     </div>
   </div>
 
-  <!-- 底部：全屏沉浸播放控制条（上下两层结构 + 3秒自动渐隐） -->
-  <div
-    class="interactive-el absolute bottom-0 inset-x-0 z-20 w-full px-4 md:px-12 pt-6 pb-[max(14px,env(safe-area-inset-bottom,0px))] bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center gap-2 transition-all duration-500 {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'}"
-  >
-    <!-- 第一层：轻量级歌曲互动横栏 (喜欢、评论、加歌单、EQ) -->
-    <div class="w-full max-w-[640px] flex items-center justify-between px-2 text-white/80">
-      <div class="flex items-center gap-3">
-        <!-- ❤️ 喜欢 -->
-        <button
-          type="button"
-          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-xs cursor-pointer {isLiked ? 'text-red-400' : 'text-white/80'}"
-          onclick={() => { onToggleLike(); kickHideTimer(); }}
-          title={isLiked ? t('player.likeRemove') : t('player.likeAdd')}
-        >
-          <PlayerIcon name="heart" liked={isLiked} size={15} />
-          <span class="text-[11px] font-medium">{t('player.like')}</span>
-        </button>
-
-        <!-- 💬 评论 -->
-        {#if track?.id}
-          <button
-            type="button"
-            class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-xs cursor-pointer text-white/80"
-            onclick={() => { showCommentModal = true; kickHideTimer(); }}
-            title={t('comment.view')}
-          >
-            <span class="text-xs">💬</span>
-            <span class="text-[11px] font-medium">{t('comment.view')}</span>
-          </button>
-        {/if}
-      </div>
-
-      <div class="flex items-center gap-2">
-        <!-- ➕ 收藏到歌单 -->
-        <button
-          type="button"
-          class="w-7.5 h-7.5 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-emerald-400 transition-all cursor-pointer"
-          onclick={() => { handleAddToPlaylist(); kickHideTimer(); }}
-          title={t('playlist.collectTo')}
-        >
-          <PlayerIcon name="plus" size={15} />
-        </button>
-
-        <!-- 🎚️ PEQ -->
-        {#if platform.canUseAudioProcessing}
-          <button
-            type="button"
-            class="w-7.5 h-7.5 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white transition-all cursor-pointer"
-            onclick={() => { onTogglePeq(); kickHideTimer(); }}
-            title={t('player.peq')}
-          >
-            <PlayerIcon name="equalizer" size={15} />
-          </button>
-        {/if}
-      </div>
-    </div>
-
-    <!-- 进度条 -->
-    <div class="w-full max-w-[640px]" onclick={() => kickHideTimer()}>
-      <PlayerProgressBar
-        curTime={currentTime}
-        {duration}
-        progressRatio={duration ? (currentTime / duration) : 0}
-        {onSeek}
-        skinId={skin.current}
-      />
-    </div>
-
-    <!-- 第二层：5个核心播控大拇指操作区 (大间距防误触) -->
-    <div class="flex items-center justify-center gap-5 md:gap-8 pt-1">
-      <!-- 循环模式 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onToggleMode(); kickHideTimer(); }}
-        title={t('player.toggleMode')}
-      >
-        <PlayerIcon name={playMode === 'single' ? 'repeat-1' : playMode === 'shuffle' ? 'shuffle' : 'repeat'} size={18} />
-      </button>
-
-      <!-- 上一首 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onPrev(); kickHideTimer(); }}
-        title={t('player.previous')}
-      >
-        <PlayerIcon name="prev" size={19} />
-      </button>
-
-      <!-- 播放/暂停核心大键 -->
-      <button
-        type="button"
-        class="w-11 h-11 rounded-full flex items-center justify-center bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onTogglePlay(); kickHideTimer(); }}
-        title={playing ? t('player.pause') : t('player.play')}
-      >
-        <PlayerIcon name={playing ? 'pause' : 'play'} size={21} />
-      </button>
-
-      <!-- 下一首 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onNext(); kickHideTimer(); }}
-        title={t('player.next')}
-      >
-        <PlayerIcon name="next" size={19} />
-      </button>
-
-      <!-- 播放队列 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onToggleDrawer(); kickHideTimer(); }}
-        title={t('player.playlist')}
-      >
-        <PlayerIcon name="list" size={18} />
-      </button>
-    </div>
-  </div>
-
-  <!-- 沉浸模式极细贴底进度指示线 (当界面淡出时优雅静默发光，高 2px) -->
-  <div
-    class="absolute bottom-0 inset-x-0 h-[2px] bg-white/10 pointer-events-none transition-opacity duration-500 z-10 {uiVisible ? 'opacity-0' : 'opacity-100'}"
-  >
-    <div
-      class="h-full bg-gradient-to-r from-red-500 to-rose-400 rounded-r-full transition-all duration-300"
-      style="width: {duration ? Math.min(100, (currentTime / duration) * 100) : 0}%; box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);"
-    ></div>
-  </div>
+  <!-- 底部：全屏沉浸播放控制条与贴底感应展开线 -->
+  <LyricBottomBar
+    {track}
+    {currentTime}
+    {duration}
+    {playing}
+    {playMode}
+    {isLiked}
+    {uiVisible}
+    skinId={skin.current}
+    {onTogglePlay}
+    {onPrev}
+    {onNext}
+    {onToggleMode}
+    {onSeek}
+    {onToggleLike}
+    {onTogglePeq}
+    {onToggleDrawer}
+    onAddToPlaylist={handleAddToPlaylist}
+    onOpenComments={() => showCommentModal = true}
+    onMouseEnterControls={handleControlsMouseEnter}
+    onMouseLeaveControls={handleControlsMouseLeave}
+    onBottomZoneEnter={handleBottomZoneEnter}
+    onKickTimer={kickHideTimer}
+  />
 </div>
 
 {#if showSkinPicker}

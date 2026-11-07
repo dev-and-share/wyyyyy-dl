@@ -184,4 +184,65 @@ describe('LyricModal Component', () => {
       expect(queryByTestId('skin-stage-autumn')).toBeNull();
     });
   });
+
+  it('renders low-key mini player and handles hover control logic on bottom player bar', async () => {
+    vi.useFakeTimers();
+    const onTogglePlay = vi.fn();
+    const onPrev = vi.fn();
+    const onNext = vi.fn();
+
+    const { getByTestId } = render(LyricModal, {
+      props: {
+        track: mockTrack,
+        currentTime: 45,
+        duration: 200,
+        playing: true,
+        playMode: 'list',
+        isLiked: false,
+        onTogglePlay,
+        onPrev,
+        onNext,
+        onToggleMode: vi.fn(),
+        onSeek: vi.fn(),
+        onSeekTime: vi.fn(),
+        onToggleLike: vi.fn(),
+        onTogglePeq: vi.fn(),
+        onToggleDrawer: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 验证低调 mini 播放器控制面板已渲染
+    expect(getByTestId('immersive-mini-player')).toBeInTheDocument();
+    const miniPlayBtn = getByTestId('mini-btn-play');
+    await fireEvent.click(miniPlayBtn);
+    expect(onTogglePlay).toHaveBeenCalledTimes(1);
+
+    // 验证底部控制面板与贴底感应区
+    const bottomControls = getByTestId('immersive-bottom-controls');
+    const bottomTrigger = getByTestId('immersive-bottom-progress-trigger');
+
+    // 初始状态 uiVisible 为 true
+    expect(bottomControls.className).toContain('opacity-100');
+
+    // 鼠标 mouseenter 到底部控制栏，保持显示并不应在 3.2s 后消失
+    await fireEvent.mouseEnter(bottomControls);
+    vi.advanceTimersByTime(4000);
+    expect(bottomControls.className).toContain('opacity-100');
+
+    // 鼠标移出底部控制栏，启动 3.2s 渐隐倒计时
+    await fireEvent.mouseLeave(bottomControls);
+    vi.advanceTimersByTime(3500);
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-0');
+    });
+
+    // 鼠标悬停贴底进度条感应区（mouse on 触发显示）
+    await fireEvent.mouseEnter(bottomTrigger);
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-100');
+    });
+
+    vi.useRealTimers();
+  });
 });

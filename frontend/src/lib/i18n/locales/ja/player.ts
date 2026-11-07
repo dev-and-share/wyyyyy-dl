@@ -121,4 +121,5 @@ export default {
   'player.playingWithName': '「{name}」を再生中',
   'player.playNow': '今すぐ再生',
   'player.playing': '再生中',
+  'player.expandControls': '再生コントロールを展開',
 } as const;

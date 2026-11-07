@@ -121,4 +121,5 @@ export default {
   'player.playingWithName': 'Now playing "{name}"',
   'player.playNow': 'Play Now',
   'player.playing': 'Playing',
+  'player.expandControls': 'Expand Player Controls',
 } as const;

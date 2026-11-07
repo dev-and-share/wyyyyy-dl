@@ -121,4 +121,5 @@ export default {
   'player.playingWithName': '正在播放《{name}》',
   'player.playNow': '立即播放',
   'player.playing': '播放中',
+  'player.expandControls': '展开播放控制面板',
 } as const;
