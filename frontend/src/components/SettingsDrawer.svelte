@@ -9,6 +9,7 @@
   import SettingsLanguageSection from './settings/SettingsLanguageSection.svelte';
   import SettingsSleepTimerSection from './settings/SettingsSleepTimerSection.svelte';
   import SettingsGeoProxySection from './settings/SettingsGeoProxySection.svelte';
+  import SettingsUserProfileSection from './settings/SettingsUserProfileSection.svelte';
   import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
   import { t } from '../lib/i18n';
 
@@ -131,32 +132,8 @@
 
   <!-- Content -->
   <div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-8 flex flex-col gap-6 custom-scrollbar text-sm">
-    <!-- Section 1: Download Preferences -->
-    <section class="flex flex-col gap-2.5">
-      <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>📥</span>
-        <span>{t('settings.downloadPreference')}</span>
-      </div>
-      <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
-        <div class="flex flex-col gap-0.5 min-w-0">
-          <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.allowDuplicateDownload')}</span>
-          <span class="text-xs text-[var(--text-secondary)]">{t('settings.allowDuplicateDownloadDesc')}</span>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={repeat}
-          aria-label={t('settings.allowDuplicateAria')}
-          data-testid="switch-repeat"
-          class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {repeat ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
-          onclick={onToggleRepeat}
-        >
-          <span
-            class="block w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform duration-200 {repeat ? 'translate-x-5.5' : 'translate-x-0'}"
-          ></span>
-        </button>
-      </div>
-    </section>
+    <!-- 👤 Section: User Profile & Permissions (顶置展示) -->
+    <SettingsUserProfileSection {showToast} />
 
     <!-- Section 2: Appearance -->
     <section class="flex flex-col gap-2.5">
@@ -290,6 +267,33 @@
 
     <!-- Section 6: Maintenance -->
     <SettingsMaintenanceSection {showToast} />
+
+    <!-- Section 7: Download Preferences (低频使用项，放置于底部) -->
+    <section class="flex flex-col gap-2.5">
+      <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
+        <span>📥</span>
+        <span>{t('settings.downloadPreference')}</span>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.allowDuplicateDownload')}</span>
+          <span class="text-xs text-[var(--text-secondary)]">{t('settings.allowDuplicateDownloadDesc')}</span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={repeat}
+          aria-label={t('settings.allowDuplicateAria')}
+          data-testid="switch-repeat"
+          class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {repeat ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
+          onclick={onToggleRepeat}
+        >
+          <span
+            class="block w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform duration-200 {repeat ? 'translate-x-5.5' : 'translate-x-0'}"
+          ></span>
+        </button>
+      </div>
+    </section>
   </div>
 </div>
 

@@ -159,4 +159,16 @@ export default {
   'settings.geoProxy.locationLabel': '所在地:',
   'settings.geoProxy.latencyLabel': '遅延:',
   'settings.geoProxy.tooltipTitle': 'プロキシ詳細',
+
+  // 👤 ユーザーと権限
+  'settings.userAuthTitle': 'ログインユーザーと権限',
+  'settings.currentLoginAccount': 'ログインアカウント',
+  'settings.userRole': 'アクセス権限',
+  'settings.roleAdmin': '👑 超級管理者',
+  'settings.roleGuest': '🎧 ゲスト',
+  'settings.roleOpen': '🔓 完全開放（全管理者）',
+  'settings.adminDesc': '網易雲クラウド同期、オンラインプレイリスト管理、落盤の全特権を保持',
+  'settings.guestDesc': '楽曲試聴およびローカル自作プレイリストの作成・編集が可能（クラウド変更は保護）',
+  'settings.openDesc': '管理者制限は未設定です。すべてのユーザーが全特権で利用できます',
+  'settings.refreshUserStatus': '権限状態を更新',
 } as const;

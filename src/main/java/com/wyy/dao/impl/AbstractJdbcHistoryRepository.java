@@ -153,6 +153,19 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
 
             createIndexesSafely(stmt);
             cleanDuplicatePlaylistTracksSafely(stmt);
+            migrateLocalPlaylistsTableSafely(stmt);
+        }
+    }
+
+    protected void migrateLocalPlaylistsTableSafely(Statement stmt) {
+        try {
+            stmt.execute("ALTER TABLE local_playlists ADD COLUMN user_email VARCHAR(128)");
+            log.info("成功为 local_playlists 增加 user_email 字段");
+        } catch (Exception ignored) {
+        }
+        try {
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_lp_user_email ON local_playlists(user_email)");
+        } catch (Exception ignored) {
         }
     }
 
@@ -1380,28 +1393,93 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
     }
 
     // ==========================================
-    // 7. 本地专属自建歌单 (Local Playlists)
+    // 7. 本地专属自建歌单 (Local Playlists - 支持按邮箱多租户隔离)
     // ==========================================
+    public static String getFavoritesPlaylistId(String userEmail, boolean authEnabled, boolean isAdmin) {
+        if (!authEnabled || isAdmin || StringUtils.isBlank(userEmail)) {
+            return "local_favorites";
+        }
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(userEmail.trim().toLowerCase().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("local_fav_");
+            for (int i = 0; i < 6; i++) {
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "local_fav_" + Math.abs(userEmail.hashCode());
+        }
+    }
+
     public List<Map<String, Object>> listLocalPlaylists() {
+        return listLocalPlaylists(null, true, false);
+    }
+
+    public List<Map<String, Object>> listLocalPlaylists(String userEmail, boolean isAdmin, boolean authEnabled) {
         List<Map<String, Object>> list = new ArrayList<>();
-        String sql = "SELECT p.id, p.name, p.cover_url, p.created_at, COUNT(t.id) as track_count " +
-                "FROM local_playlists p " +
-                "LEFT JOIN local_playlist_tracks t ON p.id = t.playlist_id " +
-                "GROUP BY p.id, p.name, p.cover_url, p.created_at " +
-                "ORDER BY CASE WHEN p.id = 'local_favorites' THEN 0 ELSE 1 END, p.created_at DESC";
+        String cleanEmail = StringUtils.isNotBlank(userEmail) ? userEmail.trim().toLowerCase() : null;
+
+        if (authEnabled && !isAdmin && cleanEmail != null) {
+            // 🌟 访客模式：确保自动初始化属于访客个人的专属红心歌单
+            String userFavId = getFavoritesPlaylistId(cleanEmail, true, false);
+            String initFavSql = "INSERT OR IGNORE INTO local_playlists (id, name, cover_url, user_email) " +
+                    "VALUES (?, '❤️ 本地我喜欢的音乐', '/favicon.png', ?)";
+            try (Connection conn = getConnection();
+                 PreparedStatement initPs = conn.prepareStatement(initFavSql)) {
+                initPs.setString(1, userFavId);
+                initPs.setString(2, cleanEmail);
+                initPs.executeUpdate();
+            } catch (Exception e) {
+                log.warn("初始化访客专属红心歌单失败: user={}", cleanEmail, e);
+            }
+        }
+
+        String sql;
+        if (!authEnabled || cleanEmail == null) {
+            // 全局无鉴权模式：全量可见
+            sql = "SELECT p.id, p.name, p.cover_url, p.created_at, p.user_email, COUNT(t.id) as track_count " +
+                    "FROM local_playlists p " +
+                    "LEFT JOIN local_playlist_tracks t ON p.id = t.playlist_id " +
+                    "GROUP BY p.id, p.name, p.cover_url, p.created_at, p.user_email " +
+                    "ORDER BY CASE WHEN p.id = 'local_favorites' THEN 0 ELSE 1 END, p.created_at DESC";
+        } else if (isAdmin) {
+            // 管理员：可见自身歌单 + 历史未绑定邮箱的歌单 + 系统主红心
+            sql = "SELECT p.id, p.name, p.cover_url, p.created_at, p.user_email, COUNT(t.id) as track_count " +
+                    "FROM local_playlists p " +
+                    "LEFT JOIN local_playlist_tracks t ON p.id = t.playlist_id " +
+                    "WHERE LOWER(p.user_email) = ? OR p.user_email IS NULL OR p.id = 'local_favorites' " +
+                    "GROUP BY p.id, p.name, p.cover_url, p.created_at, p.user_email " +
+                    "ORDER BY CASE WHEN p.id = 'local_favorites' THEN 0 ELSE 1 END, p.created_at DESC";
+        } else {
+            // 普通访客：仅可见绑定自身邮箱的本地歌单
+            String userFavId = getFavoritesPlaylistId(cleanEmail, true, false);
+            sql = "SELECT p.id, p.name, p.cover_url, p.created_at, p.user_email, COUNT(t.id) as track_count " +
+                    "FROM local_playlists p " +
+                    "LEFT JOIN local_playlist_tracks t ON p.id = t.playlist_id " +
+                    "WHERE LOWER(p.user_email) = ? " +
+                    "GROUP BY p.id, p.name, p.cover_url, p.created_at, p.user_email " +
+                    "ORDER BY CASE WHEN p.id = '" + userFavId + "' THEN 0 ELSE 1 END, p.created_at DESC";
+        }
+
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                Map<String, Object> map = new HashMap<>();
-                map.put("id", rs.getString("id"));
-                map.put("name", rs.getString("name"));
-                map.put("coverImgUrl", rs.getString("cover_url"));
-                map.put("trackCount", rs.getInt("track_count"));
-                map.put("isLocal", true);
-                map.put("subscribed", false);
-                map.put("createdAt", rs.getString("created_at"));
-                list.add(map);
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (authEnabled && cleanEmail != null) {
+                ps.setString(1, cleanEmail);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", rs.getString("id"));
+                    map.put("name", rs.getString("name"));
+                    map.put("coverImgUrl", rs.getString("cover_url"));
+                    map.put("trackCount", rs.getInt("track_count"));
+                    map.put("isLocal", true);
+                    map.put("subscribed", false);
+                    map.put("createdAt", rs.getString("created_at"));
+                    map.put("userEmail", rs.getString("user_email"));
+                    list.add(map);
+                }
             }
         } catch (Exception e) {
             log.error("查询本地歌单列表失败", e);
@@ -1410,22 +1488,63 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
     }
 
     public boolean createLocalPlaylist(String id, String name, String coverUrl) {
-        String sql = "INSERT INTO local_playlists (id, name, cover_url) VALUES (?, ?, ?)";
+        return createLocalPlaylist(id, name, coverUrl, null);
+    }
+
+    public boolean createLocalPlaylist(String id, String name, String coverUrl, String userEmail) {
+        String sql = "INSERT INTO local_playlists (id, name, cover_url, user_email) VALUES (?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, id);
             ps.setString(2, name);
             ps.setString(3, coverUrl);
+            ps.setString(4, StringUtils.isNotBlank(userEmail) ? userEmail.trim().toLowerCase() : null);
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
-            log.error("创建本地歌单失败: id={}, name={}", id, name, e);
+            log.error("创建本地歌单失败: id={}, name={}, email={}", id, name, userEmail, e);
             return false;
         }
     }
 
+    public boolean isPlaylistOwnerOrAdmin(String playlistId, String userEmail, boolean isAdmin, boolean authEnabled) {
+        if (!authEnabled || isAdmin) {
+            return true;
+        }
+        if (StringUtils.isBlank(playlistId) || StringUtils.isBlank(userEmail)) {
+            return false;
+        }
+        String cleanEmail = userEmail.trim().toLowerCase();
+        String userFavId = getFavoritesPlaylistId(cleanEmail, true, false);
+        if (playlistId.equals(userFavId)) {
+            return true;
+        }
+        String sql = "SELECT user_email FROM local_playlists WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, playlistId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String owner = rs.getString("user_email");
+                    return owner != null && owner.trim().equalsIgnoreCase(cleanEmail);
+                }
+            }
+        } catch (Exception e) {
+            log.error("检查本地歌单归属权限失败: plId={}, email={}", playlistId, userEmail, e);
+        }
+        return false;
+    }
+
     public boolean deleteLocalPlaylist(String id) {
-        if ("local_favorites".equals(id)) {
-            log.warn("禁止删除系统内置歌单: {}", id);
+        return deleteLocalPlaylist(id, null, true, false);
+    }
+
+    public boolean deleteLocalPlaylist(String id, String userEmail, boolean isAdmin, boolean authEnabled) {
+        if ("local_favorites".equals(id) || (id != null && id.startsWith("local_fav_"))) {
+            log.warn("禁止删除系统内置或专属红心歌单: {}", id);
+            return false;
+        }
+        if (!isPlaylistOwnerOrAdmin(id, userEmail, isAdmin, authEnabled)) {
+            log.warn("无权删除非自己名下的歌单: id={}, userEmail={}", id, userEmail);
             return false;
         }
         String delTracksSql = "DELETE FROM local_playlist_tracks WHERE playlist_id = ?";

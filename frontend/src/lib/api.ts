@@ -32,6 +32,7 @@ export const api = {
   loginStatus: () => get('/v3/auth/status'),
   qrStatus: (unikey: string) => get(`/v3/auth/qr/status?unikey=${encodeURIComponent(unikey)}`),
   setCookie: (c: string) => postForm('/v3/cookie', { cookie: c }),
+  userProfile: () => get('/v3/user/profile'),
 
   // 🎵 核心解析
   songV1: (id: string, level: string, name?: string, artist?: string) =>

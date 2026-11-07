@@ -35,6 +35,7 @@
   import BottomTabBar from './components/sp/BottomTabBar.svelte';
   import ScrollToTopFab from './components/sp/ScrollToTopFab.svelte';
   import { skin } from './lib/skinStore.svelte';
+  import { authStore } from './lib/authStore.svelte';
   import SeasonParticleCanvas from './components/skins/effects/SeasonParticleCanvas.svelte';
 
   // ---------- 全局状态 ----------
@@ -79,6 +80,7 @@
     initDownloadedSet();
     initLikeList();
     fetchGeoProxyConfig();
+    authStore.fetchProfile();
 
     api.getRepeat().then((j: any) => {
       if (j?.code === '000000') repeat = j.data === true;

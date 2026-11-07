@@ -16,6 +16,7 @@ import com.wyy.dao.DownloadHistoryDAO;
 import com.wyy.enums.CommonRespInfo;
 import com.wyy.models.common.RespEntity;
 import com.wyy.models.dtos.DownloadHistoryItem;
+import com.wyy.service.AuthContextService;
 
 import jakarta.annotation.Resource;
 import lombok.Data;
@@ -27,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
  * 核心设计理念：
  * 1. 100% 存储于本地 SQLite，绝不调用网易云云端 API，保证网易云官方 App 云端同步零污染
  * 2. 以物理落盘为准：仅管理已下载/已落盘的真实音频文件，播放时 0 延迟秒播，不依赖动态外网寻源
+ * 3. 支持多租户轻量隔离：根据 Cloudflare 认证邮箱，实现访客自建本地歌单隔离管理
  */
 @Slf4j
 @RestController
@@ -35,6 +37,9 @@ public class LocalPlaylistController {
 
     @Resource
     private DownloadHistoryDAO downloadHistoryDAO;
+
+    @Resource
+    private AuthContextService authContextService;
 
     @Data
     public static class CreatePlaylistReq {
@@ -54,7 +59,12 @@ public class LocalPlaylistController {
 
     @GetMapping("/list")
     public RespEntity<List<Map<String, Object>>> listPlaylists() {
-        return RespEntity.apply(CommonRespInfo.SUCCESS, downloadHistoryDAO.listLocalPlaylists());
+        return RespEntity.apply(CommonRespInfo.SUCCESS,
+                downloadHistoryDAO.listLocalPlaylists(
+                        authContextService.getCurrentUserEmail(),
+                        authContextService.isAdmin(),
+                        authContextService.isAuthEnabled()
+                ));
     }
 
     @PostMapping("/create")
@@ -63,7 +73,12 @@ public class LocalPlaylistController {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单名称不能为空", null);
         }
         String id = "local_" + System.currentTimeMillis();
-        boolean ok = downloadHistoryDAO.createLocalPlaylist(id, req.getName().trim(), req.getCoverUrl());
+        boolean ok = downloadHistoryDAO.createLocalPlaylist(
+                id,
+                req.getName().trim(),
+                req.getCoverUrl(),
+                authContextService.getCurrentUserEmail()
+        );
         if (!ok) {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "创建本地歌单失败", null);
         }
@@ -74,6 +89,7 @@ public class LocalPlaylistController {
         map.put("trackCount", 0);
         map.put("isLocal", true);
         map.put("subscribed", false);
+        map.put("userEmail", authContextService.getCurrentUserEmail());
         return RespEntity.apply(CommonRespInfo.SUCCESS, map);
     }
 
@@ -82,12 +98,17 @@ public class LocalPlaylistController {
         if (StringUtils.isBlank(id)) {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单ID不能为空", null);
         }
-        if ("local_favorites".equals(id)) {
+        if ("local_favorites".equals(id) || id.startsWith("local_fav_")) {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "系统内置专属歌单不支持删除", null);
         }
-        boolean ok = downloadHistoryDAO.deleteLocalPlaylist(id);
+        boolean ok = downloadHistoryDAO.deleteLocalPlaylist(
+                id,
+                authContextService.getCurrentUserEmail(),
+                authContextService.isAdmin(),
+                authContextService.isAuthEnabled()
+        );
         return ok ? RespEntity.apply(CommonRespInfo.SUCCESS, "删除成功")
-                  : RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "删除失败", null);
+                  : RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "删除失败或无权删除该歌单", null);
     }
 
     @PostMapping("/tracks/add")
@@ -97,6 +118,15 @@ public class LocalPlaylistController {
         }
         if (StringUtils.isBlank(req.getName())) {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌曲名称不能为空", null);
+        }
+
+        // 权限校验：访客仅能修改属于自己的歌单
+        if (!downloadHistoryDAO.isPlaylistOwnerOrAdmin(
+                req.getPlaylistId(),
+                authContextService.getCurrentUserEmail(),
+                authContextService.isAdmin(),
+                authContextService.isAuthEnabled())) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "无权修改该歌单", null);
         }
 
         Long historyId = req.getHistoryId();
@@ -131,6 +161,16 @@ public class LocalPlaylistController {
         if (StringUtils.isBlank(playlistId)) {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单ID不能为空", null);
         }
+
+        // 权限校验：访客仅能修改属于自己的歌单
+        if (!downloadHistoryDAO.isPlaylistOwnerOrAdmin(
+                playlistId,
+                authContextService.getCurrentUserEmail(),
+                authContextService.isAdmin(),
+                authContextService.isAuthEnabled())) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "无权修改该歌单", null);
+        }
+
         Long trackId = null;
         if (StringUtils.isNotBlank(trackIdStr)) {
             try {
@@ -151,7 +191,11 @@ public class LocalPlaylistController {
         if (StringUtils.isBlank(id)) {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "歌单ID不能为空", null);
         }
-        List<Map<String, Object>> playlists = downloadHistoryDAO.listLocalPlaylists();
+        List<Map<String, Object>> playlists = downloadHistoryDAO.listLocalPlaylists(
+                authContextService.getCurrentUserEmail(),
+                authContextService.isAdmin(),
+                authContextService.isAuthEnabled()
+        );
         Map<String, Object> current = null;
         for (Map<String, Object> pl : playlists) {
             if (id.equals(pl.get("id"))) {

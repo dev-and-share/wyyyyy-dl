@@ -159,4 +159,16 @@ export default {
   'settings.geoProxy.locationLabel': '归属地:',
   'settings.geoProxy.latencyLabel': '网络延迟:',
   'settings.geoProxy.tooltipTitle': '网络代理详情',
+
+  // 👤 用户与权限
+  'settings.userAuthTitle': '登录用户与权限',
+  'settings.currentLoginAccount': '当前登录账号',
+  'settings.userRole': '访问权限级别',
+  'settings.roleAdmin': '👑 超级管理员',
+  'settings.roleGuest': '🎧 访客用户',
+  'settings.roleOpen': '🔓 完全开放模式（全员管理员）',
+  'settings.adminDesc': '拥有网易云云端歌单管理、全局落盘与全部超级特权',
+  'settings.guestDesc': '支持歌曲试听与自建专属本地歌单（网易云线上歌单只读保护）',
+  'settings.openDesc': '未配置管理员限制，当前全量特权开放',
+  'settings.refreshUserStatus': '刷新权限状态',
 } as const;

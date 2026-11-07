@@ -47,6 +47,15 @@ public class AnalysisControllerTest {
     @MockBean
     private com.wyy.service.storage.IStorageService storageService;
 
+    @MockBean
+    private com.wyy.service.AuthContextService authContextService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpAuth() {
+        Mockito.when(authContextService.isAuthEnabled()).thenReturn(false);
+        Mockito.when(authContextService.isAdmin()).thenReturn(true);
+    }
+
     @Test
     @DisplayName("测试 /v3/song: 当本地存在文件时，自动返回 /v3/stream 本地播放地址")
     public void testSongV1ReturnsLocalStreamUrlWhenFileExists() throws Exception {

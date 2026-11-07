@@ -4,8 +4,10 @@ import App from './App.svelte'
 import { registerServiceWorker } from './lib/pwa'
 import { initLocale } from './lib/i18n/index.svelte'
 
-// 初始化多语言环境
-await initLocale();
+// 非阻塞异步初始化多语言环境（防止网络或动态语言包 chunk 加载延迟阻塞首屏渲染与导致白屏）
+initLocale().catch((err) => {
+  console.warn('[i18n] Failed to initialize locale:', err);
+});
 
 // 极客彩蛋: Whatever You Yearn
 console.log(
@@ -14,8 +16,11 @@ console.log(
   'background:#1e293b;color:#94a3b8;padding:2px 6px;border-radius:0 3px 3px 0;'
 );
 
+const target = document.getElementById('app')!;
+// 清理 HTML 首屏内联 splash 占位骨架，立即无缝挂载 Svelte 主应用
+target.innerHTML = '';
 const app = mount(App, {
-  target: document.getElementById('app')!,
+  target,
 })
 
 // 注册 PWA Service Worker 并监听新版本就绪通知

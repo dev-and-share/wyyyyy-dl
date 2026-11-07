@@ -159,4 +159,16 @@ export default {
   'settings.geoProxy.locationLabel': '위치:',
   'settings.geoProxy.latencyLabel': '지연 시간:',
   'settings.geoProxy.tooltipTitle': '프록시 상세 정보',
+
+  // 👤 User & Permissions
+  'settings.userAuthTitle': '로그인 계정 및 권한',
+  'settings.currentLoginAccount': '로그인 계정',
+  'settings.userRole': '권한 등급',
+  'settings.roleAdmin': '👑 최고 관리자',
+  'settings.roleGuest': '🎧 게스트',
+  'settings.roleOpen': '🔓 전체 개방 모드 (전원 관리자)',
+  'settings.adminDesc': '넷이즈 클라우드 플레이리스트 관리 및 전체 다운로드 권한 보유',
+  'settings.guestDesc': '음악 재생 및 로컬 플레이리스트 생성/관리 가능 (클라우드 변경 제한)',
+  'settings.openDesc': '관리자 제한이 설정되지 않았으며, 모든 권한이 허용됩니다',
+  'settings.refreshUserStatus': '권한 상태 새로고침',
 } as const;

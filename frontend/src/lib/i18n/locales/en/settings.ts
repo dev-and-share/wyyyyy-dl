@@ -159,4 +159,16 @@ export default {
   'settings.geoProxy.locationLabel': 'Location:',
   'settings.geoProxy.latencyLabel': 'Latency:',
   'settings.geoProxy.tooltipTitle': 'Proxy Details',
+
+  // 👤 User & Permissions
+  'settings.userAuthTitle': 'Login User & Permissions',
+  'settings.currentLoginAccount': 'Login Account',
+  'settings.userRole': 'Access Role',
+  'settings.roleAdmin': '👑 Super Admin',
+  'settings.roleGuest': '🎧 Guest',
+  'settings.roleOpen': '🔓 Open Mode (Full Admin)',
+  'settings.adminDesc': 'Full privileges including NetEase cloud playlist edits & file downloads',
+  'settings.guestDesc': 'Can play tracks & manage private local playlists (cloud edits protected)',
+  'settings.openDesc': 'No admin filter configured; all users have full privileges',
+  'settings.refreshUserStatus': 'Refresh Status',
 } as const;

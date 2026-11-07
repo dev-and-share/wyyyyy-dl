@@ -16,8 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.wyy.dao.DownloadHistoryDAO;
 import com.wyy.service.NeteaseAPIService;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,6 +35,17 @@ public class LocalPlaylistControllerTest {
     @MockBean
     private NeteaseAPIService neteaseAPIService;
 
+    @MockBean
+    private com.wyy.service.AuthContextService authContextService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        Mockito.when(authContextService.isAuthEnabled()).thenReturn(false);
+        Mockito.when(authContextService.isAdmin()).thenReturn(true);
+        Mockito.when(authContextService.getCurrentUserEmail()).thenReturn("test@gmail.com");
+        Mockito.when(downloadHistoryDAO.isPlaylistOwnerOrAdmin(any(), any(), anyBoolean(), anyBoolean())).thenReturn(true);
+    }
+
     @Test
     @DisplayName("测试 /v3/local-playlist/list: 获取本地歌单列表")
     public void testListPlaylists() throws Exception {
@@ -45,7 +55,7 @@ public class LocalPlaylistControllerTest {
         pl.put("trackCount", 5);
         pl.put("isLocal", true);
 
-        Mockito.when(downloadHistoryDAO.listLocalPlaylists()).thenReturn(List.of(pl));
+        Mockito.when(downloadHistoryDAO.listLocalPlaylists(any(), anyBoolean(), anyBoolean())).thenReturn(List.of(pl));
 
         mockMvc.perform(get("/v3/local-playlist/list"))
                 .andExpect(status().isOk())
@@ -57,7 +67,7 @@ public class LocalPlaylistControllerTest {
     @Test
     @DisplayName("测试 /v3/local-playlist/create: 创建新本地歌单")
     public void testCreatePlaylist() throws Exception {
-        Mockito.when(downloadHistoryDAO.createLocalPlaylist(anyString(), eq("车载高品质"), Mockito.any()))
+        Mockito.when(downloadHistoryDAO.createLocalPlaylist(anyString(), eq("车载高品质"), Mockito.any(), any()))
                 .thenReturn(true);
 
         mockMvc.perform(post("/v3/local-playlist/create")
@@ -96,7 +106,7 @@ public class LocalPlaylistControllerTest {
         track.put("artist", "陈奕迅");
         track.put("isLocal", true);
 
-        Mockito.when(downloadHistoryDAO.listLocalPlaylists()).thenReturn(List.of(pl));
+        Mockito.when(downloadHistoryDAO.listLocalPlaylists(any(), anyBoolean(), anyBoolean())).thenReturn(List.of(pl));
         Mockito.when(downloadHistoryDAO.getLocalPlaylistTracks("local_123")).thenReturn(List.of(track));
 
         mockMvc.perform(get("/v3/local-playlist/detail").param("id", "local_123"))
@@ -109,7 +119,7 @@ public class LocalPlaylistControllerTest {
     @Test
     @DisplayName("测试 /v3/local-playlist/delete: 删除本地歌单")
     public void testDeletePlaylist() throws Exception {
-        Mockito.when(downloadHistoryDAO.deleteLocalPlaylist("local_123")).thenReturn(true);
+        Mockito.when(downloadHistoryDAO.deleteLocalPlaylist(eq("local_123"), any(), anyBoolean(), anyBoolean())).thenReturn(true);
 
         mockMvc.perform(post("/v3/local-playlist/delete").param("id", "local_123"))
                 .andExpect(status().isOk())

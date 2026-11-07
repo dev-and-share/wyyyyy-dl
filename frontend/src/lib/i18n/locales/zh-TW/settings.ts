@@ -159,4 +159,16 @@ export default {
   'settings.geoProxy.locationLabel': '歸屬地:',
   'settings.geoProxy.latencyLabel': '網路延遲:',
   'settings.geoProxy.tooltipTitle': '網路代理詳情',
+
+  // 👤 用戶與權限
+  'settings.userAuthTitle': '登入用戶與權限',
+  'settings.currentLoginAccount': '當前登入帳號',
+  'settings.userRole': '存取權限層級',
+  'settings.roleAdmin': '👑 超級管理員',
+  'settings.roleGuest': '🎧 訪客用戶',
+  'settings.roleOpen': '🔓 完全開放模式（全員管理員）',
+  'settings.adminDesc': '擁有網易雲雲端歌單管理、全域落盤與全部超級特權',
+  'settings.guestDesc': '支援歌曲試聽與自建專屬本地歌單（網易雲線上歌單唯讀保護）',
+  'settings.openDesc': '未配置管理員限制，當前全量特權開放',
+  'settings.refreshUserStatus': '重新整理權限狀態',
 } as const;
