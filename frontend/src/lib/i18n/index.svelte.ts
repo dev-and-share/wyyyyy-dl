@@ -17,8 +17,9 @@ const messageCache: Record<string, TranslationDictionary> = {
   'zh-CN': zhCN
 };
 
-// 当前选中的语言状态 (Svelte 5 Runes)
+// 当前选中的语言状态与反应式版本号 (Svelte 5 Runes)
 let currentLocale = $state<Locale>(detectLocale());
+let localeVersion = $state<number>(0);
 let isReady = $state<boolean>(false);
 
 function interpolate(template: string, params?: MessageParams): string {
@@ -35,6 +36,8 @@ function interpolate(template: string, params?: MessageParams): string {
  * 翻译字符串并填充插值变量
  */
 export function t(key: MessageKey, params?: MessageParams): string {
+  // 建立对 localeVersion 的依赖跟踪，字典加载完成后自动触发 Svelte 5 响应式更新
+  void localeVersion;
   const dict = messageCache[currentLocale];
   let raw: string | undefined = dict ? dict[key] : undefined;
 
@@ -59,6 +62,7 @@ export function t(key: MessageKey, params?: MessageParams): string {
  * 复数形式翻译 (基于 Intl.PluralRules)
  */
 export function tp(key: MessageKey, count: number, params?: MessageParams): string {
+  void localeVersion;
   let rule: Intl.LDMLPluralRule = 'other';
   try {
     const pr = new Intl.PluralRules(currentLocale);
@@ -101,6 +105,7 @@ export async function setLocale(locale: Locale): Promise<void> {
   }
 
   currentLocale = locale;
+  localeVersion++;
 
   try {
     if (typeof localStorage !== 'undefined') {
@@ -125,6 +130,7 @@ export async function initLocale(): Promise<void> {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = initial;
     }
+    localeVersion++;
   }
   isReady = true;
 }
@@ -136,6 +142,7 @@ export function formatDate(
   date: Date | number,
   options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
 ): string {
+  void localeVersion;
   try {
     return new Intl.DateTimeFormat(currentLocale, options).format(date);
   } catch {
@@ -150,6 +157,7 @@ export function formatNumber(
   num: number,
   options?: Intl.NumberFormatOptions
 ): string {
+  void localeVersion;
   try {
     return new Intl.NumberFormat(currentLocale, options).format(num);
   } catch {

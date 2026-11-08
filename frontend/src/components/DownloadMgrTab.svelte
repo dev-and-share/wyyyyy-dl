@@ -275,7 +275,7 @@
   }
 
   const mobileTabs: SegmentItem[] = $derived([
-    { id: 'playlists', label: '歌单', icon: '📁', accent: 'emerald' },
+    { id: 'playlists', label: t('download.tabLocalPlaylists'), icon: '📁', accent: 'emerald' },
     { id: 'folder', label: t('download.tabLocal'), icon: '📂', accent: 'red' },
     { id: 'history', label: t('download.tabHistory'), icon: '📥', accent: 'blue' },
     { id: 'cache', label: t('download.tabCache'), icon: '📲', accent: 'emerald' }

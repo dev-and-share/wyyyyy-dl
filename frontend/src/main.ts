@@ -4,8 +4,8 @@ import App from './App.svelte'
 import { registerServiceWorker } from './lib/pwa'
 import { initLocale } from './lib/i18n/index.svelte'
 
-// 非阻塞异步初始化多语言环境（防止网络或动态语言包 chunk 加载延迟阻塞首屏渲染与导致白屏）
-initLocale().catch((err) => {
+// 优先确保多语言环境加载就绪（静态载入或从缓存/网络动态拉取字典）再挂载首屏，防止语言包 fallback 导致的中文内容残留
+await initLocale().catch((err) => {
   console.warn('[i18n] Failed to initialize locale:', err);
 });
 

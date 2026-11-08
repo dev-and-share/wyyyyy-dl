@@ -219,4 +219,5 @@ export default {
   'cache.cachedTrialNotice': '已快取《{name}》(⚠️ 提示: 此曲為 VIP 試聽片段)',
   'cache.cachedSuccessOfflineReady': '已成功離線快取《{name}》，離線可直接秒播！',
   'cache.cacheException': '離線快取異常: {error}',
+  'download.tabLocalPlaylists': '本機歌單',
 } as const;

@@ -219,4 +219,5 @@ export default {
   'cache.cachedTrialNotice': 'Cached "{name}" (⚠️ Note: VIP preview clip)',
   'cache.cachedSuccessOfflineReady': 'Successfully cached "{name}" offline, ready for instant playback without internet!',
   'cache.cacheException': 'Offline cache error: {error}',
+  'download.tabLocalPlaylists': 'Playlists',
 } as const;

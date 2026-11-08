@@ -105,14 +105,14 @@
         coverUrl: song.cover || (song as any)?.al?.picUrl || (song as any)?.artwork
       });
       if (res.success) {
-        showToast(res.msg || `已成功加入本地歌单「${pl.name}」`, 'success');
+        showToast(res.msg || t('playlist.addToLocalSuccess', { name: pl.name }), 'success');
         deleteApiCache('playlist_' + pl.id);
         onClose();
       } else {
-        showToast(res.msg || '添加到本地歌单失败', 'warning');
+        showToast(res.msg || t('playlist.addToLocalFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('添加到本地歌单异常: ' + (e.message || e), 'error');
+      showToast(t('playlist.addToLocalException', { error: e.message || e }), 'error');
     } finally {
       addingId = null;
     }
@@ -122,14 +122,14 @@
     if (!newLocalName.trim()) return;
     const res = await createLocalPlaylist(newLocalName.trim());
     if (res.success && res.data) {
-      showToast(`已成功创建本地歌单「${res.data.name}」`, 'success');
+      showToast(t('playlist.createLocalSuccess', { name: res.data.name }), 'success');
       newLocalName = '';
       showCreateLocal = false;
       if (song && isDownloadedOrCached) {
         await handleAddToLocal(res.data);
       }
     } else {
-      showToast(res.msg || '创建本地歌单失败', 'warning');
+      showToast(res.msg || t('playlist.createLocalFailed'), 'warning');
     }
   }
 </script>
@@ -143,12 +143,12 @@
         <div class="flex items-center gap-1.5">
           <span class="text-xs font-bold text-[var(--text-main)] truncate">{song.name}</span>
           {#if isExternal}
-            <span class="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 font-medium shrink-0">外部音源</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 font-medium shrink-0">{t('playlist.externalSourceBadge')}</span>
           {/if}
           {#if sourceStatus.isServer}
-            <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-medium shrink-0" title="已落盘到电脑曲库">🖥️ 本地已存</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-medium shrink-0" title={t('playlist.localSavedBadge')}>{t('playlist.localSavedBadge')}</span>
           {:else if sourceStatus.isPhone}
-            <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 font-medium shrink-0" title="已缓存至浏览器">📱 离线缓存</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 font-medium shrink-0" title={t('playlist.offlineCachedBadge')}>{t('playlist.offlineCachedBadge')}</span>
           {/if}
         </div>
         {#if song.artist}
@@ -165,7 +165,7 @@
           class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all {activeTab === 'netease' ? 'bg-red-500 text-white shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => activeTab = 'netease'}
         >
-          ☁️ 网易云歌单
+          {t('playlist.tabNetease')}
         </button>
       {/if}
       <button
@@ -173,14 +173,14 @@
         class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all {activeTab === 'local' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
         onclick={() => activeTab = 'local'}
       >
-        🖥️ 本地专属歌单 (零污染云端)
+        {t('playlist.tabLocalExclusive')}
       </button>
     </div>
 
     <!-- 顶部操作栏 -->
     <div class="flex justify-between items-center mb-2 px-0.5">
       <span class="text-xs font-medium text-[var(--text-secondary)]">
-        {activeTab === 'netease' ? t('playlist.selectCreated') : '选择目标本地歌单'}
+        {activeTab === 'netease' ? t('playlist.selectCreated') : t('playlist.selectLocalTarget')}
       </span>
       {#if activeTab === 'netease'}
         <button
@@ -196,7 +196,7 @@
           class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-transparent border-none cursor-pointer flex items-center gap-1"
           onclick={() => showCreateLocal = !showCreateLocal}
         >
-          ➕ 新建本地歌单
+          {t('playlist.createLocalBtn')}
         </button>
       {/if}
     </div>
@@ -206,17 +206,17 @@
       <div class="flex items-center gap-2 mb-3 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
         <input
           type="text"
-          placeholder="输入新本地歌单名称..."
+          placeholder={t('localPlaylist.inputPlaceholder')}
           bind:value={newLocalName}
           class="flex-1 px-2.5 py-1.5 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-emerald-500"
           onkeydown={(e) => e.key === 'Enter' && handleCreateLocalPlaylist()}
         />
         <button
           type="button"
-          class="btn-primary text-xs px-3 py-1.5 rounded-lg font-medium cursor-pointer"
+          class="btn-primary text-xs px-3 py-1.5 rounded-lg font-medium cursor-pointer whitespace-nowrap"
           onclick={handleCreateLocalPlaylist}
         >
-          创建并加入
+          {t('playlist.createAndAdd')}
         </button>
       </div>
     {/if}
@@ -225,10 +225,10 @@
     {#if isExternal && !isDownloadedOrCached}
       <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300/90 leading-relaxed mb-3">
         <div class="font-bold mb-1 flex items-center gap-1">
-          <span>⚠️</span> <span>外部音源需先下载或缓存</span>
+          <span>⚠️</span> <span>{t('playlist.externalWarningTitle')}</span>
         </div>
         <p class="text-[11px] opacity-80 mb-2">
-          该歌曲来自外部插件，为保障播放高可用性与零延迟秒播，请先将其下载到本地磁盘或保存离线缓存，再添加到本地歌单。
+          {t('playlist.externalWarningDesc')}
         </p>
       </div>
     {/if}
@@ -281,7 +281,7 @@
               <span class="text-sm">🖥️</span>
               <div class="flex-1 min-w-0">
                 <div class="text-xs font-semibold text-[var(--text-main)] truncate">{pl.name}</div>
-                <div class="text-[10px] text-[var(--text-muted)]">{pl.trackCount || 0} 首已落盘歌曲</div>
+                <div class="text-[10px] text-[var(--text-muted)]">{t('playlist.downloadedTrackCount', { count: pl.trackCount || 0 })}</div>
               </div>
             </div>
             <button
@@ -290,12 +290,12 @@
               class="btn-primary text-xs px-3 py-1 rounded-lg font-medium shrink-0 cursor-pointer disabled:opacity-50 pointer-events-auto !bg-emerald-600 hover:!bg-emerald-500"
               onclick={(e) => { e.stopPropagation(); handleAddToLocal(pl); }}
             >
-              {addingId === String(pl.id) ? t('playlist.adding') : '➕ 加入本地'}
+              {addingId === String(pl.id) ? t('playlist.adding') : t('playlist.addToLocal')}
             </button>
           </div>
         {:else}
           <div class="py-8 text-center text-xs text-[var(--text-muted)]">
-            暂无本地歌单，点击上方「➕ 新建本地歌单」立即创建
+            {t('playlist.noLocalPrompt')}
           </div>
         {/each}
       {/if}

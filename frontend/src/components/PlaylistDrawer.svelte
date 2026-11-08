@@ -764,7 +764,7 @@
                     {realIdx + 1}. {trackItem.name}
                   </span>
                   {#if formatArtist(trackItem.artist)}
-                    <span class="text-[11px] text-[var(--text-muted)] truncate shrink-0">
+                    <span class="text-[11px] text-[var(--text-muted)] truncate shrink max-w-[90px] sm:max-w-[160px]">
                       - {formatArtist(trackItem.artist)}
                     </span>
                   {/if}

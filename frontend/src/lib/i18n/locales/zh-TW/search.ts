@@ -161,4 +161,9 @@ export default {
   'artist.cacheTooltip': '離線快取全部 50 首至瀏覽器',
   'artist.downloadAllTooltip': '全部下載到伺服器電腦磁碟',
   'search.cacheToBrowserTooltip': '離線快取到瀏覽器',
+  'search.sourceNetease': '網易雲',
+  'search.sourceMusicFree': 'MusicFree 聚合',
+  'search.placeholderMusicFree': '輸入歌曲或歌手，跨外掛平行檢索...',
+  'search.mfNoResults': '未在已啟用的 MusicFree 外掛中找到相關結果',
+  'search.mfSearchException': '外掛檢索異常: {error}',
 } as const;

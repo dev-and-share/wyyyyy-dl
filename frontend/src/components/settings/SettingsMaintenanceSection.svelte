@@ -45,7 +45,7 @@
       <button
         type="button"
         disabled={maintenanceLoading}
-        class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
+        class="py-2 px-2 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[11px] sm:text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50 whitespace-nowrap break-keep truncate"
         onclick={() => runMaintenance('actionDiskAlign', api.historyScan)}
       >
         {t('settings.btnDiskAlign')}
@@ -53,7 +53,7 @@
       <button
         type="button"
         disabled={maintenanceLoading}
-        class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
+        class="py-2 px-2 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[11px] sm:text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50 whitespace-nowrap break-keep truncate"
         onclick={() => runMaintenance('actionExternalScan', api.historyScanExternal)}
       >
         {t('settings.btnExternalScan')}
@@ -61,7 +61,7 @@
       <button
         type="button"
         disabled={maintenanceLoading}
-        class="py-2 px-2.5 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50"
+        class="py-2 px-2 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[11px] sm:text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all disabled:opacity-50 whitespace-nowrap break-keep truncate"
         onclick={() => runMaintenance('actionImportUntracked', api.historyImportUntracked)}
       >
         {t('settings.btnImportUntracked')}
@@ -69,7 +69,7 @@
       <button
         type="button"
         disabled={maintenanceLoading}
-        class="py-2 px-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all disabled:opacity-50"
+        class="py-2 px-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-[11px] sm:text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all disabled:opacity-50 whitespace-nowrap break-keep truncate"
         onclick={() => runMaintenance('actionCleanMissing', api.historyCleanMissing)}
       >
         {t('settings.btnCleanMissing')}

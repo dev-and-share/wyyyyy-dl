@@ -46,27 +46,27 @@
     try {
       const res = await createLocalPlaylist(trimmed);
       if (res.success) {
-        showToast(`已创建本地歌单「${trimmed}」`, 'success');
+        showToast(t('playlist.createLocalSuccess', { name: trimmed }), 'success');
         newName = '';
         showCreateInput = false;
       } else {
-        showToast(res.msg || '创建失败', 'warning');
+        showToast(res.msg || t('playlist.createLocalFailed'), 'warning');
       }
     } catch (e: any) {
-      showToast('创建失败: ' + (e?.message || e), 'error');
+      showToast(`${t('playlist.createLocalFailed')}: ${e?.message || e}`, 'error');
     }
   }
 
   async function handleDelete(pl: LocalPlaylist) {
-    if (!confirm(`确定删除本地歌单「${pl.name}」吗？（不会删除磁盘中的物理音频文件）`)) {
+    if (!confirm(t('localPlaylist.deleteConfirm', { name: pl.name }))) {
       return;
     }
     deletingId = pl.id;
     try {
       await deleteLocalPlaylist(pl.id);
-      showToast(`已删除本地歌单「${pl.name}」`, 'success');
+      showToast(t('localPlaylist.deletedSuccess', { name: pl.name }), 'success');
     } catch (e: any) {
-      showToast('删除失败: ' + (e?.message || e), 'error');
+      showToast(t('localPlaylist.deleteFailed', { error: e?.message || e }), 'error');
     } finally {
       deletingId = null;
     }
@@ -79,7 +79,7 @@
     <div class="flex items-center justify-between w-full sm:w-auto gap-2">
       <div class="flex items-center gap-2">
         <span class="text-base text-emerald-400">📁</span>
-        <h3 class="font-bold text-sm text-[var(--text-main)]">本地自建歌单</h3>
+        <h3 class="font-bold text-sm text-[var(--text-main)]">{t('localPlaylist.title')}</h3>
         <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
           {localPlaylistState.playlists.length}
         </span>
@@ -91,7 +91,7 @@
         onclick={() => showCreateInput = !showCreateInput}
       >
         <span>➕</span>
-        <span>新建歌单</span>
+        <span>{t('localPlaylist.createBtn')}</span>
       </button>
     </div>
 
@@ -100,7 +100,7 @@
         <input
           type="search"
           enterkeyhint="search"
-          placeholder="搜索本地歌单..."
+          placeholder={t('localPlaylist.searchPlaceholder')}
           class="w-full pl-6 pr-2 py-1 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-emerald-500 transition-colors"
           bind:value={searchKw}
         />
@@ -113,7 +113,7 @@
         onclick={() => showCreateInput = !showCreateInput}
       >
         <span>➕</span>
-        <span>新建歌单</span>
+        <span>{t('localPlaylist.createBtn')}</span>
       </button>
     </div>
   </div>
@@ -124,24 +124,24 @@
       <span class="text-sm">📁</span>
       <input
         type="text"
-        placeholder="输入新本地歌单名称..."
+        placeholder={t('localPlaylist.inputPlaceholder')}
         class="flex-1 px-3 py-1.5 text-xs rounded-lg bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-main)] focus:outline-none focus:border-emerald-500"
         bind:value={newName}
         onkeydown={(e) => e.key === 'Enter' && handleCreate()}
       />
       <button
         type="button"
-        class="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium cursor-pointer border-none shadow-xs"
+        class="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium cursor-pointer border-none shadow-xs whitespace-nowrap"
         onclick={handleCreate}
       >
-        确定
+        {t('common.confirm')}
       </button>
       <button
         type="button"
-        class="px-2.5 py-1.5 text-xs rounded-lg bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none"
+        class="px-2.5 py-1.5 text-xs rounded-lg bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none whitespace-nowrap"
         onclick={() => { showCreateInput = false; newName = ''; }}
       >
-        取消
+        {t('common.cancel')}
       </button>
     </div>
   {/if}
@@ -166,18 +166,18 @@
                 {cleanPlaylistDisplayName(pl)}
               </h4>
               <p class="text-[11px] text-[var(--text-muted)] mt-1">
-                {pl.trackCount || 0} 首曲目
+                {t('playlist.trackItemCount', { count: pl.trackCount || 0 })}
               </p>
             </div>
           </div>
 
           <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border-subtle)]">
-            <span class="text-[10px] text-[var(--text-muted)]">{isSystemFavoritesPlaylist(pl.id) ? '系统专属' : '本地 SQLite'}</span>
-            <div class="flex items-center gap-1.5" onclick={(e) => e.stopPropagation()} role="presentation">
+            <span class="text-[10px] text-[var(--text-muted)] truncate">{isSystemFavoritesPlaylist(pl.id) ? t('localPlaylist.systemFavorites') : t('localPlaylist.localSqlite')}</span>
+            <div class="flex items-center gap-1.5 shrink-0" onclick={(e) => e.stopPropagation()} role="presentation">
               <SlotBtn
                 onclick={() => onViewPlaylist?.(pl.id)}
               >
-                查看
+                {t('localPlaylist.view')}
               </SlotBtn>
               {#if !isSystemFavoritesPlaylist(pl.id)}
                 <SlotBtn
@@ -195,11 +195,11 @@
     <div class="flex flex-col items-center justify-center py-10 text-center text-[var(--text-muted)] bg-[var(--card-bg)]/40 rounded-xl border border-dashed border-[var(--border-subtle)]">
       <span class="text-3xl mb-2">📁</span>
       <p class="text-xs">
-        {searchKw ? '未搜索到匹配的本地歌单' : '暂无本地自建歌单'}
+        {searchKw ? t('localPlaylist.emptySearch') : t('localPlaylist.empty')}
       </p>
       {#if !searchKw}
-        <p class="text-[11px] text-[var(--text-muted)] opacity-70 mt-1">
-          点击右上角「新建歌单」，可将已下载曲目整理为专属本地离线歌单
+        <p class="text-[11px] text-[var(--text-muted)] opacity-70 mt-1 max-w-[280px]">
+          {t('localPlaylist.emptyHint')}
         </p>
       {/if}
     </div>

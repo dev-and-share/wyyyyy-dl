@@ -161,4 +161,9 @@ export default {
   'artist.cacheTooltip': '离线缓存全部 50 首至浏览器',
   'artist.downloadAllTooltip': '全部下载到服务器电脑磁盘',
   'search.cacheToBrowserTooltip': '离线缓存到浏览器',
+  'search.sourceNetease': '网易云',
+  'search.sourceMusicFree': 'MusicFree 聚合',
+  'search.placeholderMusicFree': '输入歌曲或歌手，跨插件并行检索...',
+  'search.mfNoResults': '未在已启用的 MusicFree 插件中找到相关结果',
+  'search.mfSearchException': '插件检索异常: {error}',
 } as const;

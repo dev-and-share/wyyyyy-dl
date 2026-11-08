@@ -161,4 +161,9 @@ export default {
   'artist.cacheTooltip': '인기 50곡 전체 브라우저에 오프라인 저장',
   'artist.downloadAllTooltip': '서버 디스크로 전체 다운로드',
   'search.cacheToBrowserTooltip': '브라우저에 오프라인 저장',
+  'search.sourceNetease': '넷이즈',
+  'search.sourceMusicFree': 'MusicFree 통합',
+  'search.placeholderMusicFree': '곡명이나 아티스트를 입력하여 모든 플러그인에서 검색...',
+  'search.mfNoResults': '활성화된 MusicFree 플러그인에서 검색 결과를 찾을 수 없습니다',
+  'search.mfSearchException': '플러그인 검색 오류: {error}',
 } as const;

@@ -145,11 +145,11 @@
 
 <!-- Section 1: 我的歌单 -->
 <AccordionCard title={t('myPlaylists.sectionTitle')} bind:open {flat} accent="red" onToggle={onToggle}>
-  <!-- 快捷过滤按钮组与新建/搜索入口 (整洁紧凑单行设计) -->
+  <!-- 快捷过滤按钮组与新建/搜索入口 (整洁紧凑单行设计，SP 移动端横向滑动不折行) -->
   <div class="flex items-center justify-between gap-1.5 mb-2.5">
-    <div class="flex gap-1.5 items-center flex-wrap">
+    <div class="flex gap-1.5 items-center flex-wrap min-w-0 flex-1">
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'all'}
         class:ring-slate-400={playlistFilter === 'all'}
         onclick={() => loadMyPlaylists('all')}
@@ -157,7 +157,7 @@
         {t('myPlaylists.tabAll')}
       </button>
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'created'}
         class:ring-sky-400={playlistFilter === 'created'}
         onclick={() => loadMyPlaylists('created')}
@@ -165,7 +165,7 @@
         {t('myPlaylists.tabCreated')}<span class="hidden sm:inline">{t('myPlaylists.tabCreatedFull')}</span>
       </button>
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-purple-600 to-purple-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-purple-600 to-purple-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'subscribed'}
         class:ring-purple-400={playlistFilter === 'subscribed'}
         onclick={() => loadMyPlaylists('subscribed')}
@@ -173,7 +173,7 @@
         {t('myPlaylists.tabSubscribed')}<span class="hidden sm:inline">{t('myPlaylists.tabSubscribedFull')}</span>
       </button>
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-emerald-600 to-teal-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-emerald-600 to-teal-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'local'}
         class:ring-emerald-400={playlistFilter === 'local'}
         onclick={() => loadMyPlaylists('local')}
