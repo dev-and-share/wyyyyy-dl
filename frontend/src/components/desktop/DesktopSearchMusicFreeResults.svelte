@@ -12,6 +12,7 @@
   import { isTrackLiked, toggleLike } from '../../lib/likeStore.svelte';
   import { openSheet } from '../../lib/ui.svelte';
   import { t } from '../../lib/i18n';
+  import { getPluginDisplayName } from '../../lib/musicfree/pluginI18n';
 
   let {
     results = [],
@@ -134,7 +135,8 @@
         {@const title = getSafeTitle(item)}
         {@const artist = getSafeArtist(item)}
         {@const cover = item.artwork || item.picUrl || DEFAULT_VINYL_COVER}
-        {@const pName = item._pluginPlatform || item.pluginName || t('playlist.externalSourceBadge')}
+        {@const rawPlatform = item._pluginPlatform || item.pluginName}
+        {@const pName = rawPlatform ? getPluginDisplayName(rawPlatform) : t('playlist.externalSourceBadge')}
         {@const trackId = item.id || `mf_${item._pluginId || item.pluginHash}_${item.rawId || title}`}
         {@const isCur = isSameTrack(curTrack, trackId)}
         {@const isVip = isVipOrPaidTrack(item)}

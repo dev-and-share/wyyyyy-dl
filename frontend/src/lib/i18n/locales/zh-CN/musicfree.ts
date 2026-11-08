@@ -102,5 +102,21 @@ export default {
   'musicfree.unknownSource': '未知音源',
   'musicfree.presetSourcePureFive': '🌟 纯净主流五大源',
   'musicfree.presetSourceDailySync': '🌐 全网每日自动同步源',
-  'musicfree.presetSourceOfficial': '📻 MusicFree官方源'
+  'musicfree.presetSourceOfficial': '📻 MusicFree官方源',
+
+  // Builtin Plugins & Official Charts Localization
+  'musicfree.pluginNameKugou': '酷狗音乐 (官方)',
+  'musicfree.pluginNameQQ': 'QQ音乐 (官方)',
+  'musicfree.pluginAuthorWyy': 'WYY 官方',
+  'musicfree.chartGroupQQ': 'QQ音乐官方排行榜',
+  'musicfree.chartGroupKugou': '官方精选榜单',
+  'musicfree.chartHot': '热歌榜',
+  'musicfree.chartHotDesc': 'QQ音乐站内播放热度前300首',
+  'musicfree.chartNew': '新歌榜',
+  'musicfree.chartNewDesc': '最新潮流好歌第一时间掌握',
+  'musicfree.chartSoaring': '飙升榜',
+  'musicfree.chartSoaringDesc': '播放量飙升最快的热门单曲',
+  'musicfree.chartTrend': '流行指数榜',
+  'musicfree.chartTrendDesc': '全网当红单曲综合指数排行',
+  'musicfree.chartKugouTop500': '酷狗TOP500'
 } as const;

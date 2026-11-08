@@ -102,5 +102,21 @@ export default {
   'musicfree.unknownSource': 'Unknown Source',
   'musicfree.presetSourcePureFive': '🌟 Top 5 Mainstream Sources',
   'musicfree.presetSourceDailySync': '🌐 Daily Auto-Sync Source',
-  'musicfree.presetSourceOfficial': '📻 MusicFree Official Source'
+  'musicfree.presetSourceOfficial': '📻 MusicFree Official Source',
+
+  // Builtin Plugins & Official Charts Localization
+  'musicfree.pluginNameKugou': 'Kugou Music (Official)',
+  'musicfree.pluginNameQQ': 'QQ Music (Official)',
+  'musicfree.pluginAuthorWyy': 'WYY Official',
+  'musicfree.chartGroupQQ': 'QQ Music Official Charts',
+  'musicfree.chartGroupKugou': 'Official Featured Charts',
+  'musicfree.chartHot': 'Hot Songs Chart',
+  'musicfree.chartHotDesc': 'Top 300 popular tracks on QQ Music',
+  'musicfree.chartNew': 'New Songs Chart',
+  'musicfree.chartNewDesc': 'Stay updated with the latest trending releases',
+  'musicfree.chartSoaring': 'Trending Chart',
+  'musicfree.chartSoaringDesc': 'Tracks with the fastest-growing plays',
+  'musicfree.chartTrend': 'Popularity Index Chart',
+  'musicfree.chartTrendDesc': 'Comprehensive popularity index of top hits across the web',
+  'musicfree.chartKugouTop500': 'Kugou TOP500'
 } as const;

@@ -102,5 +102,21 @@ export default {
   'musicfree.unknownSource': '알 수 없는 음원',
   'musicfree.presetSourcePureFive': '🌟 주류 5대 음원',
   'musicfree.presetSourceDailySync': '🌐 매일 자동 동기화 음원',
-  'musicfree.presetSourceOfficial': '📻 MusicFree 공식 음원'
+  'musicfree.presetSourceOfficial': '📻 MusicFree 공식 음원',
+
+  // Builtin Plugins & Official Charts Localization
+  'musicfree.pluginNameKugou': '쿠거우 뮤직 (공식)',
+  'musicfree.pluginNameQQ': 'QQ 뮤직 (공식)',
+  'musicfree.pluginAuthorWyy': 'WYY 공식',
+  'musicfree.chartGroupQQ': 'QQ 뮤직 공식 차트',
+  'musicfree.chartGroupKugou': '공식 추천 차트',
+  'musicfree.chartHot': '인기 음악 차트',
+  'musicfree.chartHotDesc': 'QQ 뮤직 내 재생 횟수 상위 300곡',
+  'musicfree.chartNew': '신곡 차트',
+  'musicfree.chartNewDesc': '최신 트렌드 음악을 가장 먼저 감상',
+  'musicfree.chartSoaring': '급상승 차트',
+  'musicfree.chartSoaringDesc': '재생 수가 가장 빠르게 급상승 중인 인기 싱글',
+  'musicfree.chartTrend': '유행 지수 차트',
+  'musicfree.chartTrendDesc': '전 웹 히트곡 종합 지수 랭킹',
+  'musicfree.chartKugouTop500': '쿠거우 TOP500'
 } as const;

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../../../lib/i18n';
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
+  import { getPluginDisplayName, getPluginDisplayAuthor } from '../../../lib/musicfree/pluginI18n';
 
   let {
     showToast
@@ -224,8 +225,8 @@
             <div class="space-y-1.5">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <span class="font-bold text-xs sm:text-sm text-[var(--text-main)] truncate max-w-[130px]" title={plugin.name}>
-                    {plugin.name}
+                  <span class="font-bold text-xs sm:text-sm text-[var(--text-main)] truncate max-w-[130px]" title={getPluginDisplayName(plugin)}>
+                    {getPluginDisplayName(plugin)}
                   </span>
                   {#if plugin.id.startsWith('builtin_')}
                     <span class="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 shrink-0 font-medium">{t('musicfree.builtinBadge')}</span>
@@ -236,7 +237,7 @@
                 </span>
               </div>
               <p class="text-[11px] text-[var(--text-secondary)] line-clamp-1">
-                {t('musicfree.authorLabel', { author: plugin.author || t('musicfree.authorOpenSource') })}
+                {t('musicfree.authorLabel', { author: getPluginDisplayAuthor(plugin) })}
               </p>
               {#if plugin.error}
                 <p class="text-[10px] text-red-500 line-clamp-1" title={plugin.error}>

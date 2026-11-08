@@ -13,6 +13,7 @@
   import { downloadExternalTrack } from '../../../lib/musicfree/downloadHelper';
   import SlotBtn from '../../SlotBtn.svelte';
   import { t } from '../../../lib/i18n';
+  import { getPluginDisplayName } from '../../../lib/musicfree/pluginI18n';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
 
   let { curTrack = null, playing = false, onPlayQueue, showToast } = $props<{
@@ -27,7 +28,7 @@
   let sheetPlugins = $derived(filterAndSortSheetPlugins(musicFreeStore.plugins, emptyPluginIds));
   let selectedPluginId = $state<string>('');
   const selectedPlugin = $derived(sheetPlugins.find((p) => p.id === selectedPluginId));
-  const currentPluginName = $derived(selectedPlugin?.name || t('musicfree.unknownSource'));
+  const currentPluginName = $derived(selectedPlugin ? getPluginDisplayName(selectedPlugin) : t('musicfree.unknownSource'));
   let tags = $state<any[]>([]);
   let selectedTag = $state<any>(null);
   let sheets = $state<any[]>([]);
@@ -388,7 +389,7 @@
               class="px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all shrink-0 {selectedPluginId === pl.id ? 'bg-purple-600 text-white shadow-sm' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
               onclick={() => handlePluginChange(pl.id)}
             >
-              {pl.name}
+              {getPluginDisplayName(pl)}
             </button>
           {/each}
         </div>

@@ -146,11 +146,11 @@
         mfResults = res.results || [];
         searchLoading = false;
         if (!mfResults.length && showEmptyToast) {
-          showToast('未在已启用的 MusicFree 插件中找到相关结果', 'info');
+          showToast(t('musicfree.noSearchResults'), 'info');
         }
       } catch (e: any) {
         searchLoading = false;
-        if (showEmptyToast) showToast('插件检索异常: ' + (e?.message || e), 'error');
+        if (showEmptyToast) showToast(t('musicfree.pluginError', { error: e?.message || e }), 'error');
       }
       return;
     }

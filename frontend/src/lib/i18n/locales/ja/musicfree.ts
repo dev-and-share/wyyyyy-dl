@@ -102,5 +102,21 @@ export default {
   'musicfree.unknownSource': '不明な音源',
   'musicfree.presetSourcePureFive': '🌟 定番5大音源',
   'musicfree.presetSourceDailySync': '🌐 毎日自動同期ソース',
-  'musicfree.presetSourceOfficial': '📻 MusicFree公式ソース'
+  'musicfree.presetSourceOfficial': '📻 MusicFree公式ソース',
+
+  // Builtin Plugins & Official Charts Localization
+  'musicfree.pluginNameKugou': '酷狗音楽 (公式)',
+  'musicfree.pluginNameQQ': 'QQ音楽 (公式)',
+  'musicfree.pluginAuthorWyy': 'WYY 公式',
+  'musicfree.chartGroupQQ': 'QQ音楽公式ランキング',
+  'musicfree.chartGroupKugou': '公式おすすめランキング',
+  'musicfree.chartHot': 'ヒットチャート',
+  'musicfree.chartHotDesc': 'QQ音楽内の再生数トップ300曲',
+  'musicfree.chartNew': '新曲チャート',
+  'musicfree.chartNewDesc': '最新のトレンド曲をいち早くお届け',
+  'musicfree.chartSoaring': '急上昇チャート',
+  'musicfree.chartSoaringDesc': '再生数が急上昇している人気シングル',
+  'musicfree.chartTrend': 'ポップ指数チャート',
+  'musicfree.chartTrendDesc': 'ネット全体のヒット曲総合指数ランキング',
+  'musicfree.chartKugouTop500': '酷狗 TOP500'
 } as const;

@@ -13,6 +13,7 @@
   import { api } from '../../../lib/api';
   import { startTaskPolling } from '../../../lib/taskStore.svelte';
   import { t } from '../../../lib/i18n';
+  import { getPluginDisplayName, getTopListGroupTitle, getTopListDisplayInfo } from '../../../lib/musicfree/pluginI18n';
   import SlotBtn from '../../SlotBtn.svelte';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
 
@@ -194,6 +195,7 @@
 
 <div class="space-y-4">
   {#if selectedTopList}
+    {@const detailInfo = getTopListDisplayInfo(selectedTopList)}
     <!-- 排行榜详情视图 -->
     <div class="space-y-4">
       <button
@@ -207,7 +209,7 @@
       <div class="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
         <img
           src={selectedTopList.coverImg || selectedTopList.artwork || DEFAULT_VINYL_COVER}
-          alt={selectedTopList.title || selectedTopList.name}
+          alt={detailInfo.title}
           referrerpolicy="no-referrer"
           class="w-20 h-20 rounded-xl object-cover shadow-md"
           onerror={(e) => {
@@ -218,14 +220,14 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1">
             <h2 class="text-base font-bold text-[var(--text-main)] truncate">
-              {selectedTopList.title || selectedTopList.name}
+              {detailInfo.title}
             </h2>
             <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium">
               {t('musicfree.officialChartBadge')}
             </span>
           </div>
           <p class="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2">
-            {selectedTopList.description || t('musicfree.chartProvidedByPlugin')}
+            {detailInfo.description || t('musicfree.chartProvidedByPlugin')}
           </p>
           <div class="flex items-center gap-2">
             <button
@@ -348,7 +350,7 @@
           >
             {#each topListGroups as grp}
               <option value={grp.pluginId}>
-                {t('musicfree.chartCountOption', { name: grp.pluginName, count: grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0) })}
+                {t('musicfree.chartCountOption', { name: getPluginDisplayName(grp.pluginName), count: grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0) })}
               </option>
             {/each}
           </select>
@@ -366,10 +368,11 @@
             <div class="space-y-2">
               <div class="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5 pl-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                <span>{subGroup.groupTitle}</span>
+                <span>{getTopListGroupTitle(subGroup.groupTitle)}</span>
               </div>
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {#each subGroup.charts as chart}
+                  {@const chartInfo = getTopListDisplayInfo(chart)}
                   <!-- svelte-ignore a11y_click_events_have_key_events -->
                   <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <div
@@ -379,7 +382,7 @@
                     <div class="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black/10">
                       <img
                         src={chart.coverImg || chart.artwork || DEFAULT_VINYL_COVER}
-                        alt={chart.title || chart.name}
+                        alt={chartInfo.title}
                         referrerpolicy="no-referrer"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
@@ -390,11 +393,11 @@
                       />
                     </div>
                     <div class="text-xs font-semibold text-[var(--text-main)] truncate group-hover:text-purple-400">
-                      {chart.title || chart.name}
+                      {chartInfo.title}
                     </div>
-                    {#if chart.description}
+                    {#if chartInfo.description}
                       <div class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                        {chart.description}
+                        {chartInfo.description}
                       </div>
                     {/if}
                   </div>
