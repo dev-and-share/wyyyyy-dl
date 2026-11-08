@@ -166,4 +166,61 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     expect(audioEl.loop).toBe(true);
     expect(audioEl.src.startsWith('blob:')).toBe(true);
   });
+
+  it('does NOT reassign audioEl.src or call play() when returning to foreground while audio is playing', async () => {
+    const track = { id: 401, name: '前台测试歌曲', artist: '歌手A', url: '/v3/stream?id=401', isLocal: true };
+    playerStore.setQueue([track], 0);
+    playerStore.playing = true;
+
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=401';
+    Object.defineProperty(audioEl, 'paused', { value: false, writable: true, configurable: true });
+    Object.defineProperty(audioEl, 'currentTime', { value: 45, writable: true, configurable: true });
+    Object.defineProperty(audioEl, 'readyState', { value: 1, writable: true, configurable: true }); // iOS WebKit readyState in background
+
+    const playSpy = vi.spyOn(audioEl, 'play');
+    const srcSetterSpy = vi.fn();
+    Object.defineProperty(audioEl, 'src', {
+      get: () => 'http://localhost/v3/stream?id=401',
+      set: (val) => { srcSetterSpy(val); },
+      configurable: true
+    });
+
+    // Simulate switching to visible (app foregrounded)
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    // Audio src MUST NOT be touched, and play() MUST NOT be called in visibilitychange
+    expect(srcSetterSpy).not.toHaveBeenCalled();
+    expect(playSpy).not.toHaveBeenCalled();
+    // UI curTime should be synced to audioEl.currentTime
+    expect(playerStore.curTime).toBe(45);
+  });
+
+  it('stops playback cleanly and avoids recursive track skip loop when audio play() is blocked by browser Autoplay policy (NotAllowedError)', async () => {
+    const track1 = { id: 501, name: '受限歌曲1', artist: '歌手A', url: '/v3/stream?id=501', isLocal: true };
+    const track2 = { id: 502, name: '本地歌曲2', artist: '歌手B', url: '/v3/stream?id=502', isLocal: true };
+    playerStore.setQueue([track1, track2], 0);
+    playerStore.playing = true;
+
+    // Simulate browser blocking play() with NotAllowedError (user has not interacted yet)
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockImplementation(() => {
+      const err = new Error('The request is not allowed by the user agent or the platform in the current context');
+      err.name = 'NotAllowedError';
+      return Promise.reject(err);
+    });
+
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=501';
+
+    // Trigger toggle play
+    window.dispatchEvent(new CustomEvent('wyy:toggle-play'));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Contract: Must mark playerStore.playing = false, and MUST NOT skip to track2 in an automated loop
+    expect(playerStore.playing).toBe(false);
+    expect(playerStore.qIndex).toBe(0); // Kept on track1 waiting for user gesture
+  });
 });
