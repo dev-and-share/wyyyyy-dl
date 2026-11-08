@@ -23,7 +23,7 @@
   --topbar-border: rgba(52, 211, 153, 0.18);
   --input-focus-border: #10b981;
   --input-focus-glow: rgba(16, 185, 129, 0.25);
-  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #022c22 65%, #021a14 100%);
+  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #032b20 60%, #06140f 100%);
   --immersive-header-bg: rgba(6, 78, 59, 0.65);
   --immersive-ring-bg: #022c22;
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(52, 211, 153, 0.18);
@@ -47,7 +47,7 @@
   --topbar-border: rgba(16, 185, 129, 0.15);
   --input-focus-border: #059669;
   --input-focus-glow: rgba(16, 185, 129, 0.2);
-  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #022c22 65%, #021a14 100%);
+  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #032b20 60%, #06140f 100%);
 }
 
 /* 2. 灵动极光 (Aurora Glass) 全局主题 */
@@ -70,7 +70,7 @@
   --topbar-border: rgba(168, 85, 247, 0.2);
   --input-focus-border: #a855f7;
   --input-focus-glow: rgba(168, 85, 247, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #2e1065 0%, #170736 60%, #0b041a 100%);
+  --immersive-bg: radial-gradient(circle at center, #2e1065 0%, #170736 60%, #0c0a1a 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(168, 85, 247, 0.2);
 }
 [data-theme="light"][data-skin="aurora"], [data-theme="light"] [data-skin="aurora"] {
@@ -112,7 +112,7 @@
   --topbar-border: rgba(245, 158, 11, 0.15);
   --input-focus-border: #f59e0b;
   --input-focus-glow: rgba(245, 158, 11, 0.25);
-  --immersive-bg: radial-gradient(circle at center, #2e2416 0%, #1c160e 65%, #0e0a06 100%);
+  --immersive-bg: radial-gradient(circle at center, #2e2416 0%, #1c160e 65%, #121316 100%);
 }
 [data-theme="light"][data-skin="cassette"], [data-theme="light"] [data-skin="cassette"] {
   --bg-color: #fefce8;
@@ -153,7 +153,7 @@
   --topbar-border: rgba(255, 255, 255, 0.12);
   --input-focus-border: #10b981;
   --input-focus-glow: rgba(16, 185, 129, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #1b2820 0%, #0f1712 65%, #080c09 100%);
+  --immersive-bg: radial-gradient(circle at center, #1b2820 0%, #121c16 65%, #11141b 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(16, 185, 129, 0.2);
 }
 [data-theme="light"][data-skin="winamp"], [data-theme="light"] [data-skin="winamp"] {
@@ -239,7 +239,7 @@
 
 /* 🌸 春樱初绽 (Sakura Drift) 全局主题 (实景吉野樱自然粉白柔调) */
 [data-skin="sakura"] {
-  --bg-color: #181016;
+  --bg-color: #240d1e;
   --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(253, 232, 240, 0.22) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(249, 168, 212, 0.18) 0%, transparent 65%);
   --card-bg: rgba(38, 20, 30, 0.92);
   --card-bg-solid: #26141f;
@@ -258,7 +258,7 @@
   --topbar-border: rgba(244, 114, 182, 0.24);
   --input-focus-border: #f472b6;
   --input-focus-glow: rgba(244, 114, 182, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #3d1c2e 0%, #22101b 65%, #12080f 100%);
+  --immersive-bg: radial-gradient(circle at center, #3d1c2e 0%, #240d1e 65%, #240d1e 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(244, 114, 182, 0.25);
 }
 [data-theme="light"][data-skin="sakura"], [data-theme="light"] [data-skin="sakura"] {
@@ -316,7 +316,7 @@
   --topbar-border: rgba(56, 189, 248, 0.35);
   --input-focus-border: #38bdf8;
   --input-focus-glow: rgba(56, 189, 248, 0.45);
-  --immersive-bg: radial-gradient(circle at center, #0284c7 0%, #0369a1 50%, #073458 100%);
+  --immersive-bg: radial-gradient(circle at center, #0f3d64 0%, #092c4b 60%, #072b4a 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(56, 189, 248, 0.4);
 }
 [data-theme="light"][data-skin="summer"], [data-theme="light"] [data-skin="summer"] {
@@ -374,7 +374,7 @@
   --topbar-border: rgba(250, 204, 21, 0.26);
   --input-focus-border: #facc15;
   --input-focus-glow: rgba(250, 204, 21, 0.35);
-  --immersive-bg: radial-gradient(circle at center, #3b2807 0%, #221603 65%, #100b01 100%);
+  --immersive-bg: radial-gradient(circle at center, #3b2807 0%, #251805 65%, #1a1305 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(250, 204, 21, 0.3);
 }
 [data-theme="light"][data-skin="autumn"], [data-theme="light"] [data-skin="autumn"] {
@@ -432,7 +432,7 @@
   --topbar-border: rgba(255, 255, 255, 0.28);
   --input-focus-border: #ffffff;
   --input-focus-glow: rgba(255, 255, 255, 0.4);
-  --immersive-bg: radial-gradient(circle at center, #1b263b 0%, #0d1522 65%, #05080e 100%);
+  --immersive-bg: radial-gradient(circle at center, #1b263b 0%, #101929 65%, #0b121e 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(255, 255, 255, 0.35);
 }
 [data-theme="light"][data-skin="winter"], [data-theme="light"] [data-skin="winter"] {

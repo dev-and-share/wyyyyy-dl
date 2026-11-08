@@ -67,7 +67,7 @@
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let showCommentModal = $state(false);
 
-  // 🌙 沉浸式 3 秒自动渐隐机制（鼠标悬停播放器面板时不消失）
+  // 🌙 沉浸式空间分区感应机制 (方案 A：左侧舞台稳固操控小播放器，贴底快速唤起大底栏)
   let uiVisible = $state(true);
   let hideTimer: any = null;
   let isHoveringBottomControls = $state(false);
@@ -105,14 +105,28 @@
 
   let lastMoveTime = 0;
   function handleMouseMove(e: MouseEvent) {
-    // 沉浸静止状态下，若鼠标移向左侧小播放器区域，不抢先唤起大播放器，保证小播放器可顺畅点击操作
-    if (!uiVisible && e.clientX < 480) {
+    if (uiVisible) {
+      // 大播放器已显示时：正常防抖延长时间，悬停时保持显示
+      const now = Date.now();
+      if (now - lastMoveTime > 200) {
+        lastMoveTime = now;
+        if (!isHoveringBottomControls) {
+          kickHideTimer();
+        }
+      }
       return;
     }
-    const now = Date.now();
-    if (now - lastMoveTime > 200) {
-      lastMoveTime = now;
-      kickHideTimer();
+
+    // 🌙 沉浸静默态 (uiVisible === false)：空间分区响应
+    // 1. 鼠标明确移向屏幕最底边 (距底部 48px 以内) 或最顶边 (距顶部 48px 以内)：意图为操作长进度条/播控/顶栏 -> 顺滑唤起大播放器
+    if (typeof window !== 'undefined' && (e.clientY >= window.innerHeight - 48 || e.clientY < 48)) {
+      handleBottomZoneEnter();
+      return;
+    }
+
+    // 2. 鼠标移向左侧舞台或小播放器区域：意图为微雕控制台 -> 绝对不唤起大底栏，小播放器稳如泰山
+    if (isHoveringMiniControls || e.clientX < 480 || (e.target as HTMLElement | null)?.closest?.('[data-testid="immersive-mini-player-container"]')) {
+      return;
     }
   }
 
@@ -261,7 +275,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   bind:this={modalContainerEl}
-  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[#0a0e1a] transition-colors duration-500 text-white overscroll-none touch-none"
+  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--wco-titlebar-bg,#0a0e1a)] transition-colors duration-500 text-white overscroll-none touch-none"
   style="{skin.cssVars} color-scheme: dark; transform: translateY({dragOffsetY}px); transition: {isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.3s'}; opacity: {1 - Math.min(dragOffsetY / 420, 0.5)}; overscroll-behavior: none; touch-action: none; -webkit-overflow-scrolling: auto;"
   onclick={toggleUi}
   onmousemove={handleMouseMove}
@@ -300,6 +314,18 @@
     <!-- 四季动态全屏微风物理粒子画布 -->
     <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={110} />
   {/if}
+
+  <!-- 🪟 全屏沉浸模式专属：WCO 原生窗口交通灯与控件区域无缝底色层 (高度自适应 38px，使用 --wco-titlebar-bg 消除原生切角与网页背景的色差) -->
+  <div
+    data-testid="immersive-titlebar-bg"
+    class="absolute top-0 inset-x-0 z-20 pointer-events-none transition-colors duration-500"
+    style="
+      height: var(--wco-height, env(titlebar-area-height, 38px));
+      background: var(--wco-titlebar-bg);
+      box-shadow: 0 8px 24px var(--wco-titlebar-bg);
+    "
+    aria-hidden="true"
+  ></div>
 
   <!-- 顶部轻盈浮空区域：下拉手势指示器 + 皮肤切换 + 关闭按钮 (全面适配 PWA WCO 窗口控制遮罩) -->
   <div

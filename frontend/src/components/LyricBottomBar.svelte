@@ -54,6 +54,7 @@
 </script>
 
 <!-- 底部：全屏沉浸播放控制条（上下两层结构 + 3秒自动渐隐，hover 时常显不消失） -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   data-testid="immersive-bottom-controls"
   class="interactive-el absolute bottom-0 inset-x-0 z-20 w-full px-4 md:px-12 pt-6 pb-[max(14px,env(safe-area-inset-bottom,0px))] bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center gap-2 transition-all duration-500 {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'}"
@@ -114,6 +115,8 @@
   </div>
 
   <!-- 进度条 -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="w-full max-w-[640px]" onclick={() => onKickTimer()}>
     <PlayerProgressBar
       curTime={currentTime}

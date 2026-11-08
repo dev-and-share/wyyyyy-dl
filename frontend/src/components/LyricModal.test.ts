@@ -291,4 +291,58 @@ describe('LyricModal Component', () => {
 
     document.documentElement.removeAttribute('data-theme');
   });
+
+  it('renders immersive titlebar background layer and adheres to spatial partitioning', async () => {
+    vi.useFakeTimers();
+
+    const { getByTestId, container } = render(LyricModal, {
+      props: {
+        track: mockTrack,
+        currentTime: 0,
+        duration: 269,
+        playing: true,
+        playMode: 'list',
+        isLiked: false,
+        onTogglePlay: vi.fn(),
+        onPrev: vi.fn(),
+        onNext: vi.fn(),
+        onToggleMode: vi.fn(),
+        onSeek: vi.fn(),
+        onSeekTime: vi.fn(),
+        onToggleLike: vi.fn(),
+        onTogglePeq: vi.fn(),
+        onToggleDrawer: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 1. 验证无缝顶栏背景层已存在
+    expect(getByTestId('immersive-titlebar-bg')).toBeInTheDocument();
+
+    const bottomControls = getByTestId('immersive-bottom-controls');
+    const miniPlayerContainer = getByTestId('immersive-mini-player-container');
+    const modalDiv = container.firstElementChild as HTMLElement;
+
+    // 推进 3.5 秒进入沉静模式：大播放器隐去，小播放器显现
+    vi.advanceTimersByTime(3500);
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-0');
+      expect(miniPlayerContainer.className).toContain('opacity-100');
+    });
+
+    // 2. 空间分区感应：鼠标移向左侧舞台 (clientX: 240, clientY: 400) -> 绝不抢先唤起大播放器，保证小播放器稳定
+    await fireEvent.mouseMove(modalDiv, { clientX: 240, clientY: 400 });
+    expect(bottomControls.className).toContain('opacity-0');
+    expect(miniPlayerContainer.className).toContain('opacity-100');
+
+    // 3. 空间分区感应：鼠标移向底部边缘 (距底部 48px 以内，如 innerHeight=800, clientY=780) -> 瞬时唤起大播放器
+    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true });
+    await fireEvent.mouseMove(modalDiv, { clientX: 500, clientY: 780 });
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-100');
+      expect(miniPlayerContainer.className).toContain('opacity-0');
+    });
+
+    vi.useRealTimers();
+  });
 });
