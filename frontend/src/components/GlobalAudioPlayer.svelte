@@ -92,12 +92,11 @@
           preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
         }).catch((err: any) => {
           if (session !== playSessionId) return;
-          // 🛡️ 方案 2 浏览器限制兜底：若触发浏览器 Autoplay 策略限制（NotAllowedError），尝试切至本地已下载曲目
+          // 🛡️ 浏览器 Autoplay 限制拦截：严禁无手势时递归尝试切歌，直接置为暂停等待用户手动点击
           if (err?.name === 'NotAllowedError') {
-            const nextLocalIdx = playerStore.getNextLocalTrackIndex();
-            if (nextLocalIdx >= 0 && nextLocalIdx !== playerStore.qIndex) {
-              playerStore.qIndex = nextLocalIdx; playerStore.curTime = 0; playerStore.save(); ensurePlay(true); return;
-            }
+            playerStore.playing = false;
+            updateMediaSessionPlaybackState(false);
+            return;
           }
           playerStore.playing = false;
           updateMediaSessionPlaybackState(false);
@@ -324,12 +323,12 @@
         if (platform.isIOS && audioEl.paused) needsReloadOnResume = true;
         return;
       }
-      if (audioEl.paused || audioEl.readyState >= 3) return;
-      const time = audioEl.currentTime || playerStore.curTime || 0;
-      if (time > 0) pendingSeekTime = time;
-      const currentSrc = audioEl.src;
-      if (currentSrc) audioEl.src = currentSrc;
-      audioEl.play().then(() => applyPendingSeek()).catch(() => {});
+      // 📱 切回前台：若音频正在播放（原生 mediaserverd 托管），绝不重设 src 或重新 play()！
+      // iOS WebKit 在熄屏时会刻意降低 readyState 节电，重设 src 会强行掐断正在播放的音频流，且无手势时 play() 必抛 NotAllowedError。
+      if (!audioEl.paused) {
+        if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
+        return;
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 

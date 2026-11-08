@@ -62,4 +62,19 @@ describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
 
     expect(hasUpdate).toBe(false);
   });
+
+  it('registerServiceWorker with autoReloadOnControllerChange: false does not attach controllerchange listener', () => {
+    mockRegister.mockResolvedValueOnce({
+      scope: '/',
+      waiting: null,
+      onupdatefound: null
+    });
+
+    const addEventListenerSpy = vi.spyOn(navigator.serviceWorker, 'addEventListener');
+    registerServiceWorker(undefined, { autoReloadOnControllerChange: false });
+
+    window.dispatchEvent(new Event('load'));
+
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('controllerchange', expect.any(Function));
+  });
 });

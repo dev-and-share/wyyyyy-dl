@@ -13,10 +13,11 @@ RUN cd frontend && npm run check && npm run build
 # ==============================================================================
 FROM eclipse-temurin:21-jdk AS jar-builder
 WORKDIR /build
-COPY gradlew settings.gradle build.gradle gradle.properties ./
+COPY gradlew ./
 COPY gradle ./gradle/
 # 提前预热并持久化缓存 Gradle Wrapper (避免每次重新下载 120MB zip)
 RUN chmod +x ./gradlew && ./gradlew --version
+COPY settings.gradle build.gradle gradle.properties ./
 COPY src ./src/
 # 注入已编译的 Svelte 产物
 COPY --from=frontend-builder /build/src/main/resources/static/svelte ./src/main/resources/static/svelte

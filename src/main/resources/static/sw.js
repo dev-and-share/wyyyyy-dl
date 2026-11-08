@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wyy-v5.5.11';
+const CACHE_NAME = 'wyy-v5.5.13';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const IMAGE_CACHE_NAME = 'netease-music-image-v1';
 const MAX_IMAGE_CACHE_ITEMS = 2000;
@@ -19,6 +19,7 @@ const PRECACHE_URLS = [
 ];
 
 let isTrimmingImages = false;
+let lastImageTrimTime = 0;
 let cachedAudioKeys = new Set();
 
 async function syncAudioCacheIndex() {
@@ -41,8 +42,10 @@ async function syncAudioCacheIndex() {
 syncAudioCacheIndex();
 
 async function trimCache(cacheName, maxItems) {
-  if (isTrimmingImages) return;
+  const now = Date.now();
+  if (isTrimmingImages || now - lastImageTrimTime < 30000) return;
   isTrimmingImages = true;
+  lastImageTrimTime = now;
   try {
     const cache = await caches.open(cacheName);
     const keys = await cache.keys();
@@ -100,7 +103,7 @@ self.addEventListener('install', (event) => {
       } catch (sniffErr) {
         console.warn('[SW] 入口 HTML 产物嗅探跳过:', sniffErr);
       }
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
