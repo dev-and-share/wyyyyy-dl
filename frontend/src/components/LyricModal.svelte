@@ -12,7 +12,7 @@
   import SkinPickerSheet from './SkinPickerSheet.svelte';
   import ImmersiveMiniPlayer from './ImmersiveMiniPlayer.svelte';
   import LyricBottomBar from './LyricBottomBar.svelte';
-  import { skin } from '../lib/skinStore.svelte';
+  import { skin, setImmersiveThemeColor } from '../lib/skinStore.svelte';
   import VinylSkinStage from './skins/VinylSkinStage.svelte';
   import AuroraSkinStage from './skins/AuroraSkinStage.svelte';
   import CassetteSkinStage from './skins/CassetteSkinStage.svelte';
@@ -193,6 +193,7 @@
   }
 
   onMount(() => {
+    setImmersiveThemeColor(true);
     kickHideTimer();
 
     // 🛡️ 锁定根节点与底层视图滚动，彻底杜绝 iOS / PWA 双层橡皮筋穿透下拉
@@ -239,6 +240,7 @@
     window.addEventListener('keydown', handleKey);
 
     return () => {
+      setImmersiveThemeColor(false);
       clearTimeout(hideTimer);
       document.documentElement.style.overscrollBehavior = prevHtmlOverscroll;
       document.body.style.overflow = prevBodyOverflow;
@@ -254,7 +256,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   bind:this={modalContainerEl}
-  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)] transition-colors duration-500 text-white overscroll-none touch-none"
+  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[#0a0e1a] transition-colors duration-500 text-white overscroll-none touch-none"
   style="{skin.cssVars} color-scheme: dark; transform: translateY({dragOffsetY}px); transition: {isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.3s'}; opacity: {1 - Math.min(dragOffsetY / 420, 0.5)}; overscroll-behavior: none; touch-action: none; -webkit-overflow-scrolling: auto;"
   onclick={toggleUi}
   onmousemove={handleMouseMove}

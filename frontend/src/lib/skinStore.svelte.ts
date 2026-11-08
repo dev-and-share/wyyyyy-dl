@@ -3,6 +3,21 @@ import { extractCoverPalette } from './colorExtractor';
 
 const STORAGE_KEY = 'player_skin';
 
+let isImmersiveActive = false;
+
+/**
+ * 设置全屏沉浸模式状态
+ * 激活沉浸模式时强制将顶栏与 WCO 原生窗口控件区域压暗为深色，退出时自动恢复常规主题色
+ */
+export function setImmersiveThemeColor(active: boolean) {
+  isImmersiveActive = active;
+  syncMetaThemeColor();
+}
+
+export function getIsImmersiveActive(): boolean {
+  return isImmersiveActive;
+}
+
 function isValidSkinId(val: any): val is SkinId {
   return typeof val === 'string' && val in SKINS;
 }
@@ -14,16 +29,18 @@ function syncRootSkinAttribute(id: SkinId) {
 }
 
 /**
- * 动态同步 <meta name="theme-color">
- * 保证 macOS PWA (Safari 添加到程序坞 / Chrome 顶栏) 与移动端标题栏实时感知皮肤与深浅色切换
+ * 动态同步 <meta name="theme-color"> 与 --wco-titlebar-bg
+ * 保证 macOS PWA (Safari 添加到程序坞 / Chrome 顶栏) 与移动端标题栏实时感知皮肤、深浅色以及全屏沉浸播放模式切换
  */
 export function syncMetaThemeColor(skinId?: SkinId) {
   if (typeof document === 'undefined') return;
   const currentSkin: SkinId = skinId || (skin?.current ? skin.current : 'vinyl');
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const color = isLight
-    ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
-    : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a');
+  const isLight = !isImmersiveActive && document.documentElement.getAttribute('data-theme') === 'light';
+  const color = isImmersiveActive
+    ? (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a')
+    : (isLight
+        ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
+        : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a'));
 
   let meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) {
@@ -32,6 +49,7 @@ export function syncMetaThemeColor(skinId?: SkinId) {
     document.head.appendChild(meta);
   }
   meta.setAttribute('content', color);
+  document.documentElement.style.setProperty('--wco-titlebar-bg', color);
 }
 
 function loadInitialSkin(): SkinId {
@@ -100,6 +118,7 @@ export class SkinStore {
 
   /** 测试辅助：清空缓存与重置状态 */
   _reset() {
+    isImmersiveActive = false;
     this.current = 'vinyl';
     syncRootSkinAttribute('vinyl');
     syncMetaThemeColor('vinyl');

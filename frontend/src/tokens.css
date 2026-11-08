@@ -153,8 +153,8 @@
     --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
     --docked-bar-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 
-    /* 8. 全屏沉浸播放 (Immersive Player) */
-    --immersive-bg: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
+    /* 8. 全屏沉浸播放 (Immersive Player - 保持深邃舞台底色以烘托歌词与粒子) */
+    --immersive-bg: radial-gradient(circle at center, #1e293b 0%, #0f172a 70%, #090d16 100%);
     --immersive-header-bg: rgba(255, 255, 255, 0.85);
     --immersive-footer-bg: rgba(255, 255, 255, 0.7);
     --immersive-ring-bg: #1e293b;

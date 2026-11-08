@@ -85,7 +85,7 @@
      采用“左右拖拽区 + 中间完全独立 DOM 交互区”三栏架构，彻底消除原生 drag region 遮挡与点击失灵问题 -->
 <header
   data-testid="desktop-titlebar-island"
-  class="fixed top-0 inset-x-0 z-30 flex items-center justify-between select-none transition-colors duration-200 bg-[var(--bg-color)]/95 backdrop-blur-md border-b border-[var(--border-subtle)]"
+  class="fixed top-0 inset-x-0 z-30 flex items-center justify-between select-none transition-colors duration-200 bg-[var(--wco-titlebar-bg,var(--bg-color))] border-b border-[var(--border-subtle)]"
   style="
     height: var(--wco-height, env(titlebar-area-height, 38px));
     padding-left: max(80px, var(--wco-left, 80px));

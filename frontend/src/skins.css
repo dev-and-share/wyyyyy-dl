@@ -47,7 +47,7 @@
   --topbar-border: rgba(16, 185, 129, 0.15);
   --input-focus-border: #059669;
   --input-focus-glow: rgba(16, 185, 129, 0.2);
-  --immersive-bg: radial-gradient(circle at center, #ffffff 0%, #ecfdf5 60%, #d1fae5 100%);
+  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #022c22 65%, #021a14 100%);
 }
 
 /* 2. 灵动极光 (Aurora Glass) 全局主题 */

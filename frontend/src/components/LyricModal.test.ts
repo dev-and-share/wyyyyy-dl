@@ -245,4 +245,43 @@ describe('LyricModal Component', () => {
 
     vi.useRealTimers();
   });
+
+  it('dynamically switches meta theme-color to dark on mount and restores on unmount', () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('spring');
+    // 白天模式下普通浏览：浅色
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#f0fdf4');
+
+    const { unmount } = render(LyricModal, {
+      props: {
+        track: mockTrack,
+        currentTime: 0,
+        duration: 269,
+        playing: true,
+        playMode: 'list',
+        isLiked: false,
+        onTogglePlay: vi.fn(),
+        onPrev: vi.fn(),
+        onNext: vi.fn(),
+        onToggleMode: vi.fn(),
+        onSeek: vi.fn(),
+        onSeekTime: vi.fn(),
+        onToggleLike: vi.fn(),
+        onTogglePeq: vi.fn(),
+        onToggleDrawer: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 挂载后：强制切为深色，以彻底消除 Chrome WCO 左右两侧白块门牙
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#06140f');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#06140f');
+
+    // 卸载后：自动恢复白天模式浅色
+    unmount();
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#f0fdf4');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#f0fdf4');
+
+    document.documentElement.removeAttribute('data-theme');
+  });
 });
