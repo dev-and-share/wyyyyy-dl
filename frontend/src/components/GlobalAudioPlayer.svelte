@@ -341,24 +341,22 @@
       showToast(t('folder.playingFolderStats', { name, count: q.length }), 'success', 3000);
     };
 
-    const onPlayTracksEvent = (e: CustomEvent) => {
-      if (e.detail?.tracks) handleSetQueue(e.detail.tracks, e.detail.optionsOrIdx || 0, e.detail.playlistId);
-    };
-
-    const onToggleLyricModal = () => {
-      if (playerStore.activeTrack) showLyric = !showLyric;
-    };
+    const onPlayTracksEvent = (e: CustomEvent) => { if (e.detail?.tracks) handleSetQueue(e.detail.tracks, e.detail.optionsOrIdx || 0, e.detail.playlistId); };
+    const onToggleLyricModal = () => { if (playerStore.activeTrack) showLyric = !showLyric; };
+    const onTogglePlayEvent = () => handleTogglePlay();
 
     window.addEventListener('svelte:playFolder', onPlayFolder as EventListener);
     window.addEventListener('wyy:play-tracks', onPlayTracksEvent as EventListener);
     window.addEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
     window.addEventListener('wyy:toggle-lyric-modal', onToggleLyricModal);
+    window.addEventListener('wyy:toggle-play', onTogglePlayEvent);
     return () => {
       window.removeEventListener('beforeunload', () => playerStore.save());
       window.removeEventListener('svelte:playFolder', onPlayFolder as EventListener);
       window.removeEventListener('wyy:play-tracks', onPlayTracksEvent as EventListener);
       window.removeEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
       window.removeEventListener('wyy:toggle-lyric-modal', onToggleLyricModal);
+      window.removeEventListener('wyy:toggle-play', onTogglePlayEvent);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   });
@@ -479,19 +477,8 @@
 
 <!-- 📜 全局弹出层组件群 (播放列表抽屉 · 黑胶歌词大屏 · PEQ 均衡器) -->
 <PlayerOverlays
-  bind:showDrawer
-  bind:showLyric
-  bind:showPeq
-  {likedSet}
-  {onToggleLike}
-  {onReveal}
+  bind:showDrawer bind:showLyric bind:showPeq {likedSet} {onToggleLike} {onReveal}
   onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
-  onClearQueue={handleClearQueue}
-  onShuffle={handleShuffleAction}
-  onTogglePlay={handleTogglePlay}
-  onPrev={prev}
-  onNext={next}
-  onToggleMode={handleToggleMode}
-  onSeek={seek}
-  onSeekTime={(t) => applyTargetSeek(t)}
+  onClearQueue={handleClearQueue} onShuffle={handleShuffleAction} onTogglePlay={handleTogglePlay}
+  onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek} onSeekTime={(t) => applyTargetSeek(t)}
 />

@@ -98,11 +98,13 @@ body {
 .wco-drag-region {
     -webkit-app-region: drag;
     app-region: drag;
+    window-drag: move;
 }
 
 .wco-no-drag,
 .wco-no-drag * {
     -webkit-app-region: no-drag !important;
     app-region: no-drag !important;
+    window-drag: none !important;
 }
 
