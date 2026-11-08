@@ -280,9 +280,9 @@ describe('LyricModal Component', () => {
       }
     });
 
-    // 挂载后：强制切为深色，以彻底消除 Chrome WCO 左右两侧白块门牙
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#06140f');
-    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#06140f');
+    // 挂载后：沉浸模式下切为当前皮肤的白天同色系深色锚点（告别死黑，自然融入皮肤，如 spring 为 #064e3b）
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#064e3b');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#064e3b');
 
     // 卸载后：自动恢复白天模式浅色
     unmount();

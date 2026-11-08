@@ -154,7 +154,7 @@
     --docked-bar-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 
     /* 8. 全屏沉浸播放 (Immersive Player - 白昼沙龙石板蓝，四角深色聚焦渐变) */
-    --immersive-bg: radial-gradient(ellipse 110% 90% at center, #334155 0%, #1e293b 45%, #0f172a 72%, #0a0e1a 100%);
+    --immersive-bg: radial-gradient(ellipse 110% 90% at center, #334155 0%, #1e293b 45%, #182333 72%, #182232 100%);
     --immersive-header-bg: rgba(255, 255, 255, 0.85);
     --immersive-footer-bg: rgba(255, 255, 255, 0.7);
     --immersive-ring-bg: #1e293b;

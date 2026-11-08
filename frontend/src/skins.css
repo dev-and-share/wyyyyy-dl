@@ -47,7 +47,7 @@
   --topbar-border: rgba(16, 185, 129, 0.15);
   --input-focus-border: #059669;
   --input-focus-glow: rgba(16, 185, 129, 0.2);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #059669 0%, #047857 42%, #064e3b 72%, #06140f 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #059669 0%, #047857 42%, #065f46 72%, #064e3b 100%);
 }
 
 /* 2. 灵动极光 (Aurora Glass) 全局主题 */
@@ -90,7 +90,7 @@
   --nav-tab-active-color: #7e22ce;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(168, 85, 247, 0.15);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #6d28d9 0%, #4c1d95 42%, #2e1065 72%, #0c0a1a 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #6d28d9 0%, #5b21b6 42%, #4c1d95 72%, #3b137a 100%);
 }
 
 /* 3. 复古磁带 (Cassette Walkman) 全局主题 */
@@ -132,7 +132,7 @@
   --nav-tab-active-color: #b45309;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(245, 158, 11, 0.15);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #573319 0%, #3e210f 45%, #24140a 72%, #121316 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #573319 0%, #452410 45%, #3a1d0a 72%, #3a1d0a 100%);
 }
 
 /* 4. Winamp 经典 (Retro Winamp) 全局主题 */
@@ -175,7 +175,7 @@
   --nav-tab-active-color: #059669;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(0, 0, 0, 0.1);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #065f46 0%, #044332 45%, #0f241a 72%, #11141b 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #065f46 0%, #044e39 45%, #033f2e 72%, #033f2e 100%);
 }
 
 /* 🎵 歌单正在播放曲目的皮肤个性化呈现 (Skin Playing Card Highlight) */
@@ -281,7 +281,7 @@
   --nav-tab-active-color: #db2777;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(244, 114, 182, 0.18);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #be185d 0%, #9d174d 42%, #50133c 72%, #240d1e 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #be185d 0%, #9d174d 42%, #831843 72%, #701445 100%);
 }
 [data-skin="sakura"] .track-item-card.is-active-playing {
   background: rgba(244, 114, 182, 0.14) !important;
@@ -340,7 +340,7 @@
   --nav-tab-active-color: #0284c7;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(56, 189, 248, 0.28);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0284c7 0%, #0369a1 42%, #073458 72%, #072b4a 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0284c7 0%, #0369a1 42%, #07477c 72%, #064272 100%);
 }
 [data-skin="summer"] .track-item-card.is-active-playing {
   background: rgba(56, 189, 248, 0.18) !important;
@@ -399,7 +399,7 @@
   --nav-tab-active-color: #b45309;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(250, 204, 21, 0.22);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #d97706 0%, #b45309 42%, #5a2608 72%, #1a1305 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #d97706 0%, #b45309 42%, #85370a 72%, #6b2d08 100%);
 }
 [data-skin="autumn"] .track-item-card.is-active-playing {
   background: rgba(250, 204, 21, 0.16) !important;
@@ -458,7 +458,7 @@
   --nav-tab-active-color: #0f172a;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(0, 0, 0, 0.12);
-  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2563eb 0%, #1d4ed8 42%, #1e3a8a 72%, #0b121e 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2563eb 0%, #1d4ed8 42%, #1e40af 72%, #1e3a8a 100%);
 }
 [data-skin="winter"] .track-item-card.is-active-playing {
   background: rgba(255, 255, 255, 0.16) !important;

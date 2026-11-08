@@ -90,14 +90,14 @@ describe('skinStore', () => {
     // 2. 进入全屏沉浸播放 (LyricModal 挂载)
     setImmersiveThemeColor(true);
     expect(getIsImmersiveActive()).toBe(true);
-    // 强制切为深色，使 Chrome WCO 左右两侧原生按钮原生变黑
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0c0a1a');
-    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#0c0a1a');
+    // 浅色模式下切为皮肤同色系深色锚点（告别死黑），如 aurora 为 #3b137a
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#3b137a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#3b137a');
 
-    // 3. 在沉浸模式内切换皮肤为 spring
+    // 3. 在沉浸模式内切换皮肤为 spring (浅色锚点 #064e3b)
     skin.set('spring');
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#06140f');
-    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#06140f');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#064e3b');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#064e3b');
 
     // 4. 退出全屏沉浸播放 (LyricModal 销毁)
     setImmersiveThemeColor(false);

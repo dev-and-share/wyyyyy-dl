@@ -1,4 +1,4 @@
-import { DEFAULT_PALETTE, type CoverPalette, type SkinId, SKINS, SKIN_THEME_COLORS } from '../components/skins/skinTypes';
+import { DEFAULT_PALETTE, type CoverPalette, type SkinId, SKINS, SKIN_THEME_COLORS, SKIN_IMMERSIVE_ANCHORS } from '../components/skins/skinTypes';
 import { extractCoverPalette } from './colorExtractor';
 
 const STORAGE_KEY = 'player_skin';
@@ -35,9 +35,11 @@ function syncRootSkinAttribute(id: SkinId) {
 export function syncMetaThemeColor(skinId?: SkinId) {
   if (typeof document === 'undefined') return;
   const currentSkin: SkinId = skinId || (skin?.current ? skin.current : 'vinyl');
-  const isLight = !isImmersiveActive && document.documentElement.getAttribute('data-theme') === 'light';
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   const color = isImmersiveActive
-    ? (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a')
+    ? (isLight
+        ? (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.light || '#064272')
+        : (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.dark || '#0a0e1a'))
     : (isLight
         ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
         : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a'));
