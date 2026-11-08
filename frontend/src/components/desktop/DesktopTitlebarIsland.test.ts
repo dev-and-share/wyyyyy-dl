@@ -40,7 +40,7 @@ describe('DesktopTitlebarIsland Component with Adaptive Dynamic Island States', 
     expect(getByText('WYY')).toBeInTheDocument();
   });
 
-  it('renders compact paused capsule (200px) when curTrack exists but is not playing', () => {
+  it('renders compact paused capsule (176px) when curTrack exists but is not playing', () => {
     const { getByTestId, queryByTestId, getByText } = render(DesktopTitlebarIsland, {
       curTrack: mockTrackWithLyrics,
       playing: false
@@ -51,7 +51,7 @@ describe('DesktopTitlebarIsland Component with Adaptive Dynamic Island States', 
     expect(getByText('苦守护这个家')).toBeInTheDocument();
   });
 
-  it('renders expanded active pill (360px) with track name and artist when playing without lyrics', () => {
+  it('renders expanded active pill (320px) with track name and artist when playing without lyrics', () => {
     const { getByTestId, getByText } = render(DesktopTitlebarIsland, {
       curTrack: mockTrackWithoutLyrics,
       playing: true

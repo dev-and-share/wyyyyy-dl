@@ -99,13 +99,13 @@
   <div class="shrink-0 flex items-center justify-center wco-no-drag py-0.5">
     {#if effectiveTrack}
       {#if isPlaying}
-        <!-- 🎵 播放展开岛态：360px 适度定宽 + 32px 舒适高度 + 唱片旋转 + 走马灯歌词/歌名 + 声波律动 + 暂停按钮 -->
+        <!-- 🎵 播放展开岛态：320px 适度定宽 + 32px 舒适高度 + 唱片旋转 + 走马灯歌词/歌名 + 声波律动 + 暂停按钮 -->
         <div
           role="button"
           tabindex="0"
           data-testid="titlebar-island-active"
           class="wco-no-drag relative z-10 flex items-center gap-2.5 h-8 px-2.5 rounded-full bg-[var(--card-bg)]/90 hover:bg-[var(--card-bg)] border border-[var(--border-color)] hover:border-[var(--primary-color)]/40 shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-300 cursor-pointer select-none overflow-hidden shrink-0 text-left outline-none pointer-events-auto"
-          style="width: min(360px, calc(100vw - 220px));"
+          style="width: min(320px, calc(100vw - 220px));"
           onclick={handleIslandClick}
           onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleIslandClick(e as any); } }}
           title={t('player.expandLyric')}
@@ -124,7 +124,7 @@
           <!-- 走马灯歌词 / 歌曲名主视窗 -->
           <div
             bind:this={textContainerEl}
-            class="island-marquee-mask flex-1 min-w-0 overflow-hidden pointer-events-none relative flex items-center"
+            class="flex-1 min-w-0 overflow-hidden pointer-events-none relative flex items-center {overflowOffset > 0 ? 'island-marquee-mask' : ''}"
           >
             {#if isDisplayingLyric}
               {#key activeLyric}
@@ -166,13 +166,11 @@
             <span class="w-0.5 bg-[var(--primary-color)] rounded-full h-2.5 animate-[pulse_0.7s_ease-in-out_infinite_0.4s]"></span>
           </div>
 
-          <!-- 暂停按钮 (26px 舒适按压，阻止 mousedown/pointerdown 拖拽冒泡) -->
+          <!-- 暂停按钮 (26px 舒适按压) -->
           <button
             type="button"
             data-testid="btn-island-toggle-play"
             class="wco-no-drag relative z-20 w-6.5 h-6.5 rounded-full flex items-center justify-center bg-white/10 hover:bg-[var(--primary-color)] text-[var(--text-main)] hover:text-white active:scale-90 transition-all cursor-pointer border-none shrink-0 pointer-events-auto shadow-xs"
-            onpointerdown={(e) => e.stopPropagation()}
-            onmousedown={(e) => e.stopPropagation()}
             onclick={handlePlayClick}
             onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handlePlayClick(e as any); } }}
             title={t('player.pause')}
@@ -182,13 +180,13 @@
           </button>
         </div>
       {:else}
-        <!-- ⏸️ 暂停紧凑胶囊：锁定 200px 紧凑视野，彻底消除空荡大黑边 -->
+        <!-- ⏸️ 暂停紧凑胶囊：锁定 176px 紧凑精致视野，消除多余空白 -->
         <div
           role="button"
           tabindex="0"
           data-testid="titlebar-island-paused"
           class="wco-no-drag relative z-10 flex items-center gap-2 h-7 px-2 rounded-full bg-[var(--card-bg)]/85 hover:bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-[var(--border-color)] shadow-xs hover:shadow-sm active:scale-[0.99] transition-all duration-300 cursor-pointer select-none overflow-hidden shrink-0 text-left outline-none pointer-events-auto"
-          style="width: 200px;"
+          style="width: min(176px, calc(100vw - 220px));"
           onclick={handleIslandClick}
           onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleIslandClick(e as any); } }}
           title={t('player.expandLyric')}
@@ -210,13 +208,11 @@
             </div>
           </div>
 
-          <!-- 播放按钮 (24px 显眼播放图标，阻止拖拽手势拦截) -->
+          <!-- 播放按钮 (24px 显眼播放图标) -->
           <button
             type="button"
             data-testid="btn-island-toggle-play"
             class="wco-no-drag relative z-20 w-6 h-6 rounded-full flex items-center justify-center bg-white/10 hover:bg-[var(--primary-color)] text-[var(--text-main)] hover:text-white active:scale-90 transition-all cursor-pointer border-none shrink-0 pointer-events-auto shadow-xs"
-            onpointerdown={(e) => e.stopPropagation()}
-            onmousedown={(e) => e.stopPropagation()}
             onclick={handlePlayClick}
             onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handlePlayClick(e as any); } }}
             title={t('player.play')}
@@ -251,10 +247,10 @@
 </header>
 
 <style>
-  /* 🌊 走马灯两端羽化渐隐遮罩 */
+  /* 🌊 走马灯溢出端羽化遮罩（仅右端渐隐，保留首字 100% 清晰） */
   .island-marquee-mask {
-    mask-image: linear-gradient(to right, transparent 0px, black 8px, black calc(100% - 8px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0px, black 8px, black calc(100% - 8px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 12px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 12px), transparent 100%);
   }
 
   /* 💫 走马灯流动：当歌词超出时优雅往复滚动 */

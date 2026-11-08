@@ -142,7 +142,9 @@
     {curTrack}
     {playing}
     onTogglePlay={() => {
-      if (typeof window !== 'undefined') {
+      if (typeof togglePlayerPlay === 'function') {
+        togglePlayerPlay();
+      } else if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('wyy:toggle-play'));
       }
     }}
