@@ -8,6 +8,7 @@ import settings from './settings';
 import comment from './comment';
 import toast from './toast';
 import error from './error';
+import musicfree from './musicfree';
 
 export const en: TranslationDictionary = {
   ...common,
@@ -19,6 +20,7 @@ export const en: TranslationDictionary = {
   ...comment,
   ...toast,
   ...error,
+  ...musicfree,
 };
 
 export default en;

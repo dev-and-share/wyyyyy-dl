@@ -4,6 +4,7 @@ export default {
   'topbar.refresh': '点击刷新数据',
   'topbar.toggleTheme': '切换主题',
   'topbar.settings': '系统偏好设置',
+  'topbar.minimalPlayerTest': '极简锁屏播放测试',
   'topbar.playlist': '歌单',
   'topbar.search': '搜索',
   'topbar.discover': '发现',

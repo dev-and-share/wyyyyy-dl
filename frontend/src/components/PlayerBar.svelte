@@ -10,6 +10,7 @@
     curTrack,
     queue,
     playing,
+    loading = false,
     curTime,
     duration,
     playMode,
@@ -30,6 +31,7 @@
     curTrack: Track | null;
     queue: Track[];
     playing: boolean;
+    loading?: boolean;
     curTime: number;
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
@@ -159,6 +161,7 @@
         {curTrack}
         {queue}
         {playing}
+        {loading}
         {curTime}
         {duration}
         {playMode}
@@ -185,6 +188,7 @@
         {curTrack}
         {queue}
         {playing}
+        {loading}
         {curTime}
         {duration}
         {playMode}

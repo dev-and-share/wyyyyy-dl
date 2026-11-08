@@ -59,7 +59,7 @@
   </div>
 
   <!-- 右侧：统一规格的 Sub-Tabs 胶囊 / 音源切换 / 操作按钮区 + 桌面端全局快捷控制 -->
-  <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 self-start sm:self-auto overflow-x-auto max-w-full">
+  <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 self-start sm:self-auto overflow-x-auto no-scrollbar lg:overflow-visible max-w-full">
     {#if actions}
       {@render actions()}
     {:else if children}

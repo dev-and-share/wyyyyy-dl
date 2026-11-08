@@ -277,9 +277,9 @@
     <DesktopViewHeader
       icon="🔍"
       title={t('topbar.search')}
-      badge={searchSource === 'musicfree' ? '聚合检索' : '官方直连'}
+      badge={searchSource === 'musicfree' ? t('musicfree.badgeAggregate') : t('musicfree.badgeDirect')}
       badgeType={searchSource === 'musicfree' ? 'purple' : 'default'}
-      subtitle="全网多源搜索引擎"
+      subtitle={t('musicfree.searchSubtitle')}
     >
       {#snippet actions()}
         <!-- 🎯 音源来源选择器 (统一规格胶囊) -->
@@ -290,7 +290,7 @@
             class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('netease')}
           >
-            <span>☁️</span> <span>网易云</span>
+            <span>☁️</span> <span>{t('search.sourceNetease')}</span>
           </button>
           <button
             type="button"
@@ -298,7 +298,7 @@
             class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('musicfree')}
           >
-            <span>🧩</span> <span>MusicFree 聚合</span>
+            <span>🧩</span> <span>{t('search.sourceMusicFree')}</span>
           </button>
         </div>
       {/snippet}
@@ -322,7 +322,7 @@
           <input
             type="search"
             data-testid="desktop-search-input"
-            placeholder={searchSource === 'musicfree' ? '输入歌曲或歌手，跨所有启用插件并行检索...' : t('search.desktopInputPlaceholder')}
+            placeholder={searchSource === 'musicfree' ? t('search.placeholderMusicFree') : t('search.desktopInputPlaceholder')}
             class="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors placeholder:text-[var(--text-muted)]/60 placeholder:italic placeholder:transition-opacity"
             bind:value={kw}
             onkeydown={(e) => e.key === 'Enter' && executeSearch()}
@@ -366,7 +366,7 @@
     {#if searchLoading}
       <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
         <span class="text-3xl animate-spin">⏳</span>
-        <span>{searchSource === 'musicfree' ? '正在调用插件跨源检索中...' : t('search.searchingLibrary')}</span>
+        <span>{searchSource === 'musicfree' ? t('musicfree.searchingParallel') : t('search.searchingLibrary')}</span>
       </div>
     {:else if searchSource === 'musicfree'}
       <DesktopSearchMusicFreeResults

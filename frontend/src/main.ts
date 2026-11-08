@@ -23,9 +23,18 @@ const app = mount(App, {
   target,
 })
 
-// 注册 PWA Service Worker 并监听新版本就绪通知
-registerServiceWorker(() => {
-  window.dispatchEvent(new CustomEvent('wyy:pwa-update-available'));
-})
+// 注册 PWA Service Worker 并监听新版本就绪通知 (仅生产环境注册，开发环境主动注销避免缓存拦截)
+if (!import.meta.env.DEV) {
+  registerServiceWorker(() => {
+    window.dispatchEvent(new CustomEvent('wyy:pwa-update-available'));
+  });
+} else if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  // ⚡ 本地开发环境 (Vite Dev)：主动清理残留或误注册的 Service Worker，避免本地热更新与静态资源被旧缓存拦截
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const reg of regs) {
+      reg.unregister();
+    }
+  }).catch(() => {});
+}
 
 export default app

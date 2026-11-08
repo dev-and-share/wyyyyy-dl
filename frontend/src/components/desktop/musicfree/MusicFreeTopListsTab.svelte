@@ -109,7 +109,7 @@
 
   async function handleSelectChart(pluginId: string, chart: any, force = false) {
     if (!chart || (chart.id == null && !chart.topId)) {
-      showToast('该榜单缺少有效 ID', 'warning');
+      showToast(t('musicfree.missingChartId'), 'warning');
       return;
     }
     const chartId = chart.id ?? chart.topId;
@@ -135,13 +135,13 @@
         chartTracks = list;
         setApiCache(cacheKey, list);
       } else if (!chartTracks.length) {
-        showToast('该榜单暂无有效曲目', 'info');
+        showToast(t('musicfree.emptyChart'), 'info');
       }
     } catch (e: any) {
       console.warn('获取榜单曲目失败:', e);
       if (!chartTracks.length) {
         chartTracks = [];
-        showToast('该榜单曲目解析暂不可用', 'warning');
+        showToast(t('musicfree.chartParseError'), 'warning');
       }
     } finally {
       detailLoading = false;
@@ -173,7 +173,7 @@
   function handlePlayAll() {
     if (!chartTracks.length || !onPlayQueue || !selectedTopList) return;
     onPlayQueue(chartTracks.map(buildChartTrack), { startIndex: 0, isExplicitTrack: true });
-    showToast(`开始播放「${selectedTopList.title || selectedTopList.name}」`, 'info');
+    showToast(t('musicfree.startPlayingChart', { name: selectedTopList.title || selectedTopList.name }), 'info');
   }
 
   function handlePlaySingle(t: any) {
@@ -201,7 +201,7 @@
         class="text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] flex items-center gap-1.5 cursor-pointer bg-transparent border-none p-0"
         onclick={() => selectedTopList = null}
       >
-        <span>←</span> <span>返回排行榜列表</span>
+        <span>←</span> <span>{t('musicfree.backToCharts')}</span>
       </button>
 
       <div class="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
@@ -221,11 +221,11 @@
               {selectedTopList.title || selectedTopList.name}
             </h2>
             <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium">
-              官方榜单
+              {t('musicfree.officialChartBadge')}
             </span>
           </div>
           <p class="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2">
-            {selectedTopList.description || '该榜单由音源插件提供'}
+            {selectedTopList.description || t('musicfree.chartProvidedByPlugin')}
           </p>
           <div class="flex items-center gap-2">
             <button
@@ -234,9 +234,9 @@
               class="btn-primary text-xs px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 !bg-purple-600 hover:!bg-purple-500"
               onclick={handlePlayAll}
             >
-              <span>▶ 播放全部</span>
+              <span>▶ {t('musicfree.playAll')}</span>
             </button>
-            <span class="text-xs text-[var(--text-muted)]">共 {chartTracks.length} 首歌曲</span>
+            <span class="text-xs text-[var(--text-muted)]">{t('musicfree.chartSongCount', { count: chartTracks.length })}</span>
           </div>
         </div>
       </div>
@@ -245,7 +245,7 @@
       {#if detailLoading}
         <div class="py-16 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-2">
           <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <span>正在获取榜单曲目...</span>
+          <span>{t('musicfree.fetchingChartTracks')}</span>
         </div>
       {:else}
         <div class="flex flex-col gap-1.5">
@@ -265,7 +265,7 @@
                     {trackItem.title || trackItem.name}
                   </span>
                   {#if isVip}
-                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title="版权付费歌曲，可点击右侧「聚合搜」跨源播放">
+                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title={t('musicfree.vipBadgeTitle')}>
                       VIP
                     </span>
                   {/if}
@@ -285,7 +285,7 @@
                   />
                 </div>
                 <div class="text-[11px] text-[var(--text-secondary)] truncate">
-                  {trackItem.artist || '未知歌手'}
+                  {trackItem.artist || t('musicfree.unknownArtist')}
                 </div>
               </div>
 
@@ -298,9 +298,9 @@
                 </SlotBtn>
                 <SlotBtn
                   onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
-                  title="跳转至「MusicFree 聚合」跨多音源检索可用版本"
+                  title={t('musicfree.mfSearchTooltip')}
                 >
-                  🧩 聚合搜
+                  🧩 {t('musicfree.mfSearchShort')}
                 </SlotBtn>
                 {#if status.isServer}
                   <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
@@ -328,18 +328,18 @@
     {#if loading}
       <div class="py-20 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-3">
         <div class="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin"></div>
-        <span>正在加载各音源排行榜...</span>
+        <span>{t('musicfree.loadingCharts')}</span>
       </div>
     {:else if topListGroups.length === 0}
       <div class="py-20 text-center text-xs text-[var(--text-muted)] p-8 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-        当前已启用的音源插件暂未提供官方排行榜接口。可在「插件管理」中导入包含榜单功能的音源插件。
+        {t('musicfree.noChartsAvailable')}
       </div>
     {:else}
       <!-- 🏆 音源下拉选择器 (默认酷狗 Kugou 官方榜单) -->
       <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-xs">
         <div class="flex items-center gap-1.5">
           <span class="text-sm">🏆</span>
-          <span class="text-xs font-semibold text-[var(--text-main)]">选择官方榜单音源：</span>
+          <span class="text-xs font-semibold text-[var(--text-main)]">{t('musicfree.selectChartSource')}</span>
         </div>
         <div class="relative">
           <select
@@ -348,7 +348,7 @@
           >
             {#each topListGroups as grp}
               <option value={grp.pluginId}>
-                {grp.pluginName} ({grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0)} 个榜单)
+                {t('musicfree.chartCountOption', { name: grp.pluginName, count: grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0) })}
               </option>
             {/each}
           </select>

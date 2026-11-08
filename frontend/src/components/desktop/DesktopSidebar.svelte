@@ -39,6 +39,16 @@
     if (!geoProxyState.loaded) {
       fetchGeoProxyConfig();
     }
+    // 代理开启时轻量轮询同步后端状态，自愈恢复后自动由黄转绿
+    const timer = setInterval(() => {
+      if (geoProxyState.enabled) {
+        fetchGeoProxyConfig();
+      }
+    }, 20_000);
+
+    return () => {
+      clearInterval(timer);
+    };
   });
 
   const proxyTooltipSummary = $derived.by(() => {
@@ -210,11 +220,11 @@
       data-testid="sidebar-tab-musicfree"
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {tab === 'musicfree' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('musicfree')}
-      title="MusicFree发现中心 (MusicFree 广场与插件)"
+      title={t('musicfree.navDiscoverTooltip')}
     >
       <span class="text-[15px] leading-none shrink-0">🧩</span>
       {#if !collapsed}
-        <span class="truncate flex-1 text-left">发现</span>
+        <span class="truncate flex-1 text-left">{t('musicfree.navDiscover')}</span>
       {/if}
     </button>
   </nav>
@@ -262,6 +272,7 @@
     class="relative group/proxy inline-flex items-center justify-center cursor-pointer {isCollapsed ? 'p-0.5 rounded hover:bg-white/5' : ''}"
     data-testid="sidebar-geo-proxy-icon"
     role="status"
+    onmouseenter={() => fetchGeoProxyConfig()}
     aria-label={proxyTooltipSummary}
     title={proxyTooltipSummary}
   >

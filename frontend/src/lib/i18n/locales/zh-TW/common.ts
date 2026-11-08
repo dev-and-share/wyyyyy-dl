@@ -4,6 +4,7 @@ export default {
   'topbar.refresh': '點擊重新整理資料',
   'topbar.toggleTheme': '切換主題',
   'topbar.settings': '偏好設定',
+  'topbar.minimalPlayerTest': '極簡鎖定畫面播放測試',
   'topbar.playlist': '播放清單',
   'topbar.search': '搜尋',
   'topbar.discover': '探索',

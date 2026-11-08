@@ -4,6 +4,7 @@ export default {
   'topbar.refresh': 'クリックして更新',
   'topbar.toggleTheme': 'テーマ切り替え',
   'topbar.settings': '環境設定',
+  'topbar.minimalPlayerTest': 'ミニマルロック画面テスト',
   'topbar.playlist': 'プレイリスト',
   'topbar.search': '検索',
   'topbar.discover': '発見',

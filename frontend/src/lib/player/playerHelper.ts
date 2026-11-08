@@ -345,5 +345,32 @@ export async function handleRestrictedAudioCheck(
   return { isRestricted: true, shouldSkip: true };
 }
 
+/**
+ * 预备曲目到 Audio 标签与本地已下载状态标记
+ */
+export async function prepareTrackInUI(track: Track, audioEl: HTMLAudioElement | null): Promise<void> {
+  if (track.filePath && track.id && !track.filePath.startsWith('/v3/stream/online')) markSongDownloaded(track.id);
+  if (track.url && track.url.startsWith('blob:')) track.url = track.id ? `/v3/stream?id=${track.id}` : '';
+  const url = track.url || (await resolveTrackUrl(track));
+  if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:') || !isSameAudioSource(audioEl.src, url))) {
+    audioEl.src = url;
+  }
+}
+
+/**
+ * 补齐网易云歌曲缺失歌词
+ */
+export function fetchMissingLyric(tr: Track | null): void {
+  const numId = Number(tr?.id);
+  if (tr?.id && !tr.lyric && !isNaN(numId) && numId > 0 && !String(tr.id).startsWith('mf_')) {
+    api.songV1(String(tr.id), 'lossless').then((j: any) => {
+      if (j?.data?.lyric && playerStore.activeTrack?.id === tr.id) {
+        tr.lyric = j.data.lyric;
+        playerStore.activeTrack.lyric = j.data.lyric;
+      }
+    }).catch(() => {});
+  }
+}
+
 
 

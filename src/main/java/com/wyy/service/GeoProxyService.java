@@ -28,6 +28,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -75,6 +76,8 @@ public class GeoProxyService {
     private final ConcurrentHashMap<String, Long> cooldownMap = new ConcurrentHashMap<>();
     /** 是否正在刷新中 */
     private final AtomicBoolean isRefreshing = new AtomicBoolean(false);
+    /** 上次触发自动测速自愈的时间戳 (ms)，用于防抖防风暴 */
+    private volatile long lastAutoTestTime = 0L;
 
     private static final Pattern PROXY_LINE_PATTERN = Pattern.compile("^(?:([a-zA-Z0-9]+)://)?([a-zA-Z0-9.-]+):(\\d+)");
 
@@ -96,6 +99,38 @@ public class GeoProxyService {
 
         if (this.currentConfig.isEnabled() && "pool".equalsIgnoreCase(this.currentConfig.getMode())) {
             asyncRefreshPool();
+        }
+    }
+
+    /**
+     * 🇨🇳 [自愈巡检守护] 自动检测掉线、故障自愈与代理池定时更新
+     * 1. 代理启用且处于直连降级 (isFallbackDirect) 或无活跃 IP 时，自动发起自愈测速并重新锁定可用节点
+     * 2. 定时刷新代理池：若代理池为空或超过 30 分钟未更新，自动后台拉取最新高匿节点
+     */
+    @Scheduled(fixedDelay = 60_000, initialDelay = 20_000)
+    public void scheduledProxyWatchdog() {
+        if (!currentConfig.isEnabled()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+
+        // 1. 公共代理池自动定时拉取 (空池或超过 30 分钟未更新)
+        if ("pool".equalsIgnoreCase(currentConfig.getMode())) {
+            if (proxyPool.isEmpty() || (now - currentConfig.getLastRefreshedAt() > 1_800_000L)) {
+                log.info("🇨🇳 [GeoProxy Watchdog] 代理池为空或超过 30 分钟未更新，自动触发刷新...");
+                asyncRefreshPool();
+            }
+        }
+
+        // 2. 掉线自愈检测：如果处于直连模式或未锁定有效代理
+        if (this.isFallbackDirect || StringUtils.isBlank(this.currentActiveProxy)) {
+            // 防抖防风暴：两次自动探测间隔至少 25 秒
+            if (now - lastAutoTestTime >= 25_000L) {
+                lastAutoTestTime = now;
+                log.info("🇨🇳 [GeoProxy Watchdog] 检测到代理断开或处于直连模式，自动唤醒测速自愈重连...");
+                asyncExecutor.submit(() -> testProxy(""));
+            }
         }
     }
 
@@ -197,7 +232,7 @@ public class GeoProxyService {
             }
         }
 
-        if (proxyPool.isEmpty() && now - currentConfig.getLastRefreshedAt() > 300_000L) {
+        if ((proxyPool.isEmpty() || this.isFallbackDirect) && now - currentConfig.getLastRefreshedAt() > 600_000L) {
             asyncRefreshPool();
         }
 
@@ -235,8 +270,14 @@ public class GeoProxyService {
             this.currentActiveProxy = "";
             this.currentActiveLocation = "";
             this.currentActiveLatency = null;
-            // 异步自动竞速探测寻找替补新 IP
-            asyncExecutor.submit(() -> testProxy(""));
+            this.isFallbackDirect = true;
+
+            // 异步自动竞速探测寻找替补新 IP (防抖保护)
+            long now = System.currentTimeMillis();
+            if (now - lastAutoTestTime >= 5_000L) {
+                lastAutoTestTime = now;
+                asyncExecutor.submit(() -> testProxy(""));
+            }
         }
     }
 
@@ -300,6 +341,9 @@ public class GeoProxyService {
      * 测试代理连通性并【固定选中最快的中国大陆节点作为生效 IP】
      */
     public Map<String, Object> testProxy(String targetProxyUrl) {
+        long now = System.currentTimeMillis();
+        this.lastAutoTestTime = now;
+
         // 1. 若用户指定了自定义单一代理，直接测试该代理
         if (StringUtils.isNotBlank(targetProxyUrl)) {
             HttpHost host = parseHttpHost(targetProxyUrl.trim());
@@ -317,17 +361,39 @@ public class GeoProxyService {
         if (proxyPool.isEmpty()) {
             Map<String, Object> fail = new HashMap<>();
             fail.put("success", false);
-            fail.put("error", "当前内存代理池为空，请先点击「刷新代理池」或检查订阅源");
+            fail.put("error", "当前内存代理池为空，系统正在自动拉取订阅源...");
             this.isFallbackDirect = true;
+            asyncRefreshPool();
             return fail;
         }
 
-        List<String> snapshot = new ArrayList<>(proxyPool);
-        int sampleSize = Math.min(snapshot.size(), 8);
+        // 3. 过滤出未在冷却期（3 分钟内未报错）的可用候选节点
+        cooldownMap.entrySet().removeIf(entry -> entry.getValue() < now);
+        List<String> available = new ArrayList<>();
+        for (String pStr : proxyPool) {
+            if (!cooldownMap.containsKey(pStr)) {
+                available.add(pStr);
+            }
+        }
+
+        // 若所有节点均处于冷却期，重置冷却并触发一次代理池刷新
+        if (available.isEmpty()) {
+            log.warn("🇨🇳 [GeoProxy] 代理池中所有节点均处于冷却期，重置冷却并尝试重新测试");
+            cooldownMap.clear();
+            available.addAll(proxyPool);
+            if (now - currentConfig.getLastRefreshedAt() > 300_000L) {
+                asyncRefreshPool();
+            }
+        }
+
+        // 🌟 核心改进：打乱候选顺序，杜绝“永远只测列表前几个坏节点”的盲区死锁
+        Collections.shuffle(available);
+
+        int sampleSize = Math.min(available.size(), 12);
         List<CompletableFuture<Map<String, Object>>> futures = new ArrayList<>();
 
         for (int i = 0; i < sampleSize; i++) {
-            String pStr = snapshot.get(i);
+            String pStr = available.get(i);
             HttpHost h = parseHttpHost(pStr);
             if (h != null) {
                 futures.add(CompletableFuture.supplyAsync(() -> testSingleHost(h, true), asyncExecutor));
@@ -347,7 +413,7 @@ public class GeoProxyService {
         if (successResults.isEmpty()) {
             Map<String, Object> fail = new HashMap<>();
             fail.put("success", false);
-            fail.put("error", "所测代理节点连接超时或无中国大陆有效响应，系统将在请求时自动直连兜底");
+            fail.put("error", "所测 " + sampleSize + " 个代理节点连接超时或无中国大陆有效响应，系统将在请求时自动直连兜底");
             this.isFallbackDirect = true;
             return fail;
         }
@@ -363,7 +429,7 @@ public class GeoProxyService {
         this.currentActiveLatency = (Long) winner.get("latencyMs");
         this.isFallbackDirect = false;
 
-        log.info("🇨🇳 [GeoProxy] 🎯 已固定当前正在生效的代理 IP: {} ({} ms, {})",
+        log.info("🇨🇳 [GeoProxy] 🎯 自动优选成功！已锁定活跃代理 IP: {} ({} ms, {})",
                 fastestProxy, this.currentActiveLatency, this.currentActiveLocation);
 
         winner.put("isFastestWinner", true);

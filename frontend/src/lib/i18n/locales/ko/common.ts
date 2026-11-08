@@ -4,6 +4,7 @@ export default {
   'topbar.refresh': '새로고침',
   'topbar.toggleTheme': '테마 전환',
   'topbar.settings': '환경설정',
+  'topbar.minimalPlayerTest': '미니멀 잠금 화면 테스트',
   'topbar.playlist': '플레이리스트',
   'topbar.search': '검색',
   'topbar.discover': '발견',

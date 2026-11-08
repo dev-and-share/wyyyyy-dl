@@ -144,4 +144,26 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     expect(track2.unplayable).toBeFalsy();
     expect(playerStore.qIndex).toBe(1);
   });
+
+  it('manages loading state and prevents old track audio replay during async resolution on track switch', async () => {
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+
+    // 当前在播已落盘旧歌
+    const oldTrack = { id: 301, name: '旧歌曲', artist: '歌手A', url: '/v3/stream?id=301', isLocal: true };
+    playerStore.setQueue([oldTrack], 0);
+    audioEl.src = 'http://localhost/v3/stream?id=301';
+    playerStore.playing = true;
+
+    // 切换至一首无预设 url 的插件/外部歌曲（需要异步解析）
+    const newAsyncTrack = { id: 'mf_kugou_999', name: '新插件歌曲', artist: '歌手B' };
+    window.dispatchEvent(new CustomEvent('wyy:play-tracks', {
+      detail: { tracks: [newAsyncTrack], optionsOrIdx: { startIndex: 0, forceReplace: true } }
+    }));
+
+    // 验证：立即激活 loading，且在 iOS 环境下切换至无声 loop 循环（绝不以 0 秒重播旧歌）
+    expect(playerStore.loading).toBe(true);
+    expect(audioEl.loop).toBe(true);
+    expect(audioEl.src.startsWith('blob:')).toBe(true);
+  });
 });

@@ -17,6 +17,7 @@
     curTrack,
     queue = [],
     playing = false,
+    loading = false,
     curTime = 0,
     duration = 0,
     playMode = 'list',
@@ -38,6 +39,7 @@
     curTrack: Track | null;
     queue: Track[];
     playing: boolean;
+    loading?: boolean;
     curTime: number;
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
@@ -154,6 +156,12 @@
             >
               {curTrack?.name || t('player.noTrackPlaying')}
             </span>
+            {#if loading}
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1 shrink-0 animate-pulse font-normal">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span>
+                <span>{t('player.loadingTrack')}</span>
+              </span>
+            {/if}
             {#if curTrack}
               <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1 shrink-0" />
               <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -182,6 +190,7 @@
     <div class="flex flex-col items-center justify-center flex-2 max-w-[580px] gap-1.5 w-full">
       <PlayerControls
         {playing}
+        {loading}
         {playMode}
         {onTogglePlay}
         {onPrev}

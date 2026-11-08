@@ -81,4 +81,30 @@ class GeoProxyServiceTest {
         assertFalse(GeoProxyService.isChinaMainland(""));
         assertFalse(GeoProxyService.isChinaMainland(null));
     }
+
+    @Test
+    void testReportProxyFailureTriggersFallbackDirect() {
+        GeoProxyConfig config = new GeoProxyConfig();
+        config.setEnabled(true);
+        config.setMode("pool");
+        geoProxyService.updateConfig(config);
+
+        // 模拟当前活跃节点
+        HttpHost active = new HttpHost("114.114.114.114", 8080);
+        ReflectionTestUtils.setField(geoProxyService, "currentActiveProxy", "114.114.114.114:8080");
+
+        geoProxyService.reportProxyFailure(active);
+
+        GeoProxyConfig updated = geoProxyService.getConfig();
+        assertEquals("", updated.getActiveProxy());
+        assertTrue(updated.isFallbackDirect());
+    }
+
+    @Test
+    void testScheduledProxyWatchdogSafeWhenDisabled() {
+        geoProxyService.init();
+        assertFalse(geoProxyService.isEnabled());
+        // 确保不会抛出异常
+        geoProxyService.scheduledProxyWatchdog();
+    }
 }

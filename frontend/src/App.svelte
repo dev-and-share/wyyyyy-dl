@@ -18,6 +18,7 @@
 
   import TopBar from './components/TopBar.svelte';
   import DesktopSidebar from './components/desktop/DesktopSidebar.svelte';
+  import DesktopTitlebarIsland from './components/desktop/DesktopTitlebarIsland.svelte';
   import DesktopPlaylistView from './components/desktop/DesktopPlaylistView.svelte';
   import DesktopSearchView from './components/desktop/DesktopSearchView.svelte';
   import DesktopDownloadMgrView from './components/desktop/DesktopDownloadMgrView.svelte';
@@ -133,6 +134,20 @@
   <div class="fixed inset-0 pointer-events-none z-[30] overflow-hidden" aria-hidden="true">
     <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={particleBottomOffset} />
   </div>
+{/if}
+
+<!-- 🏝️ PC 桌面端专属：Window Controls Overlay (WCO) 顶栏沉浸灵动岛 -->
+{#if layoutState.isDesktop && layoutState.wco.visible}
+  <DesktopTitlebarIsland
+    {curTrack}
+    {playing}
+    onTogglePlay={togglePlayerPlay}
+    onOpenLyric={() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wyy:toggle-lyric-modal'));
+      }
+    }}
+  />
 {/if}
 
 <!-- 页面整体容器：在宽屏 (>= 1024px) 锁定视口左侧边栏固定右侧独立滚动，窄屏竖屏自由流动 -->

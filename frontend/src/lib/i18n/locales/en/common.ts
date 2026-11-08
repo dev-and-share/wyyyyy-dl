@@ -4,6 +4,7 @@ export default {
   'topbar.refresh': 'Click to refresh data',
   'topbar.toggleTheme': 'Toggle Theme',
   'topbar.settings': 'System Preferences',
+  'topbar.minimalPlayerTest': 'Minimal Lock Screen Test',
   'topbar.playlist': 'Playlists',
   'topbar.search': 'Search',
   'topbar.discover': 'Discover',

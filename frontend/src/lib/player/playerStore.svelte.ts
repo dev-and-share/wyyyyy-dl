@@ -39,6 +39,7 @@ export class PlayerStore {
   curTime = $state<number>(0);
   duration = $state<number>(0);
   playing = $state<boolean>(false);
+  loading = $state<boolean>(false);
   vol = $state<number>(0.85);
   autoSkipTrial = $state<boolean>(true);
   serverOnly = $state<boolean>(false);
@@ -337,6 +338,7 @@ export class PlayerStore {
     this.curTime = 0;
     this.duration = 0;
     this.playing = false;
+    this.loading = false;
     this.playlistId = null;
     this.save();
   }

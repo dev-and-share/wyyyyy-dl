@@ -15,6 +15,7 @@
     curTrack,
     queue = [],
     playing = false,
+    loading = false,
     curTime = 0,
     duration = 0,
     playMode = 'list',
@@ -36,6 +37,7 @@
     curTrack: Track | null;
     queue: Track[];
     playing: boolean;
+    loading?: boolean;
     curTime: number;
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
@@ -151,6 +153,11 @@
         >
           {curTrack?.name || t('player.noTrackPlaying')}
         </span>
+        {#if loading}
+          <span class="text-[9px] px-1 py-0.2 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 shrink-0 animate-pulse font-normal">
+            {t('player.loadingTrack')}
+          </span>
+        {/if}
         {#if curTrack}
           <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
         {/if}
@@ -284,7 +291,12 @@
       onclick={onTogglePlay}
       title={playing ? t('player.pause') : t('player.play')}
     >
-      {#if skin.current === 'winamp'}
+      {#if loading}
+        <svg class="animate-spin text-white w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+          <path class="opacity-85" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      {:else if skin.current === 'winamp'}
         <span class="text-xs font-mono font-bold leading-none">{playing ? '❚❚' : '▶'}</span>
       {:else}
         <PlayerIcon name={playing ? 'pause' : 'play'} size={20} />

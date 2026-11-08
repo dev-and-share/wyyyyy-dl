@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../lib/i18n';
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
 
   let {
@@ -9,20 +10,20 @@
 
   let inputUrl = $state('');
 
-  const PRESET_SOURCES = [
+  const PRESET_SOURCES = $derived([
     {
-      name: '🌟 纯净主流五大源',
+      name: t('musicfree.presetSourcePureFive'),
       url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/myPlugins.json'
     },
     {
-      name: '🌐 全网每日自动同步源',
+      name: t('musicfree.presetSourceDailySync'),
       url: 'https://fastly.jsdelivr.net/gh/hebijunge/musicfree-plugins@master/plugins.json'
     },
     {
-      name: '📻 MusicFree官方源',
+      name: t('musicfree.presetSourceOfficial'),
       url: 'https://gitee.com/maotoumao/MusicFreePlugins/raw/master/plugins.json'
     }
-  ];
+  ]);
 
   const SINGLE_PRESETS = [
     { name: '酷我音乐 (小蜗)', url: 'https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaowo.js' },
@@ -34,57 +35,57 @@
   function handleCleanupJunk() {
     const count = musicFreeStore.cleanupJunkPlugins();
     if (count > 0) {
-      showToast(`已为您成功清理 ${count} 个无歌单或失效垃圾插件！`, 'success');
+      showToast(t('musicfree.cleanJunkSuccess', { count }), 'success');
     } else {
-      showToast('当前已安装插件中未检测到已知失效垃圾源', 'info');
+      showToast(t('musicfree.cleanJunkNoop'), 'info');
     }
   }
 
   function handleSelectAll() {
     musicFreeStore.setAllPluginsEnabled(true);
-    showToast('已全部启用音源插件', 'success');
+    showToast(t('musicfree.enabledAllToast'), 'success');
   }
 
   function handleSelectNone() {
     musicFreeStore.setAllPluginsEnabled(false);
-    showToast('已全部停用音源插件', 'info');
+    showToast(t('musicfree.disabledAllToast'), 'info');
   }
 
   function handleInvertSelection() {
     musicFreeStore.invertAllPlugins();
-    showToast('已反转音源插件启用状态', 'info');
+    showToast(t('musicfree.invertToast'), 'info');
   }
 
   function handleRestoreBuiltins() {
     const count = musicFreeStore.restoreBuiltinPlugins();
     if (count > 0) {
-      showToast(`已成功恢复 ${count} 个官方内置音源插件！`, 'success');
+      showToast(t('musicfree.restoreBuiltinsSuccess', { count }), 'success');
     } else {
-      showToast('官方内置插件均已处于正常安装状态', 'info');
+      showToast(t('musicfree.restoreBuiltinsNoop'), 'info');
     }
   }
 
   async function handleImport(urlToImport?: string) {
     const url = (urlToImport || inputUrl).trim();
     if (!url) {
-      showToast('请输入有效的 MusicFree 插件或订阅源地址', 'warning');
+      showToast(t('musicfree.urlRequired'), 'warning');
       return;
     }
 
     try {
-      showToast('正在解析并加载插件...', 'info', 3000);
+      showToast(t('musicfree.importing'), 'info', 3000);
       const res = await musicFreeStore.installFromUrl(url);
       if (res.successCount > 0) {
-        showToast(`🎉 成功导入并激活 ${res.successCount} 个音源插件！`, 'success');
+        showToast(t('musicfree.importSuccess', { count: res.successCount }), 'success');
         inputUrl = '';
       } else {
-        showToast('未能导入任何插件，请检查网络或链接是否有效', 'error');
+        showToast(t('musicfree.importFailedZero'), 'error');
       }
       if (res.errors.length > 0) {
         console.warn('插件导入过程部分异常:', res.errors);
       }
     } catch (err: any) {
-      showToast(`导入失败: ${err.message || err}`, 'error');
+      showToast(t('musicfree.importFailedError', { error: err.message || err }), 'error');
     }
   }
 </script>
@@ -93,14 +94,14 @@
   <!-- 导入订阅源 / 单插件卡片 -->
   <section class="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
     <h2 class="text-sm font-semibold text-[var(--text-main)] flex items-center gap-1.5">
-      <span>📥</span> 导入音源插件或订阅源
+      <span>📥</span> {t('musicfree.importTitle')}
     </h2>
 
     <div class="flex flex-col sm:flex-row gap-2.5">
       <input
         type="text"
         bind:value={inputUrl}
-        placeholder="粘贴 plugins.json 订阅源地址或单个 .js 插件地址..."
+        placeholder={t('musicfree.importPlaceholder')}
         class="flex-1 px-3.5 py-2.5 rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] text-xs lg:text-sm text-[var(--text-main)] outline-none focus:border-purple-500 transition-colors"
         onkeydown={(e) => e.key === 'Enter' && handleImport()}
       />
@@ -112,9 +113,9 @@
       >
         {#if musicFreeStore.loading}
           <span class="animate-spin text-sm">⏳</span>
-          <span>{musicFreeStore.statusMessage || '拉取解析中...'}</span>
+          <span>{musicFreeStore.statusMessage || t('musicfree.fetchingParsing')}</span>
         {:else}
-          <span>一键导入</span>
+          <span>{t('musicfree.importBtn')}</span>
         {/if}
       </button>
     </div>
@@ -122,7 +123,7 @@
     <!-- 预设接口快捷点击标签 -->
     <div class="pt-2 border-t border-[var(--border-color)]/50 space-y-2">
       <div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-xs text-[var(--text-muted)] font-medium">高品质订阅源：</span>
+        <span class="text-xs text-[var(--text-muted)] font-medium">{t('musicfree.presetSourcesLabel')}</span>
         {#each PRESET_SOURCES as preset}
           <button
             type="button"
@@ -138,7 +139,7 @@
       </div>
 
       <div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-xs text-[var(--text-muted)] font-medium">单平台精选：</span>
+        <span class="text-xs text-[var(--text-muted)] font-medium">{t('musicfree.singlePresetsLabel')}</span>
         {#each SINGLE_PRESETS as single}
           <button
             type="button"
@@ -159,7 +160,7 @@
   <section class="space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold text-[var(--text-main)] flex items-center gap-1.5 shrink-0">
-        <span>📦</span> 已安装音源插件 ({musicFreeStore.plugins.length})
+        <span>📦</span> {t('musicfree.installedPluginsTitle', { count: musicFreeStore.plugins.length })}
       </h2>
       <div class="flex items-center gap-2 flex-wrap">
         {#if musicFreeStore.canRestoreBuiltins}
@@ -167,9 +168,9 @@
             type="button"
             onclick={handleRestoreBuiltins}
             class="px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/30 transition-colors cursor-pointer flex items-center gap-1"
-            title="一键找回已删除的官方内置插件"
+            title={t('musicfree.restoreBuiltinsTooltip')}
           >
-            <span>🔄</span> 恢复内置插件
+            <span>🔄</span> {t('musicfree.restoreBuiltins')}
           </button>
         {/if}
         {#if musicFreeStore.plugins.length > 0}
@@ -177,44 +178,44 @@
             type="button"
             onclick={handleCleanupJunk}
             class="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
-            title="剔除歌曲宝、书音FM、6yueting等无歌单数据的死源"
+            title={t('musicfree.cleanJunkTooltip')}
           >
-            🧹 一键清理失效垃圾源
+            {t('musicfree.cleanJunk')}
           </button>
           <button
             type="button"
             onclick={handleSelectAll}
             class="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-500/10 hover:text-purple-400 text-[var(--text-secondary)] border border-[var(--border-color)] transition-colors cursor-pointer"
-            title="全部启用所有音源插件"
+            title={t('musicfree.selectAll')}
           >
-            全选
+            {t('musicfree.selectAll')}
           </button>
           <button
             type="button"
             onclick={handleSelectNone}
             class="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-500/10 hover:text-purple-400 text-[var(--text-secondary)] border border-[var(--border-color)] transition-colors cursor-pointer"
-            title="全部停用所有音源插件"
+            title={t('musicfree.selectNone')}
           >
-            全不选
+            {t('musicfree.selectNone')}
           </button>
           <button
             type="button"
             onclick={handleInvertSelection}
             class="px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-500/10 hover:text-purple-400 text-[var(--text-secondary)] border border-[var(--border-color)] transition-colors cursor-pointer"
-            title="反转所有音源插件的启用状态"
+            title={t('musicfree.invertSelection')}
           >
-            反选
+            {t('musicfree.invertSelection')}
           </button>
         {/if}
         <span class="text-xs text-[var(--text-muted)] hidden lg:inline">
-          支持单独启用或禁用音源
+          {t('musicfree.toggleHint')}
         </span>
       </div>
     </div>
 
     {#if musicFreeStore.plugins.length === 0}
       <div class="p-8 text-center border border-dashed border-[var(--border-color)] rounded-2xl bg-[var(--card-bg)]/40 text-[var(--text-muted)] text-xs sm:text-sm">
-        暂未导入任何音源插件。点击上方预设即可一键加载！
+        {t('musicfree.emptyPlugins')}
       </div>
     {:else}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -227,7 +228,7 @@
                     {plugin.name}
                   </span>
                   {#if plugin.id.startsWith('builtin_')}
-                    <span class="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 shrink-0 font-medium">内置</span>
+                    <span class="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 shrink-0 font-medium">{t('musicfree.builtinBadge')}</span>
                   {/if}
                 </div>
                 <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--btn-secondary-bg)] text-[var(--text-muted)] font-mono shrink-0">
@@ -235,11 +236,11 @@
                 </span>
               </div>
               <p class="text-[11px] text-[var(--text-secondary)] line-clamp-1">
-                作者：{plugin.author || '网络开源'}
+                {t('musicfree.authorLabel', { author: plugin.author || t('musicfree.authorOpenSource') })}
               </p>
               {#if plugin.error}
                 <p class="text-[10px] text-red-500 line-clamp-1" title={plugin.error}>
-                  ⚠️ 异常: {plugin.error}
+                  {t('musicfree.pluginError', { error: plugin.error })}
                 </p>
               {/if}
             </div>
@@ -253,7 +254,7 @@
                   class="rounded text-purple-600 focus:ring-0 cursor-pointer"
                 />
                 <span class="text-xs {plugin.enabled ? 'text-emerald-500 font-medium' : 'text-[var(--text-muted)]'}">
-                  {plugin.enabled ? '已启用' : '已停用'}
+                  {plugin.enabled ? t('musicfree.enabledStatus') : t('musicfree.disabledStatus')}
                 </span>
               </label>
 
@@ -261,9 +262,9 @@
                 type="button"
                 onclick={() => musicFreeStore.removePlugin(plugin.id)}
                 class="text-[11px] text-red-400 hover:text-red-300 p-1 cursor-pointer bg-transparent border-none"
-                title="移除该插件"
+                title={t('musicfree.deletePlugin')}
               >
-                删除
+                {t('musicfree.deletePlugin')}
               </button>
             </div>
           </div>
