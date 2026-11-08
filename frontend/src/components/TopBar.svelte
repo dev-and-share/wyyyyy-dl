@@ -28,11 +28,11 @@
 
 <!-- 顶栏 (TopBar) -->
 {#if !isDesktopLayout}
-  <!-- 📱 移动端 / 窄屏：标准顶栏 (撑满两端对齐，全面适配 PWA WCO 顶栏拖拽与安全区) -->
+  <!-- 📱 移动端 / 窄屏：标准顶栏 (撑满两端对齐，全面适配 PWA WCO 顶栏拖拽与安全区，解决 SP 顶部空白) -->
   <div
-    class="w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region"
+    class="mobile-top-bar w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region"
     style="
-      margin-top: max(0px, var(--wco-height, env(titlebar-area-height, 0px)), env(safe-area-inset-top, 0px));
+      padding-top: max(8px, calc(env(safe-area-inset-top, 0px) + 8px));
       padding-left: max(14px, var(--wco-left, env(titlebar-area-x, 0px)), env(safe-area-inset-left, 0px));
       padding-right: max(14px, var(--wco-right, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))), env(safe-area-inset-right, 0px));
     "
@@ -97,3 +97,11 @@
     </div>
   </div>
 {/if}
+
+<style>
+  @media (min-width: 768px) {
+    .mobile-top-bar {
+      padding-top: 8px !important;
+    }
+  }
+</style>
