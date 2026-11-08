@@ -315,21 +315,14 @@
     <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={110} />
   {/if}
 
-  <!-- 🪟 全屏沉浸模式专属：WCO 原生窗口交通灯与控件区域无缝底色层 (左右端固化深色对接原生切角，向中央平滑羽化) -->
+  <!-- 🎬 全屏沉浸模式专属：顶角电影聚焦暗角 (Top Corner Focus，彻底告别 38px 横杠接缝，以 2D 径向平滑晕染入中央舞台) -->
   <div
     data-testid="immersive-titlebar-bg"
-    class="absolute top-0 inset-x-0 z-20 pointer-events-none transition-colors duration-500"
+    class="absolute inset-0 z-20 pointer-events-none transition-colors duration-500"
     style="
-      height: var(--wco-height, env(titlebar-area-height, 38px));
-      background: linear-gradient(
-        to right,
-        var(--wco-titlebar-bg) 0px,
-        var(--wco-titlebar-bg) max(90px, var(--wco-left, 90px)),
-        transparent max(180px, calc(var(--wco-left, 90px) + 90px)),
-        transparent min(calc(100% - 180px), calc(100% - var(--wco-right, 120px) - 90px)),
-        var(--wco-titlebar-bg) min(calc(100% - 90px), calc(100% - var(--wco-right, 120px))),
-        var(--wco-titlebar-bg) 100%
-      );
+      background:
+        radial-gradient(ellipse 420px 320px at 0% 0%, var(--wco-titlebar-bg) 0%, var(--wco-titlebar-bg) 65px, color-mix(in srgb, var(--wco-titlebar-bg) 82%, transparent) 130px, color-mix(in srgb, var(--wco-titlebar-bg) 48%, transparent) 210px, color-mix(in srgb, var(--wco-titlebar-bg) 18%, transparent) 290px, transparent 100%),
+        radial-gradient(ellipse 420px 320px at 100% 0%, var(--wco-titlebar-bg) 0%, var(--wco-titlebar-bg) 65px, color-mix(in srgb, var(--wco-titlebar-bg) 82%, transparent) 130px, color-mix(in srgb, var(--wco-titlebar-bg) 48%, transparent) 210px, color-mix(in srgb, var(--wco-titlebar-bg) 18%, transparent) 290px, transparent 100%);
     "
     aria-hidden="true"
   ></div>
