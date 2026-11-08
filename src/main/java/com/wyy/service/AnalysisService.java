@@ -170,6 +170,14 @@ public class AnalysisService {
                 dto.setUrl(songUrlData.getString("url").replace("http://", "https://"));
                 dto.setSize(formatSize(songUrlData.getLongValue("size")));
                 dto.setType(songUrlData.getString("type"));
+                if (songUrlData.containsKey("br")) {
+                    dto.setBr(songUrlData.getInteger("br"));
+                }
+                if (songUrlData.containsKey("level")) {
+                    dto.setLevel(songUrlData.getString("level"));
+                } else {
+                    dto.setLevel(level);
+                }
                 dto.setStatus(200);
 
                 // 🎵 检查是否为试听片段 (Check if track is a free trial preview)
@@ -621,6 +629,17 @@ public class AnalysisService {
         }
         if (localItem.getQuality() != null && !localItem.getQuality().trim().isEmpty()) {
             songInfo.setType(localItem.getQuality().toUpperCase());
+            songInfo.setLevel(localItem.getQuality().toLowerCase());
+            String q = localItem.getQuality().toLowerCase();
+            if (q.contains("hires") || q.contains("hr")) {
+                songInfo.setBr(1920000);
+            } else if (q.contains("lossless") || q.contains("flac")) {
+                songInfo.setBr(999000);
+            } else if (q.contains("exhigh") || q.contains("320")) {
+                songInfo.setBr(320000);
+            } else if (q.contains("standard") || q.contains("128")) {
+                songInfo.setBr(128000);
+            }
         }
     }
     

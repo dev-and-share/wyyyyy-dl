@@ -28,6 +28,10 @@ public class SingleMusicAnalysisRespDTO {
 	private String url;
 	
 	private String type;
+
+	private Integer br;
+
+	private String level;
 	
 	private Boolean freeTrial;
 	

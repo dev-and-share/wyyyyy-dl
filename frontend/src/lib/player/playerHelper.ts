@@ -30,6 +30,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
         if (resolved.cover) track.cover = resolved.cover;
         if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+        if (resolved.br && !track.br) track.br = resolved.br;
+        if (resolved.size && !track.size) track.size = resolved.size;
+        if (resolved.level && !track.level) track.level = resolved.level;
         if (resolved.url && (resolved.url.includes('path=') || resolved.url.includes('historyId='))) {
           track.url = resolved.url;
         }
@@ -55,6 +58,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
         if (resolved.cover) track.cover = resolved.cover;
         if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+        if (resolved.br && !track.br) track.br = resolved.br;
+        if (resolved.size && !track.size) track.size = resolved.size;
+        if (resolved.level && !track.level) track.level = resolved.level;
         if (resolved.url && (resolved.url.includes('path=') || resolved.url.includes('historyId='))) {
           track.url = resolved.url;
         }
@@ -97,6 +103,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       track.freeTrialDuration = resolved.freeTrialDuration;
       if (resolved.cover) track.cover = resolved.cover;
       if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+      if (resolved.br) track.br = resolved.br;
+      if (resolved.size && !track.size) track.size = resolved.size;
+      if (resolved.level && !track.level) track.level = resolved.level;
       return track.url;
     } else {
       track.unplayable = true;
@@ -362,11 +371,25 @@ export async function prepareTrackInUI(track: Track, audioEl: HTMLAudioElement |
  */
 export function fetchMissingLyric(tr: Track | null): void {
   const numId = Number(tr?.id);
-  if (tr?.id && !tr.lyric && !isNaN(numId) && numId > 0 && !String(tr.id).startsWith('mf_')) {
+  if (tr?.id && (!tr.lyric || !tr.br) && !isNaN(numId) && numId > 0 && !String(tr.id).startsWith('mf_')) {
     api.songV1(String(tr.id), 'lossless').then((j: any) => {
-      if (j?.data?.lyric && playerStore.activeTrack?.id === tr.id) {
-        tr.lyric = j.data.lyric;
-        playerStore.activeTrack.lyric = j.data.lyric;
+      if (j?.data && playerStore.activeTrack?.id === tr.id) {
+        if (j.data.lyric) {
+          tr.lyric = j.data.lyric;
+          playerStore.activeTrack.lyric = j.data.lyric;
+        }
+        if (j.data.br && !tr.br) {
+          tr.br = j.data.br;
+          playerStore.activeTrack.br = j.data.br;
+        }
+        if (j.data.size && !tr.size) {
+          tr.size = j.data.size;
+          playerStore.activeTrack.size = j.data.size;
+        }
+        if (j.data.level && !tr.level) {
+          tr.level = j.data.level;
+          playerStore.activeTrack.level = j.data.level;
+        }
       }
     }).catch(() => {});
   }

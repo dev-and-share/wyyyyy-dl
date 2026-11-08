@@ -69,6 +69,9 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
       isLocal,
       freeTrial,
       freeTrialDuration: item.freeTrialDuration,
+      br: item.br,
+      level: item.level,
+      size: item.size,
       ...overrides
     };
   }
@@ -105,6 +108,9 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
       freeTrialDuration: song.freeTrialDuration,
       unplayable: isUnplayable,
       unplayableReason,
+      br: song.br,
+      level: song.level,
+      size: song.size,
       raw: song
     };
   }

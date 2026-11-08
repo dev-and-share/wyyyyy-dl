@@ -136,34 +136,38 @@
     <button
       type="button"
       data-testid="sidebar-filter-all"
-      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'all' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+      class="flex-1 py-0.5 px-1 rounded text-center font-medium cursor-pointer border-none transition-colors truncate whitespace-nowrap {filterMode === 'all' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
       onclick={() => filterMode = 'all'}
+      title={t('playlist.filterAll')}
     >
-      全部
+      {t('playlist.filterAll')}
     </button>
     <button
       type="button"
       data-testid="sidebar-filter-created"
-      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'created' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+      class="flex-1 py-0.5 px-1 rounded text-center font-medium cursor-pointer border-none transition-colors truncate whitespace-nowrap {filterMode === 'created' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
       onclick={() => filterMode = 'created'}
+      title={t('playlist.filterCreated')}
     >
-      自建
+      {t('playlist.filterCreated')}
     </button>
     <button
       type="button"
       data-testid="sidebar-filter-subscribed"
-      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'subscribed' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+      class="flex-1 py-0.5 px-1 rounded text-center font-medium cursor-pointer border-none transition-colors truncate whitespace-nowrap {filterMode === 'subscribed' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
       onclick={() => filterMode = 'subscribed'}
+      title={t('playlist.filterSubscribed')}
     >
-      收藏
+      {t('playlist.filterSubscribed')}
     </button>
     <button
       type="button"
       data-testid="sidebar-filter-local"
-      class="flex-1 py-0.5 rounded text-center font-medium cursor-pointer border-none transition-colors {filterMode === 'local' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
+      class="flex-1 py-0.5 px-1 rounded text-center font-medium cursor-pointer border-none transition-colors truncate whitespace-nowrap {filterMode === 'local' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-xs font-bold' : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}"
       onclick={() => filterMode = 'local'}
+      title={t('playlist.filterLocal')}
     >
-      本地
+      {t('playlist.filterLocal')}
     </button>
   </div>
 
@@ -374,7 +378,7 @@
       >
         {#if filteredLocal.length > 0}
           <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-            <span>{t('sidebar.localPlaylists') || '本地歌单'}</span>
+            <span>{t('sidebar.localPlaylists')}</span>
             <span class="text-[10px] opacity-70">{filteredLocal.length}</span>
           </div>
           {#each filteredLocal as pl (pl.id)}
@@ -415,7 +419,7 @@
           {/each}
         {:else}
           <div class="px-2 py-3 text-center text-xs text-[var(--text-muted)]">
-            {sidebarSearchKw ? t('sidebar.noMatch') : (t('sidebar.noLocalPlaylists') || '暂无本地专属歌单')}
+            {sidebarSearchKw ? t('sidebar.noMatch') : t('sidebar.noLocalPlaylists')}
           </div>
         {/if}
       </div>

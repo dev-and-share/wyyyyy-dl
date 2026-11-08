@@ -30,7 +30,7 @@ public class AnalysisServiceTest {
     public void testAnalyzeSingleSongParallel() throws Exception {
         Mockito.when(neteaseAPIService.checkReady()).thenReturn(true);
         Mockito.when(neteaseAPIService.urlV1(eq(12345L), eq("lossless")))
-                .thenReturn("{\"data\":[{\"url\":\"http://music.163.com/song.flac\",\"size\":31457280,\"code\":200}]}");
+                .thenReturn("{\"data\":[{\"url\":\"http://music.163.com/song.flac\",\"size\":31457280,\"br\":999000,\"level\":\"lossless\",\"code\":200}]}");
         Mockito.when(neteaseAPIService.songDetail(eq(Collections.singletonList(12345L))))
                 .thenReturn("{\"songs\":[{\"id\":12345,\"name\":\"晴天\",\"al\":{\"id\":100,\"name\":\"叶惠美\",\"picUrl\":\"http://cover.jpg\"},\"ar\":[{\"id\":1,\"name\":\"周杰伦\"}]}]}");
         Mockito.when(neteaseAPIService.getLyric(eq(12345L)))
@@ -44,6 +44,8 @@ public class AnalysisServiceTest {
         Assertions.assertEquals("周杰伦", dto.getAr_name());
         Assertions.assertEquals("叶惠美", dto.getAl_name());
         Assertions.assertEquals("https://music.163.com/song.flac", dto.getUrl());
+        Assertions.assertEquals(999000, dto.getBr());
+        Assertions.assertEquals("lossless", dto.getLevel());
         Assertions.assertTrue(dto.getLyric().contains("故事的小黄花"));
     }
 

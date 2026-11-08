@@ -67,13 +67,15 @@
         onclick={() => onSwitchTab('download-mgr')}>📥 {t('topbar.local')}</button>
     </div>
     <div class="shrink-0 flex items-center gap-1 pr-0.5 ml-auto">
+      <!-- 🧪 测试模式已按需隐藏
       <a
         href="/minimal-player.html"
         class="w-8 h-8 rounded-xl text-sm cursor-pointer inline-flex items-center justify-center whitespace-nowrap select-none shrink-0 bg-transparent border-none text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 hover:scale-105 active:scale-95 transition-all duration-200 no-underline"
-        title="极简锁屏播放测试"
+        title={t('topbar.minimalPlayerTest')}
       >
         🧪
       </a>
+      -->
 
       <button
         data-testid="btn-toggle-theme"

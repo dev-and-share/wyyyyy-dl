@@ -6,18 +6,20 @@ import { t } from '../i18n';
  */
 export function getPluginDisplayName(pluginOrName: any): string {
   if (!pluginOrName) return '';
-  const name = typeof pluginOrName === 'string' ? pluginOrName : (pluginOrName.name || pluginOrName.platform || '');
+  const rawName = typeof pluginOrName === 'string' ? pluginOrName : (pluginOrName.name || pluginOrName.platform || '');
   const id = typeof pluginOrName === 'object' && pluginOrName !== null ? (pluginOrName.id || '') : '';
 
-  if (id === 'builtin_酷狗音乐 (官方)' || name === '酷狗音乐 (官方)') {
+  const clean = rawName.replace(/\s+/g, '');
+
+  if (id === 'builtin_酷狗音乐 (官方)' || clean === '酷狗音乐(官方)' || clean === '酷狗音乐' || id.includes('kugou') || id.includes('酷狗')) {
     return t('musicfree.pluginNameKugou');
   }
 
-  if (id === 'builtin_QQ音乐 (官方)' || name === 'QQ音乐 (官方)') {
+  if (id === 'builtin_QQ音乐 (官方)' || clean === 'QQ音乐(官方)' || clean === 'QQ音乐' || id.includes('qq') || id.includes('QQ')) {
     return t('musicfree.pluginNameQQ');
   }
 
-  return name;
+  return rawName;
 }
 
 /**
@@ -26,7 +28,8 @@ export function getPluginDisplayName(pluginOrName: any): string {
 export function getPluginDisplayAuthor(authorOrPlugin: any): string {
   if (!authorOrPlugin) return t('musicfree.authorOpenSource');
   const author = typeof authorOrPlugin === 'string' ? authorOrPlugin : (authorOrPlugin.author || '');
-  if (author === 'WYY 官方' || author === 'WYY' || author === '官方') {
+  const clean = author.replace(/\s+/g, '');
+  if (clean === 'WYY官方' || clean === 'WYY' || clean === '官方' || clean.toLowerCase() === 'wyy官方') {
     return t('musicfree.pluginAuthorWyy');
   }
   return author || t('musicfree.authorOpenSource');
@@ -37,10 +40,11 @@ export function getPluginDisplayAuthor(authorOrPlugin: any): string {
  */
 export function getTopListGroupTitle(title: string): string {
   if (!title) return '';
-  if (title === 'QQ音乐官方排行榜' || title.includes('QQ音乐官方排行榜')) {
+  const clean = title.replace(/\s+/g, '');
+  if (clean.includes('QQ音乐') || clean.includes('QQ音楽') || clean.toLowerCase().includes('qqmusic')) {
     return t('musicfree.chartGroupQQ');
   }
-  if (title === '官方精选榜单' || title.includes('官方精选榜单')) {
+  if (clean.includes('酷狗') || clean.includes('官方精选榜单') || clean.toLowerCase().includes('kugou')) {
     return t('musicfree.chartGroupKugou');
   }
   return title;

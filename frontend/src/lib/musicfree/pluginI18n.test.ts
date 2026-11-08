@@ -20,10 +20,12 @@ describe('pluginI18n helper', () => {
     await setLocale('ja');
     expect(getPluginDisplayName({ id: 'builtin_酷狗音乐 (官方)', name: '酷狗音乐 (官方)' })).toBe('酷狗音楽 (公式)');
     expect(getPluginDisplayName({ id: 'builtin_QQ音乐 (官方)', name: 'QQ音乐 (官方)' })).toBe('QQ音楽 (公式)');
+    expect(getPluginDisplayName({ id: 'custom_qq', name: 'QQ 音乐 (官方)' })).toBe('QQ音楽 (公式)');
 
     await setLocale('en');
     expect(getPluginDisplayName({ id: 'builtin_酷狗音乐 (官方)', name: '酷狗音乐 (官方)' })).toBe('Kugou Music (Official)');
     expect(getPluginDisplayName({ id: 'builtin_QQ音乐 (官方)', name: 'QQ音乐 (官方)' })).toBe('QQ Music (Official)');
+    expect(getPluginDisplayName({ id: 'custom_qq', name: 'QQ 音乐 (官方)' })).toBe('QQ Music (Official)');
 
     // Third-party plugins remain unchanged
     expect(getPluginDisplayName({ id: 'custom_123', name: '猫耳FM (广播剧)' })).toBe('猫耳FM (广播剧)');

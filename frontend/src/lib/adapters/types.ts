@@ -16,6 +16,9 @@ export interface ResolvedTrackData {
   freeTrialDuration?: number;
   unplayable?: boolean;
   unplayableReason?: string;
+  br?: number;
+  level?: string;
+  size?: string;
   raw?: any;
 }
 
