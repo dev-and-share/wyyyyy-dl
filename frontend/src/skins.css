@@ -23,7 +23,7 @@
   --topbar-border: rgba(52, 211, 153, 0.18);
   --input-focus-border: #10b981;
   --input-focus-glow: rgba(16, 185, 129, 0.25);
-  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #032b20 60%, #06140f 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #064e3b 0%, #032b20 55%, #06140f 85%, #06140f 100%);
   --immersive-header-bg: rgba(6, 78, 59, 0.65);
   --immersive-ring-bg: #022c22;
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(52, 211, 153, 0.18);
@@ -47,7 +47,7 @@
   --topbar-border: rgba(16, 185, 129, 0.15);
   --input-focus-border: #059669;
   --input-focus-glow: rgba(16, 185, 129, 0.2);
-  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #032b20 60%, #06140f 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #059669 0%, #047857 42%, #064e3b 72%, #06140f 100%);
 }
 
 /* 2. 灵动极光 (Aurora Glass) 全局主题 */
@@ -70,7 +70,7 @@
   --topbar-border: rgba(168, 85, 247, 0.2);
   --input-focus-border: #a855f7;
   --input-focus-glow: rgba(168, 85, 247, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #2e1065 0%, #170736 60%, #0c0a1a 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2e1065 0%, #170736 55%, #0c0a1a 85%, #0c0a1a 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(168, 85, 247, 0.2);
 }
 [data-theme="light"][data-skin="aurora"], [data-theme="light"] [data-skin="aurora"] {
@@ -90,6 +90,7 @@
   --nav-tab-active-color: #7e22ce;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(168, 85, 247, 0.15);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #6d28d9 0%, #4c1d95 42%, #2e1065 72%, #0c0a1a 100%);
 }
 
 /* 3. 复古磁带 (Cassette Walkman) 全局主题 */
@@ -112,7 +113,7 @@
   --topbar-border: rgba(245, 158, 11, 0.15);
   --input-focus-border: #f59e0b;
   --input-focus-glow: rgba(245, 158, 11, 0.25);
-  --immersive-bg: radial-gradient(circle at center, #2e2416 0%, #1c160e 65%, #121316 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2e2416 0%, #1c160e 55%, #121316 85%, #121316 100%);
 }
 [data-theme="light"][data-skin="cassette"], [data-theme="light"] [data-skin="cassette"] {
   --bg-color: #fefce8;
@@ -131,6 +132,7 @@
   --nav-tab-active-color: #b45309;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(245, 158, 11, 0.15);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #573319 0%, #3e210f 45%, #24140a 72%, #121316 100%);
 }
 
 /* 4. Winamp 经典 (Retro Winamp) 全局主题 */
@@ -153,7 +155,7 @@
   --topbar-border: rgba(255, 255, 255, 0.12);
   --input-focus-border: #10b981;
   --input-focus-glow: rgba(16, 185, 129, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #1b2820 0%, #121c16 65%, #11141b 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #1b2820 0%, #121c16 55%, #11141b 85%, #11141b 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(16, 185, 129, 0.2);
 }
 [data-theme="light"][data-skin="winamp"], [data-theme="light"] [data-skin="winamp"] {
@@ -173,6 +175,7 @@
   --nav-tab-active-color: #059669;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(0, 0, 0, 0.1);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #065f46 0%, #044332 45%, #0f241a 72%, #11141b 100%);
 }
 
 /* 🎵 歌单正在播放曲目的皮肤个性化呈现 (Skin Playing Card Highlight) */
@@ -258,7 +261,7 @@
   --topbar-border: rgba(244, 114, 182, 0.24);
   --input-focus-border: #f472b6;
   --input-focus-glow: rgba(244, 114, 182, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #3d1c2e 0%, #240d1e 65%, #240d1e 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #3d1c2e 0%, #240d1e 55%, #240d1e 85%, #240d1e 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(244, 114, 182, 0.25);
 }
 [data-theme="light"][data-skin="sakura"], [data-theme="light"] [data-skin="sakura"] {
@@ -278,6 +281,7 @@
   --nav-tab-active-color: #db2777;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(244, 114, 182, 0.18);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #be185d 0%, #9d174d 42%, #50133c 72%, #240d1e 100%);
 }
 [data-skin="sakura"] .track-item-card.is-active-playing {
   background: rgba(244, 114, 182, 0.14) !important;
@@ -316,7 +320,7 @@
   --topbar-border: rgba(56, 189, 248, 0.35);
   --input-focus-border: #38bdf8;
   --input-focus-glow: rgba(56, 189, 248, 0.45);
-  --immersive-bg: radial-gradient(circle at center, #0f3d64 0%, #092c4b 60%, #072b4a 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0f3d64 0%, #092c4b 55%, #072b4a 85%, #072b4a 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(56, 189, 248, 0.4);
 }
 [data-theme="light"][data-skin="summer"], [data-theme="light"] [data-skin="summer"] {
@@ -336,6 +340,7 @@
   --nav-tab-active-color: #0284c7;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(56, 189, 248, 0.28);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0284c7 0%, #0369a1 42%, #073458 72%, #072b4a 100%);
 }
 [data-skin="summer"] .track-item-card.is-active-playing {
   background: rgba(56, 189, 248, 0.18) !important;
@@ -374,7 +379,7 @@
   --topbar-border: rgba(250, 204, 21, 0.26);
   --input-focus-border: #facc15;
   --input-focus-glow: rgba(250, 204, 21, 0.35);
-  --immersive-bg: radial-gradient(circle at center, #3b2807 0%, #251805 65%, #1a1305 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #3b2807 0%, #251805 55%, #1a1305 85%, #1a1305 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(250, 204, 21, 0.3);
 }
 [data-theme="light"][data-skin="autumn"], [data-theme="light"] [data-skin="autumn"] {
@@ -394,6 +399,7 @@
   --nav-tab-active-color: #b45309;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(250, 204, 21, 0.22);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #d97706 0%, #b45309 42%, #5a2608 72%, #1a1305 100%);
 }
 [data-skin="autumn"] .track-item-card.is-active-playing {
   background: rgba(250, 204, 21, 0.16) !important;
@@ -432,7 +438,7 @@
   --topbar-border: rgba(255, 255, 255, 0.28);
   --input-focus-border: #ffffff;
   --input-focus-glow: rgba(255, 255, 255, 0.4);
-  --immersive-bg: radial-gradient(circle at center, #1b263b 0%, #101929 65%, #0b121e 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #1b263b 0%, #101929 55%, #0b121e 85%, #0b121e 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(255, 255, 255, 0.35);
 }
 [data-theme="light"][data-skin="winter"], [data-theme="light"] [data-skin="winter"] {
@@ -452,6 +458,7 @@
   --nav-tab-active-color: #0f172a;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(0, 0, 0, 0.12);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2563eb 0%, #1d4ed8 42%, #1e3a8a 72%, #0b121e 100%);
 }
 [data-skin="winter"] .track-item-card.is-active-playing {
   background: rgba(255, 255, 255, 0.16) !important;

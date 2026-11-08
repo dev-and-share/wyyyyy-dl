@@ -316,8 +316,9 @@ describe('LyricModal Component', () => {
       }
     });
 
-    // 1. 验证无缝顶栏背景层已存在
+    // 1. 验证无缝顶栏背景层与电影暗角聚焦层已存在
     expect(getByTestId('immersive-titlebar-bg')).toBeInTheDocument();
+    expect(getByTestId('immersive-cinematic-vignette')).toBeInTheDocument();
 
     const bottomControls = getByTestId('immersive-bottom-controls');
     const miniPlayerContainer = getByTestId('immersive-mini-player-container');
