@@ -141,7 +141,11 @@
   <DesktopTitlebarIsland
     {curTrack}
     {playing}
-    onTogglePlay={togglePlayerPlay}
+    onTogglePlay={() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wyy:toggle-play'));
+      }
+    }}
     onOpenLyric={() => {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('wyy:toggle-lyric-modal'));
@@ -175,7 +179,7 @@
     style="height: {layoutState.isDesktop ? (hasActivePlayerBar ? 'calc(100vh - 74px)' : '100vh') : 'auto'};"
   >
     <!-- 💻 桌面端独立 WCO 顶栏安全占位区 (与侧边栏对齐，避免右侧窗口控制按钮与视图头部重叠) -->
-    <div class="w-full shrink-0 hidden lg:block wco-drag-region" style="height: var(--wco-height, env(titlebar-area-height, 0px));"></div>
+    <div class="w-full shrink-0 hidden lg:block pointer-events-none" style="height: var(--wco-height, env(titlebar-area-height, 0px));"></div>
 
     <!-- 内容居中容器 (限制最大宽度 max-w-[1400px] 居中) -->
     <div class="w-full max-w-[1400px] mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0 relative flex flex-col min-w-0">
