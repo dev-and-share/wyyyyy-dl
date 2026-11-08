@@ -71,15 +71,16 @@
   let uiVisible = $state(true);
   let hideTimer: any = null;
   let isHoveringBottomControls = $state(false);
+  let isHoveringMiniControls = $state(false);
 
   function kickHideTimer() {
     uiVisible = true;
     clearTimeout(hideTimer);
-    if (isHoveringBottomControls) {
+    if (isHoveringBottomControls || isHoveringMiniControls) {
       return;
     }
     hideTimer = setTimeout(() => {
-      if (!isHoveringBottomControls) {
+      if (!isHoveringBottomControls && !isHoveringMiniControls) {
         uiVisible = false;
       }
     }, 3200);
@@ -103,7 +104,11 @@
   }
 
   let lastMoveTime = 0;
-  function handleMouseMove() {
+  function handleMouseMove(e: MouseEvent) {
+    // 沉浸静止状态下，若鼠标移向左侧小播放器区域，不抢先唤起大播放器，保证小播放器可顺畅点击操作
+    if (!uiVisible && e.clientX < 480) {
+      return;
+    }
     const now = Date.now();
     if (now - lastMoveTime > 200) {
       lastMoveTime = now;
@@ -352,8 +357,13 @@
         onAddToPlaylist={handleAddToPlaylist}
       />
 
-      <!-- PC 宽屏专属：低调 mini 播放器控制面板（填补左侧留白空闲区） -->
-      <div class="hidden md:flex flex-col items-center w-full mt-3">
+      <!-- PC 宽屏专属：低调 mini 播放器控制面板（大播放器渐隐时优雅显现，互斥呈现，彻底消除双播放器冲突） -->
+      <div
+        data-testid="immersive-mini-player-container"
+        class="hidden md:flex flex-col items-center w-full mt-3 transition-all duration-500 {uiVisible ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 pointer-events-auto scale-100'}"
+        onmouseenter={() => { isHoveringMiniControls = true; }}
+        onmouseleave={() => { isHoveringMiniControls = false; }}
+      >
         <ImmersiveMiniPlayer
           {playing}
           curTime={currentTime}
