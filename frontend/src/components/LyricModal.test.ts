@@ -134,14 +134,24 @@ describe('LyricModal Component', () => {
       expect(queryByTestId('skin-stage-cassette')).toBeNull();
     });
 
-    // 点击春日青绿
-    const springCard = getByText('春日青绿');
-    await fireEvent.click(springCard);
-    expect(skin.current).toBe('spring');
+    // 点击赛博霓虹 (替换原有春日青绿)
+    const cyberCard = getByText('赛博霓虹');
+    await fireEvent.click(cyberCard);
+    expect(skin.current).toBe('cyber');
 
     await waitFor(() => {
-      expect(getByTestId('skin-stage-spring')).toBeInTheDocument();
+      expect(getByTestId('skin-stage-cyber')).toBeInTheDocument();
       expect(queryByTestId('skin-stage-winamp')).toBeNull();
+    });
+
+    // 点击复古胆机 (tube)
+    const tubeCard = getByText('复古胆机');
+    await fireEvent.click(tubeCard);
+    expect(skin.current).toBe('tube');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-tube')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-cyber')).toBeNull();
     });
 
     // 点击春樱初绽 (sakura)
@@ -151,7 +161,7 @@ describe('LyricModal Component', () => {
 
     await waitFor(() => {
       expect(getByTestId('skin-stage-sakura')).toBeInTheDocument();
-      expect(queryByTestId('skin-stage-spring')).toBeNull();
+      expect(queryByTestId('skin-stage-tube')).toBeNull();
     });
 
     // 点击盛夏晴空 (summer)
@@ -182,6 +192,26 @@ describe('LyricModal Component', () => {
     await waitFor(() => {
       expect(getByTestId('skin-stage-winter')).toBeInTheDocument();
       expect(queryByTestId('skin-stage-autumn')).toBeNull();
+    });
+
+    // 点击千禧CD (cd)
+    const cdCard = getByText('千禧CD');
+    await fireEvent.click(cdCard);
+    expect(skin.current).toBe('cd');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-cd')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-winter')).toBeNull();
+    });
+
+    // 点击雨夜窗扉 (rain)
+    const rainCard = getByText('雨夜窗扉');
+    await fireEvent.click(rainCard);
+    expect(skin.current).toBe('rain');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-rain')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-cd')).toBeNull();
     });
   });
 

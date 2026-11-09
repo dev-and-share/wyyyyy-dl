@@ -111,4 +111,25 @@ describe('DesktopPlaylistGallery Session Freeze & UI Stability Contracts', () =>
     await fireEvent.click(getByTestId('gallery-card-local_dance'));
     expect(onSelectPlaylist).toHaveBeenCalledWith('local_dance');
   });
+
+  it('reactively updates gallery when playlists are loaded asynchronously after initial mount', async () => {
+    const { getByTestId, queryByTestId } = render(DesktopPlaylistGallery, {
+      props: {
+        onSelectPlaylist: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    // Initially empty state rendered
+    expect(queryByTestId('gallery-card-301')).toBeNull();
+
+    // Playlists arrive asynchronously (e.g. from backend network request)
+    myPlaylists.push(
+      { id: 301, name: '新同步的歌单', trackCount: 8, subscribed: false }
+    );
+    await tick();
+
+    // Gallery should reactively display the newly loaded card
+    expect(getByTestId('gallery-card-301')).toBeDefined();
+  });
 });

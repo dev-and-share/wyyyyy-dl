@@ -193,7 +193,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     bind:this={containerEl}
-    class="relative w-full h-full overflow-y-auto overflow-x-hidden px-4 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_14%,black_86%,transparent_100%)] {isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'} {skinId === 'cassette' || skinId === 'winamp' ? 'font-mono' : ''}"
+    class="relative w-full h-full overflow-y-auto overflow-x-hidden px-4 md:pr-32 md:pl-8 flex flex-col gap-4 text-center scroll-smooth [mask-image:linear-gradient(to_bottom,transparent_0%,black_14%,black_86%,transparent_100%)] {isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'} {skinId === 'cassette' || skinId === 'winamp' ? 'font-mono' : ''}"
     style="padding-top: 38vh; padding-bottom: 38vh;"
     id="lyricModalContent"
     onmousedown={handleMouseDown}
@@ -207,7 +207,7 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           id="sv-lrc-{i}"
-          class="transition-all duration-300 break-words w-full px-2 py-1 select-none {i === activeIdx
+          class="transition-all duration-300 break-words w-full max-w-xl mx-auto px-2 py-1 select-none {i === activeIdx
             ? (skinId === 'aurora'
                 ? 'text-lg md:text-2xl font-bold text-[var(--skin-accent,#ef4444)] scale-105 drop-shadow-[0_0_16px_var(--skin-glow,rgba(239,68,68,0.5))]'
                 : skinId === 'cassette'
@@ -224,10 +224,14 @@
                             ? 'text-lg md:text-xl font-bold text-yellow-300 scale-105 drop-shadow-[0_0_14px_rgba(250,204,21,0.7)]'
                             : skinId === 'winter'
                               ? 'text-lg md:text-xl font-bold text-white scale-105 drop-shadow-[0_0_14px_rgba(255,255,255,0.85)]'
+                            : skinId === 'rain'
+                              ? 'text-lg md:text-2xl font-bold text-sky-200 scale-105 tracking-wide drop-shadow-[0_2px_14px_rgba(56,189,248,0.75)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]'
                               : 'text-lg md:text-xl font-bold text-red-500 scale-105 drop-shadow-[0_0_12px_rgba(239,68,68,0.4)]')
             : (skinId === 'winamp'
                 ? 'text-sm md:text-base text-emerald-400/50 hover:text-[#10b981]'
-                : 'text-sm md:text-base text-white/45 hover:text-white/90')}"
+                : skinId === 'rain'
+                  ? 'text-sm md:text-base text-slate-200/65 hover:text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)]'
+                  : 'text-sm md:text-base text-white/45 hover:text-white/90')}"
           onclick={() => handleLineClick(l, i)}
         >
           {l.text}

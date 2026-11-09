@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount } from 'svelte';
   import { t } from '../../lib/i18n';
   import { SpecialRouteId } from '../../lib/router.svelte';
   import {
@@ -82,26 +82,23 @@
     }
   }
 
-  const filteredPlaylists = $derived(() => {
+  const filteredPlaylists = $derived.by(() => {
     const kw = searchKeyword.trim();
-    const curFilter = filter;
-    return untrack(() => {
-      let list = myPlaylists;
-      if (curFilter === 'all') {
-        list = [...myPlaylists, ...localPlaylistState.playlists];
-      } else if (curFilter === 'created') {
-        list = myPlaylists.filter(p => !p.subscribed && !p.isLocal);
-      } else if (curFilter === 'subscribed') {
-        list = myPlaylists.filter(p => p.subscribed);
-      } else if (curFilter === 'local') {
-        list = localPlaylistState.playlists;
-      }
+    let list = myPlaylists;
+    if (filter === 'all') {
+      list = [...myPlaylists, ...localPlaylistState.playlists];
+    } else if (filter === 'created') {
+      list = myPlaylists.filter(p => !p.subscribed && !p.isLocal);
+    } else if (filter === 'subscribed') {
+      list = myPlaylists.filter(p => p.subscribed);
+    } else if (filter === 'local') {
+      list = localPlaylistState.playlists;
+    }
 
-      if (kw) {
-        list = list.filter(p => matchesKeyword(p.name, kw));
-      }
-      return sortPlaylistsByPlayCount(list);
-    });
+    if (kw) {
+      list = list.filter(p => matchesKeyword(p.name, kw));
+    }
+    return sortPlaylistsByPlayCount(list);
   });
 </script>
 
@@ -194,7 +191,7 @@
   </div>
 
   <!-- 3. Gallery Grid -->
-  {#if filteredPlaylists().length > 0}
+  {#if filteredPlaylists.length > 0}
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
       <!-- Daily Recommend Sticky Card -->
       {#if !searchKeyword.trim() && filter !== 'subscribed' && filter !== 'local'}
@@ -233,7 +230,7 @@
         </div>
       {/if}
 
-      {#each filteredPlaylists() as pl (pl.id)}
+      {#each filteredPlaylists as pl (pl.id)}
         {@const isFav = isFavoritePlaylist(pl)}
         {@const isLocalPl = pl.isLocal || isLocalPlaylist(pl.id)}
         {@const isSysFav = isSystemFavoritesPlaylist(pl.id)}

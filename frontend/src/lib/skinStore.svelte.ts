@@ -58,8 +58,14 @@ function loadInitialSkin(): SkinId {
   let initialSkin: SkinId = 'vinyl';
   if (typeof window !== 'undefined') {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (isValidSkinId(saved)) initialSkin = saved;
+      const urlParams = new URLSearchParams(window.location.search);
+      const previewSkin = urlParams.get('preview_skin');
+      if (isValidSkinId(previewSkin)) {
+        initialSkin = previewSkin;
+      } else {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (isValidSkinId(saved)) initialSkin = saved;
+      }
     } catch {}
     syncRootSkinAttribute(initialSkin);
     syncMetaThemeColor(initialSkin);

@@ -129,9 +129,13 @@ describe('TopBar & SettingsDrawer Integration', () => {
     await fireEvent.click(winampBtn);
     expect(localStorage.getItem('player_skin')).toBe('winamp');
 
-    const springBtn = screen.getByTestId('settings-skin-spring');
-    await fireEvent.click(springBtn);
-    expect(localStorage.getItem('player_skin')).toBe('spring');
+    const cyberBtn = screen.getByTestId('settings-skin-cyber');
+    await fireEvent.click(cyberBtn);
+    expect(localStorage.getItem('player_skin')).toBe('cyber');
+
+    const tubeBtn = screen.getByTestId('settings-skin-tube');
+    await fireEvent.click(tubeBtn);
+    expect(localStorage.getItem('player_skin')).toBe('tube');
   });
 
   it('SettingsDrawer has top priority z-index and safe area padding to prevent player occlusion', () => {

@@ -22,7 +22,11 @@
   import SummerSkinStage from './skins/SummerSkinStage.svelte';
   import AutumnSkinStage from './skins/AutumnSkinStage.svelte';
   import WinterSkinStage from './skins/WinterSkinStage.svelte';
-  import SeasonParticleCanvas from './skins/effects/SeasonParticleCanvas.svelte';
+  import TubeSkinStage from './skins/TubeSkinStage.svelte';
+  import CdSkinStage from './skins/CdSkinStage.svelte';
+  import CyberSkinStage from './skins/CyberSkinStage.svelte';
+  import RainSkinStage from './skins/RainSkinStage.svelte';
+  import ImmersiveBackgroundStage from './skins/ImmersiveBackgroundStage.svelte';
   import type { SkinId } from './skins/skinTypes';
 
   let {
@@ -66,6 +70,27 @@
   let showSkinPicker = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let showCommentModal = $state(false);
+
+  // 🐱 复古胆机专属爱猫全景大背景：浅三花小步舞曲猫 Minuet (暂停时从 3 种随机抬头神态整张大图中抽取)
+  const TUBE_PAUSE_BG_VARIATIONS = [
+    '/assets/skins/tube_minuet_pause_1.png',
+    '/assets/skins/tube_minuet_pause_2.png',
+    '/assets/skins/tube_minuet_pause_3.png'
+  ];
+  let pauseTubeBgIndex = $state(0);
+  let currentPauseTubeBgSrc = $derived(
+    TUBE_PAUSE_BG_VARIATIONS[pauseTubeBgIndex] || '/assets/skins/tube_minuet_pause_1.png'
+  );
+
+  // 当从播放变为暂停时，随机抽取下一次抬头的猫咪全景大图
+  let prevPlaying = $state(false);
+  $effect(() => {
+    if (prevPlaying && !playing) {
+      const nextIdx = (pauseTubeBgIndex + 1 + Math.floor(Math.random() * 2)) % TUBE_PAUSE_BG_VARIATIONS.length;
+      pauseTubeBgIndex = nextIdx;
+    }
+    prevPlaying = playing;
+  });
 
   // 🌙 沉浸式空间分区感应机制 (方案 A：左侧舞台稳固操控小播放器，贴底快速唤起大底栏)
   let uiVisible = $state(true);
@@ -188,14 +213,18 @@
 
   const STAGES = {
     vinyl: VinylSkinStage,
-    aurora: AuroraSkinStage,
     cassette: CassetteSkinStage,
+    cd: CdSkinStage,
+    tube: TubeSkinStage,
     winamp: WinampSkinStage,
-    spring: SpringSkinStage,
+    cyber: CyberSkinStage,
+    aurora: AuroraSkinStage,
+    rain: RainSkinStage,
     sakura: SakuraSkinStage,
     summer: SummerSkinStage,
     autumn: AutumnSkinStage,
-    winter: WinterSkinStage
+    winter: WinterSkinStage,
+    spring: SpringSkinStage
   };
 
   let Stage = $derived(STAGES[skin.current] || VinylSkinStage);
@@ -283,57 +312,8 @@
   ontouchend={handleTouchEnd}
   ontouchcancel={handleTouchEnd}
 >
-  <!-- 动态全屏皮肤流光层（铺满 100vw × 100vh 大画布） -->
-  {#if skin.current === 'aurora'}
-    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-      <div
-        class="aurora-orb orb-1 absolute -top-1/4 -left-1/4 w-[55vw] h-[55vw] min-w-[380px] min-h-[380px] rounded-full blur-[90px] md:blur-[130px] opacity-60 mix-blend-screen transition-colors duration-1000"
-        style="background: var(--skin-dominant, #7c3aed); animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-      <div
-        class="aurora-orb orb-2 absolute top-1/3 -right-1/4 w-[50vw] h-[50vw] min-w-[340px] min-h-[340px] rounded-full blur-[80px] md:blur-[120px] opacity-55 mix-blend-screen transition-colors duration-1000"
-        style="background: var(--skin-accent, #db2777); animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-      <div
-        class="aurora-orb orb-3 hidden md:block absolute -bottom-1/4 left-1/3 w-[45vw] h-[45vw] min-w-[300px] min-h-[300px] rounded-full blur-[90px] md:blur-[130px] opacity-40 mix-blend-screen transition-colors duration-1000"
-        style="background: var(--skin-muted, #2563eb); animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-    </div>
-  {:else if skin.current === 'spring'}
-    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-      <div
-        class="spring-pollen absolute -top-10 left-1/4 w-[50vw] h-[50vw] min-w-[340px] min-h-[340px] rounded-full blur-[100px] md:blur-[140px] bg-emerald-500/20 opacity-70 mix-blend-screen"
-        style="animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-      <div
-        class="spring-pollen absolute -bottom-10 right-1/4 w-[55vw] h-[55vw] min-w-[380px] min-h-[380px] rounded-full blur-[110px] md:blur-[150px] bg-teal-400/20 opacity-60 mix-blend-screen"
-        style="animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-    </div>
-  {:else if skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter'}
-    <!-- 四季动态全屏微风物理粒子画布 -->
-    <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={110} />
-  {/if}
-
-  <!-- 🎬 全屏沉浸模式专属：顶角电影聚焦暗角 (Top Corner Focus，彻底告别 38px 横杠接缝，以 2D 径向平滑晕染入中央舞台) -->
-  <div
-    data-testid="immersive-titlebar-bg"
-    class="absolute inset-0 z-20 pointer-events-none transition-colors duration-500"
-    style="
-      background:
-        radial-gradient(ellipse 420px 320px at 0% 0%, var(--wco-titlebar-bg) 0%, var(--wco-titlebar-bg) 65px, color-mix(in srgb, var(--wco-titlebar-bg) 82%, transparent) 130px, color-mix(in srgb, var(--wco-titlebar-bg) 48%, transparent) 210px, color-mix(in srgb, var(--wco-titlebar-bg) 18%, transparent) 290px, transparent 100%),
-        radial-gradient(ellipse 420px 320px at 100% 0%, var(--wco-titlebar-bg) 0%, var(--wco-titlebar-bg) 65px, color-mix(in srgb, var(--wco-titlebar-bg) 82%, transparent) 130px, color-mix(in srgb, var(--wco-titlebar-bg) 48%, transparent) 210px, color-mix(in srgb, var(--wco-titlebar-bg) 18%, transparent) 290px, transparent 100%);
-    "
-    aria-hidden="true"
-  ></div>
-
-  <!-- 🎬 电影聚焦微暗角遮罩 (Cinematic Vignette)：四角深邃暗晕聚焦中央舞台，与左右系统切角浑然一体 -->
-  <div
-    data-testid="immersive-cinematic-vignette"
-    class="absolute inset-0 z-10 pointer-events-none transition-opacity duration-500"
-    style="background: radial-gradient(ellipse 95% 85% at center, transparent 40%, rgba(0, 0, 0, 0.12) 70%, var(--wco-titlebar-bg) 100%);"
-    aria-hidden="true"
-  ></div>
+  <!-- 全屏沉浸式背景舞台层 (大背景铺满 + 四季流光 + 微暗角 + 物理粒子) -->
+  <ImmersiveBackgroundStage skinId={skin.current} {playing} {currentPauseTubeBgSrc} />
 
   <!-- 顶部轻盈浮空区域：下拉手势指示器 + 皮肤切换 + 关闭按钮 (全面适配 PWA WCO 窗口控制遮罩) -->
   <div
@@ -415,8 +395,11 @@
       </div>
     </div>
 
-    <!-- 滚动歌词展示面板（严格限制在视口高度内，隔离外层滚动） -->
-    <div class="w-full flex-1 min-w-0 min-h-0 h-full max-h-full flex flex-col overflow-hidden self-stretch" onclick={() => kickHideTimer()}>
+    <!-- 滚动歌词展示面板（严格限制在视口高度内，隔离外层滚动，沉浸式以歌词为核心舒展居中） -->
+    <div
+      class="w-full flex-1 min-w-0 min-h-0 h-full max-h-full flex flex-col overflow-hidden self-stretch relative"
+      onclick={() => kickHideTimer()}
+    >
       <LyricPanel {track} {currentTime} {onSeekTime} skinId={skin.current} />
     </div>
   </div>
@@ -453,38 +436,3 @@
     onClose={() => showCommentModal = false}
   />
 {/if}
-
-<style>
-  /* ── 极光流动动画（大画布全屏） ───────────────────────── */
-  @keyframes drift1 {
-    0%   { transform: translate(0, 0) scale(1); }
-    50%  { transform: translate(6vw, 4vh) scale(1.15); }
-    100% { transform: translate(0, 0) scale(1); }
-  }
-  @keyframes drift2 {
-    0%   { transform: translate(0, 0) scale(1.1); }
-    50%  { transform: translate(-5vw, -3vh) scale(0.95); }
-    100% { transform: translate(0, 0) scale(1.1); }
-  }
-  @keyframes drift3 {
-    0%   { transform: translate(0, 0) scale(1); }
-    50%  { transform: translate(4vw, -5vh) scale(1.1); }
-    100% { transform: translate(0, 0) scale(1); }
-  }
-
-  .orb-1 { animation: drift1 18s ease-in-out infinite; will-change: transform; }
-  .orb-2 { animation: drift2 22s ease-in-out infinite; will-change: transform; }
-  .orb-3 { animation: drift3 26s ease-in-out infinite; will-change: transform; }
-
-  /* ── 春日草木微粒动画（大画布全屏） ───────────────────── */
-  @keyframes floatPollen {
-    0%   { transform: translateY(0) scale(1); }
-    50%  { transform: translateY(4vh) scale(1.08); }
-    100% { transform: translateY(0) scale(1); }
-  }
-  .spring-pollen { animation: floatPollen 14s ease-in-out infinite; will-change: transform; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .aurora-orb, .spring-pollen { animation: none !important; }
-  }
-</style>

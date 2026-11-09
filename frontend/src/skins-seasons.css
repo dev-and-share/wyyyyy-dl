@@ -1,0 +1,237 @@
+/* 🌸 春樱初绽 (Sakura Drift) 全局主题 (实景吉野樱自然粉白柔调) */
+[data-skin="sakura"] {
+  --bg-color: #240d1e;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(253, 232, 240, 0.22) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(249, 168, 212, 0.18) 0%, transparent 65%);
+  --card-bg: rgba(38, 20, 30, 0.92);
+  --card-bg-solid: #26141f;
+  --card-header-bg: rgba(38, 20, 30, 0.96);
+  --card-header-hover: rgba(244, 114, 182, 0.1);
+  --border-color: rgba(244, 114, 182, 0.32);
+  --border-subtle: rgba(244, 114, 182, 0.12);
+  --primary-color: #f472b6;
+  --primary-hover: #ec4899;
+  --primary-glow: rgba(244, 114, 182, 0.45);
+  --btn-primary-bg: linear-gradient(135deg, #f472b6, #fb7185);
+  --nav-tabs-bg: rgba(244, 114, 182, 0.12);
+  --nav-tab-active-bg: rgba(244, 114, 182, 0.24);
+  --nav-tab-active-color: #fce7f3;
+  --topbar-bg: rgba(38, 20, 30, 0.94);
+  --topbar-border: rgba(244, 114, 182, 0.24);
+  --input-focus-border: #f472b6;
+  --input-focus-glow: rgba(244, 114, 182, 0.3);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #3d1c2e 0%, #240d1e 55%, #240d1e 85%, #240d1e 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(244, 114, 182, 0.25);
+}
+[data-theme="light"][data-skin="sakura"], [data-theme="light"] [data-skin="sakura"] {
+  --bg-color: #fff8fa;
+  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(244, 114, 182, 0.15) 0%, transparent 70%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #fce7f3;
+  --border-subtle: #fff1f2;
+  --primary-color: #ec4899;
+  --primary-hover: #db2777;
+  --primary-glow: rgba(236, 72, 153, 0.25);
+  --btn-primary-bg: linear-gradient(135deg, #f472b6, #fb7185);
+  --nav-tabs-bg: #fdf2f8;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #db2777;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(244, 114, 182, 0.18);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #be185d 0%, #9d174d 42%, #831843 72%, #701445 100%);
+}
+[data-skin="sakura"] .track-item-card.is-active-playing {
+  background: rgba(244, 114, 182, 0.14) !important;
+  border-color: rgba(244, 114, 182, 0.45) !important;
+  box-shadow: 0 0 16px rgba(244, 114, 182, 0.2);
+}
+[data-skin="sakura"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #f472b6 !important;
+  text-shadow: 0 0 8px rgba(244, 114, 182, 0.35);
+}
+[data-skin="sakura"] .track-btn-slot.is-playing-btn,
+[data-skin="sakura"] .jump-link-btn.is-playing-btn {
+  background: rgba(244, 114, 182, 0.2) !important;
+  border-color: rgba(244, 114, 182, 0.45) !important;
+  color: #fff1f5 !important;
+}
+
+/* 🌻 盛夏晴空 (Summer Meadow) 全局主题 (明朗晴空纯正天蓝色) */
+[data-skin="summer"] {
+  --bg-color: #072b4a;
+  --bg-gradient: radial-gradient(ellipse at 25% 20%, rgba(56, 189, 248, 0.52) 0%, transparent 65%), radial-gradient(ellipse at 75% 80%, rgba(14, 165, 233, 0.42) 0%, transparent 65%), linear-gradient(180deg, #093963 0%, #06233d 100%);
+  --card-bg: rgba(14, 52, 88, 0.92);
+  --card-bg-solid: #0e3b64;
+  --card-header-bg: rgba(14, 52, 88, 0.96);
+  --card-header-hover: rgba(56, 189, 248, 0.18);
+  --border-color: rgba(56, 189, 248, 0.45);
+  --border-subtle: rgba(56, 189, 248, 0.2);
+  --primary-color: #38bdf8;
+  --primary-hover: #7dd3fc;
+  --primary-glow: rgba(56, 189, 248, 0.55);
+  --btn-primary-bg: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  --nav-tabs-bg: rgba(56, 189, 248, 0.18);
+  --nav-tab-active-bg: rgba(56, 189, 248, 0.35);
+  --nav-tab-active-color: #e0f2fe;
+  --topbar-bg: rgba(14, 52, 88, 0.95);
+  --topbar-border: rgba(56, 189, 248, 0.35);
+  --input-focus-border: #38bdf8;
+  --input-focus-glow: rgba(56, 189, 248, 0.45);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0f3d64 0%, #092c4b 55%, #072b4a 85%, #072b4a 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(56, 189, 248, 0.4);
+}
+[data-theme="light"][data-skin="summer"], [data-theme="light"] [data-skin="summer"] {
+  --bg-color: #e0f2fe;
+  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(56, 189, 248, 0.32) 0%, transparent 70%), linear-gradient(180deg, #bae6fd 0%, #f0f9ff 100%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #7dd3fc;
+  --border-subtle: #e0f2fe;
+  --primary-color: #0284c7;
+  --primary-hover: #0369a1;
+  --primary-glow: rgba(2, 132, 199, 0.28);
+  --btn-primary-bg: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  --nav-tabs-bg: #e0f2fe;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #0284c7;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(56, 189, 248, 0.28);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0284c7 0%, #0369a1 42%, #07477c 72%, #064272 100%);
+}
+[data-skin="summer"] .track-item-card.is-active-playing {
+  background: rgba(56, 189, 248, 0.18) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.25);
+}
+[data-skin="summer"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+}
+[data-skin="summer"] .track-btn-slot.is-playing-btn,
+[data-skin="summer"] .jump-link-btn.is-playing-btn {
+  background: rgba(56, 189, 248, 0.24) !important;
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  color: #e0f2fe !important;
+}
+
+/* 🍁 金秋落叶 (Autumn Breeze) 全局主题 (璀璨灿烂金秋纯金黄) */
+[data-skin="autumn"] {
+  --bg-color: #1a1305;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(250, 204, 21, 0.35) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(245, 158, 11, 0.28) 0%, transparent 65%);
+  --card-bg: rgba(38, 28, 11, 0.92);
+  --card-bg-solid: #2d210c;
+  --card-header-bg: rgba(38, 28, 11, 0.96);
+  --card-header-hover: rgba(250, 204, 21, 0.12);
+  --border-color: rgba(250, 204, 21, 0.38);
+  --border-subtle: rgba(250, 204, 21, 0.15);
+  --primary-color: #facc15;
+  --primary-hover: #eab308;
+  --primary-glow: rgba(250, 204, 21, 0.5);
+  --btn-primary-bg: linear-gradient(135deg, #facc15, #f59e0b);
+  --nav-tabs-bg: rgba(250, 204, 21, 0.14);
+  --nav-tab-active-bg: rgba(250, 204, 21, 0.28);
+  --nav-tab-active-color: #fef08a;
+  --topbar-bg: rgba(38, 28, 11, 0.94);
+  --topbar-border: rgba(250, 204, 21, 0.26);
+  --input-focus-border: #facc15;
+  --input-focus-glow: rgba(250, 204, 21, 0.35);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #3b2807 0%, #251805 55%, #1a1305 85%, #1a1305 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(250, 204, 21, 0.3);
+}
+[data-theme="light"][data-skin="autumn"], [data-theme="light"] [data-skin="autumn"] {
+  --bg-color: #fffdf0;
+  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(250, 204, 21, 0.2) 0%, transparent 70%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #fef08a;
+  --border-subtle: #fef9c3;
+  --primary-color: #d97706;
+  --primary-hover: #b45309;
+  --primary-glow: rgba(217, 119, 6, 0.25);
+  --btn-primary-bg: linear-gradient(135deg, #facc15, #f59e0b);
+  --nav-tabs-bg: #fef9c3;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #b45309;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(250, 204, 21, 0.22);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #d97706 0%, #b45309 42%, #85370a 72%, #6b2d08 100%);
+}
+[data-skin="autumn"] .track-item-card.is-active-playing {
+  background: rgba(250, 204, 21, 0.16) !important;
+  border-color: rgba(250, 204, 21, 0.48) !important;
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.25);
+}
+[data-skin="autumn"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #facc15 !important;
+  text-shadow: 0 0 8px rgba(250, 204, 21, 0.4);
+}
+[data-skin="autumn"] .track-btn-slot.is-playing-btn,
+[data-skin="autumn"] .jump-link-btn.is-playing-btn {
+  background: rgba(250, 204, 21, 0.22) !important;
+  border-color: rgba(250, 204, 21, 0.5) !important;
+  color: #fef08a !important;
+}
+
+/* ❄️ 凛冬初雪 (Winter Snowfall) 全局主题 (纯洁白雪与银霜素裹) */
+[data-skin="winter"] {
+  --bg-color: #0b121e;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(255, 255, 255, 0.32) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(226, 232, 240, 0.25) 0%, transparent 65%);
+  --card-bg: rgba(18, 26, 38, 0.92);
+  --card-bg-solid: #151e2e;
+  --card-header-bg: rgba(18, 26, 38, 0.96);
+  --card-header-hover: rgba(255, 255, 255, 0.12);
+  --border-color: rgba(255, 255, 255, 0.42);
+  --border-subtle: rgba(255, 255, 255, 0.16);
+  --primary-color: #ffffff;
+  --primary-hover: #e2e8f0;
+  --primary-glow: rgba(255, 255, 255, 0.6);
+  --btn-primary-bg: linear-gradient(135deg, #ffffff, #cbd5e1);
+  --nav-tabs-bg: rgba(255, 255, 255, 0.14);
+  --nav-tab-active-bg: rgba(255, 255, 255, 0.28);
+  --nav-tab-active-color: #ffffff;
+  --topbar-bg: rgba(18, 26, 38, 0.94);
+  --topbar-border: rgba(255, 255, 255, 0.28);
+  --input-focus-border: #ffffff;
+  --input-focus-glow: rgba(255, 255, 255, 0.4);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #1b263b 0%, #101929 55%, #0b121e 85%, #0b121e 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(255, 255, 255, 0.35);
+}
+[data-theme="light"][data-skin="winter"], [data-theme="light"] [data-skin="winter"] {
+  --bg-color: #f8fafc;
+  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(226, 232, 240, 0.4) 0%, transparent 70%);
+  --card-bg: #ffffff;
+  --card-bg-solid: #ffffff;
+  --card-header-bg: #ffffff;
+  --border-color: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --primary-color: #0f172a;
+  --primary-hover: #334155;
+  --primary-glow: rgba(15, 23, 42, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #ffffff, #e2e8f0);
+  --nav-tabs-bg: #f1f5f9;
+  --nav-tab-active-bg: #ffffff;
+  --nav-tab-active-color: #0f172a;
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-border: rgba(0, 0, 0, 0.12);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2563eb 0%, #1d4ed8 42%, #1e40af 72%, #1e3a8a 100%);
+}
+[data-skin="winter"] .track-item-card.is-active-playing {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.65) !important;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+[data-skin="winter"] .track-item-card.is-active-playing .clickable-track-title {
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+[data-skin="winter"] .track-btn-slot.is-playing-btn,
+[data-skin="winter"] .jump-link-btn.is-playing-btn {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  color: #ffffff !important;
+}
+
+

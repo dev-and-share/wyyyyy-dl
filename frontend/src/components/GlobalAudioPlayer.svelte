@@ -13,6 +13,8 @@
   import { platform } from '../lib/platform';
   import { isIosF3Holding, handleIosF3Pause, handleIosF3Resume, resetIosF3State, updateIosF3SavedTime, holdTransitionKeepAlive } from '../lib/iosF3KeepAlive';
   import { sleepTimer } from '../lib/sleepTimer.svelte';
+  import { audioVisualizer } from '../lib/player/audioVisualizer.svelte';
+  import { skin } from '../lib/skinStore.svelte';
 
   import PlayerBar from './PlayerBar.svelte';
   import PlayerOverlays from './PlayerOverlays.svelte';
@@ -362,6 +364,10 @@
   function onAudioPlay() {
     if (isIosF3Holding()) return;
     playerStore.playing = true;
+    if (audioEl) {
+      audioVisualizer.attach(audioEl);
+      audioVisualizer.start();
+    }
     bindMediaSessionHandlers();
     updateMediaSessionPlaybackState(true);
     if (playerStore.activeTrack) {
@@ -375,6 +381,7 @@
   function onAudioPause() {
     if (isIosF3Holding()) return;
     playerStore.playing = false;
+    audioVisualizer.stop();
     updateMediaSessionPlaybackState(false);
     updateMediaSessionPosition(audioEl);
   }
@@ -452,6 +459,7 @@
 <!-- 全局原生 Audio 引擎 -->
 <audio
   bind:this={audioEl}
+  crossorigin="anonymous"
   playsinline
   preload="auto"
   onplay={onAudioPlay}
