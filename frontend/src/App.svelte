@@ -37,6 +37,7 @@
   import ScrollToTopFab from './components/sp/ScrollToTopFab.svelte';
   import { skin } from './lib/skinStore.svelte';
   import { authStore } from './lib/authStore.svelte';
+  import { setupImmersiveDblClick } from './lib/player/immersiveDblClick';
   import SeasonParticleCanvas from './components/skins/effects/SeasonParticleCanvas.svelte';
   import RainParticleCanvas from './components/skins/effects/RainParticleCanvas.svelte';
 
@@ -102,9 +103,13 @@
     const onPwaUpdate = () => showToast(t('app.pwaUpdateFound'), 'info', 6000);
     window.addEventListener('wyy:pwa-update-available', onPwaUpdate);
 
+    // 🌌 注册快速双击空白区域切换沉浸模式（双击进入，再次双击退出）
+    const cleanupImmersiveDblClick = setupImmersiveDblClick();
+
     return () => {
       stopRouter();
       stopLayout();
+      cleanupImmersiveDblClick();
       window.removeEventListener('wyy:download-submitted', onDownloadSubmit);
       window.removeEventListener('wyy:reveal', onGlobalReveal);
       window.removeEventListener('wyy:pwa-update-available', onPwaUpdate);
