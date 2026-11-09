@@ -340,8 +340,9 @@
     const onToggleLyricModal = () => { if (playerStore.activeTrack) showLyric = !showLyric; };
     const onTogglePlayEvent = () => handleTogglePlay();
 
-    // ⌨️ 全局空格快捷键：单按切换播放/暂停；320ms 内快速连按两次切换沉浸大屏模式 (再来一次退出)
-    let lastSpaceTime = 0;
+    // ⌨️ 全局空格快捷键：单按延迟 250ms 切换播控；连按两次切换沉浸大屏且绝不暂停音乐
+    let spaceTimer: any = null;
+    let lastDoublePressTime = 0;
     const onGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space' && e.key !== ' ') return;
       const target = e.target as HTMLElement | null;
@@ -349,15 +350,14 @@
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
       e.preventDefault();
       const now = Date.now();
-      if (now - lastSpaceTime <= 320) {
-        lastSpaceTime = 0;
-        handleTogglePlay();
+      if (now - lastDoublePressTime < 280) return;
+      if (spaceTimer) {
+        clearTimeout(spaceTimer); spaceTimer = null; lastDoublePressTime = now;
         if (playerStore.activeTrack) { showLyric = !showLyric; }
         else if (playerStore.queue.length > 0) { playerStore.qIndex = 0; showLyric = true; ensurePlay(true); }
         return;
       }
-      lastSpaceTime = now;
-      handleTogglePlay();
+      spaceTimer = setTimeout(() => { spaceTimer = null; handleTogglePlay(); }, 250);
     };
 
     const listeners: [string, EventListener, EventTarget?][] = [
@@ -372,7 +372,10 @@
     ];
     listeners.forEach(([ev, fn, target]) => (target || window).addEventListener(ev, fn));
 
-    return () => listeners.forEach(([ev, fn, target]) => (target || window).removeEventListener(ev, fn));
+    return () => {
+      if (spaceTimer) { clearTimeout(spaceTimer); spaceTimer = null; }
+      listeners.forEach(([ev, fn, target]) => (target || window).removeEventListener(ev, fn));
+    };
   });
   function onAudioPlay() {
     if (isIosF3Holding()) return;

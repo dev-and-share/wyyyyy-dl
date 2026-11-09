@@ -228,16 +228,19 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
   it('toggles playback with Spacebar keydown on active window when not focused on text inputs', async () => {
     const track = { id: 601, name: '太空步', artist: 'MJ', url: '/v3/stream?id=601', isLocal: true };
     playerStore.setQueue([track], 0);
-    playerStore.playing = false;
+    playerStore.playing = true;
 
     const { container, unmount } = render(GlobalAudioPlayer);
     const audioEl = container.querySelector('audio') as HTMLAudioElement;
     audioEl.src = 'http://localhost/v3/stream?id=601';
+    Object.defineProperty(audioEl, 'paused', { value: false, writable: true, configurable: true });
 
-    // 1. 普通状态按 Space：应 preventDefault 并切换播放
+    // 1. 普通状态按 Space：应 preventDefault，并在 250ms 延迟判定后切换暂停
     const spaceEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
     window.dispatchEvent(spaceEvent);
     expect(spaceEvent.defaultPrevented).toBe(true);
+    await new Promise((r) => setTimeout(r, 260));
+    expect(playerStore.playing).toBe(false);
 
     // 2. 在 <input> 内按 Space：不应 preventDefault，也不应打扰用户输入
     const inputEl = document.createElement('input');
@@ -264,7 +267,7 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     expect(postUnmountEvent.defaultPrevented).toBe(false);
   });
 
-  it('toggles immersive modal when double pressing Spacebar rapidly within 320ms', async () => {
+  it('toggles immersive modal when double pressing Spacebar rapidly without pausing music', async () => {
     const track = { id: 701, name: '双击测试曲', artist: '歌手', url: '/v3/stream?id=701', isLocal: true };
     playerStore.setQueue([track], 0);
     playerStore.playing = true;
@@ -273,10 +276,11 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     const audioEl = container.querySelector('audio') as HTMLAudioElement;
     audioEl.src = 'http://localhost/v3/stream?id=701';
 
-    // 初始状态：未展开歌词沉浸大屏
+    // 初始状态：未展开歌词沉浸大屏，且正在播放
     expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).toBeNull();
+    expect(playerStore.playing).toBe(true);
 
-    // 1. 快速按两次空格（间隔 80ms <= 320ms）
+    // 1. 快速按两次空格（间隔 80ms <= 250ms）：应直接展开沉浸大屏，且绝不暂停音乐
     const space1 = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
     window.dispatchEvent(space1);
 
@@ -287,19 +291,22 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
 
     // 应该打开沉浸大屏
     expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).not.toBeNull();
-    // 播放状态恢复原样 (依然为 true)
+    // 关键断言：音乐从未被暂停，playing 始终为 true！
     expect(playerStore.playing).toBe(true);
 
-    // 2. 再次快速按两次空格（再来一次就退出沉浸大屏）
-    await new Promise((r) => setTimeout(r, 80));
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true }));
+    // 等待超过 250ms 单按判定窗口，确保单按的 togglePlay 不会被误触发
+    await new Promise((r) => setTimeout(r, 260));
+    expect(playerStore.playing).toBe(true);
 
+    // 2. 再次快速按两次空格（再来一次就退出沉浸大屏，且依然不暂停）
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true }));
     await new Promise((r) => setTimeout(r, 80));
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true }));
     await new Promise((r) => setTimeout(r, 50));
 
     // 应该退出沉浸大屏
     expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).toBeNull();
+    // 依然平稳播放，未发生暂停
     expect(playerStore.playing).toBe(true);
 
     unmount();
