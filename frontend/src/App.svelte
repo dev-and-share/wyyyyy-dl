@@ -38,6 +38,7 @@
   import { skin } from './lib/skinStore.svelte';
   import { authStore } from './lib/authStore.svelte';
   import SeasonParticleCanvas from './components/skins/effects/SeasonParticleCanvas.svelte';
+  import RainParticleCanvas from './components/skins/effects/RainParticleCanvas.svelte';
 
   // ---------- 全局状态 ----------
   let repeat = $state(false);
@@ -130,9 +131,14 @@
 <PullToRefresh disabled={isAnyOverlayOpen} onRefresh={handleRefresh} />
 
 <!-- 🌸 四季全屏动态物理粒子层 (樱花漫天飘落与地面积累 / 飞蝶 / 枫叶层叠 / 初雪积雪) -->
-{#if skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter'}
+{#if (skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter') && !isPlayerOverlayOpen}
   <div class="fixed inset-0 pointer-events-none z-[30] overflow-hidden" aria-hidden="true">
     <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={particleBottomOffset} />
+  </div>
+{:else if skin.current === 'rain' && !isPlayerOverlayOpen}
+  <!-- 🌧️ 雨夜全屏动态物理雨滴与水痕流淌层 (非沉浸普通模式下如同冬雪般全屏玻璃流淌) -->
+  <div class="fixed inset-0 pointer-events-none z-[30] overflow-hidden" aria-hidden="true">
+    <RainParticleCanvas {playing} bottomOffset={particleBottomOffset} />
   </div>
 {/if}
 
