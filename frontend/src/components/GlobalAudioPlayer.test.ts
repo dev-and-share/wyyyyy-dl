@@ -11,7 +11,8 @@ vi.mock('../lib/api', () => ({
       code: 200,
       data: { url: '/v3/stream?id=101', lyric: '[00:00.00]测试歌词' }
     }),
-    downloadSingle: vi.fn().mockResolvedValue({ code: 200 })
+    downloadSingle: vi.fn().mockResolvedValue({ code: 200 }),
+    songStats: vi.fn().mockResolvedValue({ code: 200, data: { commentCount: 0, likedCount: 0 } })
   }
 }));
 
@@ -261,5 +262,46 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     const postUnmountEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
     window.dispatchEvent(postUnmountEvent);
     expect(postUnmountEvent.defaultPrevented).toBe(false);
+  });
+
+  it('toggles immersive modal when double pressing Spacebar rapidly within 320ms', async () => {
+    const track = { id: 701, name: '双击测试曲', artist: '歌手', url: '/v3/stream?id=701', isLocal: true };
+    playerStore.setQueue([track], 0);
+    playerStore.playing = true;
+
+    const { container, unmount } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=701';
+
+    // 初始状态：未展开歌词沉浸大屏
+    expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).toBeNull();
+
+    // 1. 快速按两次空格（间隔 80ms <= 320ms）
+    const space1 = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(space1);
+
+    await new Promise((r) => setTimeout(r, 80));
+    const space2 = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(space2);
+    await new Promise((r) => setTimeout(r, 50));
+
+    // 应该打开沉浸大屏
+    expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).not.toBeNull();
+    // 播放状态恢复原样 (依然为 true)
+    expect(playerStore.playing).toBe(true);
+
+    // 2. 再次快速按两次空格（再来一次就退出沉浸大屏）
+    await new Promise((r) => setTimeout(r, 80));
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true }));
+
+    await new Promise((r) => setTimeout(r, 80));
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // 应该退出沉浸大屏
+    expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).toBeNull();
+    expect(playerStore.playing).toBe(true);
+
+    unmount();
   });
 });

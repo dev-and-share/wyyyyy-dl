@@ -319,19 +319,14 @@
     bindMediaSessionHandlers();
 
     const onBeforeUnload = () => playerStore.save();
-    window.addEventListener('beforeunload', onBeforeUnload);
-
     const handleVisibilityChange = () => {
       if (!audioEl || isIosF3Holding()) return;
       if (document.visibilityState === 'hidden') {
         if (platform.isIOS && audioEl.paused) needsReloadOnResume = true;
         return;
       }
-      if (!audioEl.paused) {
-        if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
-      }
+      if (!audioEl.paused && audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const onPlayFolder = (e: CustomEvent) => {
       const { tracks, name } = e.detail;
@@ -345,33 +340,39 @@
     const onToggleLyricModal = () => { if (playerStore.activeTrack) showLyric = !showLyric; };
     const onTogglePlayEvent = () => handleTogglePlay();
 
-    // ⌨️ 全局空格键快捷键（当未聚焦输入框时切换播放/暂停）
+    // ⌨️ 全局空格快捷键：单按切换播放/暂停；320ms 内快速连按两次切换沉浸大屏模式 (再来一次退出)
+    let lastSpaceTime = 0;
     const onGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space' && e.key !== ' ') return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
       e.preventDefault();
+      const now = Date.now();
+      if (now - lastSpaceTime <= 320) {
+        lastSpaceTime = 0;
+        handleTogglePlay();
+        if (playerStore.activeTrack) { showLyric = !showLyric; }
+        else if (playerStore.queue.length > 0) { playerStore.qIndex = 0; showLyric = true; ensurePlay(true); }
+        return;
+      }
+      lastSpaceTime = now;
       handleTogglePlay();
     };
 
-    window.addEventListener('keydown', onGlobalKeyDown);
-    window.addEventListener('svelte:playFolder', onPlayFolder as EventListener);
-    window.addEventListener('wyy:play-tracks', onPlayTracksEvent as EventListener);
-    window.addEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
-    window.addEventListener('wyy:toggle-lyric-modal', onToggleLyricModal);
-    window.addEventListener('wyy:toggle-play', onTogglePlayEvent);
+    const listeners: [string, EventListener, EventTarget?][] = [
+      ['keydown', onGlobalKeyDown as EventListener],
+      ['beforeunload', onBeforeUnload as EventListener],
+      ['svelte:playFolder', onPlayFolder as EventListener],
+      ['wyy:play-tracks', onPlayTracksEvent as EventListener],
+      ['wyy:sleep-timer-trigger', handleSleepTimerTrigger as EventListener],
+      ['wyy:toggle-lyric-modal', onToggleLyricModal as EventListener],
+      ['wyy:toggle-play', onTogglePlayEvent as EventListener],
+      ['visibilitychange', handleVisibilityChange as EventListener, document]
+    ];
+    listeners.forEach(([ev, fn, target]) => (target || window).addEventListener(ev, fn));
 
-    return () => {
-      window.removeEventListener('keydown', onGlobalKeyDown);
-      window.removeEventListener('beforeunload', onBeforeUnload);
-      window.removeEventListener('svelte:playFolder', onPlayFolder as EventListener);
-      window.removeEventListener('wyy:play-tracks', onPlayTracksEvent as EventListener);
-      window.removeEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
-      window.removeEventListener('wyy:toggle-lyric-modal', onToggleLyricModal);
-      window.removeEventListener('wyy:toggle-play', onTogglePlayEvent);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return () => listeners.forEach(([ev, fn, target]) => (target || window).removeEventListener(ev, fn));
   });
   function onAudioPlay() {
     if (isIosF3Holding()) return;
