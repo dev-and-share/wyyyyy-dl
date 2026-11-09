@@ -19,45 +19,50 @@
 
   // 左右声道指针角度：基准 -28deg ~ +28deg (随真实音频 VU 电平跳动)
   let vuLeftAngle = $derived(
-    playing ? -28 + audioVisualizer.vuLevel * 56 + (Math.sin(currentTime * 8) * 2) : -28
+    playing ? -28 + Math.min(56, audioVisualizer.vuLevel * 56 + audioVisualizer.bassEnergy * 8 + (Math.sin(currentTime * 8) * 1.5)) : -28
   );
   let vuRightAngle = $derived(
-    playing ? -28 + Math.min(56, audioVisualizer.vuLevel * 58 + (Math.cos(currentTime * 7) * 2.5)) : -28
+    playing ? -28 + Math.min(56, audioVisualizer.vuLevel * 56 + ((audioVisualizer.bands[4] || 0) + (audioVisualizer.bands[5] || 0)) * 4 + (Math.cos(currentTime * 7) * 1.5)) : -28
   );
 
   // 💡 双联真空管物理声学辉光采样 (与 Winamp 共享 Web Audio API 频域分析)
-  // 覆盖：低音鼓点冲击 (Band 0~2)、嘹亮人声与管乐穿透 (Band 3~5)、综合电平 (vuLevel)
-  // 歌声嘹亮、鼓声密集时强劲炽热爆发，静音/弱音时平滑暗降至待机微弱暗温！
+  // 🌟 全频核心音乐基底 (主旋律 + 人声 + 综合电平)，保证两管在任何歌曲中都拥有充沛且平衡的跳动基底！
+  let coreMusicEnergy = $derived(
+    audioVisualizer.vuLevel * 0.42 +
+    ((audioVisualizer.bands[2] || 0) + (audioVisualizer.bands[3] || 0) + (audioVisualizer.bands[4] || 0)) * 0.24
+  );
+
+  // 左管 (CH 1 · 偏重低音打击乐与底鼓下潜)：
+  let leftBass = $derived(
+    audioVisualizer.bassEnergy * 0.45 +
+    (audioVisualizer.bands[0] || 0) * 0.28 +
+    (audioVisualizer.bands[1] || 0) * 0.22
+  );
   let leftEnergy = $derived(
-    playing
-      ? Math.min(1.0, (
-          audioVisualizer.bassEnergy * 0.45 +
-          audioVisualizer.vuLevel * 0.35 +
-          ((audioVisualizer.bands[0] || 0) + (audioVisualizer.bands[1] || 0) + (audioVisualizer.bands[3] || 0)) * 0.28
-        ))
-      : 0
+    playing ? Math.min(1.0, coreMusicEnergy * 0.58 + leftBass * 0.62) : 0
+  );
+
+  // 右管 (CH 2 · 偏清亮人声穿透与高频泛音)：
+  let rightTreble = $derived(
+    (audioVisualizer.bands[4] || 0) * 0.26 +
+    (audioVisualizer.bands[5] || 0) * 0.26 +
+    (audioVisualizer.bands[7] || 0) * 0.24
   );
   let rightEnergy = $derived(
-    playing
-      ? Math.min(1.0, (
-          audioVisualizer.vuLevel * 0.40 +
-          ((audioVisualizer.bands[3] || 0) + (audioVisualizer.bands[4] || 0) + (audioVisualizer.bands[5] || 0)) * 0.38 +
-          (audioVisualizer.bands[7] || 0) * 0.18
-        ))
-      : 0
+    playing ? Math.min(1.0, coreMusicEnergy * 0.58 + rightTreble * 0.62) : 0
   );
 
-  // 钨丝发光核心透明度：无声/静音时仅 0.22（微弱暗红余温），歌声与鼓声澎湃时飙升至 1.0（金白炽热）
-  let leftCoreOpacity = $derived(playing ? 0.22 + leftEnergy * 0.78 : 0.18);
-  let rightCoreOpacity = $derived(playing ? 0.22 + rightEnergy * 0.78 : 0.18);
+  // 钨丝发光核心透明度：无声/静音时为 0.22（微弱暗温），音乐律动时在 0.35 ~ 1.0 之间灵动呼吸
+  let leftCoreOpacity = $derived(playing ? 0.28 + leftEnergy * 0.72 : 0.18);
+  let rightCoreOpacity = $derived(playing ? 0.28 + rightEnergy * 0.72 : 0.18);
 
   // 辉光光晕半径与漫射强弱 (随着声浪脉冲向外辐射)
-  let leftGlowRadius = $derived(playing ? Math.round(3 + leftEnergy * 32) : 2);
-  let rightGlowRadius = $derived(playing ? Math.round(3 + rightEnergy * 32) : 2);
+  let leftGlowRadius = $derived(playing ? Math.round(4 + leftEnergy * 30) : 2);
+  let rightGlowRadius = $derived(playing ? Math.round(4 + rightEnergy * 30) : 2);
 
-  // 顶部幽蓝紫等离子受激微光 (只有在高能量声浪冲击时才显现)
-  let leftPlasmaOpacity = $derived(playing ? Math.max(0, (leftEnergy - 0.25) * 1.1) : 0);
-  let rightPlasmaOpacity = $derived(playing ? Math.max(0, (rightEnergy - 0.25) * 1.1) : 0);
+  // 顶部幽蓝紫等离子受激微光 (声浪充沛时灵动显现)
+  let leftPlasmaOpacity = $derived(playing ? Math.max(0, (leftEnergy - 0.22) * 1.2) : 0);
+  let rightPlasmaOpacity = $derived(playing ? Math.max(0, (rightEnergy - 0.22) * 1.2) : 0);
 </script>
 
 <div
@@ -86,18 +91,19 @@
           class="w-9 h-16 md:w-12 md:h-20 rounded-t-full bg-gradient-to-b from-white/20 via-amber-200/10 to-amber-950/40 border border-white/30 shadow-lg relative flex flex-col items-center justify-end p-1 overflow-hidden"
           style="box-shadow: 0 0 {leftGlowRadius * 0.6}px rgba(245, 158, 11, {leftEnergy * 0.4});"
         >
-          <!-- 钨丝发光核心 (随歌声与鼓点声浪真实呼吸爆发) -->
+          <!-- 钨丝发光核心 (随歌声与鼓点声浪真实呼吸爆发与膨胀) -->
           <div
             class="w-2 md:w-2.5 h-8 md:h-11 rounded-full bg-amber-500 relative flex items-center justify-center transition-all duration-75 ease-out"
             style="
               opacity: {leftCoreOpacity};
+              transform: scale({0.88 + leftEnergy * 0.24});
               box-shadow: 0 0 {leftGlowRadius}px #f59e0b, 0 0 {leftGlowRadius * 1.8}px #d97706, 0 0 {leftGlowRadius * 2.8}px rgba(245, 158, 11, 0.4);
             "
           >
-            <!-- 钨丝内层白热化核心 (歌声嘹亮时白炽金发亮) -->
+            <!-- 钨丝内层白热化核心 (歌声与重低音爆发时白炽金发亮) -->
             <div
-              class="w-0.5 md:w-1 h-6 md:h-9 rounded-full bg-amber-100 transition-opacity duration-75"
-              style="opacity: {Math.max(0, (leftEnergy - 0.2) * 1.25)}; box-shadow: 0 0 6px #ffffff;"
+              class="w-1 md:w-1.5 h-7 md:h-10 rounded-full bg-amber-100 transition-all duration-75"
+              style="opacity: {playing ? 0.25 + leftEnergy * 0.75 : 0}; box-shadow: 0 0 {4 + leftEnergy * 6}px #ffffff;"
             ></div>
           </div>
 
@@ -130,12 +136,13 @@
             class="w-2 md:w-2.5 h-8 md:h-11 rounded-full bg-amber-500 relative flex items-center justify-center transition-all duration-75 ease-out"
             style="
               opacity: {rightCoreOpacity};
+              transform: scale({0.88 + rightEnergy * 0.24});
               box-shadow: 0 0 {rightGlowRadius}px #f59e0b, 0 0 {rightGlowRadius * 1.8}px #d97706, 0 0 {rightGlowRadius * 2.8}px rgba(245, 158, 11, 0.4);
             "
           >
             <div
-              class="w-0.5 md:w-1 h-6 md:h-9 rounded-full bg-amber-100 transition-opacity duration-75"
-              style="opacity: {Math.max(0, (rightEnergy - 0.2) * 1.25)}; box-shadow: 0 0 6px #ffffff;"
+              class="w-1 md:w-1.5 h-7 md:h-10 rounded-full bg-amber-100 transition-all duration-75"
+              style="opacity: {playing ? 0.25 + rightEnergy * 0.75 : 0}; box-shadow: 0 0 {4 + rightEnergy * 6}px #ffffff;"
             ></div>
           </div>
 

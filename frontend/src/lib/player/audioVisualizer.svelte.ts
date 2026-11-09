@@ -148,8 +148,8 @@ export class AudioVisualizerEngine {
       [150, 195]    // 14kHz: Bin 150~195 (~12900 - 16800Hz)
     ];
 
-    // 🎵 真实声学校准的频段增益（均衡补偿粉红噪声自然滚降，同时保留充沛动态，杜绝过饱和贴顶）
-    const BAND_WEIGHTS = [1.05, 1.10, 1.18, 1.28, 1.40, 1.62, 1.95, 2.35, 2.85, 3.45];
+    // 🎵 真实声学校准的频段增益（均衡补偿粉红噪声自然滚降，适度强化低音冲击动态）
+    const BAND_WEIGHTS = [1.38, 1.32, 1.25, 1.28, 1.40, 1.62, 1.95, 2.35, 2.85, 3.45];
 
     const newBands = new Array(10);
     for (let i = 0; i < 10; i++) {
@@ -177,9 +177,9 @@ export class AudioVisualizerEngine {
 
     this.bands = newBands;
 
-    // 低频能量 (取前 3 根平均)
-    const instantBass = (newBands[0] + newBands[1] + newBands[2]) / 3;
-    this.bassEnergy = this.bassEnergy * 0.7 + instantBass * 0.3;
+    // 低频能量 (取前 3 根平均，提升瞬态打击响应灵敏度)
+    const instantBass = (newBands[0] * 0.45 + newBands[1] * 0.35 + newBands[2] * 0.20);
+    this.bassEnergy = this.bassEnergy * 0.55 + instantBass * 0.45;
 
     // RMS 电平 (全体平均，带物理弹簧过冲感)
     const instantVu = Math.min(1, (sum / (this.freqData.length * 255)) * 1.35);
