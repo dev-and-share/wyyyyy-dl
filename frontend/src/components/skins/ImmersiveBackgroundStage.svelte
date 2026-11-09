@@ -5,7 +5,7 @@
   let {
     skinId,
     playing = false,
-    currentPauseTubeBgSrc = '/assets/skins/tube_minuet_pause_1.png'
+    currentPauseTubeBgSrc = '/assets/skins/tube_minuet_pause_1.jpg'
   } = $props<{
     skinId: string;
     playing: boolean;
@@ -47,17 +47,19 @@
     class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none"
     aria-hidden="true"
   >
-    <!-- 播放态：街头摄影师隔窗望咖啡馆，女孩闭眸陶醉闻香 (rain_cafe_v2_playing.png) -->
+    <!-- 播放态：街头摄影师隔窗望咖啡馆，女孩闭眸陶醉闻香 (rain_cafe_v2_playing.jpg) -->
     <img
-      src="/assets/skins/rain_cafe_v2_playing.png"
+      src="/assets/skins/rain_cafe_v2_playing.jpg"
       alt="Rain Cafe Girl Playing"
       class="absolute inset-0 w-full h-full object-cover object-center md:object-[100%_100%] transition-opacity duration-700 ease-in-out {playing ? 'opacity-100' : 'opacity-0'}"
+      onerror={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.includes('/svelte/')) el.src = '/svelte' + (el.getAttribute('src') || ''); }}
     />
-    <!-- 暂停态：女孩转头透过玻璃看向窗外街道（看向镜头/用户） (rain_cafe_v2_paused.png) -->
+    <!-- 暂停态：女孩转头透过玻璃看向窗外街道（看向镜头/用户） (rain_cafe_v2_paused.jpg) -->
     <img
-      src="/assets/skins/rain_cafe_v2_paused.png"
+      src="/assets/skins/rain_cafe_v2_paused.jpg"
       alt="Rain Cafe Girl Paused"
       class="absolute inset-0 w-full h-full object-cover object-center md:object-[100%_100%] transition-opacity duration-700 ease-in-out {playing ? 'opacity-0' : 'opacity-100'}"
+      onerror={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.includes('/svelte/')) el.src = '/svelte' + (el.getAttribute('src') || ''); }}
     />
 
     <!-- 电影级左侧微暗场渐变 (确保歌词在开阔的大落地窗前居中舒展，拥有顶级阅读对比度) -->
@@ -72,7 +74,7 @@
     ></div>
   </div>
 
-  <!-- 🌧️ 全屏玻璃雨夜物理画布：真实水滴敲击窗户与重力水痕滑落 (悬浮在静态雨窗大背景与少女之上) -->
+  <!-- 🌧️ 全屏玻璃雨夜物理画布：真实水滴敲击窗户与重力水痕滑落 (置于全屏大图与暗角之上，通透晶莹) -->
   <RainParticleCanvas {playing} bottomOffset={110} />
 {:else if skinId === 'tube'}
   <!-- 📻 复古胆机全景氛围大背景：整张温暖猫咪橱窗场景作为大背景铺满 (支持播放/暂停双帧神态无缝渐变，暂停时 3 种随机抬头神态) -->
@@ -81,17 +83,19 @@
     class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none"
     aria-hidden="true"
   >
-    <!-- 播放态：整张大图铺满，小猫戴耳机眯眼享受音乐 (tube_minuet_playing.png，100% 满屏无缝铺满) -->
+    <!-- 播放态：整张大图铺满，小猫戴耳机眯眼享受音乐 (tube_minuet_playing.jpg，100% 满屏无缝铺满) -->
     <img
-      src="/assets/skins/tube_minuet_playing.png"
+      src="/assets/skins/tube_minuet_playing.jpg"
       alt="Minuet Cat Playing Fullscreen"
       class="absolute inset-0 w-full h-full object-cover object-center md:object-[100%_100%] transition-opacity duration-700 ease-in-out {playing ? 'opacity-100' : 'opacity-0'}"
+      onerror={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.includes('/svelte/')) el.src = '/svelte' + (el.getAttribute('src') || ''); }}
     />
-    <!-- 暂停态：从 3 款抬头风格中随机抽取整张大图 (tube_minuet_pause_1/2/3.png) -->
+    <!-- 暂停态：从 3 款抬头风格中随机抽取整张大图 (tube_minuet_pause_1/2/3.jpg) -->
     <img
       src={currentPauseTubeBgSrc}
       alt="Minuet Cat Paused Fullscreen"
       class="absolute inset-0 w-full h-full object-cover object-center md:object-[100%_100%] transition-opacity duration-700 ease-in-out {playing ? 'opacity-0' : 'opacity-100'}"
+      onerror={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.includes('/svelte/')) el.src = '/svelte' + (el.getAttribute('src') || ''); }}
     />
 
     <!-- 电影级温润左侧微暗场渐变 (确保歌词在木质暗窗前居中舒展，拥有顶级阅读对比度) -->

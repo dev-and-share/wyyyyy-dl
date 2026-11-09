@@ -136,21 +136,24 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // 3. 玻璃上的通透纯净水滴 (32 颗高品质物理水滴，张力收敛、晶莹剔透)
+    // 3. 玻璃上的通透纯净水滴 (36 颗高品质物理水滴，张力收敛、晶莹剔透、动感流淌)
     // ─────────────────────────────────────────────────────────────
     const glassDrops: GlassDrop[] = [];
-    for (let i = 0; i < 32; i++) {
-      const r = 2.0 + Math.random() * 3.6;
+    for (let i = 0; i < 36; i++) {
+      const r = 2.2 + Math.random() * 3.8;
+      // 🌟 进场即有 8 颗水滴直接处于滑落中，分布在全屏不同高度，无需苦等立刻能看到滑落水痕！
+      const startSliding = i < 8;
+      const initialMass = startSliding ? 4.5 : (i < 18 ? 3.0 + Math.random() * 0.8 : r * 0.3);
       glassDrops.push({
         x: Math.random() * width,
         y: Math.random() * height,
         radius: r,
         targetRadius: r,
-        mass: r * 0.3,
-        threshold: 3.8 + Math.random() * 2.8,
-        vy: 0,
-        isSliding: false,
-        slidePauseTimer: 0,
+        mass: initialMass,
+        threshold: 3.2 + Math.random() * 1.6,
+        vy: startSliding ? 2.2 + Math.random() * 1.8 : 0,
+        isSliding: startSliding,
+        slidePauseTimer: startSliding ? 14 + Math.floor(Math.random() * 16) : 0,
         tail: []
       });
     }
@@ -211,34 +214,34 @@
       ctx.clearRect(0, 0, width, height);
 
       // ─────────────────────────────────────────────────────────────
-      // (1) 绘制窗外飞速飘落的极细倾斜雨丝 (Rain Streaks - 仅微弱景深，不干扰文字)
+      // (1) 绘制窗外飘落的极细倾斜雨丝 (大自然雨丝永远下落，播放时更活跃清脆)
       // ─────────────────────────────────────────────────────────────
-      if (playing) {
-        ctx.save();
-        const rainAngle = 0.22; // 约 13 度倾角
-        const dx = Math.sin(rainAngle);
-        const dy = Math.cos(rainAngle);
+      ctx.save();
+      const rainAngle = 0.22; // 约 13 度倾角
+      const dx = Math.sin(rainAngle);
+      const dy = Math.cos(rainAngle);
+      const streakSpeedMult = playing ? 1.0 : 0.65;
+      const streakAlphaMult = playing ? 1.0 : 0.70;
 
-        for (const s of streaks) {
-          ctx.beginPath();
-          ctx.moveTo(s.x, s.y);
-          ctx.lineTo(s.x - dx * s.len, s.y + dy * s.len);
-          ctx.strokeStyle = `rgba(186, 230, 253, ${s.alpha})`;
-          ctx.lineWidth = s.thickness;
-          ctx.lineCap = 'round';
-          ctx.stroke();
+      for (const s of streaks) {
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(s.x - dx * s.len, s.y + dy * s.len);
+        ctx.strokeStyle = `rgba(186, 230, 253, ${s.alpha * streakAlphaMult})`;
+        ctx.lineWidth = s.thickness;
+        ctx.lineCap = 'round';
+        ctx.stroke();
 
-          // 物理步进
-          s.x -= dx * s.speed;
-          s.y += dy * s.speed;
+        // 物理步进
+        s.x -= dx * s.speed * streakSpeedMult;
+        s.y += dy * s.speed * streakSpeedMult;
 
-          if (s.y > height + 50 || s.x < -100) {
-            s.y = -50;
-            s.x = Math.random() * (width + 200);
-          }
+        if (s.y > height + 50 || s.x < -100) {
+          s.y = -50;
+          s.x = Math.random() * (width + 200);
         }
-        ctx.restore();
       }
+      ctx.restore();
 
       // ─────────────────────────────────────────────────────────────
       // (2) 绘制玻璃表面的微小水汽凝露 (Micro Dew - 极度柔和通透)
@@ -253,9 +256,10 @@
       ctx.restore();
 
       // ─────────────────────────────────────────────────────────────
-      // (3) 雨滴轻柔撞击玻璃微涟漪 (低频偶发，如同轻细雨敲窗，绝不造成满屏噪点)
+      // (3) 雨滴敲击玻璃微涟漪 (播放时每 180~320ms，暂停时每 450~850ms)
       // ─────────────────────────────────────────────────────────────
-      if (playing && time - lastDropTime > (420 + Math.random() * 550)) {
+      const splashInterval = playing ? (180 + Math.random() * 200) : (450 + Math.random() * 400);
+      if (time - lastDropTime > splashInterval) {
         lastDropTime = time;
         const hitX = Math.random() * width;
         const hitY = Math.random() * height;
@@ -270,7 +274,7 @@
             y: hitY,
             vx: Math.cos(pAngle) * pSpd,
             vy: Math.sin(pAngle) * pSpd - 0.4,
-            alpha: 0.6
+            alpha: 0.65
           });
         }
 
@@ -279,30 +283,30 @@
           y: hitY,
           r: 1.2,
           maxR: 6 + Math.random() * 8,
-          alpha: 0.6,
+          alpha: 0.65,
           particles
         });
 
-        // 雨滴打在玻璃上：如果附近有已有水滴则融合变大，否则凝成新水珠
+        // 雨滴打在玻璃上：如果附近有已有水滴则融合变大，加速触发滑落！
         let merged = false;
         for (const drop of glassDrops) {
           const dx = drop.x - hitX;
           const dy = drop.y - hitY;
-          if (Math.hypot(dx, dy) < drop.radius + 12) {
-            drop.targetRadius = Math.min(8, drop.targetRadius + 0.8);
-            drop.mass += 0.5;
+          if (Math.hypot(dx, dy) < drop.radius + 15) {
+            drop.targetRadius = Math.min(10, drop.targetRadius + 1.2);
+            drop.mass += 0.85;
             merged = true;
             break;
           }
         }
-        if (!merged && glassDrops.length < 36) {
+        if (!merged && glassDrops.length < 42) {
           glassDrops.push({
             x: hitX,
             y: hitY,
-            radius: 1.5,
-            targetRadius: 1.8 + Math.random() * 2.2,
-            mass: 0.5,
-            threshold: 4.0 + Math.random() * 2.0,
+            radius: 1.6,
+            targetRadius: 2.0 + Math.random() * 2.5,
+            mass: 0.6,
+            threshold: 3.2 + Math.random() * 1.5,
             vy: 0,
             isSliding: false,
             slidePauseTimer: 0,
@@ -318,7 +322,7 @@
         // 涟漪水圈
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(186, 230, 253, ${s.alpha * 0.75})`;
+        ctx.strokeStyle = `rgba(186, 230, 253, ${s.alpha * 0.85})`;
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
@@ -343,34 +347,34 @@
       }
 
       // ─────────────────────────────────────────────────────────────
-      // (5) 玻璃表面水滴物理：张力凝结、融合吸收与真实的停顿撕裂滑落 (Staccato Trickle)
+      // (5) 玻璃表面水滴物理：张力凝结、快速蓄水与生动的撕裂滑落 (Staccato Trickle)
       // ─────────────────────────────────────────────────────────────
       for (let i = glassDrops.length - 1; i >= 0; i--) {
         const d = glassDrops[i];
 
         // 弹性尺寸过渡
-        d.radius += (d.targetRadius - d.radius) * 0.18;
+        d.radius += (d.targetRadius - d.radius) * 0.20;
 
         if (!d.isSliding) {
-          // 静止附着状态：随着降雨缓慢蓄积质量
-          if (playing) d.mass += 0.0035;
+          // 静止附着状态：持续蓄水，播放时更快，暂停时也自然平稳蓄水
+          d.mass += playing ? 0.022 : 0.010;
 
           // 蓄水突破阈值 -> 打破静摩擦力，启动重力撕裂滑落！
           if (d.mass >= d.threshold) {
             d.isSliding = true;
-            d.vy = 2.4;
-            d.slidePauseTimer = 12 + Math.floor(Math.random() * 16);
+            d.vy = 2.4 + Math.random() * 1.5;
+            d.slidePauseTimer = 14 + Math.floor(Math.random() * 18);
           }
         } else {
           // 滑落状态：真实的走走停停 (滑一段 -> 微暂停吸收沿途水珠 -> 再突然加速)
           if (d.slidePauseTimer > 0) {
             d.slidePauseTimer--;
-            d.vy += 0.42;
+            d.vy += 0.45;
             d.y += d.vy;
 
-            // 记录撕裂水痕 (控制在短促自然的湿润水路内，避免突兀长线)
-            d.tail.push({ x: d.x, y: d.y, r: d.radius * 0.45, alpha: 0.3 });
-            if (d.tail.length > 12) d.tail.shift();
+            // 记录撕裂水痕 (晶莹湿润的水迹轨迹)
+            d.tail.push({ x: d.x, y: d.y, r: d.radius * 0.45, alpha: 0.45 });
+            if (d.tail.length > 15) d.tail.shift();
 
             // 吞噬沿途小雨滴
             for (let j = glassDrops.length - 1; j >= 0; j--) {
@@ -378,9 +382,9 @@
               const other = glassDrops[j];
               if (!other.isSliding) {
                 const dist = Math.hypot(other.x - d.x, other.y - d.y);
-                if (dist < d.radius + other.radius + 2) {
-                  d.targetRadius = Math.min(16, d.targetRadius + other.radius * 0.32);
-                  d.vy += 0.28;
+                if (dist < d.radius + other.radius + 3) {
+                  d.targetRadius = Math.min(16, d.targetRadius + other.radius * 0.35);
+                  d.vy += 0.35;
                   glassDrops.splice(j, 1);
                   if (j < i) i--;
                 }
@@ -388,16 +392,16 @@
             }
           } else {
             // 停顿蓄势阶段 (Staccato Trickle Pause)
-            d.vy *= 0.5;
+            d.vy *= 0.55;
             d.y += d.vy;
-            if (Math.random() < 0.18) {
+            if (Math.random() < 0.22) {
               // 蓄足能量重新加速冲刺
-              d.slidePauseTimer = 10 + Math.floor(Math.random() * 14);
-              d.vy = 2.0;
+              d.slidePauseTimer = 12 + Math.floor(Math.random() * 16);
+              d.vy = 2.4;
             }
           }
 
-          // 绘制撕裂水痕轨迹 (柔和通透的水迹微光，绝不使用刺眼垂直纯白长线)
+          // 绘制撕裂水痕轨迹 (更清晰柔美的通透水光轨迹)
           if (d.tail.length > 2) {
             ctx.save();
             ctx.beginPath();
@@ -405,8 +409,8 @@
             for (let k = 1; k < d.tail.length; k++) {
               ctx.lineTo(d.tail[k].x, d.tail[k].y);
             }
-            ctx.strokeStyle = 'rgba(186, 230, 253, 0.20)';
-            ctx.lineWidth = Math.max(0.8, d.radius * 0.3);
+            ctx.strokeStyle = 'rgba(210, 238, 255, 0.42)';
+            ctx.lineWidth = Math.max(1.2, d.radius * 0.42);
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.stroke();
@@ -417,17 +421,19 @@
           if (d.y > height + 40) {
             d.y = -10;
             d.x = Math.random() * width;
-            d.vy = 0;
-            d.mass = 0.5;
-            d.radius = 2.0;
-            d.targetRadius = 2.2 + Math.random() * 2.8;
-            d.isSliding = false;
-            d.slidePauseTimer = 0;
+            // 循环时 40% 几率作为大水珠立刻继续滑落，形成川流不息的生动降雨！
+            const reSlide = Math.random() < 0.40;
+            d.mass = reSlide ? 4.2 : 0.8;
+            d.radius = 2.2;
+            d.targetRadius = 2.4 + Math.random() * 3.0;
+            d.isSliding = reSlide;
+            d.vy = reSlide ? 2.5 : 0;
+            d.slidePauseTimer = reSlide ? 14 + Math.floor(Math.random() * 16) : 0;
             d.tail = [];
           }
         }
 
-        // 绘制玻璃水滴
+        // 绘制玻璃水滴本体
         drawRealisticDrop(d.x, d.y, d.radius);
       }
 
@@ -449,5 +455,5 @@
 <canvas
   bind:this={canvasEl}
   data-testid="rain-particle-canvas"
-  class="absolute inset-0 w-full h-full pointer-events-none z-0"
+  class="absolute inset-0 w-full h-full pointer-events-none z-15"
 ></canvas>

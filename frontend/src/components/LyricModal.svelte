@@ -73,13 +73,13 @@
 
   // 🐱 复古胆机专属爱猫全景大背景：浅三花小步舞曲猫 Minuet (暂停时从 3 种随机抬头神态整张大图中抽取)
   const TUBE_PAUSE_BG_VARIATIONS = [
-    '/assets/skins/tube_minuet_pause_1.png',
-    '/assets/skins/tube_minuet_pause_2.png',
-    '/assets/skins/tube_minuet_pause_3.png'
+    '/assets/skins/tube_minuet_pause_1.jpg',
+    '/assets/skins/tube_minuet_pause_2.jpg',
+    '/assets/skins/tube_minuet_pause_3.jpg'
   ];
   let pauseTubeBgIndex = $state(0);
   let currentPauseTubeBgSrc = $derived(
-    TUBE_PAUSE_BG_VARIATIONS[pauseTubeBgIndex] || '/assets/skins/tube_minuet_pause_1.png'
+    TUBE_PAUSE_BG_VARIATIONS[pauseTubeBgIndex] || '/assets/skins/tube_minuet_pause_1.jpg'
   );
 
   // 当从播放变为暂停时，随机抽取下一次抬头的猫咪全景大图

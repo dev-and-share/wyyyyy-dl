@@ -18,6 +18,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/svelte/assets/", "classpath:/static/assets/");
         registry.addResourceHandler("/svelte/**")
                 .addResourceLocations("classpath:/static/svelte/");
         registry.addResourceHandler("/**")
