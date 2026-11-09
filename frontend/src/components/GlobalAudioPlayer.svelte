@@ -317,7 +317,9 @@
     const currentTrack = playerStore.activeTrack;
     if (currentTrack) prepareTrackInUI(currentTrack, audioEl);
     bindMediaSessionHandlers();
-    window.addEventListener('beforeunload', () => playerStore.save());
+
+    const onBeforeUnload = () => playerStore.save();
+    window.addEventListener('beforeunload', onBeforeUnload);
 
     const handleVisibilityChange = () => {
       if (!audioEl || isIosF3Holding()) return;
@@ -325,11 +327,8 @@
         if (platform.isIOS && audioEl.paused) needsReloadOnResume = true;
         return;
       }
-      // 📱 切回前台：若音频正在播放（原生 mediaserverd 托管），绝不重设 src 或重新 play()！
-      // iOS WebKit 在熄屏时会刻意降低 readyState 节电，重设 src 会强行掐断正在播放的音频流，且无手势时 play() 必抛 NotAllowedError。
       if (!audioEl.paused) {
         if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
-        return;
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -346,13 +345,26 @@
     const onToggleLyricModal = () => { if (playerStore.activeTrack) showLyric = !showLyric; };
     const onTogglePlayEvent = () => handleTogglePlay();
 
+    // ⌨️ 全局空格键快捷键（当未聚焦输入框时切换播放/暂停）
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' && e.key !== ' ') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
+      e.preventDefault();
+      handleTogglePlay();
+    };
+
+    window.addEventListener('keydown', onGlobalKeyDown);
     window.addEventListener('svelte:playFolder', onPlayFolder as EventListener);
     window.addEventListener('wyy:play-tracks', onPlayTracksEvent as EventListener);
     window.addEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
     window.addEventListener('wyy:toggle-lyric-modal', onToggleLyricModal);
     window.addEventListener('wyy:toggle-play', onTogglePlayEvent);
+
     return () => {
-      window.removeEventListener('beforeunload', () => playerStore.save());
+      window.removeEventListener('keydown', onGlobalKeyDown);
+      window.removeEventListener('beforeunload', onBeforeUnload);
       window.removeEventListener('svelte:playFolder', onPlayFolder as EventListener);
       window.removeEventListener('wyy:play-tracks', onPlayTracksEvent as EventListener);
       window.removeEventListener('wyy:sleep-timer-trigger', handleSleepTimerTrigger);
@@ -364,10 +376,7 @@
   function onAudioPlay() {
     if (isIosF3Holding()) return;
     playerStore.playing = true;
-    if (audioEl) {
-      audioVisualizer.attach(audioEl);
-      audioVisualizer.start();
-    }
+    if (audioEl) { audioVisualizer.attach(audioEl); audioVisualizer.start(); }
     bindMediaSessionHandlers();
     updateMediaSessionPlaybackState(true);
     if (playerStore.activeTrack) {
@@ -458,17 +467,9 @@
 
 <!-- 全局原生 Audio 引擎 -->
 <audio
-  bind:this={audioEl}
-  crossorigin="anonymous"
-  playsinline
-  preload="auto"
-  onplay={onAudioPlay}
-  onpause={onAudioPause}
-  ontimeupdate={onAudioTimeUpdate}
-  onloadedmetadata={onAudioLoadedMetadata}
-  onseeked={onAudioSeeked}
-  onerror={onAudioError}
-  onended={onAudioEnded}
+  bind:this={audioEl} crossorigin="anonymous" playsinline preload="auto"
+  onplay={onAudioPlay} onpause={onAudioPause} ontimeupdate={onAudioTimeUpdate}
+  onloadedmetadata={onAudioLoadedMetadata} onseeked={onAudioSeeked} onerror={onAudioError} onended={onAudioEnded}
 ></audio>
 
 <!-- 🎬 现代专业音频播放控制栏 -->

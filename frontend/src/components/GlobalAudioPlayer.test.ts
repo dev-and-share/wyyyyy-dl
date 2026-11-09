@@ -223,4 +223,43 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     expect(playerStore.playing).toBe(false);
     expect(playerStore.qIndex).toBe(0); // Kept on track1 waiting for user gesture
   });
+
+  it('toggles playback with Spacebar keydown on active window when not focused on text inputs', async () => {
+    const track = { id: 601, name: '太空步', artist: 'MJ', url: '/v3/stream?id=601', isLocal: true };
+    playerStore.setQueue([track], 0);
+    playerStore.playing = false;
+
+    const { container, unmount } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=601';
+
+    // 1. 普通状态按 Space：应 preventDefault 并切换播放
+    const spaceEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(spaceEvent);
+    expect(spaceEvent.defaultPrevented).toBe(true);
+
+    // 2. 在 <input> 内按 Space：不应 preventDefault，也不应打扰用户输入
+    const inputEl = document.createElement('input');
+    document.body.appendChild(inputEl);
+    inputEl.focus();
+    const inputSpaceEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    inputEl.dispatchEvent(inputSpaceEvent);
+    expect(inputSpaceEvent.defaultPrevented).toBe(false);
+    document.body.removeChild(inputEl);
+
+    // 3. 在 <textarea> 内按 Space：不应 preventDefault
+    const textareaEl = document.createElement('textarea');
+    document.body.appendChild(textareaEl);
+    textareaEl.focus();
+    const textareaSpaceEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    textareaEl.dispatchEvent(textareaSpaceEvent);
+    expect(textareaSpaceEvent.defaultPrevented).toBe(false);
+    document.body.removeChild(textareaEl);
+
+    // 4. 组件卸载后移除 keydown 监听
+    unmount();
+    const postUnmountEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(postUnmountEvent);
+    expect(postUnmountEvent.defaultPrevented).toBe(false);
+  });
 });
