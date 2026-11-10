@@ -128,7 +128,7 @@
       <LocalSearchBox
         bind:value={filterKw}
         placeholder={t('folder.searchPlaceholder')}
-        historyKey="wyyyy_folder_search_history"
+        historyKey="wyy_folder_search_history"
         hideIcon={true}
       />
     </div>

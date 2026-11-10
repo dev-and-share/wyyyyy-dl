@@ -167,8 +167,8 @@
   onMount(() => {
     loadList();
     const reload = () => { loadList(); };
-    window.addEventListener('wyyyy:browser-cache-updated', reload);
-    window.addEventListener('wyyyy:song-play-updated', reload);
+    window.addEventListener('wyy:browser-cache-updated', reload);
+    window.addEventListener('wyy:song-play-updated', reload);
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible' && accBrowserCache) loadList();
@@ -176,8 +176,8 @@
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      window.removeEventListener('wyyyy:browser-cache-updated', reload);
-      window.removeEventListener('wyyyy:song-play-updated', reload);
+      window.removeEventListener('wyy:browser-cache-updated', reload);
+      window.removeEventListener('wyy:song-play-updated', reload);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   });

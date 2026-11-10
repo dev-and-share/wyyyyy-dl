@@ -10,9 +10,9 @@ import {
   fetchMusicSheetInfo
 } from './chartSheetService';
 
-const STORAGE_PLUGINS_KEY = 'wyyyy_musicfree_plugins_v1';
-const STORAGE_SUBS_KEY = 'wyyyy_musicfree_subs_v1';
-const STORAGE_REMOVED_BUILTINS_KEY = 'wyyyy_musicfree_removed_builtins_v1';
+const STORAGE_PLUGINS_KEY = 'wyy_musicfree_plugins_v1';
+const STORAGE_SUBS_KEY = 'wyy_musicfree_subs_v1';
+const STORAGE_REMOVED_BUILTINS_KEY = 'wyy_musicfree_removed_builtins_v1';
 
 class MusicFreeStore {
   plugins = $state<InstalledPluginRecord[]>([]);
@@ -76,7 +76,7 @@ class MusicFreeStore {
       const existing = this.plugins.find((p) => p.id === id || p.name === bp.platform);
       if (!existing) {
         this.plugins.unshift({
-          id, name: bp.platform, version: bp.version || '1.0.0', author: bp.author || 'wyyyyy-dl 官方',
+          id, name: bp.platform, version: bp.version || '1.0.0', author: bp.author || 'WYY 官方',
           url: bp.srcUrl || '', code: '', enabled: true, supportedSearchType: bp.supportedSearchType || ['music'], instance: bp
         });
       } else {
@@ -333,7 +333,7 @@ class MusicFreeStore {
           id,
           name: bp.platform,
           version: bp.version || '1.0.0',
-          author: bp.author || 'wyyyyy-dl 官方',
+          author: bp.author || 'WYY 官方',
           url: bp.srcUrl || '',
           code: '',
           enabled: true,

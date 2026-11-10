@@ -99,7 +99,7 @@
     try {
       await api.downloadSingle(songId);
       showToast(t('drawer.downloadSubmitted', { name: item.name || songId }), 'info');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       startTaskPolling();
       await fetchTasks();
     } catch (err: any) {
@@ -128,10 +128,10 @@
     });
 
     showToast(t('drawer.batchSubmitting', { count: failedItems.length }), 'info', 2000);
-    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     startTaskPolling();
 
-    // 🛡️ 智能节流提交队列：依次间隔 120ms 错开派发，避免瞬间并发打爆网易云解析接口
+    // 🛡️ 智能节流提交队列：依次间隔 120ms 错开派发，避免瞬间并发打爆解析接口
     try {
       for (const item of failedItems) {
         const songId = String(item.id || item.songId || '');
@@ -244,7 +244,7 @@
       <LocalSearchBox
         bind:value={searchKw}
         placeholder={t('download.searchHistoryPlaceholder')}
-        historyKey="wyyyy_tasks_search_history"
+        historyKey="wyy_tasks_search_history"
         onSearch={() => {}}
         onClear={() => searchKw = ''}
       />
@@ -300,7 +300,7 @@
             {@const isSuccess = item.status === 'SUCCESS'}
             {@const isFailed = item.status === 'FAILED' || item.status === 'ERROR'}
             {@const isActive = ACTIVE_STATUSES.has(item.status)}
-            {@const formattedError = item.errorMsg === '分析歌曲URL失败' ? '分析歌曲URL失败 (因网易云版权保护或需VIP会员)' : item.errorMsg}
+            {@const formattedError = item.errorMsg === '分析歌曲URL失败' ? '分析歌曲URL失败 (因版权保护或需VIP会员)' : item.errorMsg}
             <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isActive ? 'bg-amber-500/5' : ''} {isFailed ? 'bg-rose-500/[0.03]' : ''}">
               <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
                 {#if isActive}

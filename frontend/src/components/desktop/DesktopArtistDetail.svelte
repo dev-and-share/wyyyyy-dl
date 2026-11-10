@@ -117,7 +117,7 @@
         return;
       }
       showToast(t('artist.forkSuccess', { name: plName }), 'success', 3500);
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
     } catch (e: any) {
       showToast(t('artist.forkFailedWithMsg', { message: e?.message || e }), 'error');
     } finally {
@@ -136,7 +136,7 @@
       } catch {}
     }
     showToast(t('artist.submittedDownloadCount', { count: submitCount, total: songs.length }), 'success');
-    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
   }
 
   async function handleBatchCache() {
@@ -172,7 +172,7 @@
       } else {
         showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }

@@ -214,7 +214,7 @@
           <span>{t('settings.iosShortcutTitle')}</span>
         </div>
         <a
-          href="https://github.com/dev-and-share/wyyyyy-dl/blob/main/docs/ios-shortcuts-pwa.md"
+          href="https://github.com/dev-and-share/wyy/blob/main/docs/ios-shortcuts-pwa.md"
           target="_blank"
           rel="noopener noreferrer"
           class="text-[11px] text-red-500 hover:underline flex items-center gap-0.5"

@@ -13,7 +13,7 @@ export const likeState = $state<{
 });
 
 /**
- * 判断指定歌曲是否已被收藏（兼容网易云数字 ID 与外部复合字符串 ID / 歌名组合键）
+ * 判断指定歌曲是否已被收藏（兼容云端数字 ID 与外部复合字符串 ID / 歌名组合键）
  */
 export function isTrackLiked(id: number | string | undefined | null, name?: string, artist?: string): boolean {
   if (id == null && !name) return false;
@@ -30,7 +30,7 @@ export function isTrackLiked(id: number | string | undefined | null, name?: stri
 }
 
 /**
- * 初始化并拉取用户收藏的红心歌曲列表（网易云云端 + 本地 SQLite 专属红心歌单）
+ * 初始化并拉取用户收藏的红心歌曲列表（云端 + 本地 SQLite 专属红心歌单）
  */
 export async function initLikeList(): Promise<void> {
   const cache = getApiCache('liked_song_ids');
@@ -40,7 +40,7 @@ export async function initLikeList(): Promise<void> {
     }
   }
 
-  // 1. 同步网易云官方云端我喜欢的音乐
+  // 1. 同步云端官方我喜欢的音乐
   try {
     const j = await api.likeList();
     if (j?.code === '000000' && Array.isArray(j.data)) {
@@ -68,7 +68,7 @@ export async function initLikeList(): Promise<void> {
 
 /**
  * 切换歌曲红心收藏状态（乐观更新 + 失败自动回滚 + Toast 提醒）
- * - 网易云歌曲：同步至网易云云端「我喜欢的音乐」
+ * - 云端歌曲：同步至云端「我喜欢的音乐」
  * - 外部歌曲：存入 SQLite 本地内置「❤️ 本地我喜欢的音乐」专属歌单，并联动触发后台落盘
  */
 export async function toggleLike(id: number | string, name?: string, artist?: string, extra?: any): Promise<void> {
@@ -114,7 +114,7 @@ export async function toggleLike(id: number | string, name?: string, artist?: st
     try {
       if (isLiked) {
         await api.localPlaylistRemoveTrack('local_favorites', validExtId, safeName, safeArtist);
-        showToast('已从「❤️ 本地我喜欢的音乐」移除', 'success');
+        showToast('已从「本地我喜欢的音乐」移除', 'success');
       } else {
         await api.localPlaylistAddTrack('local_favorites', {
           name: safeName || '未知歌曲',
@@ -122,7 +122,7 @@ export async function toggleLike(id: number | string, name?: string, artist?: st
           coverUrl: extra?.cover || extra?.artwork || extra?.picUrl,
           filePath: extra?.filePath
         });
-        showToast(`已收藏《${safeName}》到「❤️ 本地我喜欢的音乐」`, 'success');
+        showToast(`已收藏《${safeName}》到「本地我喜欢的音乐」`, 'success');
 
         // 联动后台下载落盘
         if (extra?.url || extra?.raw) {

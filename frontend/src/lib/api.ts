@@ -32,6 +32,7 @@ export const api = {
   loginStatus: () => get('/v3/auth/status'),
   qrStatus: (unikey: string) => get(`/v3/auth/qr/status?unikey=${encodeURIComponent(unikey)}`),
   setCookie: (c: string) => postForm('/v3/cookie', { cookie: c }),
+  userProfile: () => get('/v3/user/profile'),
 
   // 🎵 核心解析
   songV1: (id: string, level: string, name?: string, artist?: string) =>
@@ -100,7 +101,7 @@ export const api = {
     return get(`/v3/reveal?${q.toString()}`);
   },
 
-  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染网易云云端)
+  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染云端)
   localPlaylistList: () => get('/v3/local-playlist/list'),
   localPlaylistCreate: (name: string, coverUrl?: string) => postJson('/v3/local-playlist/create', { name, coverUrl }),
   localPlaylistDelete: (id: string) => postForm('/v3/local-playlist/delete', { id }),

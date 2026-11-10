@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "项目名称标识"
   type        = string
-  default     = "wyyyyy-dl"
+  default     = "wyy"
 }
 
 variable "environment" {
@@ -34,7 +34,7 @@ variable "lambda_timeout" {
 variable "lambda_zip_path" {
   description = "编译打包产物 ZIP 文件的相对路径"
   type        = string
-  default     = "../../build/distributions/wyyyyy-dl-aws.zip"
+  default     = "../../build/distributions/wyy-aws.zip"
 }
 
 variable "lambda_reserved_concurrency" {
@@ -79,7 +79,7 @@ variable "rds_username" {
 variable "rds_password" {
   description = "RDS 管理员密码 (生产环境建议通过 tfvars 传入或 Secrets Manager 管理)"
   type        = string
-  default     = "WyyyyyDlSecurePass2026!"
+  default     = "WyySecurePass2026!"
   sensitive   = true
 }
 
@@ -93,7 +93,7 @@ variable "cloudfront_price_class" {
 }
 
 variable "netease_cookie" {
-  description = "网易云登录 Cookie (可选)"
+  description = "云端音乐登录 Cookie (可选)"
   type        = string
   default     = ""
   sensitive   = true

@@ -10,7 +10,11 @@ vi.mock('../lib/api', () => ({
     historyScan: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
     historyScanExternal: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
     historyImportUntracked: vi.fn().mockResolvedValue({ code: '000000', data: 5 }),
-    historyCleanMissing: vi.fn().mockResolvedValue({ code: '000000', data: 3 })
+    historyCleanMissing: vi.fn().mockResolvedValue({ code: '000000', data: 3 }),
+    getGeoProxyConfig: vi.fn().mockResolvedValue({ code: '000000', data: { enabled: false } }),
+    saveGeoProxyConfig: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
+    testGeoProxy: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
+    refreshGeoProxyPool: vi.fn().mockResolvedValue({ code: '000000', data: {} })
   }
 }));
 
@@ -125,9 +129,13 @@ describe('TopBar & SettingsDrawer Integration', () => {
     await fireEvent.click(winampBtn);
     expect(localStorage.getItem('player_skin')).toBe('winamp');
 
-    const springBtn = screen.getByTestId('settings-skin-spring');
-    await fireEvent.click(springBtn);
-    expect(localStorage.getItem('player_skin')).toBe('spring');
+    const cyberBtn = screen.getByTestId('settings-skin-cyber');
+    await fireEvent.click(cyberBtn);
+    expect(localStorage.getItem('player_skin')).toBe('cyber');
+
+    const tubeBtn = screen.getByTestId('settings-skin-tube');
+    await fireEvent.click(tubeBtn);
+    expect(localStorage.getItem('player_skin')).toBe('tube');
   });
 
   it('SettingsDrawer has top priority z-index and safe area padding to prevent player occlusion', () => {
@@ -148,5 +156,20 @@ describe('TopBar & SettingsDrawer Integration', () => {
     const backdrop = container.firstElementChild as HTMLElement;
     expect(backdrop.className).toContain('z-[100049]');
     expect(backdrop.className).toContain('backdrop-blur-md');
+  });
+
+  it('renders footer easter egg version badge and slogan', () => {
+    render(SettingsDrawer, {
+      repeat: false,
+      themeMode: 'dark',
+      onToggleRepeat: vi.fn(),
+      onSelectTheme: vi.fn(),
+      onOpenPeq: vi.fn(),
+      onClose: vi.fn()
+    });
+
+    const easterEgg = screen.getByTestId('settings-version-easter-egg');
+    expect(easterEgg).toBeTruthy();
+    expect(easterEgg.textContent).toContain('Whatever You Yearn');
   });
 });

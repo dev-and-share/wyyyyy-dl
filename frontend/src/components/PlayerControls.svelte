@@ -4,6 +4,7 @@
 
   let {
     playing = false,
+    loading = false,
     playMode = 'list',
     onTogglePlay,
     onPrev,
@@ -13,6 +14,7 @@
     skinId = 'vinyl'
   } = $props<{
     playing: boolean;
+    loading?: boolean;
     playMode: 'list' | 'single' | 'shuffle';
     onTogglePlay: () => void;
     onPrev: () => void;
@@ -92,9 +94,14 @@
             : 'rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/35 hover:scale-105 active:scale-95 ' +
               (size === 'lg' ? 'w-12 h-12' : 'w-9.5 h-9.5')}"
     onclick={onTogglePlay}
-    title={playing ? t('player.pause') : t('player.play')}
+    title={loading ? t('player.cancelLoading') : (playing ? t('player.pause') : t('player.play'))}
   >
-    {#if skinId === 'winamp'}
+    {#if loading}
+      <svg class="animate-spin text-white {size === 'lg' ? 'w-6 h-6' : 'w-4.5 h-4.5'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+        <path class="opacity-85" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    {:else if skinId === 'winamp'}
       <span class="text-xs font-mono font-bold leading-none">{playing ? '❚❚' : '▶'}</span>
     {:else}
       <PlayerIcon name={playing ? 'pause' : 'play'} size={size === 'lg' ? 24 : 19} />

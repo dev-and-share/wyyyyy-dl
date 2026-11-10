@@ -13,10 +13,11 @@ RUN cd frontend && npm run check && npm run build
 # ==============================================================================
 FROM eclipse-temurin:21-jdk AS jar-builder
 WORKDIR /build
-COPY gradlew settings.gradle build.gradle gradle.properties ./
+COPY gradlew ./
 COPY gradle ./gradle/
 # 提前预热并持久化缓存 Gradle Wrapper (避免每次重新下载 120MB zip)
 RUN chmod +x ./gradlew && ./gradlew --version
+COPY settings.gradle build.gradle gradle.properties ./
 COPY src ./src/
 # 注入已编译的 Svelte 产物
 COPY --from=frontend-builder /build/src/main/resources/static/svelte ./src/main/resources/static/svelte
@@ -27,8 +28,8 @@ RUN ./gradlew bootJar -x test --no-daemon
 # ==============================================================================
 FROM eclipse-temurin:21-jre
 RUN mkdir -p /app/java/ /media/music
-ENV auther=wyyyyy-dl
+ENV auther=wyy
 WORKDIR /app/java/
-COPY --from=jar-builder /build/build/libs/wyyyyy-dl-*.jar /app/java/app.jar
+COPY --from=jar-builder /build/build/libs/wyy-*.jar /app/java/app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount } from 'svelte';
   import { t } from '../../lib/i18n';
+  import { SpecialRouteId } from '../../lib/router.svelte';
   import {
     myPlaylists,
     loadMyPlaylists,
@@ -9,6 +10,13 @@
     getPlaylistPlayCount
   } from '../../lib/playlist.svelte';
   import { DEFAULT_VINYL_COVER, formatCoverUrl, matchesKeyword } from '../../lib/utils';
+  import {
+    localPlaylistState,
+    loadLocalPlaylists,
+    isSystemFavoritesPlaylist,
+    cleanPlaylistDisplayName,
+    isLocalPlaylist
+  } from '../../lib/localPlaylistStore.svelte';
   import DesktopViewHeader from './DesktopViewHeader.svelte';
 
   let {
@@ -21,7 +29,7 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let filter = $state<'all' | 'created' | 'subscribed'>('all');
+  let filter = $state<'all' | 'created' | 'subscribed' | 'local'>('all');
   let searchKeyword = $state('');
   let parseInput = $state('');
   let loading = $state(false);
@@ -29,17 +37,29 @@
   const d = new Date();
   const todayMonthText = $derived(t('recommend.monthText', { month: String(d.getMonth() + 1).padStart(2, '0') }));
   const todayDayNum = String(d.getDate()).padStart(2, '0');
+  const totalPlaylistCount = $derived(myPlaylists.length + localPlaylistState.playlists.length);
 
   onMount(() => {
     if (myPlaylists.length === 0) {
       loadMyPlaylists().catch(() => {});
     }
+    if (localPlaylistState.playlists.length === 0) {
+      loadLocalPlaylists().catch(() => {});
+    }
+    const handlePlCreated = () => {
+      loadLocalPlaylists().catch(() => {});
+    };
+    window.addEventListener('wyy:playlist-created', handlePlCreated);
+    return () => window.removeEventListener('wyy:playlist-created', handlePlCreated);
   });
 
   async function handleRefresh() {
     loading = true;
     try {
-      await loadMyPlaylists();
+      await Promise.allSettled([
+        loadMyPlaylists(),
+        loadLocalPlaylists()
+      ]);
       showToast(t('playlist.synced'), 'success', 1500);
     } catch (e: any) {
       showToast(t('playlist.loadFailedWithMsg', { error: e?.message || e }), 'error');
@@ -62,31 +82,35 @@
     }
   }
 
-  const filteredPlaylists = $derived(() => {
+  const filteredPlaylists = $derived.by(() => {
     const kw = searchKeyword.trim();
-    const curFilter = filter;
-    return untrack(() => {
-      let list = myPlaylists;
-      if (curFilter === 'created') list = list.filter(p => !p.subscribed);
-      if (curFilter === 'subscribed') list = list.filter(p => p.subscribed);
+    let list = myPlaylists;
+    if (filter === 'all') {
+      list = [...myPlaylists, ...localPlaylistState.playlists];
+    } else if (filter === 'created') {
+      list = myPlaylists.filter(p => !p.subscribed && !p.isLocal);
+    } else if (filter === 'subscribed') {
+      list = myPlaylists.filter(p => p.subscribed);
+    } else if (filter === 'local') {
+      list = localPlaylistState.playlists;
+    }
 
-      if (kw) {
-        list = list.filter(p => matchesKeyword(p.name, kw));
-      }
-      return sortPlaylistsByPlayCount(list);
-    });
+    if (kw) {
+      list = list.filter(p => matchesKeyword(p.name, kw));
+    }
+    return sortPlaylistsByPlayCount(list);
   });
 </script>
 
 <!-- PC Desktop: Playlist Cover Gallery (Gallery View) -->
 <div class="flex flex-col gap-5 select-none animate-fade-in" data-testid="desktop-playlist-gallery">
-  <!-- 1. 统一桌面 Header：我的歌单大厅 + 歌单数量 Badge + Sub-Tabs (全部/自建/收藏) -->
+  <!-- 1. 统一桌面 Header：我的歌单大厅 + 歌单数量 Badge + Sub-Tabs (全部/自建/收藏/本地) -->
   <DesktopViewHeader
     icon="📁"
     title={t('topbar.playlist')}
-    badge={`${myPlaylists.length} 个歌单`}
+    badge={`${totalPlaylistCount} 个歌单`}
     badgeType="default"
-    subtitle="我的云端与收藏歌单"
+    subtitle="我的云端、本地与收藏歌单"
   >
     {#snippet actions()}
       <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] shrink-0">
@@ -96,7 +120,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {filter === 'all' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => filter = 'all'}
         >
-          {t('playlist.tabAllWithCount', { count: myPlaylists.length })}
+          {t('playlist.tabAllWithCount', { count: totalPlaylistCount })}
         </button>
         <button
           type="button"
@@ -104,7 +128,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {filter === 'created' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => filter = 'created'}
         >
-          {t('playlist.tabCreatedWithCount', { count: myPlaylists.filter(p => !p.subscribed).length })}
+          {t('playlist.tabCreatedWithCount', { count: myPlaylists.filter(p => !p.subscribed && !p.isLocal).length })}
         </button>
         <button
           type="button"
@@ -113,6 +137,14 @@
           onclick={() => filter = 'subscribed'}
         >
           {t('playlist.tabSubscribedWithCount', { count: myPlaylists.filter(p => p.subscribed).length })}
+        </button>
+        <button
+          type="button"
+          data-testid="gallery-tab-local"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {filter === 'local' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+          onclick={() => filter = 'local'}
+        >
+          {t('playlist.tabLocalWithCount', { count: localPlaylistState.playlists.length })}
         </button>
       </div>
 
@@ -159,17 +191,17 @@
   </div>
 
   <!-- 3. Gallery Grid -->
-  {#if filteredPlaylists().length > 0}
+  {#if filteredPlaylists.length > 0}
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
       <!-- Daily Recommend Sticky Card -->
-      {#if !searchKeyword.trim() && filter !== 'subscribed'}
+      {#if !searchKeyword.trim() && filter !== 'subscribed' && filter !== 'local'}
         <div
           data-testid="gallery-card-daily-recommend"
           class="group flex flex-col gap-2 p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--card-header-hover)] border border-[var(--border-subtle)] hover:border-red-400/40 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-lg hover:-translate-y-1"
           role="button"
           tabindex="0"
-          onclick={() => onSelectPlaylist('daily-recommend')}
-          onkeydown={(e) => e.key === 'Enter' && onSelectPlaylist('daily-recommend')}
+          onclick={() => onSelectPlaylist(SpecialRouteId.DAILY_RECOMMEND)}
+          onkeydown={(e) => e.key === 'Enter' && onSelectPlaylist(SpecialRouteId.DAILY_RECOMMEND)}
         >
           <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-red-500 to-rose-600 shadow-inner flex flex-col select-none group-hover:scale-105 transition-transform duration-300">
             <div class="bg-red-700/80 text-white text-[10px] font-bold text-center py-1 tracking-wider uppercase">
@@ -198,8 +230,10 @@
         </div>
       {/if}
 
-      {#each filteredPlaylists() as pl (pl.id)}
+      {#each filteredPlaylists as pl (pl.id)}
         {@const isFav = isFavoritePlaylist(pl)}
+        {@const isLocalPl = pl.isLocal || isLocalPlaylist(pl.id)}
+        {@const isSysFav = isSystemFavoritesPlaylist(pl.id)}
         {@const playCount = getPlaylistPlayCount(pl.id)}
         <div
           data-testid="gallery-card-{pl.id}"
@@ -211,7 +245,7 @@
         >
           <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-black/20">
             <img
-              src={formatCoverUrl(pl.coverImgUrl, 250)}
+              src={pl.coverImgUrl ? formatCoverUrl(pl.coverImgUrl, 250) : DEFAULT_VINYL_COVER}
               alt={pl.name}
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
@@ -230,11 +264,11 @@
               </button>
             {/if}
 
-            {#if isFav}
+            {#if isFav || isSysFav}
               <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-500/90 text-white backdrop-blur-xs">
-                {t('playlist.favoriteTag')}
+                {isSysFav ? '❤️ 本地喜欢' : t('playlist.favoriteTag')}
               </span>
-            {:else if pl._isLocal}
+            {:else if isLocalPl}
               <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600/90 text-white backdrop-blur-xs">
                 🖥️ 本地自建
               </span>
@@ -242,8 +276,8 @@
           </div>
 
           <div class="flex flex-col gap-0.5 min-w-0">
-            <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={pl.name}>
-              {pl.name}
+            <span class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-red-400 transition-colors" title={cleanPlaylistDisplayName(pl)}>
+              {cleanPlaylistDisplayName(pl)}
             </span>
             <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
               <span>{t('playlist.trackCount', { count: pl.trackCount || 0 })}</span>
@@ -261,17 +295,19 @@
     </div>
   {:else}
     <div class="py-16 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-      <span class="text-4xl">📁</span>
+      <span class="text-4xl">{filter === 'local' ? '🖥️' : '📁'}</span>
       <span class="text-sm font-medium text-[var(--text-secondary)]">
-        {searchKeyword ? t('playlist.noMatchingPlaylists') : t('playlist.noPlaylistsData')}
+        {searchKeyword ? t('playlist.noMatchingPlaylists') : (filter === 'local' ? (t('sidebar.noLocalPlaylists') || '暂无本地专属歌单') : t('playlist.noPlaylistsData'))}
       </span>
-      <button
-        type="button"
-        class="btn-secondary text-xs px-4 py-1.5 rounded-xl cursor-pointer"
-        onclick={handleRefresh}
-      >
-        {t('playlist.syncFromCloudBtn')}
-      </button>
+      {#if filter !== 'local'}
+        <button
+          type="button"
+          class="btn-secondary text-xs px-4 py-1.5 rounded-xl cursor-pointer"
+          onclick={handleRefresh}
+        >
+          {t('playlist.syncFromCloudBtn')}
+        </button>
+      {/if}
     </div>
   {/if}
 </div>

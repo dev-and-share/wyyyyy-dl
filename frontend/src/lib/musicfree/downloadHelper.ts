@@ -48,7 +48,7 @@ export async function downloadExternalTrack(
     if (res?.code === '000000') {
       showToast(t('download.submittedTask'), 'success');
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+        window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       }
       return true;
     } else {

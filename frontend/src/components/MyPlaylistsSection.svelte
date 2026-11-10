@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { myPlaylists, getPlaylistFilter, loadMyPlaylists, sortPlaylistsByPlayCount, isFavoritePlaylist, getPlaylistPlayCount } from '../lib/playlist.svelte';
+  import { localPlaylistState, loadLocalPlaylists, isLocalPlaylist, cleanPlaylistDisplayName } from '../lib/localPlaylistStore.svelte';
   import { playlistService } from '../lib/playlistService';
   import { api } from '../lib/api';
   import AccordionCard from './AccordionCard.svelte';
@@ -39,12 +40,27 @@
     playlistName: string;
   } | null>(null);
 
+  let sourcePlaylists = $derived(
+    playlistFilter === 'local'
+      ? localPlaylistState.playlists
+      : (playlistFilter === 'all' ? [...myPlaylists, ...localPlaylistState.playlists] : myPlaylists)
+  );
+
   let filteredPlaylists = $derived(
     sortPlaylistsByPlayCount(
-      myPlaylists.filter((p: any) => {
+      sourcePlaylists.filter((p: any) => {
         const kw = playlistSearchKw.trim();
         // 当用户输入关键词时跨分类全局搜索，关键词为空时恢复当前分类筛选
-        const matchType = !kw ? (playlistFilter === 'all' || (playlistFilter === 'created' ? !p.subscribed : !!p.subscribed)) : true;
+        const isLocalPl = p.isLocal || isLocalPlaylist(p.id);
+        const matchType = !kw
+          ? (playlistFilter === 'all'
+              ? true
+              : playlistFilter === 'local'
+              ? isLocalPl
+              : playlistFilter === 'created'
+              ? !p.subscribed && !isLocalPl
+              : !!p.subscribed)
+          : true;
         if (!matchType) return false;
         if (!kw) return true;
         const nameMatch = matchesKeyword(p.name, kw);
@@ -129,11 +145,11 @@
 
 <!-- Section 1: 我的歌单 -->
 <AccordionCard title={t('myPlaylists.sectionTitle')} bind:open {flat} accent="red" onToggle={onToggle}>
-  <!-- 快捷过滤按钮组与新建/搜索入口 (整洁紧凑单行设计) -->
+  <!-- 快捷过滤按钮组与新建/搜索入口 (整洁紧凑单行设计，SP 移动端横向滑动不折行) -->
   <div class="flex items-center justify-between gap-1.5 mb-2.5">
-    <div class="flex gap-1.5 items-center flex-wrap">
+    <div class="flex gap-1.5 items-center flex-wrap min-w-0 flex-1">
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'all'}
         class:ring-slate-400={playlistFilter === 'all'}
         onclick={() => loadMyPlaylists('all')}
@@ -141,7 +157,7 @@
         {t('myPlaylists.tabAll')}
       </button>
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-sky-600 to-sky-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'created'}
         class:ring-sky-400={playlistFilter === 'created'}
         onclick={() => loadMyPlaylists('created')}
@@ -149,12 +165,20 @@
         {t('myPlaylists.tabCreated')}<span class="hidden sm:inline">{t('myPlaylists.tabCreatedFull')}</span>
       </button>
       <button
-        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 bg-gradient-to-br from-purple-600 to-purple-700 transition-all hover:brightness-110 active:scale-95"
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-purple-600 to-purple-700 transition-all hover:brightness-110 active:scale-95"
         class:ring-2={playlistFilter === 'subscribed'}
         class:ring-purple-400={playlistFilter === 'subscribed'}
         onclick={() => loadMyPlaylists('subscribed')}
       >
         {t('myPlaylists.tabSubscribed')}<span class="hidden sm:inline">{t('myPlaylists.tabSubscribedFull')}</span>
+      </button>
+      <button
+        class="btn-secondary rounded-lg px-2.5 py-1 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-emerald-600 to-teal-700 transition-all hover:brightness-110 active:scale-95"
+        class:ring-2={playlistFilter === 'local'}
+        class:ring-emerald-400={playlistFilter === 'local'}
+        onclick={() => loadMyPlaylists('local')}
+      >
+        {t('myPlaylists.tabLocal')}
       </button>
     </div>
 
@@ -184,7 +208,7 @@
       <LocalSearchBox
         bind:value={playlistSearchKw}
         placeholder={t('myPlaylists.searchPlaceholder')}
-        historyKey="wyyyy_playlist_search_history"
+        historyKey="wyy_playlist_search_history"
         hideIcon={true}
         onClear={() => { playlistSearchKw = ''; showSearch = false; }}
       />
@@ -213,7 +237,7 @@
             class="clickable-track-title truncate cursor-pointer font-bold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors"
             onclick={() => onViewPlaylist(String(pl.id))}
           >
-            {pl.name}
+            {cleanPlaylistDisplayName(pl)}
           </button>
           <span class="text-xs text-[var(--text-muted)] shrink-0">({pl.trackCount || 0}{t('common.unit.tracks')})</span>
           {#if getPlaylistPlayCount(pl.id) > 0}

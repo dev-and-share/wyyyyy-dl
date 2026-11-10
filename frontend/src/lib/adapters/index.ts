@@ -1,6 +1,6 @@
 /**
  * ☁️ 平台 Adapter 模块 (Platform Adapter Module)
- * 对外统一音源标准契约，支持网易云、QQ音乐、本地文件、Subsonic 等多数据源解耦插拔
+ * 对外统一音源标准契约，支持云端、QQ音乐、本地文件、Subsonic 等多数据源解耦插拔
  */
 
 import type { MusicPlatformAdapter } from './types';

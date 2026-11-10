@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer" />
-    <title>网易云音乐下载器 · Svelte 5</title>
+    <title>WYY · 现代化全能音乐工作台</title>
     <meta name="theme-color" id="pwa-theme-color" content="#0a0e1a" />
     <script>
       (function() {
@@ -22,6 +22,10 @@
 
         var skinColors = {
           spring: { dark: '#06140f', light: '#f0fdf4' },
+          sakura: { dark: '#240d1e', light: '#fff0f5' },
+          summer: { dark: '#072b4a', light: '#e0f2fe' },
+          autumn: { dark: '#1a1305', light: '#fffdf0' },
+          winter: { dark: '#0b121e', light: '#f8fafc' },
           winamp: { dark: '#11141b', light: '#f1f5f9' },
           cassette: { dark: '#121316', light: '#fefce8' },
           aurora: { dark: '#0c0a1a', light: '#faf5ff' },
@@ -32,10 +36,74 @@
         if (meta) meta.setAttribute('content', tc);
       })();
     </script>
+    <style>
+      .wyy-splash-container {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+        background: transparent;
+        user-select: none;
+        -webkit-user-select: none;
+        pointer-events: none;
+        z-index: 10;
+      }
+      .wyy-splash-logo-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .wyy-splash-icon {
+        width: 3.5rem;
+        height: 3.5rem;
+        color: #ef4444;
+        animation: wyy-splash-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      .wyy-splash-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        padding-left: 0.2em;
+        color: #f1f5f9;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      [data-theme="light"] .wyy-splash-title {
+        color: #1e293b;
+      }
+      .wyy-splash-bar {
+        width: 110px;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 9999px;
+        overflow: hidden;
+      }
+      [data-theme="light"] .wyy-splash-bar {
+        background: rgba(0, 0, 0, 0.08);
+      }
+      .wyy-splash-bar-inner {
+        width: 40%;
+        height: 100%;
+        background: linear-gradient(90deg, #ef4444, #f43f5e);
+        border-radius: 9999px;
+        animation: wyy-splash-slide 1.4s ease-in-out infinite alternate;
+      }
+      @keyframes wyy-splash-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.85; }
+        50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.6)); }
+      }
+      @keyframes wyy-splash-slide {
+        0% { transform: translateX(-60%); }
+        100% { transform: translateX(200%); }
+      }
+    </style>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="网易云下载器" />
+    <meta name="apple-mobile-web-app-title" content="WYY" />
     <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
@@ -43,7 +111,21 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div id="pwa-splash" class="wyy-splash-container" aria-hidden="true">
+        <div class="wyy-splash-logo-box">
+          <svg class="wyy-splash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+          </svg>
+          <div class="wyy-splash-title">WYY</div>
+        </div>
+        <div class="wyy-splash-bar">
+          <div class="wyy-splash-bar-inner"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

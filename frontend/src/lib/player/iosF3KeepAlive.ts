@@ -4,11 +4,12 @@
  */
 
 import { SilentHoldKeeper, getSilentWavUrl } from 'pwa-audio-player';
+export { getSilentWavUrl };
 import { platform } from '../platform';
 import type { Track } from '../types';
 import { updateMediaSessionMetadata, updateMediaSessionPlaybackState } from './mediaSession';
 
-export const STORAGE_KEY_IOS_F3_TIMEOUT = 'wyyyy_ios_f3_timeout_min';
+export const STORAGE_KEY_IOS_F3_TIMEOUT = 'wyy_ios_f3_timeout_min';
 export const DEFAULT_IOS_F3_TIMEOUT_MIN = 5;
 
 let currentKeeper: SilentHoldKeeper | null = null;
@@ -163,6 +164,26 @@ export function resetIosF3State(audioEl?: HTMLAudioElement | null): void {
   if (audioEl) {
     try {
       audioEl.loop = false;
+    } catch {}
+  }
+}
+
+/**
+ * 🛡️ 异步切歌/解析期间的过渡保活 (基于 pwa-player core SilentHoldKeeper 机制)
+ * iOS WebKit 锁屏切歌时若音频中断超过 3 秒会被系统看门狗杀死，因此播放无声波形循环保活；
+ * 非 iOS 环境立即 pause() 旧音频，避免旧曲继续发声。
+ */
+export function holdTransitionKeepAlive(audioEl: HTMLAudioElement | null): void {
+  if (!audioEl) return;
+  if (platform.isIOS) {
+    try {
+      audioEl.loop = true;
+      audioEl.src = getSilentWavUrl();
+      audioEl.play().catch(() => {});
+    } catch {}
+  } else {
+    try {
+      audioEl.pause();
     } catch {}
   }
 }

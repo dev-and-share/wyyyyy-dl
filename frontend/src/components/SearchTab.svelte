@@ -30,13 +30,13 @@
     onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
 
-  const STORAGE_KEY_SEARCH_KW = 'wyyyy_search_kw';
-  const STORAGE_KEY_SEARCH_TYPE = 'wyyyy_search_type';
-  const STORAGE_KEY_SEARCH_SOURCE = 'wyyyy_search_source';
-  const STORAGE_KEY_ALBUM_ID = 'wyyyy_search_album_id';
-  const STORAGE_KEY_SUBTAB = 'wyyyy_search_subtab';
-  const STORAGE_KEY_ACC_SEARCH = 'wyyyy_search_acc_search';
-  const STORAGE_KEY_ACC_ALBUM = 'wyyyy_search_acc_album';
+  const STORAGE_KEY_SEARCH_KW = 'wyy_search_kw';
+  const STORAGE_KEY_SEARCH_TYPE = 'wyy_search_type';
+  const STORAGE_KEY_SEARCH_SOURCE = 'wyy_search_source';
+  const STORAGE_KEY_ALBUM_ID = 'wyy_search_album_id';
+  const STORAGE_KEY_SUBTAB = 'wyy_search_subtab';
+  const STORAGE_KEY_ACC_SEARCH = 'wyy_search_acc_search';
+  const STORAGE_KEY_ACC_ALBUM = 'wyy_search_acc_album';
 
   function getStored(key: string, def: string) {
     if (typeof localStorage === 'undefined') return def;
@@ -200,16 +200,16 @@
         mfResults = res.results || [];
         searchLoading = false;
         if (!mfResults.length && showEmptyToast) {
-          showToast('未在已启用的 MusicFree 插件中找到相关结果', 'info');
+          showToast(t('search.mfNoResults'), 'info');
         }
       } catch (e: any) {
         searchLoading = false;
-        if (showEmptyToast) showToast('插件检索异常: ' + (e?.message || e), 'error');
+        if (showEmptyToast) showToast(t('search.mfSearchException', { error: e?.message || e }), 'error');
       }
       return;
     }
 
-    // 2. 网易云原生检索
+    // 2. 原生云端检索
     const cacheKey = 'search_' + sType + '_' + kw.trim();
     const cached = getApiCache(cacheKey);
     if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
@@ -241,7 +241,7 @@
     try {
       await api.downloadPlaylist(id);
       showToast(t('search.submittedPlaylist', { name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e.message || e }), 'error');
     }
@@ -311,7 +311,7 @@
     try {
       await api.downloadAlbum(String(album.id || currentAlbumId));
       showToast(t('download.submittedFullAlbum'), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e.message || e }), 'error');
     }
@@ -347,7 +347,7 @@
       } else {
         showToast(t('download.submittedTask'), 'info', 1500);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitSingleFailedWithMsg', { message: e.message || e }), 'error');
     }
@@ -372,9 +372,9 @@
   onChange={handleSwipeIndexChange}
 >
   <!-- Section 1: 在线搜索 -->
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <AccordionCard title={t('search.globalSearch')} flat open={true} accent="red">
-      <!-- 🎯 音源来源选择器：网易云 vs MusicFree 聚合 -->
+      <!-- 🎯 音源来源选择器：云端 vs MusicFree 聚合 -->
       <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] mb-2.5">
         <button
           type="button"
@@ -382,7 +382,7 @@
           class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center justify-center gap-1 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { searchSource = 'netease'; if (kw.trim()) doSearch(false); }}
         >
-          <span>☁️</span> <span>网易云</span>
+          <span>☁️</span> <span>{t('search.sourceNetease')}</span>
         </button>
         <button
           type="button"
@@ -390,16 +390,16 @@
           class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center justify-center gap-1 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { searchSource = 'musicfree'; if (kw.trim()) doSearch(false); }}
         >
-          <span>🧩</span> <span>MusicFree 聚合</span>
+          <span>🧩</span> <span>{t('search.sourceMusicFree')}</span>
         </button>
       </div>
 
       {#if searchSource === 'netease'}
-        <div class="flex gap-1.5 flex-nowrap w-auto max-sm:w-full max-sm:grid max-sm:grid-cols-4 max-sm:gap-1.5">
-          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1')}>{t('search.typeSong')}</button>
-          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '10' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('10')}>{t('search.typeAlbum')}</button>
-          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '1000' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1000')}>{t('search.typePlaylist')}</button>
-          <button type="button" class="btn-secondary rounded-lg px-3 py-1.5 max-sm:px-1 max-sm:py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 {sType === '100' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('100')}>{t('search.typeArtist')}</button>
+        <div class="flex gap-1.5 items-center overflow-x-auto no-scrollbar py-0.5 w-full sm:w-auto">
+          <button type="button" class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep {sType === '1' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1')}>{t('search.typeSong')}</button>
+          <button type="button" class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep {sType === '10' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('10')}>{t('search.typeAlbum')}</button>
+          <button type="button" class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep {sType === '1000' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1000')}>{t('search.typePlaylist')}</button>
+          <button type="button" class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep {sType === '100' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('100')}>{t('search.typeArtist')}</button>
         </div>
       {/if}
 
@@ -407,8 +407,8 @@
         <input
           type="search"
           enterkeyhint="search"
-          placeholder={searchSource === 'musicfree' ? '输入歌曲或歌手，跨插件并行检索...' : t('search.inputPlaceholderWithShortcut')}
-          class="flex-1 min-w-0"
+          placeholder={searchSource === 'musicfree' ? t('search.placeholderMusicFree') : t('search.inputPlaceholderWithShortcut')}
+          class="flex-1 min-w-0 placeholder:text-[var(--text-muted)]/60 placeholder:italic placeholder:transition-opacity"
           bind:value={kw}
           onkeydown={(e) => {
             if (e.key === 'Enter') {
@@ -461,7 +461,7 @@
   </div>
 
   <!-- Section 2: 专辑解析与整辑下载 (已拆分组件) -->
-  <div id="section-album-detail" class="w-full">
+  <div id="section-album-detail" class="w-full flex-1 flex flex-col">
     <AlbumDetailCard
       flat
       open={true}
@@ -478,7 +478,7 @@
   </div>
 
   <!-- Section 3: 歌手热门曲目与收藏 -->
-  <div id="section-artist-detail" class="w-full">
+  <div id="section-artist-detail" class="w-full flex-1 flex flex-col">
     <ArtistDetailCard
       flat
       open={true}

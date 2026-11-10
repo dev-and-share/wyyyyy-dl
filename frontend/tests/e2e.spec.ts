@@ -7,11 +7,11 @@ test.describe('全栈端到端功能冒烟套件', () => {
   test('冒烟 1: Svelte 5 核心路由直达（根路径与主入口响应）', async ({ page }) => {
     // 1. 访问根路径，验证直接渲染 Svelte 5 主站
     await page.goto(`${BASE}/`);
-    await expect(page).toHaveTitle(/网易云/);
+    await expect(page).toHaveTitle(/WYY/);
 
     // 2. 访问 /svelte/index.html 主入口
     await page.goto(`${BASE}/svelte/index.html`);
-    await expect(page).toHaveTitle(/网易云/);
+    await expect(page).toHaveTitle(/WYY/);
     await expect(page.locator('#app')).toBeVisible();
   });
 

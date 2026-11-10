@@ -2,7 +2,7 @@
   import { INITIAL_BANDS, BUILTIN_PRESETS, type Band } from '../lib/peq';
   import { t } from '../lib/i18n/index.svelte';
 
-  const PEQ_STORAGE_KEY = 'wyyyy_peq_settings';
+  const PEQ_STORAGE_KEY = 'wyy_peq_settings';
 
   function loadPeqFromStorage(): { enabled: boolean; bands: Band[] } | null {
     try {

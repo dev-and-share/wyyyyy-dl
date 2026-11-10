@@ -7,7 +7,7 @@ import { markSongDownloaded } from './trackStatus.svelte';
 import { t } from './i18n';
 
 /**
- * 🎯 统一歌单内单曲下载：区分网易云数字 ID 与外部/本地歌单曲目
+ * 🎯 统一歌单内单曲下载：区分云端数字 ID 与外部/本地歌单曲目
  */
 export async function downloadPlaylistTrack(
   trackItem: any,
@@ -36,7 +36,7 @@ export async function downloadPlaylistTrack(
       } else {
         showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }

@@ -11,7 +11,9 @@ export interface Track {
   relativePath?: string;
   streamUrl?: string;
   level?: string;
+  quality?: string;
   size?: string;
+  br?: number;
   al?: {
     picUrl?: string;
     name?: string;

@@ -140,7 +140,7 @@ describe('RemoveFromPlaylistModal', () => {
       props: {
         song: mockSong,
         playlistId: 'local_favorites',
-        playlistName: '❤️ 本地我喜欢的音乐',
+        playlistName: '本地我喜欢的音乐',
         onClose,
         onSuccess,
         showToast

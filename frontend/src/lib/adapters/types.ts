@@ -16,6 +16,9 @@ export interface ResolvedTrackData {
   freeTrialDuration?: number;
   unplayable?: boolean;
   unplayableReason?: string;
+  br?: number;
+  level?: string;
+  size?: string;
   raw?: any;
 }
 
@@ -29,7 +32,7 @@ export interface PlatformCapabilities {
 
 /**
  * ☁️ 跨平台音源适配器抽象端口 (Port Interface)
- * 屏蔽各云端音乐平台（网易云、QQ、Subsonic、本地等）的数据模型与 API 差异，向播放器输出纯净统一的标准数据。
+ * 屏蔽各音乐平台（云端、QQ、Subsonic、本地等）的数据模型与 API 差异，向播放器输出纯净统一的标准数据。
  */
 export interface MusicPlatformAdapter {
   readonly id: string;

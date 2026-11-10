@@ -113,7 +113,7 @@
         } catch {}
       }
       showToast(t('recommend.batchSuccess', { count: successCount }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('recommend.batchFailed', { error: e.message || e }), 'error');
     } finally {

@@ -141,7 +141,7 @@ export async function deleteBrowserCacheEntry(item: BrowserCacheItem): Promise<v
   await audioCacheStorage.delete([...item.urls, ...item.relUrls]);
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated'));
   }
 }
 
@@ -177,7 +177,7 @@ export async function removeTrackBrowserCache(songId: string | number): Promise<
 
     localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
     refreshCachedSongIds();
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
     return deleted;
   } catch (err) {
     console.warn('[PWA] Failed to remove single track cache:', err);
@@ -215,7 +215,7 @@ export async function clearLowPlayCountCacheEntries(items: BrowserCacheItem[]): 
   localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated'));
   }
   return freedBytes;
 }
@@ -235,7 +235,7 @@ export async function clearAllBrowserAudioCache(): Promise<void> {
   localStorage.removeItem(PWA_TRACK_META_KEY);
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated'));
   }
 }
 

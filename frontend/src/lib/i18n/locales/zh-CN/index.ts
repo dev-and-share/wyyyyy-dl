@@ -7,6 +7,7 @@ import settings from './settings';
 import comment from './comment';
 import toast from './toast';
 import error from './error';
+import musicfree from './musicfree';
 
 export const zhCN = {
   ...common,
@@ -18,6 +19,7 @@ export const zhCN = {
   ...comment,
   ...toast,
   ...error,
+  ...musicfree,
 } as const;
 
 export default zhCN;

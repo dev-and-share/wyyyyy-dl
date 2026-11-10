@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
+  import { authStore } from '../../lib/authStore.svelte';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -84,23 +85,30 @@
       {/if}
     </div>
 
-    <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">
-      <button
-        type="button"
-        class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all"
-        onclick={() => showCookieInput = !showCookieInput}
-      >
-        {showCookieInput ? t('settings.collapseCookieInput') : t('settings.configCookieBtn')}
-      </button>
-      <a
-        href="/login"
-        target="_blank"
-        rel="noreferrer"
-        class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all text-center no-underline shrink-0"
-      >
-        {t('settings.account.qrLogin')}
-      </a>
-    </div>
+    {#if authStore.authEnabled && !authStore.isAdmin}
+      <div class="pt-2 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+        <span>🔒</span>
+        <span>云端主账号由超级管理员统一绑定托管，访客模式不支持换绑</span>
+      </div>
+    {:else}
+      <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">
+        <button
+          type="button"
+          class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all"
+          onclick={() => showCookieInput = !showCookieInput}
+        >
+          {showCookieInput ? t('settings.collapseCookieInput') : t('settings.configCookieBtn')}
+        </button>
+        <a
+          href="/login"
+          target="_blank"
+          rel="noreferrer"
+          class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all text-center no-underline shrink-0"
+        >
+          {t('settings.account.qrLogin')}
+        </a>
+      </div>
+    {/if}
 
     {#if showCookieInput}
       <div class="pt-2 flex flex-col gap-2">

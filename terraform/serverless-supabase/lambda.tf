@@ -68,7 +68,7 @@ resource "aws_s3_object" "lambda_package" {
 resource "aws_lambda_function" "spring_app" {
   function_name = "${var.project_name}-backend-supa-${var.environment}"
   role          = aws_iam_role.lambda_exec_role.arn
-  handler       = "com.wyyyyydl.StreamLambdaHandler::handleRequest"
+  handler       = "com.wyy.StreamLambdaHandler::handleRequest"
   runtime       = "java21"
   memory_size   = var.lambda_memory_size
   timeout       = var.lambda_timeout

@@ -10,7 +10,9 @@
   import LyricPanel from './LyricPanel.svelte';
   import TrackQuickActions from './TrackQuickActions.svelte';
   import SkinPickerSheet from './SkinPickerSheet.svelte';
-  import { skin } from '../lib/skinStore.svelte';
+  import ImmersiveMiniPlayer from './ImmersiveMiniPlayer.svelte';
+  import LyricBottomBar from './LyricBottomBar.svelte';
+  import { skin, setImmersiveThemeColor } from '../lib/skinStore.svelte';
   import VinylSkinStage from './skins/VinylSkinStage.svelte';
   import AuroraSkinStage from './skins/AuroraSkinStage.svelte';
   import CassetteSkinStage from './skins/CassetteSkinStage.svelte';
@@ -20,7 +22,11 @@
   import SummerSkinStage from './skins/SummerSkinStage.svelte';
   import AutumnSkinStage from './skins/AutumnSkinStage.svelte';
   import WinterSkinStage from './skins/WinterSkinStage.svelte';
-  import SeasonParticleCanvas from './skins/effects/SeasonParticleCanvas.svelte';
+  import TubeSkinStage from './skins/TubeSkinStage.svelte';
+  import CdSkinStage from './skins/CdSkinStage.svelte';
+  import CyberSkinStage from './skins/CyberSkinStage.svelte';
+  import RainSkinStage from './skins/RainSkinStage.svelte';
+  import ImmersiveBackgroundStage from './skins/ImmersiveBackgroundStage.svelte';
   import type { SkinId } from './skins/skinTypes';
 
   let {
@@ -65,16 +71,88 @@
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let showCommentModal = $state(false);
 
-  // 🌙 沉浸式 3 秒自动渐隐机制
+  // 🐱 复古胆机专属爱猫全景大背景：浅三花小步舞曲猫 Minuet (暂停时从 3 种随机抬头神态整张大图中抽取)
+  const TUBE_PAUSE_BG_VARIATIONS = [
+    '/assets/skins/tube_minuet_pause_1.jpg',
+    '/assets/skins/tube_minuet_pause_2.jpg',
+    '/assets/skins/tube_minuet_pause_3.jpg'
+  ];
+  let pauseTubeBgIndex = $state(0);
+  let currentPauseTubeBgSrc = $derived(
+    TUBE_PAUSE_BG_VARIATIONS[pauseTubeBgIndex] || '/assets/skins/tube_minuet_pause_1.jpg'
+  );
+
+  // 当从播放变为暂停时，随机抽取下一次抬头的猫咪全景大图
+  let prevPlaying = $state(false);
+  $effect(() => {
+    if (prevPlaying && !playing) {
+      const nextIdx = (pauseTubeBgIndex + 1 + Math.floor(Math.random() * 2)) % TUBE_PAUSE_BG_VARIATIONS.length;
+      pauseTubeBgIndex = nextIdx;
+    }
+    prevPlaying = playing;
+  });
+
+  // 🌙 沉浸式空间分区感应机制 (方案 A：左侧舞台稳固操控小播放器，贴底快速唤起大底栏)
   let uiVisible = $state(true);
   let hideTimer: any = null;
+  let isHoveringBottomControls = $state(false);
+  let isHoveringMiniControls = $state(false);
 
   function kickHideTimer() {
     uiVisible = true;
     clearTimeout(hideTimer);
+    if (isHoveringBottomControls || isHoveringMiniControls) {
+      return;
+    }
     hideTimer = setTimeout(() => {
-      uiVisible = false;
+      if (!isHoveringBottomControls && !isHoveringMiniControls) {
+        uiVisible = false;
+      }
     }, 3200);
+  }
+
+  function handleControlsMouseEnter() {
+    isHoveringBottomControls = true;
+    clearTimeout(hideTimer);
+    uiVisible = true;
+  }
+
+  function handleControlsMouseLeave() {
+    isHoveringBottomControls = false;
+    kickHideTimer();
+  }
+
+  function handleBottomZoneEnter() {
+    isHoveringBottomControls = true;
+    clearTimeout(hideTimer);
+    uiVisible = true;
+  }
+
+  let lastMoveTime = 0;
+  function handleMouseMove(e: MouseEvent) {
+    if (uiVisible) {
+      // 大播放器已显示时：正常防抖延长时间，悬停时保持显示
+      const now = Date.now();
+      if (now - lastMoveTime > 200) {
+        lastMoveTime = now;
+        if (!isHoveringBottomControls) {
+          kickHideTimer();
+        }
+      }
+      return;
+    }
+
+    // 🌙 沉浸静默态 (uiVisible === false)：空间分区响应
+    // 1. 鼠标明确移向屏幕最底边 (距底部 48px 以内) 或最顶边 (距顶部 48px 以内)：意图为操作长进度条/播控/顶栏 -> 顺滑唤起大播放器
+    if (typeof window !== 'undefined' && (e.clientY >= window.innerHeight - 48 || e.clientY < 48)) {
+      handleBottomZoneEnter();
+      return;
+    }
+
+    // 2. 鼠标移向左侧舞台或小播放器区域：意图为微雕控制台 -> 绝对不唤起大底栏，小播放器稳如泰山
+    if (isHoveringMiniControls || e.clientX < 480 || (e.target as HTMLElement | null)?.closest?.('[data-testid="immersive-mini-player-container"]')) {
+      return;
+    }
   }
 
   function toggleUi(e?: MouseEvent) {
@@ -86,6 +164,7 @@
     }
     if (uiVisible) {
       uiVisible = false;
+      isHoveringBottomControls = false;
       clearTimeout(hideTimer);
     } else {
       kickHideTimer();
@@ -134,14 +213,18 @@
 
   const STAGES = {
     vinyl: VinylSkinStage,
-    aurora: AuroraSkinStage,
     cassette: CassetteSkinStage,
+    cd: CdSkinStage,
+    tube: TubeSkinStage,
     winamp: WinampSkinStage,
-    spring: SpringSkinStage,
+    cyber: CyberSkinStage,
+    aurora: AuroraSkinStage,
+    rain: RainSkinStage,
     sakura: SakuraSkinStage,
     summer: SummerSkinStage,
     autumn: AutumnSkinStage,
-    winter: WinterSkinStage
+    winter: WinterSkinStage,
+    spring: SpringSkinStage
   };
 
   let Stage = $derived(STAGES[skin.current] || VinylSkinStage);
@@ -158,6 +241,7 @@
   }
 
   onMount(() => {
+    setImmersiveThemeColor(true);
     kickHideTimer();
 
     // 🛡️ 锁定根节点与底层视图滚动，彻底杜绝 iOS / PWA 双层橡皮筋穿透下拉
@@ -204,6 +288,7 @@
     window.addEventListener('keydown', handleKey);
 
     return () => {
+      setImmersiveThemeColor(false);
       clearTimeout(hideTimer);
       document.documentElement.style.overscrollBehavior = prevHtmlOverscroll;
       document.body.style.overflow = prevBodyOverflow;
@@ -219,51 +304,30 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   bind:this={modalContainerEl}
-  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--bg-color)] transition-colors duration-500 text-white overscroll-none touch-none"
+  class="fixed inset-0 w-screen h-screen z-[100000] overflow-hidden flex flex-col select-none bg-[image:var(--immersive-bg)] bg-[var(--wco-titlebar-bg,#0a0e1a)] transition-colors duration-500 text-white overscroll-none touch-none"
   style="{skin.cssVars} color-scheme: dark; transform: translateY({dragOffsetY}px); transition: {isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.3s'}; opacity: {1 - Math.min(dragOffsetY / 420, 0.5)}; overscroll-behavior: none; touch-action: none; -webkit-overflow-scrolling: auto;"
   onclick={toggleUi}
+  onmousemove={handleMouseMove}
   ontouchstart={handleTouchStart}
   ontouchend={handleTouchEnd}
   ontouchcancel={handleTouchEnd}
 >
-  <!-- 动态全屏皮肤流光层（铺满 100vw × 100vh 大画布） -->
-  {#if skin.current === 'aurora'}
-    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-      <div
-        class="aurora-orb orb-1 absolute -top-1/4 -left-1/4 w-[55vw] h-[55vw] min-w-[380px] min-h-[380px] rounded-full blur-[90px] md:blur-[130px] opacity-60 mix-blend-screen transition-colors duration-1000"
-        style="background: var(--skin-dominant, #7c3aed); animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-      <div
-        class="aurora-orb orb-2 absolute top-1/3 -right-1/4 w-[50vw] h-[50vw] min-w-[340px] min-h-[340px] rounded-full blur-[80px] md:blur-[120px] opacity-55 mix-blend-screen transition-colors duration-1000"
-        style="background: var(--skin-accent, #db2777); animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-      <div
-        class="aurora-orb orb-3 hidden md:block absolute -bottom-1/4 left-1/3 w-[45vw] h-[45vw] min-w-[300px] min-h-[300px] rounded-full blur-[90px] md:blur-[130px] opacity-40 mix-blend-screen transition-colors duration-1000"
-        style="background: var(--skin-muted, #2563eb); animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-    </div>
-  {:else if skin.current === 'spring'}
-    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-      <div
-        class="spring-pollen absolute -top-10 left-1/4 w-[50vw] h-[50vw] min-w-[340px] min-h-[340px] rounded-full blur-[100px] md:blur-[140px] bg-emerald-500/20 opacity-70 mix-blend-screen"
-        style="animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-      <div
-        class="spring-pollen absolute -bottom-10 right-1/4 w-[55vw] h-[55vw] min-w-[380px] min-h-[380px] rounded-full blur-[110px] md:blur-[150px] bg-teal-400/20 opacity-60 mix-blend-screen"
-        style="animation-play-state: {playing ? 'running' : 'paused'};"
-      ></div>
-    </div>
-  {:else if skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter'}
-    <!-- 四季动态全屏微风物理粒子画布 -->
-    <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={110} />
-  {/if}
+  <!-- 全屏沉浸式背景舞台层 (大背景铺满 + 四季流光 + 微暗角 + 物理粒子) -->
+  <ImmersiveBackgroundStage skinId={skin.current} {playing} {currentPauseTubeBgSrc} />
 
-  <!-- 顶部轻盈浮空区域：下拉手势指示器 + 皮肤切换 + 关闭按钮 -->
-  <div class="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 md:px-8 pt-[max(12px,env(safe-area-inset-top,0px))] transition-all duration-300 {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}">
-    <!-- 左上角：皮肤切换入口 -->
+  <!-- 顶部轻盈浮空区域：下拉手势指示器 + 皮肤切换 + 关闭按钮 (全面适配 PWA WCO 窗口控制遮罩) -->
+  <div
+    class="absolute top-0 inset-x-0 z-30 flex items-center justify-between transition-all duration-300 wco-drag-region {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}"
+    style="
+      padding-top: max(14px, var(--wco-height, env(titlebar-area-height, 0px)), env(safe-area-inset-top, 0px));
+      padding-left: max(16px, var(--wco-left, env(titlebar-area-x, 0px)), env(safe-area-inset-left, 0px));
+      padding-right: max(16px, var(--wco-right, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))), env(safe-area-inset-right, 0px));
+    "
+  >
+    <!-- 左上角：皮肤切换入口 (避开 macOS 交通灯 🔴🟡🟢) -->
     <button
       type="button"
-      class="interactive-el w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
+      class="interactive-el wco-no-drag w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
       onclick={() => { showSkinPicker = true; kickHideTimer(); }}
       title={t('player.skin')}
       data-testid="btn-open-skin-picker"
@@ -276,10 +340,10 @@
       <div class="w-9 h-1 rounded-full bg-white/40"></div>
     </div>
 
-    <!-- 右上角：关闭沉浸页按钮 -->
+    <!-- 右上角：关闭沉浸页按钮 (避开 Chrome / Windows 窗口控制按钮) -->
     <button
       type="button"
-      class="interactive-el w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
+      class="interactive-el wco-no-drag w-9 h-9 rounded-full flex items-center justify-center text-sm bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white backdrop-blur-md border border-white/15 shadow-md transition-all cursor-pointer"
       onclick={onClose}
       title={t('common.close')}
     >
@@ -288,157 +352,69 @@
   </div>
 
   <!-- 中间主体：动态皮肤舞台 + 满宽无遮挡滚动歌词 -->
-  <div class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden px-4 md:px-12 pt-[max(56px,calc(env(safe-area-inset-top,0px)+34px))] pb-32 md:pb-28 gap-3 md:gap-10 max-w-[1240px] w-full mx-auto items-center justify-center">
-    <!-- 动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/四季） -->
-    <Stage
-      {track}
-      {playing}
-      {currentTime}
-      {duration}
-      palette={skin.palette}
-      {isLiked}
-      {onToggleLike}
-      onOpenComments={() => showCommentModal = true}
-      onAddToPlaylist={handleAddToPlaylist}
-    />
+  <div
+    class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden px-4 md:px-12 pb-32 md:pb-28 gap-3 md:gap-10 max-w-[1240px] w-full mx-auto items-center justify-center"
+    style="padding-top: max(56px, calc(var(--wco-height, env(titlebar-area-height, 0px)) + 36px), calc(env(safe-area-inset-top, 0px) + 36px));"
+  >
+    <!-- 左侧列：动态皮肤舞台 + PC 宽屏专属低调 mini 播放器控制面板 -->
+    <div class="flex flex-col items-center justify-center shrink-0 max-w-[440px] w-full md:w-auto self-center">
+      <!-- 动态皮肤舞台插槽（黑胶/极光/磁带/Winamp/四季） -->
+      <Stage
+        {track}
+        {playing}
+        {currentTime}
+        {duration}
+        palette={skin.palette}
+        {isLiked}
+        {onToggleLike}
+        onOpenComments={() => showCommentModal = true}
+        onAddToPlaylist={handleAddToPlaylist}
+      />
 
-    <!-- 滚动歌词展示面板（完全恢复 100% 满宽，左侧不再有任何违和遮挡） -->
-    <div class="w-full flex-1 min-h-0 flex flex-col" onclick={() => kickHideTimer()}>
+      <!-- PC 宽屏专属：低调 mini 播放器控制面板（大播放器渐隐时优雅显现，互斥呈现，彻底消除双播放器冲突） -->
+      <div
+        data-testid="immersive-mini-player-container"
+        class="hidden md:flex flex-col items-center w-full mt-3 transition-all duration-500 {uiVisible ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 pointer-events-auto scale-100'}"
+        onmouseenter={() => { isHoveringMiniControls = true; }}
+        onmouseleave={() => { isHoveringMiniControls = false; }}
+      >
+        <ImmersiveMiniPlayer
+          {playing}
+          curTime={currentTime}
+          {duration}
+          {playMode}
+          skinId={skin.current}
+          {onTogglePlay}
+          {onPrev}
+          {onNext}
+          {onToggleMode}
+          {onSeek}
+          {onSeekTime}
+          {onToggleDrawer}
+        />
+      </div>
+    </div>
+
+    <!-- 滚动歌词展示面板（严格限制在视口高度内，隔离外层滚动，沉浸式以歌词为核心舒展居中） -->
+    <div
+      class="w-full flex-1 min-w-0 min-h-0 h-full max-h-full flex flex-col overflow-hidden self-stretch relative"
+      onclick={() => kickHideTimer()}
+    >
       <LyricPanel {track} {currentTime} {onSeekTime} skinId={skin.current} />
     </div>
   </div>
 
-  <!-- 底部：全屏沉浸播放控制条（上下两层结构 + 3秒自动渐隐） -->
-  <div
-    class="interactive-el absolute bottom-0 inset-x-0 z-20 w-full px-4 md:px-12 pt-6 pb-[max(14px,env(safe-area-inset-bottom,0px))] bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center gap-2 transition-all duration-500 {uiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'}"
-  >
-    <!-- 第一层：轻量级歌曲互动横栏 (喜欢、评论、加歌单、EQ) -->
-    <div class="w-full max-w-[640px] flex items-center justify-between px-2 text-white/80">
-      <div class="flex items-center gap-3">
-        <!-- ❤️ 喜欢 -->
-        <button
-          type="button"
-          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-xs cursor-pointer {isLiked ? 'text-red-400' : 'text-white/80'}"
-          onclick={() => { onToggleLike(); kickHideTimer(); }}
-          title={isLiked ? t('player.likeRemove') : t('player.likeAdd')}
-        >
-          <PlayerIcon name="heart" liked={isLiked} size={15} />
-          <span class="text-[11px] font-medium">{t('player.like')}</span>
-        </button>
-
-        <!-- 💬 评论 -->
-        {#if track?.id}
-          <button
-            type="button"
-            class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-xs cursor-pointer text-white/80"
-            onclick={() => { showCommentModal = true; kickHideTimer(); }}
-            title={t('comment.view')}
-          >
-            <span class="text-xs">💬</span>
-            <span class="text-[11px] font-medium">{t('comment.view')}</span>
-          </button>
-        {/if}
-      </div>
-
-      <div class="flex items-center gap-2">
-        <!-- ➕ 收藏到歌单 -->
-        <button
-          type="button"
-          class="w-7.5 h-7.5 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-emerald-400 transition-all cursor-pointer"
-          onclick={() => { handleAddToPlaylist(); kickHideTimer(); }}
-          title={t('playlist.collectTo')}
-        >
-          <PlayerIcon name="plus" size={15} />
-        </button>
-
-        <!-- 🎚️ PEQ -->
-        {#if platform.canUseAudioProcessing}
-          <button
-            type="button"
-            class="w-7.5 h-7.5 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white transition-all cursor-pointer"
-            onclick={() => { onTogglePeq(); kickHideTimer(); }}
-            title={t('player.peq')}
-          >
-            <PlayerIcon name="equalizer" size={15} />
-          </button>
-        {/if}
-      </div>
-    </div>
-
-    <!-- 进度条 -->
-    <div class="w-full max-w-[640px]" onclick={() => kickHideTimer()}>
-      <PlayerProgressBar
-        curTime={currentTime}
-        {duration}
-        progressRatio={duration ? (currentTime / duration) : 0}
-        {onSeek}
-        skinId={skin.current}
-      />
-    </div>
-
-    <!-- 第二层：5个核心播控大拇指操作区 (大间距防误触) -->
-    <div class="flex items-center justify-center gap-5 md:gap-8 pt-1">
-      <!-- 循环模式 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onToggleMode(); kickHideTimer(); }}
-        title={t('player.toggleMode')}
-      >
-        <PlayerIcon name={playMode === 'single' ? 'repeat-1' : playMode === 'shuffle' ? 'shuffle' : 'repeat'} size={18} />
-      </button>
-
-      <!-- 上一首 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onPrev(); kickHideTimer(); }}
-        title={t('player.previous')}
-      >
-        <PlayerIcon name="prev" size={19} />
-      </button>
-
-      <!-- 播放/暂停核心大键 -->
-      <button
-        type="button"
-        class="w-11 h-11 rounded-full flex items-center justify-center bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onTogglePlay(); kickHideTimer(); }}
-        title={playing ? t('player.pause') : t('player.play')}
-      >
-        <PlayerIcon name={playing ? 'pause' : 'play'} size={21} />
-      </button>
-
-      <!-- 下一首 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onNext(); kickHideTimer(); }}
-        title={t('player.next')}
-      >
-        <PlayerIcon name="next" size={19} />
-      </button>
-
-      <!-- 播放队列 -->
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
-        onclick={() => { onToggleDrawer(); kickHideTimer(); }}
-        title={t('player.playlist')}
-      >
-        <PlayerIcon name="list" size={18} />
-      </button>
-    </div>
-  </div>
-
-  <!-- 沉浸模式极细贴底进度指示线 (当界面淡出时优雅静默发光，高 2px) -->
-  <div
-    class="absolute bottom-0 inset-x-0 h-[2px] bg-white/10 pointer-events-none transition-opacity duration-500 z-10 {uiVisible ? 'opacity-0' : 'opacity-100'}"
-  >
-    <div
-      class="h-full bg-gradient-to-r from-red-500 to-rose-400 rounded-r-full transition-all duration-300"
-      style="width: {duration ? Math.min(100, (currentTime / duration) * 100) : 0}%; box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);"
-    ></div>
-  </div>
+  <!-- 底部：全屏沉浸播放控制条与贴底感应展开线 -->
+  <LyricBottomBar
+    {track} {currentTime} {duration} {playing} {playMode} {isLiked} {uiVisible}
+    skinId={skin.current} {onTogglePlay} {onPrev} {onNext} {onToggleMode} {onSeek}
+    {onToggleLike} {onTogglePeq} {onToggleDrawer} onAddToPlaylist={handleAddToPlaylist}
+    onOpenComments={() => showCommentModal = true}
+    onMouseEnterControls={handleControlsMouseEnter}
+    onMouseLeaveControls={handleControlsMouseLeave}
+    onBottomZoneEnter={handleBottomZoneEnter}
+    onKickTimer={kickHideTimer}
+  />
 </div>
 
 {#if showSkinPicker}
@@ -460,38 +436,3 @@
     onClose={() => showCommentModal = false}
   />
 {/if}
-
-<style>
-  /* ── 极光流动动画（大画布全屏） ───────────────────────── */
-  @keyframes drift1 {
-    0%   { transform: translate(0, 0) scale(1); }
-    50%  { transform: translate(6vw, 4vh) scale(1.15); }
-    100% { transform: translate(0, 0) scale(1); }
-  }
-  @keyframes drift2 {
-    0%   { transform: translate(0, 0) scale(1.1); }
-    50%  { transform: translate(-5vw, -3vh) scale(0.95); }
-    100% { transform: translate(0, 0) scale(1.1); }
-  }
-  @keyframes drift3 {
-    0%   { transform: translate(0, 0) scale(1); }
-    50%  { transform: translate(4vw, -5vh) scale(1.1); }
-    100% { transform: translate(0, 0) scale(1); }
-  }
-
-  .orb-1 { animation: drift1 18s ease-in-out infinite; will-change: transform; }
-  .orb-2 { animation: drift2 22s ease-in-out infinite; will-change: transform; }
-  .orb-3 { animation: drift3 26s ease-in-out infinite; will-change: transform; }
-
-  /* ── 春日草木微粒动画（大画布全屏） ───────────────────── */
-  @keyframes floatPollen {
-    0%   { transform: translateY(0) scale(1); }
-    50%  { transform: translateY(4vh) scale(1.08); }
-    100% { transform: translateY(0) scale(1); }
-  }
-  .spring-pollen { animation: floatPollen 14s ease-in-out infinite; will-change: transform; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .aurora-orb, .spring-pollen { animation: none !important; }
-  }
-</style>

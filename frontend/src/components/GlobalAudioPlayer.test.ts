@@ -11,7 +11,8 @@ vi.mock('../lib/api', () => ({
       code: 200,
       data: { url: '/v3/stream?id=101', lyric: '[00:00.00]测试歌词' }
     }),
-    downloadSingle: vi.fn().mockResolvedValue({ code: 200 })
+    downloadSingle: vi.fn().mockResolvedValue({ code: 200 }),
+    songStats: vi.fn().mockResolvedValue({ code: 200, data: { commentCount: 0, likedCount: 0 } })
   }
 }));
 
@@ -143,5 +144,195 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     // 活跃曲目 track2 绝不能被冤枉判为 unplayable
     expect(track2.unplayable).toBeFalsy();
     expect(playerStore.qIndex).toBe(1);
+  });
+
+  it('manages loading state and prevents old track audio replay during async resolution on track switch', async () => {
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+
+    // 当前在播已落盘旧歌
+    const oldTrack = { id: 301, name: '旧歌曲', artist: '歌手A', url: '/v3/stream?id=301', isLocal: true };
+    playerStore.setQueue([oldTrack], 0);
+    audioEl.src = 'http://localhost/v3/stream?id=301';
+    playerStore.playing = true;
+
+    // 切换至一首无预设 url 的插件/外部歌曲（需要异步解析）
+    const newAsyncTrack = { id: 'mf_kugou_999', name: '新插件歌曲', artist: '歌手B' };
+    window.dispatchEvent(new CustomEvent('wyy:play-tracks', {
+      detail: { tracks: [newAsyncTrack], optionsOrIdx: { startIndex: 0, forceReplace: true } }
+    }));
+
+    // 验证：立即激活 loading，且在 iOS 环境下切换至无声 loop 循环（绝不以 0 秒重播旧歌）
+    expect(playerStore.loading).toBe(true);
+    expect(audioEl.loop).toBe(true);
+    expect(audioEl.src.startsWith('blob:')).toBe(true);
+  });
+
+  it('does NOT reassign audioEl.src or call play() when returning to foreground while audio is playing', async () => {
+    const track = { id: 401, name: '前台测试歌曲', artist: '歌手A', url: '/v3/stream?id=401', isLocal: true };
+    playerStore.setQueue([track], 0);
+    playerStore.playing = true;
+
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=401';
+    Object.defineProperty(audioEl, 'paused', { value: false, writable: true, configurable: true });
+    Object.defineProperty(audioEl, 'currentTime', { value: 45, writable: true, configurable: true });
+    Object.defineProperty(audioEl, 'readyState', { value: 1, writable: true, configurable: true }); // iOS WebKit readyState in background
+
+    const playSpy = vi.spyOn(audioEl, 'play');
+    const srcSetterSpy = vi.fn();
+    Object.defineProperty(audioEl, 'src', {
+      get: () => 'http://localhost/v3/stream?id=401',
+      set: (val) => { srcSetterSpy(val); },
+      configurable: true
+    });
+
+    // Simulate switching to visible (app foregrounded)
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    // Audio src MUST NOT be touched, and play() MUST NOT be called in visibilitychange
+    expect(srcSetterSpy).not.toHaveBeenCalled();
+    expect(playSpy).not.toHaveBeenCalled();
+    // UI curTime should be synced to audioEl.currentTime
+    expect(playerStore.curTime).toBe(45);
+  });
+
+  it('stops playback cleanly and avoids recursive track skip loop when audio play() is blocked by browser Autoplay policy (NotAllowedError)', async () => {
+    const track1 = { id: 501, name: '受限歌曲1', artist: '歌手A', url: '/v3/stream?id=501', isLocal: true };
+    const track2 = { id: 502, name: '本地歌曲2', artist: '歌手B', url: '/v3/stream?id=502', isLocal: true };
+    playerStore.setQueue([track1, track2], 0);
+    playerStore.playing = true;
+
+    // Simulate browser blocking play() with NotAllowedError (user has not interacted yet)
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockImplementation(() => {
+      const err = new Error('The request is not allowed by the user agent or the platform in the current context');
+      err.name = 'NotAllowedError';
+      return Promise.reject(err);
+    });
+
+    const { container } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=501';
+
+    // Trigger toggle play
+    window.dispatchEvent(new CustomEvent('wyy:toggle-play'));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Contract: Must mark playerStore.playing = false, and MUST NOT skip to track2 in an automated loop
+    expect(playerStore.playing).toBe(false);
+    expect(playerStore.qIndex).toBe(0); // Kept on track1 waiting for user gesture
+  });
+
+  it('toggles playback with Spacebar keydown on active window when not focused on text inputs', async () => {
+    const track = { id: 601, name: '太空步', artist: 'MJ', url: '/v3/stream?id=601', isLocal: true };
+    playerStore.setQueue([track], 0);
+    playerStore.playing = true;
+
+    const { container, unmount } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=601';
+    Object.defineProperty(audioEl, 'paused', { value: false, writable: true, configurable: true });
+
+    // 1. 普通状态按 Space：应 preventDefault，并在 250ms 延迟判定后切换暂停
+    const spaceEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(spaceEvent);
+    expect(spaceEvent.defaultPrevented).toBe(true);
+    await new Promise((r) => setTimeout(r, 260));
+    expect(playerStore.playing).toBe(false);
+
+    // 2. 在 <input> 内按 Space：不应 preventDefault，也不应打扰用户输入
+    const inputEl = document.createElement('input');
+    document.body.appendChild(inputEl);
+    inputEl.focus();
+    const inputSpaceEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    inputEl.dispatchEvent(inputSpaceEvent);
+    expect(inputSpaceEvent.defaultPrevented).toBe(false);
+    document.body.removeChild(inputEl);
+
+    // 3. 在 <textarea> 内按 Space：不应 preventDefault
+    const textareaEl = document.createElement('textarea');
+    document.body.appendChild(textareaEl);
+    textareaEl.focus();
+    const textareaSpaceEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    textareaEl.dispatchEvent(textareaSpaceEvent);
+    expect(textareaSpaceEvent.defaultPrevented).toBe(false);
+    document.body.removeChild(textareaEl);
+
+    // 4. 组件卸载后移除 keydown 监听
+    unmount();
+    const postUnmountEvent = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(postUnmountEvent);
+    expect(postUnmountEvent.defaultPrevented).toBe(false);
+  });
+
+  it('toggles immersive modal when double pressing Spacebar rapidly without pausing music', async () => {
+    const track = { id: 701, name: '双击测试曲', artist: '歌手', url: '/v3/stream?id=701', isLocal: true };
+    playerStore.setQueue([track], 0);
+    playerStore.playing = true;
+
+    const { container, unmount } = render(GlobalAudioPlayer);
+    const audioEl = container.querySelector('audio') as HTMLAudioElement;
+    audioEl.src = 'http://localhost/v3/stream?id=701';
+
+    // 初始状态：未展开歌词沉浸大屏，且正在播放
+    expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).toBeNull();
+    expect(playerStore.playing).toBe(true);
+
+    // 1. 快速按两次空格（间隔 80ms <= 250ms）：应直接展开沉浸大屏，且绝不暂停音乐
+    const space1 = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(space1);
+
+    await new Promise((r) => setTimeout(r, 80));
+    const space2 = new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true });
+    window.dispatchEvent(space2);
+    await new Promise((r) => setTimeout(r, 50));
+
+    // 应该打开沉浸大屏
+    expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).not.toBeNull();
+    // 关键断言：音乐从未被暂停，playing 始终为 true！
+    expect(playerStore.playing).toBe(true);
+
+    // 等待超过 250ms 单按判定窗口，确保单按的 togglePlay 不会被误触发
+    await new Promise((r) => setTimeout(r, 260));
+    expect(playerStore.playing).toBe(true);
+
+    // 2. 再次快速按两次空格（再来一次就退出沉浸大屏，且依然不暂停）
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true }));
+    await new Promise((r) => setTimeout(r, 80));
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', cancelable: true, bubbles: true }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // 应该退出沉浸大屏
+    expect(container.querySelector('[data-testid="immersive-titlebar-bg"]')).toBeNull();
+    // 依然平稳播放，未发生暂停
+    expect(playerStore.playing).toBe(true);
+
+    unmount();
+  });
+
+  it('interrupts loading and cancels playback session when togglePlay is clicked during loading state', async () => {
+    const { unmount } = render(GlobalAudioPlayer);
+
+    const asyncTrack = {
+      id: 'mf_test_track_1',
+      name: '异步加载歌曲',
+      artist: '插件歌手',
+      url: ''
+    };
+
+    playerStore.setQueue([asyncTrack], 0);
+    playerStore.loading = true;
+    playerStore.playing = true;
+
+    // Simulate user clicking play/pause button (the red loading button) while loading
+    window.dispatchEvent(new CustomEvent('wyy:toggle-play'));
+
+    // Contract: loading must be aborted immediately, playing reset to false
+    expect(playerStore.loading).toBe(false);
+    expect(playerStore.playing).toBe(false);
+
+    unmount();
   });
 });

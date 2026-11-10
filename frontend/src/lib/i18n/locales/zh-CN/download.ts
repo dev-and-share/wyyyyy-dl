@@ -213,10 +213,11 @@ export default {
   'cache.browserOffline': '浏览器已离线',
   'cache.vipTrialSkip': '此曲为 VIP 试听片段，跳过手机离线缓存',
   'cache.unsupportedEnv': '当前浏览器不支持 Cache API 或未在安全环境(HTTPS/Localhost)运行',
-  'cache.cannotGetAudioStream': '无法获取歌曲音频播放流（可能需要网易云 VIP 或当前无版权）',
+  'cache.cannotGetAudioStream': '无法获取歌曲音频播放流（可能需要 VIP 或当前无版权）',
   'cache.streamFetchFailed': '音频流拉取失败 (HTTP {status})',
   'cache.detectedTrialSkip': '检测到为试听片段，跳过自动缓存',
   'cache.cachedTrialNotice': '已缓存《{name}》(⚠️ 提示: 此曲为 VIP 试听片段)',
   'cache.cachedSuccessOfflineReady': '已成功离线缓存《{name}》，断网可直接秒播！',
   'cache.cacheException': '离线缓存异常: {error}',
+  'download.tabLocalPlaylists': '本地歌单',
 } as const;

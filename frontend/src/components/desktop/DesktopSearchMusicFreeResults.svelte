@@ -12,6 +12,7 @@
   import { isTrackLiked, toggleLike } from '../../lib/likeStore.svelte';
   import { openSheet } from '../../lib/ui.svelte';
   import { t } from '../../lib/i18n';
+  import { getPluginDisplayName } from '../../lib/musicfree/pluginI18n';
 
   let {
     results = [],
@@ -34,11 +35,11 @@
   let actionLoadingId = $state<string | null>(null);
 
   function getSafeTitle(item: any): string {
-    return item?.title || item?.name || item?.songName || item?.songname || item?.musicName || '未知歌曲';
+    return item?.title || item?.name || item?.songName || item?.songname || item?.musicName || t('common.unknownSong');
   }
 
   function getSafeArtist(item: any): string {
-    return item?.artist || item?.singer || item?.author || '未知歌手';
+    return item?.artist || item?.singer || item?.author || t('musicfree.unknownArtist');
   }
 
   function buildSearchTrack(item: any) {
@@ -66,10 +67,10 @@
     actionLoadingId = item.id;
     const songName = getSafeTitle(item);
     try {
-      showToast(`正在解析「${songName}」音源直链...`, 'info');
+      showToast(t('musicfree.resolvingMedia', { name: songName }), 'info');
       const media = await musicFreeStore.resolveMediaSource(pluginId, item.raw || item);
       if (!media || !media.url) {
-        showToast('获取音源直链失败，可能该音源不支持直接下载', 'error');
+        showToast(t('musicfree.resolveFailed'), 'error');
         return;
       }
       const res = await api.downloadCustom({
@@ -82,14 +83,14 @@
         headers: media.headers
       });
       if (res?.code === '000000') {
-        showToast(`已提交「${songName}」下载任务到服务器`, 'success');
+        showToast(t('musicfree.downloadSubmitted', { name: songName }), 'success');
         startTaskPolling();
-        window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+        window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       } else {
-        showToast(res?.msg || '提交下载任务失败', 'error');
+        showToast(res?.msg || t('common.failed'), 'error');
       }
     } catch (e: any) {
-      showToast('下载失败: ' + (e.message || e), 'error');
+      showToast(t('musicfree.downloadFailed', { error: (e.message || e) }), 'error');
     } finally {
       actionLoadingId = null;
     }
@@ -101,7 +102,7 @@
       const res = await cacheTrackToBrowser(buildSearchTrack(item));
       showToast(res.msg, res.success ? 'success' : 'error');
     } catch (e: any) {
-      showToast('离线缓存失败: ' + (e.message || e), 'error');
+      showToast(t('search.cacheFailedWithMsg', { message: (e.message || e) }), 'error');
     } finally {
       actionLoadingId = null;
     }
@@ -117,16 +118,16 @@
   {#if loading}
     <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
       <div class="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin"></div>
-      <span>正在通过 MusicFree 插件跨源并行检索中...</span>
+      <span>{t('musicfree.searchingParallel')}</span>
     </div>
   {:else if results.length === 0}
     <div class="py-20 text-center text-xs text-[var(--text-muted)]">
-      未检索到插件音源结果，请尝试更换关键词或在「发现中心」检查插件启用状态
+      {t('musicfree.noSearchResults')}
     </div>
   {:else}
     <div class="text-xs text-[var(--text-muted)] px-1 mb-1.5 flex items-center justify-between gap-1">
-      <span class="truncate">找到 {results.length} 首歌曲</span>
-      <span class="text-[11px] opacity-70 hidden sm:inline shrink-0">提示：需先下载/缓存后方可加入本地歌单</span>
+      <span class="truncate">{t('musicfree.searchSongCount', { count: results.length })}</span>
+      <span class="text-[11px] opacity-70 hidden sm:inline shrink-0">{t('musicfree.addToLocalHint')}</span>
     </div>
 
     <div class="flex flex-col gap-1.5">
@@ -134,7 +135,8 @@
         {@const title = getSafeTitle(item)}
         {@const artist = getSafeArtist(item)}
         {@const cover = item.artwork || item.picUrl || DEFAULT_VINYL_COVER}
-        {@const pName = item._pluginPlatform || item.pluginName || '外部音源'}
+        {@const rawPlatform = item._pluginPlatform || item.pluginName}
+        {@const pName = rawPlatform ? getPluginDisplayName(rawPlatform) : t('playlist.externalSourceBadge')}
         {@const trackId = item.id || `mf_${item._pluginId || item.pluginHash}_${item.rawId || title}`}
         {@const isCur = isSameTrack(curTrack, trackId)}
         {@const isVip = isVipOrPaidTrack(item)}
@@ -182,7 +184,7 @@
             <div class="text-xs sm:text-sm font-semibold truncate min-w-0 mb-1 flex items-center gap-1.5 {isCur ? 'text-purple-400 font-bold' : isVip ? 'text-[var(--text-secondary)] opacity-80' : 'text-[var(--text-main)]'}" title={title}>
               <span class="truncate">{title}</span>
               {#if isVip}
-                <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title="版权付费歌曲">
+                <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title={t('musicfree.vipBadgeTitle')}>
                   VIP
                 </span>
               {/if}
@@ -221,7 +223,7 @@
             </SlotBtn>
 
             {#if status.isServer}
-              <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackId, name: title, artist } }))}>
+              <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackId, name: title, artist } }))}>
                 {t('common.reveal')}
               </SlotBtn>
             {:else}
@@ -245,7 +247,7 @@
               playing={isCur && playing}
               onclick={() => handlePlay(item)}
             >
-              {isCur && playing ? '⏸' : '▶ 试听'}
+              {isCur && playing ? '⏸' : t('search.play')}
             </SlotBtn>
             <button
               type="button"
@@ -255,14 +257,14 @@
                 subtitle: `${artist} · ${pName}`,
                 actions: [
                   {
-                    label: isCur && playing ? '⏸ 暂停试听' : '▶️ 试听歌曲',
+                    label: isCur && playing ? '⏸ ' + t('player.pause') : '▶️ ' + t('search.play'),
                     style: 'primary',
                     onclick: () => handlePlay(item)
                   },
                   ...(status.isServer ? [{
                     label: '🔍 ' + t('common.reveal'),
                     style: 'default' as const,
-                    onclick: () => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackId, name: title, artist } }))
+                    onclick: () => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackId, name: title, artist } }))
                   }] : [{
                     label: '📥 ' + t('download.downloadSingle'),
                     style: 'default' as const,

@@ -219,4 +219,5 @@ export default {
   'cache.cachedTrialNotice': '「{name}」 캐시 완료 (⚠️ 알림: VIP 미리듣기 음원입니다)',
   'cache.cachedSuccessOfflineReady': '「{name}」 오프라인 캐시 완료! 오프라인에서도 즉시 재생 가능합니다.',
   'cache.cacheException': '오프라인 캐시 오류: {error}',
+  'download.tabLocalPlaylists': '재생목록',
 } as const;

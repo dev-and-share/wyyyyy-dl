@@ -40,13 +40,13 @@
         type="button"
         role="tab"
         aria-selected={isActive}
-        class="flex-1 py-1.5 px-1.5 md:px-3 rounded-lg text-xs md:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer border-none select-none {isActive ? activeStyle : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-white/5 opacity-80 hover:opacity-100'}"
+        class="flex-1 min-w-0 py-1.5 px-0.5 sm:px-2 md:px-3 rounded-lg text-[11px] sm:text-xs md:text-sm font-semibold flex items-center justify-center gap-1 sm:gap-1.5 transition-all duration-200 cursor-pointer border-none select-none {isActive ? activeStyle : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-white/5 opacity-80 hover:opacity-100'}"
         onclick={() => onChange(item.id)}
       >
         {#if item.icon}
-          <span class="text-sm md:text-base leading-none shrink-0">{item.icon}</span>
+          <span class="text-xs sm:text-sm md:text-base leading-none shrink-0">{item.icon}</span>
         {/if}
-        <span class="truncate">{item.label}</span>
+        <span class="truncate text-[11px] sm:text-xs">{item.label}</span>
         {#if item.badge}
           <span class="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono {isActive ? 'bg-white/20 text-white' : 'bg-white/10 text-[var(--text-muted)]'}">
             {item.badge}

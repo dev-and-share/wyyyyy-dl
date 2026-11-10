@@ -26,6 +26,35 @@
 
   // 10 频段 EQ 刻度
   const EQ_BANDS = ['60', '170', '310', '600', '1K', '3K', '6K', '12K', '14K', '16K'];
+
+  /**
+   * 动态格式化 Winamp 比特率徽标 (真实码率优先: 128K / 320K / FLAC / HI-RES)
+   */
+  let bitrateLabel = $derived.by(() => {
+    if (!track) return '128K';
+
+    // 1. 优先按真实数字码率 (bps) 换算
+    const br = track.br ?? track.raw?.br;
+    if (typeof br === 'number' && br > 0) {
+      if (br >= 1500000) return 'HI-RES';
+      if (br >= 800000) return 'FLAC';
+      return `${Math.round(br / 1000)}K`;
+    }
+
+    // 2. 根据音质等级档位 (level / quality) 映射
+    const level = String(track.level || track.quality || track.raw?.level || '').toLowerCase();
+    if (level.includes('hires') || level.includes('sky') || level.includes('hr')) return 'HI-RES';
+    if (level.includes('lossless') || level.includes('flac') || level.includes('sq')) return 'FLAC';
+    if (level.includes('exhigh') || level.includes('320')) return '320K';
+    if (level.includes('higher') || level.includes('192')) return '192K';
+    if (level.includes('standard') || level.includes('128')) return '128K';
+
+    // 3. 根据音频编码类型 (type / format) 兜底
+    const type = String(track.type || track.raw?.type || '').toLowerCase();
+    if (type.includes('flac')) return 'FLAC';
+
+    return '128K';
+  });
 </script>
 
 <div
@@ -46,8 +75,11 @@
         <span class="text-[9px] font-mono text-emerald-400 bg-emerald-950/80 px-1 rounded border border-emerald-800">
           STEREO
         </span>
-        <span class="text-[9px] font-mono text-amber-300 bg-amber-950/80 px-1 rounded border border-amber-800">
-          128K
+        <span
+          data-testid="winamp-bitrate-badge"
+          class="text-[9px] font-mono text-amber-300 bg-amber-950/80 px-1 rounded border border-amber-800"
+        >
+          {bitrateLabel}
         </span>
       </div>
     </div>

@@ -81,13 +81,30 @@ body {
 /* ==========================================================================
    🪟 Window Controls Overlay (WCO) & macOS Titlebar Dragging
    ========================================================================== */
+:root {
+    --wco-height: env(titlebar-area-height, 0px);
+    --wco-left: env(titlebar-area-x, 0px);
+    --wco-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+}
+
+@media all and (display-mode: window-controls-overlay) {
+    :root {
+        --wco-height: max(env(titlebar-area-height, 0px), 38px);
+        --wco-left: max(env(titlebar-area-x, 0px), 80px);
+        --wco-right: max(calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)), 110px);
+    }
+}
+
 .wco-drag-region {
     -webkit-app-region: drag;
     app-region: drag;
+    window-drag: move;
 }
 
-.wco-no-drag {
-    -webkit-app-region: no-drag;
-    app-region: no-drag;
+.wco-no-drag,
+.wco-no-drag * {
+    -webkit-app-region: no-drag !important;
+    app-region: no-drag !important;
+    window-drag: none !important;
 }
 

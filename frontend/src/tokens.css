@@ -74,7 +74,7 @@
     --docked-bar-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
 
     /* 8. 全屏沉浸播放 (Immersive Player) */
-    --immersive-bg: radial-gradient(circle at center, #1e293b 0%, #0f172a 70%, #090d16 100%);
+    --immersive-bg: radial-gradient(ellipse 110% 90% at center, #1e293b 0%, #0f172a 60%, #0a0e1a 85%, #0a0e1a 100%);
     --immersive-header-bg: rgba(9, 13, 22, 0.3);
     --immersive-footer-bg: rgba(9, 13, 22, 0.25);
     --immersive-ring-bg: #0f172a;
@@ -153,8 +153,8 @@
     --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
     --docked-bar-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 
-    /* 8. 全屏沉浸播放 (Immersive Player) */
-    --immersive-bg: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
+    /* 8. 全屏沉浸播放 (Immersive Player - 白昼沙龙石板蓝，四角深色聚焦渐变) */
+    --immersive-bg: radial-gradient(ellipse 110% 90% at center, #334155 0%, #1e293b 45%, #182333 72%, #182232 100%);
     --immersive-header-bg: rgba(255, 255, 255, 0.85);
     --immersive-footer-bg: rgba(255, 255, 255, 0.7);
     --immersive-ring-bg: #1e293b;

@@ -54,4 +54,18 @@ describe('SwipeableTabsView Component', () => {
     expect(region).toBeDefined();
     expect(region.className).toContain('swipeable-tabs-viewport');
   });
+
+  it('respects default and custom minHeight props on viewport and track', () => {
+    const { getByRole } = render(SwipeableTabsView, {
+      props: {
+        activeIndex: 0,
+        count: 3,
+        minHeight: '520px',
+        onChange: () => {}
+      }
+    });
+
+    const region = getByRole('region', { name: 'Swipeable tab view' });
+    expect(region.style.minHeight).toBe('520px');
+  });
 });

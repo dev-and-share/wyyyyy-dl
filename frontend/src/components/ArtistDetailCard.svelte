@@ -130,7 +130,7 @@
         return;
       }
       showToast(t('artist.forkSuccess', { name: plName }), 'success', 3500);
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
     } catch (e: any) {
       showToast(t('artist.forkFailedWithMsg', { message: e.message || e }), 'error');
     } finally {
@@ -198,7 +198,7 @@
                 onclick: () => {
                   api.downloadSingle(String(s.id)).then(() => {
                     showToast(t('download.submitSuccessWithName', { name: s.name }), 'info');
-                    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+                    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
                   }).catch((e: any) => showToast(t('download.submitFailedWithMsg', { message: e }), 'error'));
                 }
               }
@@ -328,7 +328,7 @@
                 <SlotBtn onclick={() => {
                   api.downloadSingle(String(s.id)).then(() => {
                     showToast(t('download.submitSuccessWithName', { name: s.name }), 'info');
-                    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+                    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
                   }).catch((e: any) => showToast(t('download.submitFailedWithMsg', { message: e }), 'error'));
                 }}>{t('download.downloadSingle')}</SlotBtn>
               {/if}

@@ -302,14 +302,60 @@ describe('DesktopSidebar', () => {
     expect(tooltip.textContent).toContain('274 ms');
   });
 
-  it('shows collapsed proxy icon when sidebar is collapsed', () => {
+  it('renders local playlist tab in sidebar and switches to local playlists', async () => {
+    myPlaylists.push(
+      { id: 101, name: '云端歌单', trackCount: 5, subscribed: false }
+    );
+    const { localPlaylistState } = await import('../../lib/localPlaylistStore.svelte');
+    localPlaylistState.playlists = [
+      { id: 'local_fav_123', name: '本地我喜欢的音乐', trackCount: 3, isLocal: true },
+      { id: 'local_rock', name: '本地摇滚歌单', trackCount: 8, isLocal: true }
+    ];
+
+    const onPlaylistClick = vi.fn();
+    const { getByTestId, getByText, queryByText } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn(),
+        onViewPlaylist: onPlaylistClick
+      }
+    });
+
+    const localFilterBtn = getByTestId('sidebar-filter-local');
+    expect(localFilterBtn).toBeDefined();
+    expect(localFilterBtn.textContent).toContain('本地');
+
+    // In All tab, both cloud and local playlists are visible
+    expect(getByText('云端歌单')).toBeDefined();
+    expect(getByText('本地摇滚歌单')).toBeDefined();
+
+    // Click Local tab
+    await fireEvent.click(localFilterBtn);
+    await tick();
+
+    // Now only local playlists are displayed
+    expect(getByText('本地摇滚歌单')).toBeDefined();
+    expect(queryByText('云端歌单')).toBeNull();
+
+    // Click local playlist item
+    const localItemBtn = getByText('本地摇滚歌单').closest('button');
+    expect(localItemBtn).not.toBeNull();
+    await fireEvent.click(localItemBtn!);
+    expect(onPlaylistClick).toHaveBeenCalledWith('local_rock');
+  });
+
+  it('renders clean vertical layout in collapsed mode without duplicate folder shortcut', () => {
     updateGeoProxyState({
       enabled: true,
       loaded: true,
-      activeProxy: '1.2.3.4:8080'
+      activeProxy: '120.232.115.57:3128',
+      fallbackDirect: false,
+      mode: 'pool'
     });
 
-    const { getByTestId } = render(DesktopSidebar, {
+    const { getByTestId, queryByText } = render(DesktopSidebar, {
       props: {
         tab: 'playlist',
         collapsed: true,
@@ -318,7 +364,14 @@ describe('DesktopSidebar', () => {
       }
     });
 
-    const icon = getByTestId('sidebar-geo-proxy-icon');
-    expect(icon).toBeDefined();
+    // Redundant folder button 📂 should not exist in collapsed mode
+    expect(queryByText('📂')).toBeNull();
+
+    // Proxy icon and version info exist
+    const proxyIcon = getByTestId('sidebar-geo-proxy-icon');
+    expect(proxyIcon).toBeDefined();
+
+    const versionInfo = getByTestId('sidebar-version-info');
+    expect(versionInfo.textContent).toContain('v');
   });
 });

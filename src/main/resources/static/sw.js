@@ -1,18 +1,25 @@
-const CACHE_NAME = 'wyyyyy-dl-v5.4.0';
+const CACHE_NAME = 'wyy-v5.5.30';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const IMAGE_CACHE_NAME = 'netease-music-image-v1';
 const MAX_IMAGE_CACHE_ITEMS = 2000;
 
 const PRECACHE_URLS = [
   '/',
+  '/svelte/index.html',
   '/manifest.json',
+  '/svelte/manifest.json',
   '/favicon.png',
+  '/svelte/favicon.png',
   '/icon-192.png',
+  '/svelte/icon-192.png',
   '/icon-512.png',
-  '/apple-touch-icon.png'
+  '/svelte/icon-512.png',
+  '/apple-touch-icon.png',
+  '/svelte/apple-touch-icon.png'
 ];
 
 let isTrimmingImages = false;
+let lastImageTrimTime = 0;
 let cachedAudioKeys = new Set();
 
 async function syncAudioCacheIndex() {
@@ -35,8 +42,10 @@ async function syncAudioCacheIndex() {
 syncAudioCacheIndex();
 
 async function trimCache(cacheName, maxItems) {
-  if (isTrimmingImages) return;
+  const now = Date.now();
+  if (isTrimmingImages || now - lastImageTrimTime < 30000) return;
   isTrimmingImages = true;
+  lastImageTrimTime = now;
   try {
     const cache = await caches.open(cacheName);
     const keys = await cache.keys();
@@ -53,10 +62,11 @@ async function trimCache(cacheName, maxItems) {
   }
 }
 
-// 1. 安装 Service Worker 并预缓存基础 App Shell (弹性容错机制)
+// 1. 安装 Service Worker 并预缓存基础 App Shell 与产物 (弹性容错机制)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
+      // 1. 预缓存 App Shell 基础静态资源
       await Promise.allSettled(
         PRECACHE_URLS.map(async (url) => {
           try {
@@ -69,7 +79,31 @@ self.addEventListener('install', (event) => {
           }
         })
       );
-    }).then(() => self.skipWaiting())
+
+      // 2. 深入预缓存：读取已下载的入口 HTML，自动嗅探并预缓存所有构建产物 (JS/CSS/Chunks)
+      try {
+        const rootRes = (await cache.match('/')) || (await cache.match('/svelte/index.html'));
+        if (rootRes) {
+          const htmlText = await rootRes.clone().text();
+          const matches = htmlText.matchAll(/["'](\/svelte\/assets\/[^"']+)["']/g);
+          const assetUrls = Array.from(new Set(Array.from(matches, (m) => m[1])));
+          await Promise.allSettled(
+            assetUrls.map(async (assetUrl) => {
+              try {
+                const aRes = await fetch(assetUrl);
+                if (aRes.ok) {
+                  await cache.put(assetUrl, aRes);
+                }
+              } catch (err) {
+                console.warn('[SW] 自动预缓存资产跳过:', assetUrl, err);
+              }
+            })
+          );
+        }
+      } catch (sniffErr) {
+        console.warn('[SW] 入口 HTML 产物嗅探跳过:', sniffErr);
+      }
+    })
   );
 });
 
@@ -198,7 +232,8 @@ self.addEventListener('fetch', (event) => {
 
       // 未缓存的音频：请求服务端网络
       try {
-        const networkResponse = await fetch(event.request);
+        const fetchTarget = (typeof Request !== 'undefined' && event.request instanceof Request) ? event.request : (event.request.url || event.request);
+      const networkResponse = await fetch(fetchTarget);
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(AUDIO_CACHE_NAME).then((cache) => {
@@ -213,7 +248,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 🖼️ 分支 B：网易云 CDN 封面图片 / 图片资源请求 (Cache First + 异步写入缓存)
+  // 🖼️ 分支 B：在线 CDN 封面图片 / 图片资源请求 (Cache First + 异步写入缓存)
   const isCdnImage = requestUrl.hostname.includes('126.net') ||
                      requestUrl.hostname.includes('music.163.com') ||
                      event.request.destination === 'image';
@@ -228,7 +263,8 @@ self.addEventListener('fetch', (event) => {
         }
 
         // Cache 未命中，向网络拉取
-        const networkResponse = await fetch(event.request);
+        const fetchTarget = (typeof Request !== 'undefined' && event.request instanceof Request) ? event.request : (event.request.url || event.request);
+      const networkResponse = await fetch(fetchTarget);
         if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
           const responseToCache = networkResponse.clone();
           cache.put(event.request, responseToCache).then(() => {
@@ -255,27 +291,110 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 📦 分支 C：静态资源与页面：网络优先，成功则更新 Cache，失败降级 Cache
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
+  // ⚡ 动态后端 API 请求 (/v3/* 除已处理的音频流外)：直接放行走原生网络，不污染静态资源 Cache
+  if (requestUrl.pathname.startsWith('/v3/')) {
+    return;
+  }
+
+  // 📦 分支 C：带 Hash 的前端构建资产及脚本、样式 (Cache First 优先)
+  // Vite 构建出的 JS、CSS、字体等资源自带内容指纹，永不原地变更，直接命中本地 Cache 瞬时返回 (0ms)
+  const isHashedAsset = requestUrl.pathname.startsWith('/svelte/assets/') ||
+                        requestUrl.pathname.startsWith('/assets/') ||
+                        requestUrl.pathname.endsWith('.js') ||
+                        requestUrl.pathname.endsWith('.css') ||
+                        requestUrl.pathname.endsWith('.woff2') ||
+                        requestUrl.pathname.endsWith('.woff');
+
+  if (isHashedAsset) {
+    event.respondWith((async () => {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        const cachedResponse = await cache.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // Cache 未命中，向网络拉取并写入 Cache
+        const fetchTarget = (typeof Request !== 'undefined' && event.request instanceof Request) ? event.request : (event.request.url || event.request);
+        const networkResponse = await fetch(fetchTarget);
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          cache.put(event.request, networkResponse.clone()).catch(() => {});
         }
         return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
-        });
-      })
-  );
+      } catch (err) {
+        // 网络失败或离线时，尝试从任意现有缓存匹配
+        const fallback = await caches.match(event.request);
+        if (fallback) return fallback;
+        throw err;
+      }
+    })());
+    return;
+  }
+
+  // 📱 分支 D：入口 HTML 与路由导航 (Stale-While-Revalidate，本地秒开 + 后台静默校验)
+  // 彻底消灭移动端 4G / 弱网下等待网络响应导致的开屏白屏，有缓存立即秒开 (0ms)
+  const isNavigation = event.request.mode === 'navigate' ||
+                       requestUrl.pathname === '/' ||
+                       requestUrl.pathname === '/home' ||
+                       requestUrl.pathname === '/index.html' ||
+                       requestUrl.pathname === '/svelte/index.html' ||
+                       requestUrl.pathname.endsWith('.html');
+
+  if (isNavigation) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      // 优先从缓存获取已就绪的 App Shell HTML
+      let cachedResponse = await cache.match(event.request);
+      if (!cachedResponse) {
+        cachedResponse = (await cache.match('/')) || (await cache.match('/svelte/index.html'));
+      }
+
+      // 后台发起网络拉取以获取最新版本 (Stale-While-Revalidate)
+      const fetchTarget = (typeof Request !== 'undefined' && event.request instanceof Request) ? event.request : (event.request.url || event.request);
+      const networkFetch = fetch(fetchTarget).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const toCache = networkResponse.clone();
+          cache.put(event.request, toCache).catch(() => {});
+          cache.put('/', networkResponse.clone()).catch(() => {});
+          cache.put('/svelte/index.html', networkResponse.clone()).catch(() => {});
+        }
+        return networkResponse;
+      }).catch((err) => {
+        console.warn('[SW] 后台拉取最新 HTML 失败 (可能离线):', err);
+        return null;
+      });
+
+      // 🎯 只要本地有缓存，立即返回，0ms 白屏！
+      if (cachedResponse) {
+        event.waitUntil(networkFetch);
+        return cachedResponse;
+      }
+
+      // 首次未缓存时，等待网络返回
+      const networkResponse = await networkFetch;
+      if (networkResponse) {
+        return networkResponse;
+      }
+      return (await caches.match('/')) || (await caches.match('/svelte/index.html')) || new Response('Offline', { status: 503 });
+    })());
+    return;
+  }
+
+  // 📦 分支 E：其他静态同源杂项资源 (manifest, favicon, icons, app-icon 等): Cache First 优先
+  event.respondWith((async () => {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      const cachedResponse = await cache.match(event.request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      const fetchTarget = (typeof Request !== 'undefined' && event.request instanceof Request) ? event.request : (event.request.url || event.request);
+      const networkResponse = await fetch(fetchTarget);
+      if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        cache.put(event.request, networkResponse.clone()).catch(() => {});
+      }
+      return networkResponse;
+    } catch {
+      return (await caches.match(event.request)) || new Response('', { status: 404 });
+    }
+  })());
 });

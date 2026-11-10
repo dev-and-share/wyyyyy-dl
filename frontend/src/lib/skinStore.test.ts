@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { skin, SkinStore } from './skinStore.svelte';
+import { skin, SkinStore, setImmersiveThemeColor, getIsImmersiveActive } from './skinStore.svelte';
 import { DEFAULT_PALETTE } from '../components/skins/skinTypes';
 import * as colorExt from './colorExtractor';
 
@@ -76,6 +76,36 @@ describe('skinStore', () => {
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#faf5ff');
     skin.set('sakura');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fff0f5');
+    document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('supports dynamic dark synchronization for immersive playback mode', () => {
+    // 1. 白天模式下普通浏览
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('aurora');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#faf5ff');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#faf5ff');
+    expect(getIsImmersiveActive()).toBe(false);
+
+    // 2. 进入全屏沉浸播放 (LyricModal 挂载)
+    setImmersiveThemeColor(true);
+    expect(getIsImmersiveActive()).toBe(true);
+    // 浅色模式下切为皮肤同色系深色锚点（告别死黑），如 aurora 为 #3b137a
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#3b137a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#3b137a');
+
+    // 3. 在沉浸模式内切换皮肤为 spring (浅色锚点 #064e3b)
+    skin.set('spring');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#064e3b');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#064e3b');
+
+    // 4. 退出全屏沉浸播放 (LyricModal 销毁)
+    setImmersiveThemeColor(false);
+    expect(getIsImmersiveActive()).toBe(false);
+    // 自动恢复当前皮肤在白天模式下的主题色
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#f0fdf4');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#f0fdf4');
+
     document.documentElement.removeAttribute('data-theme');
   });
 

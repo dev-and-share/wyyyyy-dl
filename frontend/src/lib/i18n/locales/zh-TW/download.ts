@@ -213,10 +213,11 @@ export default {
   'cache.browserOffline': '瀏覽器已離線',
   'cache.vipTrialSkip': '此曲為 VIP 試聽片段，略過手機離線快取',
   'cache.unsupportedEnv': '目前瀏覽器不支援 Cache API 或未在安全環境(HTTPS/Localhost)執行',
-  'cache.cannotGetAudioStream': '無法取得歌曲音訊播放串流（可能需要網易雲 VIP 或目前無版權）',
+  'cache.cannotGetAudioStream': '無法取得歌曲音訊播放串流（可能需要 VIP 或目前無版權）',
   'cache.streamFetchFailed': '音訊串流擷取失敗 (HTTP {status})',
   'cache.detectedTrialSkip': '偵測到為試聽片段，略過自動快取',
   'cache.cachedTrialNotice': '已快取《{name}》(⚠️ 提示: 此曲為 VIP 試聽片段)',
   'cache.cachedSuccessOfflineReady': '已成功離線快取《{name}》，離線可直接秒播！',
   'cache.cacheException': '離線快取異常: {error}',
+  'download.tabLocalPlaylists': '本機歌單',
 } as const;

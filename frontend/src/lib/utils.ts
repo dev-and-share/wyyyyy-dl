@@ -65,9 +65,9 @@ export const DEFAULT_VINYL_COVER = `data:image/svg+xml;utf8,${encodeURIComponent
 `)}`;
 
 /**
- * 规范化封面图片地址并自动添加网易云 CDN 缩略裁剪参数：
+ * 规范化封面图片地址并自动添加 CDN 缩略裁剪参数：
  * 1. 自动将 http:// 升级为 https:// 避免 Mixed Content 阻塞与不安全警告
- * 2. 对网易云 CDN 图片追加 ?param={size}y{size}，将数 MB 原始大图压缩为 10~30KB 缩略图
+ * 2. 对在线 CDN 图片追加 ?param={size}y{size}，将数 MB 原始大图压缩为 10~30KB 缩略图
  * 3. 兜底默认黑胶唱片矢量封面
  */
 export function formatCoverUrl(url: string | null | undefined, size = 300): string {

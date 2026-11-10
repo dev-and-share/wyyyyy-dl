@@ -34,7 +34,7 @@
     try {
       await api.downloadSingle(songId);
       showToast(t('drawer.downloadSubmitted', { name: item.name || songId }), 'info');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       startTaskPolling();
       await fetchTasks();
     } catch (err: any) {

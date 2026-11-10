@@ -18,6 +18,7 @@
 
   import TopBar from './components/TopBar.svelte';
   import DesktopSidebar from './components/desktop/DesktopSidebar.svelte';
+  import DesktopTitlebarIsland from './components/desktop/DesktopTitlebarIsland.svelte';
   import DesktopPlaylistView from './components/desktop/DesktopPlaylistView.svelte';
   import DesktopSearchView from './components/desktop/DesktopSearchView.svelte';
   import DesktopDownloadMgrView from './components/desktop/DesktopDownloadMgrView.svelte';
@@ -35,7 +36,10 @@
   import BottomTabBar from './components/sp/BottomTabBar.svelte';
   import ScrollToTopFab from './components/sp/ScrollToTopFab.svelte';
   import { skin } from './lib/skinStore.svelte';
+  import { authStore } from './lib/authStore.svelte';
+  import { setupImmersiveDblClick } from './lib/player/immersiveDblClick';
   import SeasonParticleCanvas from './components/skins/effects/SeasonParticleCanvas.svelte';
+  import RainParticleCanvas from './components/skins/effects/RainParticleCanvas.svelte';
 
   // ---------- 全局状态 ----------
   let repeat = $state(false);
@@ -79,6 +83,7 @@
     initDownloadedSet();
     initLikeList();
     fetchGeoProxyConfig();
+    authStore.fetchProfile();
 
     api.getRepeat().then((j: any) => {
       if (j?.code === '000000') repeat = j.data === true;
@@ -86,24 +91,28 @@
 
     // Listen to download submission event to refresh tasks
     const onDownloadSubmit = () => startTaskPolling();
-    window.addEventListener('wyyyy:download-submitted', onDownloadSubmit);
+    window.addEventListener('wyy:download-submitted', onDownloadSubmit);
 
     // Listen to global reveal events
     const onGlobalReveal = (e: any) => {
       if (e?.detail) handleReveal(e.detail);
     };
-    window.addEventListener('wyyyy:reveal', onGlobalReveal);
+    window.addEventListener('wyy:reveal', onGlobalReveal);
 
     // Listen to PWA update available event
     const onPwaUpdate = () => showToast(t('app.pwaUpdateFound'), 'info', 6000);
-    window.addEventListener('wyyyy:pwa-update-available', onPwaUpdate);
+    window.addEventListener('wyy:pwa-update-available', onPwaUpdate);
+
+    // 🌌 注册空白区域快速双击切换沉浸模式（PC 端关闭双击避免与窗口/选词冲突，SP 移动端保留双触切换）
+    const cleanupImmersiveDblClick = setupImmersiveDblClick();
 
     return () => {
       stopRouter();
       stopLayout();
-      window.removeEventListener('wyyyy:download-submitted', onDownloadSubmit);
-      window.removeEventListener('wyyyy:reveal', onGlobalReveal);
-      window.removeEventListener('wyyyy:pwa-update-available', onPwaUpdate);
+      cleanupImmersiveDblClick();
+      window.removeEventListener('wyy:download-submitted', onDownloadSubmit);
+      window.removeEventListener('wyy:reveal', onGlobalReveal);
+      window.removeEventListener('wyy:pwa-update-available', onPwaUpdate);
     };
   });
 
@@ -127,10 +136,35 @@
 <PullToRefresh disabled={isAnyOverlayOpen} onRefresh={handleRefresh} />
 
 <!-- 🌸 四季全屏动态物理粒子层 (樱花漫天飘落与地面积累 / 飞蝶 / 枫叶层叠 / 初雪积雪) -->
-{#if skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter'}
+{#if (skin.current === 'sakura' || skin.current === 'summer' || skin.current === 'autumn' || skin.current === 'winter') && !isPlayerOverlayOpen}
   <div class="fixed inset-0 pointer-events-none z-[30] overflow-hidden" aria-hidden="true">
     <SeasonParticleCanvas skinId={skin.current} {playing} bottomOffset={particleBottomOffset} />
   </div>
+{:else if skin.current === 'rain' && !isPlayerOverlayOpen}
+  <!-- 🌧️ 雨夜全屏动态物理雨滴与水痕流淌层 (非沉浸普通模式下如同冬雪般全屏玻璃流淌) -->
+  <div class="fixed inset-0 pointer-events-none z-[30] overflow-hidden" aria-hidden="true">
+    <RainParticleCanvas {playing} bottomOffset={particleBottomOffset} />
+  </div>
+{/if}
+
+<!-- 🏝️ PC 桌面端专属：Window Controls Overlay (WCO) 顶栏沉浸灵动岛 -->
+{#if layoutState.isDesktop && layoutState.wco.visible}
+  <DesktopTitlebarIsland
+    {curTrack}
+    {playing}
+    onTogglePlay={() => {
+      if (typeof togglePlayerPlay === 'function') {
+        togglePlayerPlay();
+      } else if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wyy:toggle-play'));
+      }
+    }}
+    onOpenLyric={() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wyy:toggle-lyric-modal'));
+      }
+    }}
+  />
 {/if}
 
 <!-- 页面整体容器：在宽屏 (>= 1024px) 锁定视口左侧边栏固定右侧独立滚动，窄屏竖屏自由流动 -->
@@ -157,6 +191,9 @@
     class="flex-1 flex flex-col min-w-0 app-main-container relative lg:overflow-y-auto w-full transition-[height] duration-200"
     style="height: {layoutState.isDesktop ? (hasActivePlayerBar ? 'calc(100vh - 74px)' : '100vh') : 'auto'};"
   >
+    <!-- 💻 桌面端独立 WCO 顶栏安全占位区 (与侧边栏对齐，避免右侧窗口控制按钮与视图头部重叠) -->
+    <div class="w-full shrink-0 hidden lg:block pointer-events-none" style="height: var(--wco-height, env(titlebar-area-height, 0px));"></div>
+
     <!-- 内容居中容器 (限制最大宽度 max-w-[1400px] 居中) -->
     <div class="w-full max-w-[1400px] mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0 relative flex flex-col min-w-0">
       <!-- 顶栏导航 -->

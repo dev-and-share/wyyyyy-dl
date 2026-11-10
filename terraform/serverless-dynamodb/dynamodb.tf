@@ -92,7 +92,7 @@ resource "aws_dynamodb_table" "music_raw_json" {
   }
 }
 
-# 4. 系统配置与网易云 Cookie 持久化表
+# 4. 系统配置与云端音乐 Cookie 持久化表
 resource "aws_dynamodb_table" "music_config" {
   name         = "${var.project_name}-ddb-config-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"

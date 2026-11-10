@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# wyyyyy-dl 云端全量端到端冒烟测试套件 (E2E Smoke Test Suite)
+# WYY 云端全量端到端冒烟测试套件 (E2E Smoke Test Suite)
 # 
 # 🛡️ 安全保证：
 #   - 默认模式：【绝对零写入纯读模式 (Zero-Write)】，绝不改写任何数据！
-#     不污染数据库，不覆盖真实网易云 Cookie，可在生产库随意安全运行。
+#     不污染数据库，不覆盖真实用户 Cookie，可在生产库随意安全运行。
 #   - 深度写入模式 (--include-write)：
 #     仅在显式传入此参数时执行，且内置 Cookie 备份还原与 Trap 自动回滚保障。
 #
@@ -52,7 +52,7 @@ fi
 TARGET_URL="${TARGET_URL%/}"
 
 echo "======================================================================"
-echo "🚀 开始执行 wyyyyy-dl 云端端到端全量冒烟巡检"
+echo "🚀 开始执行 WYY 云端端到端全量冒烟巡检"
 echo "🎯 目标域名: $TARGET_URL"
 if [ -n "$AUTH_USER_PASS" ]; then
   echo "🔐 鉴权: 已启用 HTTP Basic Auth 保护"
@@ -181,7 +181,7 @@ if [ "$INCLUDE_WRITE" = true ]; then
   assert_api "确认红心已写入" "GET" "/v3/like/list" "200" "${TEST_SONG_ID}"
   assert_api "移除测试红心" "POST" "/v3/like?id=${TEST_SONG_ID}&like=false" "200" "\"code\":\"000000\""
 
-  echo "🛡️ 注：为了保护你真实的网易云登录态，即使在写测试模式下也严格禁用了 Cookie 覆盖操作。"
+  echo "🛡️ 注：为了保护你真实的在线登录态，即使在写测试模式下也严格禁用了 Cookie 覆盖操作。"
 fi
 
 # ------------------------------------------------------------------------------

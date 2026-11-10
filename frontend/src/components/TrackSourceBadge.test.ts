@@ -23,11 +23,11 @@ describe('TrackSourceBadge Component', () => {
     expect(badge.textContent?.trim()).toBe('🖥️');
   });
 
-  it('triggers onReveal and wyyyy:reveal event on PC double click', async () => {
+  it('triggers onReveal and wyy:reveal event on PC double click', async () => {
     markSongDownloaded(12345);
     const onReveal = vi.fn();
     const globalRevealListener = vi.fn();
-    window.addEventListener('wyyyy:reveal', globalRevealListener);
+    window.addEventListener('wyy:reveal', globalRevealListener);
 
     const { getByTitle } = render(TrackSourceBadge, {
       props: {
@@ -49,7 +49,7 @@ describe('TrackSourceBadge Component', () => {
     });
     expect(globalRevealListener).toHaveBeenCalled();
 
-    window.removeEventListener('wyyyy:reveal', globalRevealListener);
+    window.removeEventListener('wyy:reveal', globalRevealListener);
   });
 
   it('triggers onReveal on mobile touch long press', async () => {

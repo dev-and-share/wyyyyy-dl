@@ -13,6 +13,7 @@
   import { downloadExternalTrack } from '../../../lib/musicfree/downloadHelper';
   import SlotBtn from '../../SlotBtn.svelte';
   import { t } from '../../../lib/i18n';
+  import { getPluginDisplayName } from '../../../lib/musicfree/pluginI18n';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
 
   let { curTrack = null, playing = false, onPlayQueue, showToast } = $props<{
@@ -27,7 +28,7 @@
   let sheetPlugins = $derived(filterAndSortSheetPlugins(musicFreeStore.plugins, emptyPluginIds));
   let selectedPluginId = $state<string>('');
   const selectedPlugin = $derived(sheetPlugins.find((p) => p.id === selectedPluginId));
-  const currentPluginName = $derived(selectedPlugin?.name || '未知音源');
+  const currentPluginName = $derived(selectedPlugin ? getPluginDisplayName(selectedPlugin) : t('musicfree.unknownSource'));
   let tags = $state<any[]>([]);
   let selectedTag = $state<any>(null);
   let sheets = $state<any[]>([]);
@@ -108,7 +109,7 @@
     emptyPluginIds = nextEmpty;
     const remaining = sheetPlugins.filter((p) => p.id !== currentId && !nextEmpty.has(p.id));
     if (remaining.length > 0) {
-      showToast(`音源「${fallbackName}」暂无有效歌单，已自动切换`, 'info');
+      showToast(t('musicfree.autoSwitchedPlugin', { name: fallbackName }), 'info');
       await handlePluginChange(remaining[0].id);
     } else {
       sheets = [];
@@ -179,7 +180,7 @@
       }
     } catch (e: any) {
       console.error('[MusicFree] 加载歌单详情失败:', e);
-      if (!sheetTracks.length) showToast('获取歌单详情失败: ' + (e?.message || e), 'error');
+      if (!sheetTracks.length) showToast(t('musicfree.fetchSheetFailed', { error: (e?.message || e) }), 'error');
     } finally {
       sheetDetailLoading = false;
     }
@@ -192,7 +193,7 @@
   function handlePlayAll() {
     if (!sheetTracks.length || !onPlayQueue || !selectedSheet) return;
     onPlayQueue(sheetTracks.map(buildTrack), { startIndex: 0, isExplicitTrack: true });
-    showToast(`开始播放「${selectedSheet.title || selectedSheet.name}」`, 'info');
+    showToast(t('musicfree.startPlayingChart', { name: selectedSheet.title || selectedSheet.name }), 'info');
   }
 
   function handlePlaySingle(t: any) {
@@ -220,7 +221,7 @@
         class="text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] flex items-center gap-1.5 cursor-pointer bg-transparent border-none p-0"
         onclick={() => selectedSheet = null}
       >
-        <span>←</span> <span>返回歌单广场</span>
+        <span>←</span> <span>{t('musicfree.backToSheets')}</span>
       </button>
 
       <div class="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
@@ -240,11 +241,11 @@
               {selectedSheet.title || selectedSheet.name}
             </h2>
             <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium">
-              插件歌单
+              {t('musicfree.pluginSheetBadge')}
             </span>
           </div>
           <p class="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2">
-            {selectedSheet.description || selectedSheet.artist || '来自插件的精选歌单'}
+            {selectedSheet.description || selectedSheet.artist || t('musicfree.featuredPluginSheet')}
           </p>
           <div class="flex items-center gap-2">
             <button
@@ -253,9 +254,9 @@
               class="btn-primary text-xs px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 !bg-purple-600 hover:!bg-purple-500"
               onclick={handlePlayAll}
             >
-              <span>▶ 播放全部</span>
+              <span>▶ {t('musicfree.playAll')}</span>
             </button>
-            <span class="text-xs text-[var(--text-muted)]">共 {sheetTracks.length} 首歌曲</span>
+            <span class="text-xs text-[var(--text-muted)]">{t('musicfree.chartSongCount', { count: sheetTracks.length })}</span>
           </div>
         </div>
       </div>
@@ -264,11 +265,11 @@
       {#if sheetDetailLoading}
         <div class="py-16 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-2">
           <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <span>正在加载歌单曲目...</span>
+          <span>{t('musicfree.loadingSheetTracks')}</span>
         </div>
       {:else if sheetTracks.length === 0}
         <div class="p-8 text-center text-xs text-[var(--text-muted)] border border-dashed border-[var(--border-color)] rounded-xl">
-          歌单曲目为空或解析异常，请尝试更换其他歌单
+          {t('musicfree.emptySheetTracks')}
         </div>
       {:else}
         <div class="flex flex-col gap-1.5">
@@ -288,7 +289,7 @@
                     {trackItem.title || trackItem.name}
                   </span>
                   {#if isVip}
-                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title="版权付费歌曲，可点击右侧「聚合搜」跨源播放">
+                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title={t('musicfree.vipBadgeTitle')}>
                       VIP
                     </span>
                   {/if}
@@ -308,7 +309,7 @@
                   />
                 </div>
                 <div class="text-[11px] text-[var(--text-secondary)] truncate">
-                  {trackItem.artist || '未知歌手'}
+                  {trackItem.artist || t('musicfree.unknownArtist')}
                 </div>
               </div>
 
@@ -321,12 +322,12 @@
                 </SlotBtn>
                 <SlotBtn
                   onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
-                  title="跳转至「MusicFree 聚合」跨多音源检索可用版本"
+                  title={t('musicfree.mfSearchTooltip')}
                 >
-                  🧩 聚合搜
+                  🧩 {t('musicfree.mfSearchShort')}
                 </SlotBtn>
                 {#if status.isServer}
-                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
+                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
                     {t('common.reveal')}
                   </SlotBtn>
                 {:else}
@@ -351,7 +352,7 @@
                 class="px-5 py-2 rounded-xl text-xs font-medium bg-[var(--btn-secondary-bg)] hover:bg-purple-600 hover:text-white transition-all cursor-pointer border-none text-[var(--text-secondary)] shadow-xs"
                 onclick={() => displayLimit += 100}
               >
-                展开更多歌曲 (已展示 {Math.min(displayLimit, sheetTracks.length)} / 共 {sheetTracks.length} 首) ▾
+                {t('musicfree.expandMoreTracks', { shown: Math.min(displayLimit, sheetTracks.length), total: sheetTracks.length })}
               </button>
             </div>
           {/if}
@@ -362,21 +363,21 @@
     <!-- 歌单广场主视图 -->
     {#if sheetPlugins.length === 0}
       <div class="py-20 text-center text-xs text-[var(--text-muted)] p-8 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-        当前已启用的音源插件暂未提供歌单广场接口。请在「插件管理」中启用具有歌单推荐功能的音源插件。
+        {t('musicfree.noSheetsAvailable')}
       </div>
     {:else}
       <!-- 插件来源切换 & 标签栏 -->
       <div class="space-y-2.5">
         <div class="flex items-center justify-between flex-wrap gap-1">
           <div class="flex items-center gap-1.5">
-            <span class="text-xs text-[var(--text-muted)] font-medium">音源选择：</span>
+            <span class="text-xs text-[var(--text-muted)] font-medium">{t('musicfree.sourceSelect')}</span>
             <span class="text-[11px] text-[var(--text-muted)] opacity-70">
-              ({sheetPlugins.length}/{musicFreeStore.plugins.length} 个插件支持歌单广场)
+              {t('musicfree.sourceRatio', { count: sheetPlugins.length, total: musicFreeStore.plugins.length })}
             </span>
           </div>
           {#if musicFreeStore.plugins.length > sheetPlugins.length}
             <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-              其余为纯搜歌/歌词/网盘源
+              {t('musicfree.otherPluginsHint')}
             </span>
           {/if}
         </div>
@@ -388,7 +389,7 @@
               class="px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all shrink-0 {selectedPluginId === pl.id ? 'bg-purple-600 text-white shadow-sm' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
               onclick={() => handlePluginChange(pl.id)}
             >
-              {pl.name}
+              {getPluginDisplayName(pl)}
             </button>
           {/each}
         </div>
@@ -404,7 +405,7 @@
                     class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors shrink-0 {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
                     onclick={() => loadSheets(tg)}
                   >
-                    {tg.title || tg.name || tg}
+                    {tg.title === '全部' || tg.name === '全部' || tg.id === 'all' ? t('common.all') : (tg.title || tg.name || tg)}
                   </button>
                 {/each}
               </div>
@@ -415,7 +416,7 @@
                   class="px-2 py-0.5 rounded-lg text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] bg-[var(--btn-secondary-bg)] border-none shrink-0 cursor-pointer"
                   onclick={() => showAllTags = !showAllTags}
                 >
-                  {showAllTags ? '收起 ▴' : `分类(${tags.length}) ▾`}
+                  {showAllTags ? t('musicfree.collapseTags') : t('musicfree.categoriesWithCount', { count: tags.length })}
                 </button>
               {/if}
             </div>
@@ -432,7 +433,7 @@
                       showAllTags = false;
                     }}
                   >
-                    {tg.title || tg.name || tg}
+                    {tg.title === '全部' || tg.name === '全部' || tg.id === 'all' ? t('common.all') : (tg.title || tg.name || tg)}
                   </button>
                 {/each}
               </div>
@@ -445,14 +446,14 @@
       {#if loading}
         <div class="py-20 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-3">
           <div class="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin"></div>
-          <span>正在加载歌单广场...</span>
+          <span>{t('musicfree.loadingSheets')}</span>
         </div>
       {:else if sheets.length === 0}
         <div class="py-16 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-2.5">
           <span class="text-3xl">📻</span>
-          <span class="font-semibold text-sm text-[var(--text-secondary)]">当前音源「{currentPluginName}」暂无有效歌单数据</span>
+          <span class="font-semibold text-sm text-[var(--text-secondary)]">{t('musicfree.pluginNoSheetsTitle', { name: currentPluginName })}</span>
           <span class="text-[11px] opacity-75 max-w-md">
-            部分音源仅支持检索或远端接口已失效。推荐点击上方切换至「小秋音乐 (QQ)」、「小蜗音乐 (酷我)」或「小狗音乐 (酷狗)」等主流音源。
+            {t('musicfree.pluginNoSheetsDesc')}
           </span>
         </div>
       {:else}
@@ -482,7 +483,7 @@
               </div>
               {#if sheet.artist || sheet.playCount}
                 <div class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                  {sheet.artist || `播放: ${sheet.playCount}`}
+                  {sheet.artist || t('musicfree.playCountLabel', { count: sheet.playCount })}
                 </div>
               {/if}
             </div>
