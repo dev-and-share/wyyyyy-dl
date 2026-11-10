@@ -2,6 +2,7 @@ import './app.css'
 import { mount } from 'svelte'
 import App from './App.svelte'
 import { registerServiceWorker } from './lib/pwa'
+import { playerStore } from './lib/playerStore.svelte'
 import { initLocale } from './lib/i18n/index.svelte'
 
 // 优先确保多语言环境加载就绪（静态载入或从缓存/网络动态拉取字典）再挂载首屏，防止语言包 fallback 导致的中文内容残留
@@ -24,13 +25,16 @@ const app = mount(App, {
 })
 
 // 注册 PWA Service Worker 并监听新版本就绪通知 (仅生产环境注册，开发环境主动注销避免缓存拦截)
-// 🛡️ 禁止 controllerchange 强制自动刷新页面，彻底避免后台播放切回前台时由于 SW 更新导致音频骤停并重复显示开机动画
+// 🛡️ 禁止 controllerchange 强制自动刷新页面，并在播放时绝对拦截 SKIP_WAITING 激活新版本
 if (!import.meta.env.DEV) {
   registerServiceWorker(
     () => {
       window.dispatchEvent(new CustomEvent('wyy:pwa-update-available'));
     },
-    { autoReloadOnControllerChange: false }
+    {
+      autoReloadOnControllerChange: false,
+      isAudioPlaying: () => playerStore.playing
+    }
   );
 } else if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
   // ⚡ 本地开发环境 (Vite Dev)：主动清理残留或误注册的 Service Worker，避免本地热更新与静态资源被旧缓存拦截

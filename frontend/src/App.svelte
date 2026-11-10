@@ -12,7 +12,7 @@
   import { sheetState, globalUiState, openSettings, closeSettings, toggleTheme, setThemeMode } from './lib/ui.svelte';
   import { executeReveal } from './lib/revealHelper';
   import { playPlaylistTracks } from './lib/playerHelper';
-  import type { SetQueueOptions } from './lib/playerStore.svelte';
+  import { playerStore, type SetQueueOptions } from './lib/playerStore.svelte';
   import type { Track } from './lib/types';
   import { t } from './lib/i18n';
 
@@ -119,6 +119,12 @@
   async function handleRefresh() {
     showToast(t('app.checkingUpdate'), 'info', 1200);
     try {
+      if (playerStore.playing) {
+        // 🎵 正在播放中，安全跳过应用更新检查，仅同步歌单与收藏，绝不打断当前播放状态
+        await initLikeList();
+        showToast(t('app.syncSuccess'), 'success', 1500);
+        return;
+      }
       const hasUpdate = await checkForPwaUpdate();
       await initLikeList();
       if (hasUpdate) {

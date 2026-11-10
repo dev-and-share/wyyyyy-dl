@@ -124,10 +124,27 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+let isAudioPlaying = false;
+let pendingSkipWaiting = false;
+
 // 3. 监听客户端指令（用于发现新版本时立即接管并跳过等待，或清除图片缓存）
 self.addEventListener('message', (event) => {
   if (event.data) {
-    if (event.data.type === 'SKIP_WAITING') {
+    if (event.data.type === 'AUDIO_PLAYBACK_STATE') {
+      isAudioPlaying = Boolean(event.data.isPlaying);
+      // 🎵 如果音频停止播放，且之前暂存了 SKIP_WAITING，此时安全激活新版本
+      if (!isAudioPlaying && pendingSkipWaiting) {
+        console.log('[SW] 🎵 音频播放已停止，安全激活此前暂存的新版本');
+        pendingSkipWaiting = false;
+        self.skipWaiting();
+      }
+    } else if (event.data.type === 'SKIP_WAITING') {
+      // 🛡️ 核心防御：正在播放时绝对不更新新版本！
+      if (isAudioPlaying && !event.data.force) {
+        console.log('[SW] 🛡️ 客户端正在播放音频，安全拦截 SKIP_WAITING，推迟至播放停止后再激活新版本');
+        pendingSkipWaiting = true;
+        return;
+      }
       self.skipWaiting();
     } else if (event.data.type === 'CLEAR_IMAGE_CACHE') {
       caches.delete(IMAGE_CACHE_NAME).catch(() => {});
