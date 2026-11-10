@@ -318,14 +318,14 @@
   </div>
 
   {#if !playlist && !isPlaylistLoading()}
-    <div class="py-8 px-4 flex flex-col items-center justify-center gap-2 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2">
-      <div class="text-2xl opacity-60">🎼</div>
+    <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2 min-h-[200px]">
+      <div class="text-3xl opacity-60">🎼</div>
       <div class="text-xs text-[var(--text-muted)] text-center">可去左侧「我的歌单」挑选，或在上方直接输入 ID / 链接解析</div>
     </div>
   {/if}
 
   {#if isPlaylistLoading() && (!playlist || String(playlist.id) !== pid)}
-    <div class="py-8 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm">
+    <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm min-h-[220px]">
       <div class="text-3xl animate-spin text-red-500">⏳</div>
       <div class="text-sm font-semibold text-[var(--text-main)]">{t('playlist.fetchingData', { id: pid })}</div>
       <p class="text-xs text-[var(--text-muted)] text-center max-w-sm m-0 leading-relaxed">

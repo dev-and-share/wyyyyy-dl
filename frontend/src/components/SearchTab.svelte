@@ -372,7 +372,7 @@
   onChange={handleSwipeIndexChange}
 >
   <!-- Section 1: 在线搜索 -->
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <AccordionCard title={t('search.globalSearch')} flat open={true} accent="red">
       <!-- 🎯 音源来源选择器：网易云 vs MusicFree 聚合 -->
       <div class="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] mb-2.5">
@@ -461,7 +461,7 @@
   </div>
 
   <!-- Section 2: 专辑解析与整辑下载 (已拆分组件) -->
-  <div id="section-album-detail" class="w-full">
+  <div id="section-album-detail" class="w-full flex-1 flex flex-col">
     <AlbumDetailCard
       flat
       open={true}
@@ -478,7 +478,7 @@
   </div>
 
   <!-- Section 3: 歌手热门曲目与收藏 -->
-  <div id="section-artist-detail" class="w-full">
+  <div id="section-artist-detail" class="w-full flex-1 flex flex-col">
     <ArtistDetailCard
       flat
       open={true}

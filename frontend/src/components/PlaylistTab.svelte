@@ -238,7 +238,7 @@
   onChange={handleSwipeIndexChange}
 >
   <!-- Section 1: 我的歌单 -->
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <MyPlaylistsSection
       flat bind:open={accMy} onToggle={saveAccState}
       onViewPlaylist={(id) => handleViewPlaylist(id)}
@@ -248,7 +248,7 @@
   </div>
 
   <!-- Section 2: 查看歌单详情 -->
-  <div id="section-playlist-detail" class="w-full">
+  <div id="section-playlist-detail" class="w-full flex-1 flex flex-col">
     <PlaylistDetailSection
       bind:open={accDetail}
       {pid}
@@ -268,7 +268,7 @@
   </div>
 
   <!-- Section 3: 每日专属推荐 -->
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <DailyRecommendSection
       flat bind:open={accRecommend} onToggle={saveAccState} {curTrack} {playing} {likedSet}
       {onToggleLike} {onPlayQueue} {onSong} {onAlbum} {onReveal} {showToast}

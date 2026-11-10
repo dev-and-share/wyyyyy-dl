@@ -295,17 +295,17 @@
     count={4}
     onChange={handleSwipeIndexChange}
   >
-    <div class="w-full">
+    <div class="w-full flex-1 flex flex-col">
       <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
     </div>
 
-    <div class="w-full">
+    <div class="w-full flex-1 flex flex-col">
       <AccordionCard title={t('download.accordionLocalTree')} flat open={true} accent="red">
         <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
       </AccordionCard>
     </div>
 
-    <div class="w-full">
+    <div class="w-full flex-1 flex flex-col">
       <AccordionCard title={t('download.accordionHistoryShort')} flat open={true} accent="blue">
       <div class="flex flex-wrap gap-2.5 bg-[var(--stat-bar-bg)] border border-[var(--border-subtle)] p-2.5 px-3.5 rounded-xl mb-2.5 items-center text-xs">
         <span class="text-[var(--text-secondary)]">{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
@@ -482,7 +482,7 @@
     </AccordionCard>
   </div>
 
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <BrowserCacheSection flat open={true} {onPlayQueue} {showToast} />
   </div>
 </SwipeableTabsView>
