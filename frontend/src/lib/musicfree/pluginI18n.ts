@@ -6,8 +6,8 @@ import { t } from '../i18n';
  */
 export function getPluginDisplayName(pluginOrName: any): string {
   if (!pluginOrName) return '';
-  const rawName = typeof pluginOrName === 'string' ? pluginOrName : (pluginOrName.name || pluginOrName.platform || '');
-  const id = typeof pluginOrName === 'object' && pluginOrName !== null ? (pluginOrName.id || '') : '';
+  const rawName = typeof pluginOrName === 'string' ? pluginOrName : (pluginOrName.name || pluginOrName.pluginName || pluginOrName.platform || '');
+  const id = typeof pluginOrName === 'object' && pluginOrName !== null ? (pluginOrName.id || pluginOrName.pluginId || '') : '';
 
   const clean = rawName.replace(/\s+/g, '');
 

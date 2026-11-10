@@ -7,6 +7,8 @@
   import MusicFreeManageTab from './musicfree/MusicFreeManageTab.svelte';
   import DesktopViewHeader from './DesktopViewHeader.svelte';
   import SegmentedTabs from '../sp/SegmentedTabs.svelte';
+  import SwipeableTabsView from '../sp/SwipeableTabsView.svelte';
+  import { layoutState } from '../../lib/layout.svelte';
 
   let {
     curTrack = null,
@@ -20,8 +22,17 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  let activeTab = $state<'toplists' | 'sheets' | 'manage'>('toplists');
+  type TabId = 'toplists' | 'sheets' | 'manage';
+  const SUBTABS: TabId[] = ['toplists', 'sheets', 'manage'];
+  let activeTab = $state<TabId>('toplists');
   const activeCount = $derived(musicFreeStore.getActivePlugins().length);
+  const activeTabIndex = $derived(SUBTABS.indexOf(activeTab));
+
+  function handleSwipeIndexChange(index: number) {
+    if (SUBTABS[index]) {
+      activeTab = SUBTABS[index];
+    }
+  }
 </script>
 
 <div class="w-full flex flex-col gap-2 md:gap-4 select-none animate-fade-in" data-testid="desktop-musicfree-view">
@@ -79,28 +90,34 @@
     </DesktopViewHeader>
   </div>
 
-  <!-- 子功能区域 (保持常驻 DOM，零重绘、秒切换，持久保留已选中的榜单与歌单状态) -->
-  <div style="display: {activeTab === 'toplists' ? 'block' : 'none'};" class="w-full">
-    <MusicFreeTopListsTab
-      {curTrack}
-      {playing}
-      {onPlayQueue}
-      {showToast}
-    />
-  </div>
+  <!-- 🛝 原生合成器级 120Hz 零卡顿丝滑滚动容器 (支持移动端手势左右横滑切 Tab) -->
+  <SwipeableTabsView
+    activeIndex={activeTabIndex}
+    count={SUBTABS.length}
+    onChange={handleSwipeIndexChange}
+  >
+    <div class="w-full flex-1 flex flex-col">
+      <MusicFreeTopListsTab
+        {curTrack}
+        {playing}
+        {onPlayQueue}
+        {showToast}
+      />
+    </div>
 
-  <div style="display: {activeTab === 'sheets' ? 'block' : 'none'};" class="w-full">
-    <MusicFreeSheetsTab
-      {curTrack}
-      {playing}
-      {onPlayQueue}
-      {showToast}
-    />
-  </div>
+    <div class="w-full flex-1 flex flex-col">
+      <MusicFreeSheetsTab
+        {curTrack}
+        {playing}
+        {onPlayQueue}
+        {showToast}
+      />
+    </div>
 
-  <div style="display: {activeTab === 'manage' ? 'block' : 'none'};" class="w-full">
-    <MusicFreeManageTab
-      {showToast}
-    />
-  </div>
+    <div class="w-full flex-1 flex flex-col">
+      <MusicFreeManageTab
+        {showToast}
+      />
+    </div>
+  </SwipeableTabsView>
 </div>

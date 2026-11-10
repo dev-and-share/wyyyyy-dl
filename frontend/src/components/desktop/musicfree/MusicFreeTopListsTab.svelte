@@ -44,7 +44,16 @@
     }>;
   }>>([]);
   let activePluginId = $state<string>('');
-  const currentGroup = $derived(topListGroups.find((g) => g.pluginId === activePluginId) || topListGroups[0]);
+  const effectivePluginId = $derived.by(() => {
+    if (!topListGroups || topListGroups.length === 0) return '';
+    if (activePluginId && topListGroups.some((g) => g.pluginId === activePluginId)) {
+      return activePluginId;
+    }
+    return topListGroups[0]?.pluginId ?? '';
+  });
+  const currentGroup = $derived(
+    topListGroups.find((g) => g.pluginId === effectivePluginId) || topListGroups[0]
+  );
 
   let selectedTopList = $state<any>(null);
   let detailLoading = $state(false);
@@ -60,7 +69,7 @@
     const cached = getApiCache('mf_toplists_groups');
     if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
       topListGroups = cached.data;
-      if (!activePluginId && topListGroups.length > 0) {
+      if (!activePluginId || !topListGroups.some((g) => g.pluginId === activePluginId)) {
         activePluginId = topListGroups[0].pluginId;
       }
       loading = false;
@@ -80,8 +89,10 @@
       const priorityWeights: Record<string, number> = {
         '小枸音乐': 1000,
         '酷狗音乐': 999,
+        '酷狗音乐 (官方)': 999,
         '小秋音乐': 100,
         'QQ音乐': 99,
+        'QQ音乐 (官方)': 99,
         '小蜗音乐': 95,
         '酷我音乐': 94,
         '网易音乐': 85,
@@ -96,7 +107,7 @@
       if (sorted.length > 0) {
         topListGroups = sorted;
         setApiCache('mf_toplists_groups', sorted);
-        if (!activePluginId) {
+        if (!activePluginId || !sorted.some((g) => g.pluginId === activePluginId)) {
           activePluginId = sorted[0].pluginId;
         }
       }
@@ -339,18 +350,21 @@
     {:else}
       <!-- 🏆 音源下拉选择器 (默认酷狗 Kugou 官方榜单) -->
       <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-xs">
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5 shrink-0">
           <span class="text-sm">🏆</span>
           <span class="text-xs font-semibold text-[var(--text-main)]">{t('musicfree.selectChartSource')}</span>
         </div>
-        <div class="relative">
+        <div class="relative min-w-0 max-w-[60%]">
           <select
-            bind:value={activePluginId}
-            class="appearance-none pl-3 pr-8 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] text-purple-400 border border-purple-500/30 outline-none cursor-pointer hover:border-purple-500 transition-colors"
+            value={effectivePluginId}
+            onchange={(e) => {
+              activePluginId = (e.currentTarget as HTMLSelectElement).value;
+            }}
+            class="appearance-none w-full pl-3 pr-8 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] text-purple-400 border border-purple-500/30 outline-none cursor-pointer hover:border-purple-500 transition-colors truncate"
           >
             {#each topListGroups as grp}
-              <option value={grp.pluginId}>
-                {t('musicfree.chartCountOption', { name: getPluginDisplayName(grp.pluginName), count: grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0) })}
+              <option value={grp.pluginId} class="bg-[var(--card-bg-solid,#111827)] text-[var(--text-main)] py-1">
+                {t('musicfree.chartCountOption', { name: getPluginDisplayName(grp), count: grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0) })}
               </option>
             {/each}
           </select>
