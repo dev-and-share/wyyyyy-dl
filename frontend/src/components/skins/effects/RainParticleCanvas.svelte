@@ -141,9 +141,9 @@
     const glassDrops: GlassDrop[] = [];
     for (let i = 0; i < 36; i++) {
       const r = 2.2 + Math.random() * 3.8;
-      // 🌟 进场即有 8 颗水滴直接处于滑落中，分布在全屏不同高度，无需苦等立刻能看到滑落水痕！
-      const startSliding = i < 8;
-      const initialMass = startSliding ? 4.5 : (i < 18 ? 3.0 + Math.random() * 0.8 : r * 0.3);
+      // 🌟 进场仅 2 颗处于微滑落，其余自然蓄水滑落，避免开屏满屏直线下落
+      const startSliding = i < 2;
+      const initialMass = startSliding ? 4.2 : (i < 12 ? 2.2 + Math.random() * 0.8 : r * 0.3);
       glassDrops.push({
         x: Math.random() * width,
         y: Math.random() * height,
@@ -151,9 +151,9 @@
         targetRadius: r,
         mass: initialMass,
         threshold: 3.2 + Math.random() * 1.6,
-        vy: startSliding ? 2.2 + Math.random() * 1.8 : 0,
+        vy: startSliding ? 1.8 + Math.random() * 1.2 : 0,
         isSliding: startSliding,
-        slidePauseTimer: startSliding ? 14 + Math.floor(Math.random() * 16) : 0,
+        slidePauseTimer: startSliding ? 12 + Math.floor(Math.random() * 14) : 0,
         tail: []
       });
     }
@@ -165,19 +165,22 @@
     let lastDropTime = 0;
 
     // 绘制高保真真实玻璃水滴 (椭圆重力接触角、透镜聚光折射与锋芒高光)
-    const drawRealisticDrop = (x: number, y: number, r: number, alpha = 1) => {
+    const drawRealisticDrop = (x: number, y: number, r: number, alpha = 1, isSliding = false) => {
       if (r <= 0.6) return;
       ctx.save();
 
+      const stretchY = isSliding ? 1.12 : 1.04;
+      const squeezeX = isSliding ? 0.92 : 0.96;
+
       // (a) 下垂接触角微阴影 (真实水珠趴在玻璃上的重力下垂微阴影)
       ctx.beginPath();
-      ctx.ellipse(x + r * 0.08, y + r * 0.16, r * 0.95, r * 1.05, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + r * 0.08, y + r * 0.16, r * 0.95 * squeezeX, r * 1.05 * stretchY, 0, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(0, 10, 25, ${0.45 * alpha})`;
       ctx.fill();
 
       // (b) 水滴本体透镜 (微蓝透亮质感)
       ctx.beginPath();
-      ctx.ellipse(x, y, r * 0.96, r * 1.04, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y, r * squeezeX, r * stretchY, 0, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(186, 230, 253, ${0.25 * alpha})`;
       ctx.fill();
 
@@ -188,14 +191,14 @@
 
       // (d) 底部透镜聚光反光弧 (Bottom Caustic Glow)
       ctx.beginPath();
-      ctx.arc(x, y + r * 0.32, r * 0.65, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.arc(x, y + r * (isSliding ? 0.38 : 0.32), r * 0.65, 0.15 * Math.PI, 0.85 * Math.PI);
       ctx.strokeStyle = `rgba(224, 242, 254, ${0.65 * alpha})`;
       ctx.lineWidth = Math.max(0.7, r * 0.22);
       ctx.stroke();
 
       // (e) 顶部真实锐利星芒高光点 (Pinpoint Specular Highlight)
       ctx.beginPath();
-      ctx.arc(x - r * 0.32, y - r * 0.32, Math.max(0.7, r * 0.26), 0, Math.PI * 2);
+      ctx.arc(x - r * 0.30, y - r * 0.32, Math.max(0.7, r * 0.26), 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255, 255, 255, ${0.98 * alpha})`;
       ctx.fill();
 
@@ -362,19 +365,31 @@
           // 蓄水突破阈值 -> 打破静摩擦力，启动重力撕裂滑落！
           if (d.mass >= d.threshold) {
             d.isSliding = true;
-            d.vy = 2.4 + Math.random() * 1.5;
-            d.slidePauseTimer = 14 + Math.floor(Math.random() * 18);
+            d.vy = 2.0 + Math.random() * 1.2;
+            d.slidePauseTimer = 12 + Math.floor(Math.random() * 14);
           }
         } else {
           // 滑落状态：真实的走走停停 (滑一段 -> 微暂停吸收沿途水珠 -> 再突然加速)
           if (d.slidePauseTimer > 0) {
             d.slidePauseTimer--;
-            d.vy += 0.45;
+            d.vy += 0.30;
             d.y += d.vy;
+            // 真实水滴滑落时的细微有机微晃 (克服玻璃表面摩擦力的自然轻微摆动)
+            d.x += (Math.random() - 0.5) * 0.35;
+            d.x = Math.max(10, Math.min(width - 10, d.x));
 
             // 记录撕裂水痕 (晶莹湿润的水迹轨迹)
-            d.tail.push({ x: d.x, y: d.y, r: d.radius * 0.45, alpha: 0.45 });
-            if (d.tail.length > 15) d.tail.shift();
+            d.tail.push({ x: d.x, y: d.y, r: d.radius * 0.35, alpha: 0.35 });
+
+            // 偶尔在滑动轨迹上脱落一颗微小水汽凝露 (真实窗户水滴拖痕微珠)
+            if (Math.random() < 0.06 && microDews.length < 36) {
+              microDews.push({
+                x: d.x + (Math.random() - 0.5) * 1.5,
+                y: d.y - d.radius * 1.2,
+                r: 0.6 + Math.random() * 0.5,
+                alpha: 0.15 + Math.random() * 0.15
+              });
+            }
 
             // 吞噬沿途小雨滴
             for (let j = glassDrops.length - 1; j >= 0; j--) {
@@ -383,58 +398,78 @@
               if (!other.isSliding) {
                 const dist = Math.hypot(other.x - d.x, other.y - d.y);
                 if (dist < d.radius + other.radius + 3) {
-                  d.targetRadius = Math.min(16, d.targetRadius + other.radius * 0.35);
-                  d.vy += 0.35;
+                  d.targetRadius = Math.min(14, d.targetRadius + other.radius * 0.35);
+                  d.vy += 0.25;
                   glassDrops.splice(j, 1);
                   if (j < i) i--;
                 }
               }
             }
           } else {
-            // 停顿蓄势阶段 (Staccato Trickle Pause)
-            d.vy *= 0.55;
+            // 停顿蓄势阶段 (Staccato Trickle Pause - 表面张力使尾迹自然回缩衰减)
+            d.vy *= 0.65;
             d.y += d.vy;
-            if (Math.random() < 0.22) {
+            if (d.tail.length > 0) {
+              d.tail.shift();
+            }
+            if (Math.random() < 0.20) {
               // 蓄足能量重新加速冲刺
-              d.slidePauseTimer = 12 + Math.floor(Math.random() * 16);
-              d.vy = 2.4;
+              d.slidePauseTimer = 10 + Math.floor(Math.random() * 14);
+              d.vy = 2.0;
             }
           }
 
-          // 绘制撕裂水痕轨迹 (更清晰柔美的通透水光轨迹)
-          if (d.tail.length > 2) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(d.tail[0].x, d.tail[0].y);
-            for (let k = 1; k < d.tail.length; k++) {
-              ctx.lineTo(d.tail[k].x, d.tail[k].y);
+          // 限制最大尾巴物理距离 (不超过 20~38px，杜绝生硬长直线)
+          const maxTailDist = Math.min(38, Math.max(18, d.radius * 5.5));
+          while (d.tail.length > 1 && (d.y - d.tail[0].y > maxTailDist || d.tail.length > 10)) {
+            d.tail.shift();
+          }
+
+          // 绘制撕裂水痕轨迹 (更清晰柔美的通透水光轨迹，平滑羽化渐变)
+          if (d.tail.length >= 2) {
+            const tailTopY = d.tail[0].y;
+            const tailLen = d.y - tailTopY;
+            if (tailLen > 2) {
+              ctx.save();
+              const grad = ctx.createLinearGradient(0, tailTopY, 0, d.y);
+              grad.addColorStop(0, 'rgba(186, 230, 253, 0)');
+              grad.addColorStop(0.35, 'rgba(186, 230, 253, 0.08)');
+              grad.addColorStop(0.75, 'rgba(210, 238, 255, 0.20)');
+              grad.addColorStop(1, 'rgba(224, 242, 254, 0.35)');
+
+              ctx.beginPath();
+              ctx.moveTo(d.tail[0].x, d.tail[0].y);
+              for (let k = 1; k < d.tail.length; k++) {
+                ctx.lineTo(d.tail[k].x, d.tail[k].y);
+              }
+              ctx.lineTo(d.x, d.y);
+              ctx.strokeStyle = grad;
+              ctx.lineWidth = Math.min(2.8, Math.max(0.8, d.radius * 0.38));
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.stroke();
+              ctx.restore();
             }
-            ctx.strokeStyle = 'rgba(210, 238, 255, 0.42)';
-            ctx.lineWidth = Math.max(1.2, d.radius * 0.42);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.stroke();
-            ctx.restore();
           }
 
           // 滑出屏幕底端 -> 循环重置至顶部
           if (d.y > height + 40) {
             d.y = -10;
             d.x = Math.random() * width;
-            // 循环时 40% 几率作为大水珠立刻继续滑落，形成川流不息的生动降雨！
-            const reSlide = Math.random() < 0.40;
-            d.mass = reSlide ? 4.2 : 0.8;
-            d.radius = 2.2;
-            d.targetRadius = 2.4 + Math.random() * 3.0;
+            // 循环时 25% 几率作为大水珠立刻继续滑落，形成自然的降雨节奏
+            const reSlide = Math.random() < 0.25;
+            d.mass = reSlide ? 3.8 : 0.8;
+            d.radius = 2.0;
+            d.targetRadius = 2.2 + Math.random() * 2.8;
             d.isSliding = reSlide;
-            d.vy = reSlide ? 2.5 : 0;
-            d.slidePauseTimer = reSlide ? 14 + Math.floor(Math.random() * 16) : 0;
+            d.vy = reSlide ? 2.0 : 0;
+            d.slidePauseTimer = reSlide ? 12 + Math.floor(Math.random() * 14) : 0;
             d.tail = [];
           }
         }
 
-        // 绘制玻璃水滴本体
-        drawRealisticDrop(d.x, d.y, d.radius);
+        // 绘制玻璃水滴本体 (滑落时带重力微拉伸)
+        drawRealisticDrop(d.x, d.y, d.radius, 1, d.isSliding && d.vy > 0.5);
       }
 
       if (isVisible) {
