@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isInteractiveTarget, triggerToggleImmersive, setupImmersiveDblClick, _resetToggleTimeForTesting } from './immersiveDblClick';
+import {
+  isInteractiveTarget,
+  triggerToggleImmersive,
+  setupImmersiveDblClick,
+  isPCEnvironment,
+  _resetToggleTimeForTesting
+} from './immersiveDblClick';
 import { playerStore } from './playerStore.svelte';
 import * as toastModule from '../toast.svelte';
 
@@ -11,7 +17,69 @@ describe('immersiveDblClick & Double Click to Toggle Immersive Mode', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  describe('isPCEnvironment', () => {
+    it('identifies desktop operating systems as PC', () => {
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        maxTouchPoints: 0
+      });
+      expect(isPCEnvironment()).toBe(true);
+
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/120.0.0.0',
+        maxTouchPoints: 0
+      });
+      expect(isPCEnvironment()).toBe(true);
+
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        maxTouchPoints: 0
+      });
+      expect(isPCEnvironment()).toBe(true);
+    });
+
+    it('identifies smartphones (SP) and mobile devices as non-PC', () => {
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
+        maxTouchPoints: 5
+      });
+      expect(isPCEnvironment()).toBe(false);
+
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Mobile Safari/537.36',
+        maxTouchPoints: 5
+      });
+      expect(isPCEnvironment()).toBe(false);
+
+      vi.stubGlobal('navigator', {
+        userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
+        maxTouchPoints: 5
+      });
+      expect(isPCEnvironment()).toBe(false);
+    });
+
+    it('falls back to screen width when user agent is non-standard', () => {
+      vi.stubGlobal('navigator', {
+        userAgent: 'CustomBrowser/1.0',
+        maxTouchPoints: 0
+      });
+
+      const mockWinWide = {
+        navigator: { userAgent: 'CustomBrowser/1.0', maxTouchPoints: 0 },
+        innerWidth: 1200
+      } as unknown as Window;
+      expect(isPCEnvironment(mockWinWide)).toBe(true);
+
+      const mockWinNarrow = {
+        navigator: { userAgent: 'CustomBrowser/1.0', maxTouchPoints: 0 },
+        innerWidth: 390
+      } as unknown as Window;
+      expect(isPCEnvironment(mockWinNarrow)).toBe(false);
+    });
   });
 
   describe('isInteractiveTarget', () => {
@@ -104,56 +172,126 @@ describe('immersiveDblClick & Double Click to Toggle Immersive Mode', () => {
   });
 
   describe('setupImmersiveDblClick', () => {
-    it('toggles immersive on dblclick over blank element, but ignores clicks on buttons', () => {
-      const cleanup = setupImmersiveDblClick(window);
-      playerStore.setQueue([{ id: 1, name: '测试曲', artist: '歌手', url: '/v3/stream?id=1', isLocal: true }], 0);
+    describe('PC / PWA desktop environment', () => {
+      it('disables double click to toggle immersive mode on PC (preserves native window/selection actions)', () => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+          maxTouchPoints: 0
+        });
 
-      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        const cleanup = setupImmersiveDblClick(window);
+        playerStore.setQueue([{ id: 1, name: '测试曲', artist: '歌手', url: '/v3/stream?id=1', isLocal: true }], 0);
 
-      // 1. Button dblclick -> ignored
-      const btn = document.createElement('button');
-      document.body.appendChild(btn);
-      btn.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
-      expect(dispatchSpy).not.toHaveBeenCalled();
-      document.body.removeChild(btn);
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        const blankDiv = document.createElement('div');
+        document.body.appendChild(blankDiv);
 
-      // 2. Blank area dblclick -> triggers toggle
-      const blankDiv = document.createElement('div');
-      document.body.appendChild(blankDiv);
-      blankDiv.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
-      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'wyy:toggle-lyric-modal' }));
-      document.body.removeChild(blankDiv);
+        const dblEvent = new MouseEvent('dblclick', { bubbles: true, cancelable: true });
+        blankDiv.dispatchEvent(dblEvent);
 
-      cleanup();
+        // 桌面端 PC / PWA PC 双击空白区域绝不打开沉浸大屏
+        expect(dispatchSpy).not.toHaveBeenCalled();
+        // 原生事件未被 preventDefault，保留系统与选词能力
+        expect(dblEvent.defaultPrevented).toBe(false);
+
+        document.body.removeChild(blankDiv);
+        cleanup();
+      });
+
+      it('disables touch double tap on PC environment', async () => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0',
+          maxTouchPoints: 0
+        });
+
+        const cleanup = setupImmersiveDblClick(window);
+        playerStore.setQueue([{ id: 1, name: '测试曲', artist: '歌手', url: '/v3/stream?id=1', isLocal: true }], 0);
+
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        const blankDiv = document.createElement('div');
+        document.body.appendChild(blankDiv);
+
+        const createTouchEvent = (type: string, x: number, y: number) => {
+          return new TouchEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            changedTouches: [{ clientX: x, clientY: y } as Touch]
+          });
+        };
+
+        blankDiv.dispatchEvent(createTouchEvent('touchend', 100, 100));
+        await new Promise((r) => setTimeout(r, 100));
+        blankDiv.dispatchEvent(createTouchEvent('touchend', 102, 101));
+
+        expect(dispatchSpy).not.toHaveBeenCalled();
+
+        document.body.removeChild(blankDiv);
+        cleanup();
+      });
     });
 
-    it('detects mobile double-tap within time threshold and toggles immersive', async () => {
-      const cleanup = setupImmersiveDblClick(window);
-      playerStore.setQueue([{ id: 1, name: '测试曲', artist: '歌手', url: '/v3/stream?id=1', isLocal: true }], 0);
-
-      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-      const blankDiv = document.createElement('div');
-      document.body.appendChild(blankDiv);
-
-      const createTouchEvent = (type: string, x: number, y: number) => {
-        return new TouchEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          changedTouches: [{ clientX: x, clientY: y } as Touch]
+    describe('SP / mobile smartphone environment', () => {
+      beforeEach(() => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
+          maxTouchPoints: 5
         });
-      };
+      });
 
-      // Tap 1
-      blankDiv.dispatchEvent(createTouchEvent('touchend', 100, 100));
-      expect(dispatchSpy).not.toHaveBeenCalled();
+      it('preserves mobile SP double-tap within time threshold and toggles immersive', async () => {
+        const cleanup = setupImmersiveDblClick(window);
+        playerStore.setQueue([{ id: 1, name: '测试曲', artist: '歌手', url: '/v3/stream?id=1', isLocal: true }], 0);
 
-      // Wait 100ms and Tap 2 at nearly same position
-      await new Promise((r) => setTimeout(r, 100));
-      blankDiv.dispatchEvent(createTouchEvent('touchend', 102, 101));
-      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'wyy:toggle-lyric-modal' }));
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        const blankDiv = document.createElement('div');
+        document.body.appendChild(blankDiv);
 
-      document.body.removeChild(blankDiv);
-      cleanup();
+        const createTouchEvent = (type: string, x: number, y: number) => {
+          return new TouchEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            changedTouches: [{ clientX: x, clientY: y } as Touch]
+          });
+        };
+
+        // Tap 1
+        blankDiv.dispatchEvent(createTouchEvent('touchend', 100, 100));
+        expect(dispatchSpy).not.toHaveBeenCalled();
+
+        // Wait 100ms and Tap 2 at nearly same position
+        await new Promise((r) => setTimeout(r, 100));
+        blankDiv.dispatchEvent(createTouchEvent('touchend', 102, 101));
+        expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'wyy:toggle-lyric-modal' }));
+
+        document.body.removeChild(blankDiv);
+        cleanup();
+      });
+
+      it('ignores mobile SP double-tap on interactive controls (buttons)', async () => {
+        const cleanup = setupImmersiveDblClick(window);
+        playerStore.setQueue([{ id: 1, name: '测试曲', artist: '歌手', url: '/v3/stream?id=1', isLocal: true }], 0);
+
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        const btn = document.createElement('button');
+        document.body.appendChild(btn);
+
+        const createTouchEvent = (type: string, x: number, y: number) => {
+          return new TouchEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            changedTouches: [{ clientX: x, clientY: y } as Touch]
+          });
+        };
+
+        btn.dispatchEvent(createTouchEvent('touchend', 50, 50));
+        await new Promise((r) => setTimeout(r, 100));
+        btn.dispatchEvent(createTouchEvent('touchend', 51, 50));
+
+        expect(dispatchSpy).not.toHaveBeenCalled();
+
+        document.body.removeChild(btn);
+        cleanup();
+      });
     });
   });
 });

@@ -103,7 +103,7 @@
     const onPwaUpdate = () => showToast(t('app.pwaUpdateFound'), 'info', 6000);
     window.addEventListener('wyy:pwa-update-available', onPwaUpdate);
 
-    // 🌌 注册快速双击空白区域切换沉浸模式（双击进入，再次双击退出）
+    // 🌌 注册空白区域快速双击切换沉浸模式（PC 端关闭双击避免与窗口/选词冲突，SP 移动端保留双触切换）
     const cleanupImmersiveDblClick = setupImmersiveDblClick();
 
     return () => {

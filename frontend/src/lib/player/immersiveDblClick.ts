@@ -12,6 +12,52 @@ export function _resetToggleTimeForTesting() {
 }
 
 /**
+ * 🖥️ 判定当前环境是否为 PC / 桌面端 (含 PWA 独立窗口及浏览器桌面端)
+ *
+ * 依据产品交互规范：
+ * - 桌面端 (PC / PWA PC)：关闭空白处双击打开沉浸模式功能，彻底消除与 macOS/Windows 标题栏双击缩放/最大化、窗口拖拽以及文本选词等原生交互的冲突。
+ * - 移动端 (SP 手机)：完整保留空白处快速双触/双击进入/退出沉浸大屏手势。
+ */
+export function isPCEnvironment(win: Window = typeof window !== 'undefined' ? window : ({} as Window)): boolean {
+  if (!win || typeof win === 'undefined') return true;
+
+  const nav = win.navigator || (typeof navigator !== 'undefined' ? navigator : undefined);
+  const ua = nav?.userAgent || '';
+
+  // 1. 若为手机移动端 (SP: iPhone, Android, Mobile UA) -> 明确为 SP (非 PC)
+  if (/Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua)) {
+    return false;
+  }
+
+  // 2. iPad / iPadOS 平板设备 (iPadOS 13+ 伪装成 Macintosh，通过 maxTouchPoints 区分) -> 视作触控移动设备 (非传统 PC)
+  if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && (nav?.maxTouchPoints || 0) > 1)) {
+    return false;
+  }
+
+  // 3. 明确的桌面操作系统 (macOS, Windows NT, Linux x86/x64, X11 等) -> 确认为 PC
+  if (/Macintosh|Windows NT|Windows|Linux x86|X11/i.test(ua)) {
+    return true;
+  }
+
+  // 4. 纯鼠标精细指针设备 (无触控点) -> 确认为 PC
+  if (
+    typeof win.matchMedia === 'function' &&
+    win.matchMedia('(pointer: fine) and (hover: hover)').matches &&
+    (nav?.maxTouchPoints || 0) === 0
+  ) {
+    return true;
+  }
+
+  // 5. 宽屏断点兜底：宽屏 (>= 1024px) 视作桌面 PC 分栏模式
+  const width = typeof win.innerWidth === 'number' ? win.innerWidth : (typeof window !== 'undefined' ? window.innerWidth : 0);
+  if (width >= 1024) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * 🎯 判定点击/触控目标是否落在具体的可交互元素上
  * 确保仅在纯净“空白区域”（背景、空白留白区、无事件舞台边缘等）双击才响应切换
  */
@@ -75,13 +121,19 @@ export function triggerToggleImmersive(): boolean {
 
 /**
  * 🖱️ 注册全局双击空白切换沉浸模式监听器
- * 同时兼容桌面端 dblclick 事件与移动端 touch 快速双击手势
+ *
+ * 策略适配：
+ * - 🖥️ PC 桌面端 (含 PWA PC 独立应用与桌面网页)：禁用双击打开沉浸模式，避免干扰窗口操作与文本选取
+ * - 📱 SP 移动端触屏：保留快速双击/双触手势检测切换沉浸模式
  */
 export function setupImmersiveDblClick(targetWin: Window = window): () => void {
   if (typeof targetWin === 'undefined') return () => {};
 
-  // 1. 桌面端鼠标 / 触控板双击
+  // 1. 桌面端 / PC 鼠标与触控板 dblclick 事件
   const onDblClick = (e: MouseEvent) => {
+    // 🖥️ PC 端 (含 PWA 模式) 彻底关闭双击空白打开沉浸模式，保留原生行为
+    if (isPCEnvironment(targetWin)) return;
+
     const el = e.target as HTMLElement | null;
     if (isInteractiveTarget(el)) return;
 
@@ -95,12 +147,15 @@ export function setupImmersiveDblClick(targetWin: Window = window): () => void {
     triggerToggleImmersive();
   };
 
-  // 2. 移动端触屏快速双击手势检测
+  // 2. 移动端 SP 触屏快速双击手势检测
   let lastTouchTime = 0;
   let lastTouchX = 0;
   let lastTouchY = 0;
 
   const onTouchEnd = (e: TouchEvent) => {
+    // 🖥️ PC 端 (含触摸屏 PC) 同样禁用
+    if (isPCEnvironment(targetWin)) return;
+
     if (e.changedTouches.length !== 1) return;
     const touch = e.changedTouches[0];
     const now = Date.now();
