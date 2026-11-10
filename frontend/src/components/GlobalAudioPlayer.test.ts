@@ -197,6 +197,15 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
     expect(playSpy).not.toHaveBeenCalled();
     // UI curTime should be synced to audioEl.currentTime
     expect(playerStore.curTime).toBe(45);
+
+    // Simulate switching to hidden (app backgrounded or screen locked)
+    const saveSpy = vi.spyOn(playerStore, 'save');
+    Object.defineProperty(audioEl, 'currentTime', { value: 60, writable: true, configurable: true });
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', writable: true, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(playerStore.curTime).toBe(60);
+    expect(saveSpy).toHaveBeenCalled();
   });
 
   it('stops playback cleanly and avoids recursive track skip loop when audio play() is blocked by browser Autoplay policy (NotAllowedError)', async () => {

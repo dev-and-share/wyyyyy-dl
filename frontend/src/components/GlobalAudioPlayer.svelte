@@ -330,6 +330,8 @@
     const handleVisibilityChange = () => {
       if (!audioEl || isIosF3Holding()) return;
       if (document.visibilityState === 'hidden') {
+        if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
+        playerStore.save();
         if (platform.isIOS && audioEl.paused) needsReloadOnResume = true;
         return;
       }
@@ -481,8 +483,7 @@
 
 <!-- 🎬 现代专业音频播放控制栏 -->
 <PlayerBar
-  curTrack={playerStore.activeTrack} queue={playerStore.queue} playing={playerStore.playing}
-  loading={playerStore.loading}
+  curTrack={playerStore.activeTrack} queue={playerStore.queue} playing={playerStore.playing} loading={playerStore.loading}
   curTime={playerStore.curTime} duration={playerStore.duration} playMode={playerStore.playMode}
   bind:vol={playerStore.vol} bind:minimized={isPlayerMinimized} onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next}
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
@@ -494,6 +495,5 @@
 <PlayerOverlays
   bind:showDrawer bind:showLyric bind:showPeq {likedSet} {onToggleLike} {onReveal}
   onPlayIndex={(idx) => { playerStore.qIndex = idx; playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} } ensurePlay(true); }}
-  onClearQueue={handleClearQueue} onShuffle={handleShuffleAction} onTogglePlay={handleTogglePlay}
-  onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek} onSeekTime={(t) => applyTargetSeek(t)}
+  onClearQueue={handleClearQueue} onShuffle={handleShuffleAction} onTogglePlay={handleTogglePlay} onPrev={prev} onNext={next} onToggleMode={handleToggleMode} onSeek={seek} onSeekTime={(t) => applyTargetSeek(t)}
 />

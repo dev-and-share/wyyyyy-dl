@@ -126,8 +126,9 @@
       } else {
         showToast(t('app.syncSuccess'), 'success', 1500);
       }
-    } catch {
-      window.location.reload();
+    } catch (e: any) {
+      console.warn('[App] Refresh check failed:', e);
+      showToast(t('common.failed'), 'warning', 1500);
     }
   }
 </script>
