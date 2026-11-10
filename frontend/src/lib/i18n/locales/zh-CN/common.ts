@@ -87,8 +87,10 @@ export default {
   'common.unknownTrack': '未知曲目',
   'common.song': '歌曲',
   'common.locateFailed': '定位失败: {error}',
-  'app.pwaUpdateFound': '🎉 发现新版本！下拉即可更新',
+  'app.pwaUpdateFound': '发现新版本，下拉更新',
+  'app.pwaUpdateFoundWithVer': '新版本 {version} 已就绪，下拉更新',
   'app.checkingUpdate': '正在检查更新与刷新数据...',
   'app.applyingUpdate': '检测到新版本，正在应用更新...',
+  'app.versionUpdated': '新版本 {version} 已更新',
   'app.syncSuccess': '已同步最新数据与应用状态',
 } as const;

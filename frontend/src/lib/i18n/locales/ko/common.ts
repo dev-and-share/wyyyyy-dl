@@ -87,8 +87,10 @@ export default {
   'common.unknownTrack': '알 수 없는 트랙',
   'common.song': '노래',
   'common.locateFailed': '위치 찾기 실패: {error}',
-  'app.pwaUpdateFound': '🎉 새 버전 발견! 아래로 당겨서 업데이트하세요',
+  'app.pwaUpdateFound': '새 버전 발견, 당겨서 업데이트',
+  'app.pwaUpdateFoundWithVer': '새 버전 {version} 준비 완료, 당겨서 업데이트',
   'app.checkingUpdate': '업데이트 확인 및 데이터 새로고침 중...',
   'app.applyingUpdate': '새 버전 감지됨, 업데이트 적용 중...',
+  'app.versionUpdated': '새 버전 {version} 업데이트 완료',
   'app.syncSuccess': '최신 데이터 및 앱 상태가 동기화되었습니다',
 } as const;

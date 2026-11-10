@@ -28,8 +28,8 @@ const app = mount(App, {
 // 🛡️ 禁止 controllerchange 强制自动刷新页面，并在播放时绝对拦截 SKIP_WAITING 激活新版本
 if (!import.meta.env.DEV) {
   registerServiceWorker(
-    () => {
-      window.dispatchEvent(new CustomEvent('wyy:pwa-update-available'));
+    (version?: string) => {
+      window.dispatchEvent(new CustomEvent('wyy:pwa-update-available', { detail: { version } }));
     },
     {
       autoReloadOnControllerChange: false,

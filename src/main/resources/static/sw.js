@@ -150,6 +150,13 @@ self.addEventListener('message', (event) => {
       caches.delete(IMAGE_CACHE_NAME).catch(() => {});
     } else if (event.data.type === 'REFRESH_AUDIO_CACHE') {
       syncAudioCacheIndex();
+    } else if (event.data.type === 'GET_VERSION') {
+      const version = CACHE_NAME.replace(/^wyy-/, '');
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ type: 'SW_VERSION', version });
+      } else if (event.source) {
+        event.source.postMessage({ type: 'SW_VERSION', version });
+      }
     }
   }
 });

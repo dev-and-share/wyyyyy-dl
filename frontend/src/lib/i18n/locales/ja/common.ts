@@ -87,8 +87,10 @@ export default {
   'common.unknownTrack': '不明なトラック',
   'common.song': '楽曲',
   'common.locateFailed': 'ファイルの特定に失敗しました: {error}',
-  'app.pwaUpdateFound': '🎉 新しいバージョンが見つかりました！下に引っ張って更新',
+  'app.pwaUpdateFound': '新バージョンが見つかりました、下に引いて更新',
+  'app.pwaUpdateFoundWithVer': '新バージョン {version} が準備完了、下に引いて更新',
   'app.checkingUpdate': '更新の確認とデータの再読み込み中...',
   'app.applyingUpdate': '新しいバージョンを検出しました。更新を適用中...',
+  'app.versionUpdated': '新バージョン {version} に更新しました',
   'app.syncSuccess': '最新データとアプリ状態を同期しました',
 } as const;

@@ -87,8 +87,10 @@ export default {
   'common.unknownTrack': 'Unknown Track',
   'common.song': 'Song',
   'common.locateFailed': 'Locate failed: {error}',
-  'app.pwaUpdateFound': '🎉 New version found! Pull down to update',
+  'app.pwaUpdateFound': 'New version found, pull down to update',
+  'app.pwaUpdateFoundWithVer': 'New version {version} ready, pull down to update',
   'app.checkingUpdate': 'Checking for updates and refreshing data...',
   'app.applyingUpdate': 'New version detected, applying updates...',
+  'app.versionUpdated': 'New version {version} updated',
   'app.syncSuccess': 'Latest data and app state synchronized',
 } as const;

@@ -4,7 +4,9 @@ import {
   checkForPwaUpdate,
   notifyPlaybackStateToSw,
   applyPendingPwaUpdate,
-  hasPendingPwaUpdate
+  hasPendingPwaUpdate,
+  getWorkerVersion,
+  getPendingUpdateVersion
 } from './pwa';
 
 describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
@@ -126,12 +128,12 @@ describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     // 🛡️ 正在播放中，绝对不能发送 SKIP_WAITING，但应该暂存
-    expect(mockPostMessage).not.toHaveBeenCalled();
+    expect(mockPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SKIP_WAITING' }));
     expect(hasPendingPwaUpdate()).toBe(true);
 
     // 尝试在播放中激活，依然被阻断
     expect(applyPendingPwaUpdate()).toBe(false);
-    expect(mockPostMessage).not.toHaveBeenCalled();
+    expect(mockPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SKIP_WAITING' }));
 
     // 🎵 音频停止播放，安全执行激活
     isPlayingState = false;
@@ -153,5 +155,47 @@ describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
       type: 'AUDIO_PLAYBACK_STATE',
       isPlaying: false
     });
+  });
+
+  it('getWorkerVersion resolves version via fetch fallback if worker does not message back', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () => "const CACHE_NAME = 'wyy-v5.5.38';\nconst AUDIO_CACHE = '...' "
+    } as any);
+
+    const version = await getWorkerVersion(null);
+    expect(version).toBe('v5.5.38');
+
+    global.fetch = originalFetch;
+  });
+
+  it('registerServiceWorker resolves and passes version to onUpdateFound', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => "const CACHE_NAME = 'wyy-v5.5.39';"
+    } as any);
+
+    const mockPostMessage = vi.fn();
+    const mockWorker = { postMessage: mockPostMessage };
+    const onUpdateFoundSpy = vi.fn();
+
+    mockRegister.mockResolvedValueOnce({
+      scope: '/',
+      waiting: mockWorker,
+      onupdatefound: null
+    });
+
+    registerServiceWorker(onUpdateFoundSpy, { isAudioPlaying: () => false });
+    window.dispatchEvent(new Event('load'));
+
+    // 等待异步版本解析完成
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(onUpdateFoundSpy).toHaveBeenCalledWith('v5.5.39');
+    expect(getPendingUpdateVersion()).toBe('v5.5.39');
+
+    global.fetch = originalFetch;
   });
 });

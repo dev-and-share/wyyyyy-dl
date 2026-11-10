@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from './lib/api';
-  import { checkForPwaUpdate, isAudioCurrentlyPlaying } from './lib/pwa';
+  import { checkForPwaUpdate, isAudioCurrentlyPlaying, getPendingUpdateVersion } from './lib/pwa';
   import { applyTheme, getInitialTheme, type ThemeMode } from './lib/theme';
   import { showToast } from './lib/toast.svelte';
   import { routerState, switchTab, jumpToAlbum, jumpToPlaylist, jumpToDownloadTasks, initRouter, toggleSidebarCollapse } from './lib/router.svelte';
@@ -99,8 +99,13 @@
     };
     window.addEventListener('wyy:reveal', onGlobalReveal);
 
-    // Listen to PWA update available event
-    const onPwaUpdate = () => showToast(t('app.pwaUpdateFound'), 'info', 6000);
+    // Listen to PWA update available event (精简提醒，附带版本信息)
+    const onPwaUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ version?: string }>;
+      const v = customEvent.detail?.version || getPendingUpdateVersion() || '';
+      const text = v ? t('app.pwaUpdateFoundWithVer', { version: v }) : t('app.pwaUpdateFound');
+      showToast(text, 'info', 5000);
+    };
     window.addEventListener('wyy:pwa-update-available', onPwaUpdate);
 
     // 🌌 注册空白区域快速双击切换沉浸模式（PC 端关闭双击避免与窗口/选词冲突，SP 移动端保留双触切换）
@@ -128,7 +133,14 @@
       const hasUpdate = await checkForPwaUpdate();
       await initLikeList();
       if (hasUpdate) {
-        showToast(t('app.applyingUpdate'), 'success', 1200);
+        const v = getPendingUpdateVersion() || '';
+        const msg = v ? t('app.versionUpdated', { version: v }) : t('app.applyingUpdate');
+        showToast(msg, 'success', 2500);
+        setTimeout(() => {
+          if (!playerStore.playing && !isAudioCurrentlyPlaying()) {
+            window.location.reload();
+          }
+        }, 1200);
       } else {
         showToast(t('app.syncSuccess'), 'success', 1500);
       }

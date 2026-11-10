@@ -12,14 +12,62 @@ export interface PwaLifecycleOptions {
   updateViaCache?: 'imports' | 'all' | 'none' | any;
   bypassDevPort?: string | number | (string | number)[];
   autoReloadOnControllerChange?: boolean;
-  onUpdateFound?: () => void;
-  onUpdateWaiting?: (reg: ServiceWorkerRegistration) => void;
+  onUpdateFound?: (version?: string) => void;
+  onUpdateWaiting?: (reg: ServiceWorkerRegistration, version?: string) => void;
   isAudioPlaying?: () => boolean;
 }
 
 let pendingWorker: ServiceWorker | null = null;
 let pendingRegistration: ServiceWorkerRegistration | null = null;
+let pendingVersion: string | null = null;
 let activeOptions: PwaLifecycleOptions = {};
+
+/**
+ * 获取当前已探查到的待更新版本号 (e.g. 'v5.5.38')
+ */
+export function getPendingUpdateVersion(): string | null {
+  return pendingVersion;
+}
+
+/**
+ * 探查目标 Service Worker 的版本号（优先读取 /sw.js 的 CACHE_NAME，离线保底向 Worker 发送 GET_VERSION）
+ */
+export async function getWorkerVersion(worker?: ServiceWorker | null): Promise<string | null> {
+  // 1. 优先读取 /sw.js 的 CACHE_NAME（极速无损、即时获取最新部署版本）
+  if (typeof fetch !== 'undefined') {
+    try {
+      const res = await fetch('/sw.js', { cache: 'no-cache' });
+      if (res.ok) {
+        const text = await res.text();
+        const match = text.match(/CACHE_NAME\s*=\s*['"]wyy-([^'"]+)['"]/);
+        if (match && match[1]) {
+          const v = match[1];
+          return v.startsWith('v') ? v : `v${v}`;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. 离线保底方案：向目标 Worker 发送 GET_VERSION 查询
+  if (worker && typeof MessageChannel !== 'undefined') {
+    try {
+      const channel = new MessageChannel();
+      const versionPromise = new Promise<string | null>((resolve) => {
+        const timer = setTimeout(() => resolve(null), 300);
+        channel.port1.onmessage = (e) => {
+          clearTimeout(timer);
+          if (e.data?.version) resolve(e.data.version);
+          else resolve(null);
+        };
+      });
+      worker.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+      const v = await versionPromise;
+      if (v) return v.startsWith('v') ? v : `v${v}`;
+    } catch {}
+  }
+
+  return null;
+}
 
 /**
  * 检查当前页面是否有任何原生 <audio> 处于发声播放态
@@ -116,7 +164,7 @@ function tryActivateWorker(worker: ServiceWorker, opts: PwaLifecycleOptions): bo
  * 注册具备播放态感知的 Service Worker
  */
 export function registerServiceWorker(
-  onUpdateFound?: () => void,
+  onUpdateFound?: (version?: string) => void,
   options?: PwaLifecycleOptions
 ): void {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -143,19 +191,27 @@ export function registerServiceWorker(
       .register(opts.swUrl || '/sw.js', { updateViaCache: opts.updateViaCache })
       .then((reg) => {
         pendingRegistration = reg;
+        const handleFoundWorker = (worker: ServiceWorker) => {
+          tryActivateWorker(worker, opts);
+          getWorkerVersion(worker).then((ver) => {
+            if (ver) pendingVersion = ver;
+            onUpdateFound?.(ver || undefined);
+            opts.onUpdateWaiting?.(reg, ver || undefined);
+          }).catch(() => {
+            onUpdateFound?.();
+            opts.onUpdateWaiting?.(reg);
+          });
+        };
+
         if (reg.waiting) {
-          tryActivateWorker(reg.waiting, opts);
-          onUpdateFound?.();
-          opts.onUpdateWaiting?.(reg);
+          handleFoundWorker(reg.waiting);
         }
         reg.onupdatefound = () => {
           const installing = reg.installing;
           if (!installing) return;
           installing.onstatechange = () => {
             if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-              tryActivateWorker(installing, opts);
-              onUpdateFound?.();
-              opts.onUpdateWaiting?.(reg);
+              handleFoundWorker(installing);
             }
           };
         };
@@ -205,13 +261,15 @@ export async function checkForPwaUpdate(options?: {
     if (!reg) return false;
     const currentWaiting = reg.waiting;
     if (currentWaiting) {
-      currentWaiting.postMessage({ type: 'SKIP_WAITING' });
+      pendingVersion = await getWorkerVersion(currentWaiting);
+      currentWaiting.postMessage({ type: 'SKIP_WAITING', isPlaying: false });
       return true;
     }
     await reg.update();
     const newWaiting = (reg as any).waiting as ServiceWorker | null;
     if (newWaiting) {
-      newWaiting.postMessage({ type: 'SKIP_WAITING' });
+      pendingVersion = await getWorkerVersion(newWaiting);
+      newWaiting.postMessage({ type: 'SKIP_WAITING', isPlaying: false });
       return true;
     }
     return false;
