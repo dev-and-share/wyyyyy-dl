@@ -46,14 +46,31 @@ function isPlayingNow(opts: PwaLifecycleOptions = activeOptions): boolean {
  * 向 Service Worker 实时同步播放状态，通知 Worker 内核协同防守
  */
 export function notifyPlaybackStateToSw(isPlaying: boolean): void {
-  if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) {
-    try {
+  if (typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+  try {
+    if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({
         type: 'AUDIO_PLAYBACK_STATE',
         isPlaying
       });
-    } catch {}
-  }
+    }
+  } catch {}
+  try {
+    navigator.serviceWorker.getRegistration?.()?.then((reg) => {
+      if (reg?.waiting) {
+        reg.waiting.postMessage({
+          type: 'AUDIO_PLAYBACK_STATE',
+          isPlaying
+        });
+      }
+      if (reg?.installing) {
+        reg.installing.postMessage({
+          type: 'AUDIO_PLAYBACK_STATE',
+          isPlaying
+        });
+      }
+    }).catch(() => {});
+  } catch {}
 }
 
 /**
@@ -73,7 +90,7 @@ export function applyPendingPwaUpdate(): boolean {
   }
   if (pendingWorker) {
     console.log('[PWA] 🚀 音频已静止，安全向新版本 Service Worker 派发 SKIP_WAITING');
-    pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+    pendingWorker.postMessage({ type: 'SKIP_WAITING', isPlaying: false });
     pendingWorker = null;
     return true;
   }
@@ -90,7 +107,7 @@ function tryActivateWorker(worker: ServiceWorker, opts: PwaLifecycleOptions): bo
     return false;
   }
   console.log('[PWA] 🚀 音频未播放，立即安全激活新版本');
-  worker.postMessage({ type: 'SKIP_WAITING' });
+  worker.postMessage({ type: 'SKIP_WAITING', isPlaying: false });
   pendingWorker = null;
   return true;
 }

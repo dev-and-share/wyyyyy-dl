@@ -140,7 +140,7 @@ self.addEventListener('message', (event) => {
       }
     } else if (event.data.type === 'SKIP_WAITING') {
       // 🛡️ 核心防御：正在播放时绝对不更新新版本！
-      if (isAudioPlaying && !event.data.force) {
+      if ((isAudioPlaying || event.data.isPlaying) && !event.data.force) {
         console.log('[SW] 🛡️ 客户端正在播放音频，安全拦截 SKIP_WAITING，推迟至播放停止后再激活新版本');
         pendingSkipWaiting = true;
         return;

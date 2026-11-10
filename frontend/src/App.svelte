@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from './lib/api';
-  import { checkForPwaUpdate } from './lib/pwa';
+  import { checkForPwaUpdate, isAudioCurrentlyPlaying } from './lib/pwa';
   import { applyTheme, getInitialTheme, type ThemeMode } from './lib/theme';
   import { showToast } from './lib/toast.svelte';
   import { routerState, switchTab, jumpToAlbum, jumpToPlaylist, jumpToDownloadTasks, initRouter, toggleSidebarCollapse } from './lib/router.svelte';
@@ -119,7 +119,7 @@
   async function handleRefresh() {
     showToast(t('app.checkingUpdate'), 'info', 1200);
     try {
-      if (playerStore.playing) {
+      if (playerStore.playing || isAudioCurrentlyPlaying()) {
         // 🎵 正在播放中，安全跳过应用更新检查，仅同步歌单与收藏，绝不打断当前播放状态
         await initLikeList();
         showToast(t('app.syncSuccess'), 'success', 1500);

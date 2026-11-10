@@ -60,7 +60,7 @@ describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
 
     expect(hasUpdate).toBe(true);
     // 关键契约验证：未播放时必须向 waiting 状态的 Service Worker 派发 SKIP_WAITING 指令
-    expect(mockPostMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'SKIP_WAITING' }));
   });
 
   it('checkForPwaUpdate returns false and SUPPRESSES SKIP_WAITING if audio is currently playing', async () => {
@@ -137,7 +137,7 @@ describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
     isPlayingState = false;
     const applied = applyPendingPwaUpdate();
     expect(applied).toBe(true);
-    expect(mockPostMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'SKIP_WAITING' }));
     expect(hasPendingPwaUpdate()).toBe(false);
   });
 
