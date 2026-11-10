@@ -1,3 +1,5 @@
+import { platform } from '../platform';
+
 /**
  * 🎵 Web Audio API 真实物理音频分析与可视化驱动引擎
  * 提供 10 频段实时 FFT 频域能量、RMS 立体声电平与低音冲击能量，
@@ -22,9 +24,18 @@ export class AudioVisualizerEngine {
 
   /**
    * 绑定全局原生 <audio> 节点
+   * ⚠️ 核心架构铁律（千万不要改回来）：
+   * 1. 桌面端 (PC/Mac)：全量接通 Web Audio API 物理 FFT 采样分析 (AnalyserNode)；
+   * 2. iOS 移动端：绝对禁止调用 createMediaElementSource 劫持 <audio> 节点！
+   *    - 原理：iOS WebKit 将 Web Audio 视为前台交互音频，一旦手机熄屏/锁屏或切后台，系统会立即强制挂起 AudioContext；
+   *    - 若将 <audio> 连入 AudioContext，AudioContext 挂起后扬声器输出将瞬间断流，且 WebKit 会强行触发 audioEl.pause()；
+   *    - 此外，iOS 接入 Web Audio 要求音频必须符合严格 CORS，会导致非同源流媒体播放受阻；
+   *    - 因此 iOS 端必须保持原生系统 mediaserverd 直通管道，频谱仪自动走 fallbackTick Mock 律动。
    */
   attach(audioEl: HTMLAudioElement | null) {
     if (!audioEl || typeof window === 'undefined') return;
+    // 🛡️ iOS 及不支持设备彻底停用 Web Audio 采样，杜绝 WebKit 崩溃与后台断流
+    if (platform.isIOS || !platform.canUseAudioProcessing) return;
     if (this.currentAudioEl === audioEl && this.sourceNode) return;
 
     this.currentAudioEl = audioEl;
@@ -65,7 +76,8 @@ export class AudioVisualizerEngine {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+    // iOS 环境绝不初始化或唤醒 AudioContext，全走轻量级算法律动
+    if (!platform.isIOS && this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume().catch(() => {});
     }
 
@@ -113,8 +125,8 @@ export class AudioVisualizerEngine {
   }
 
   private updateFrame() {
-    if (!this.analyser || !this.freqData) {
-      // 未接通 Web Audio 时的智能优雅律动兜底
+    if (platform.isIOS || !this.analyser || !this.freqData) {
+      // iOS 或未接通 Web Audio 时的智能优雅律动兜底
       this.fallbackTick();
       return;
     }
@@ -191,6 +203,12 @@ export class AudioVisualizerEngine {
     }
   }
 
+  /**
+   * 优雅节拍算法兜底 (Procedural Mock Rhythm)
+   * ⚠️ 说明：本方法是基于三角时间函数（Math.sin/cos）的 Mock 律动，非真实音频频谱分析。
+   * 专供 iOS（因系统锁屏冻结限制无法开启 Web Audio 真实采样）以及音频源无 CORS 无法采样时的动效降级，
+   * 确保 Winamp 频谱仪和复古胆机表头在不能真采样的平台上依然富有生机，且绝对不消耗多余电量与劫持音频流。
+   */
   private fallbackTick() {
     const t = performance.now() / 1000;
     const newBands = new Array(10);

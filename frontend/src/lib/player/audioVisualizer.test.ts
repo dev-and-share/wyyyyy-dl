@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { audioVisualizer } from './audioVisualizer.svelte';
+import { platform } from '../platform';
 
 describe('AudioVisualizerEngine', () => {
   beforeEach(() => {
@@ -15,6 +16,24 @@ describe('AudioVisualizerEngine', () => {
 
   it('safely handles attach with null or non-audio elements without throwing', () => {
     expect(() => audioVisualizer.attach(null)).not.toThrow();
+  });
+
+  it('does NOT create MediaElementSourceNode if platform.canUseAudioProcessing is false (iOS guard)', () => {
+    const audioEl = document.createElement('audio');
+    const mockCtx = vi.fn();
+    (window as any).AudioContext = mockCtx;
+
+    // Simulate iOS where isIOS is true or canUseAudioProcessing is false
+    const origCanUse = platform.canUseAudioProcessing;
+    const origIsIOS = platform.isIOS;
+    (platform as any).canUseAudioProcessing = false;
+    (platform as any).isIOS = true;
+
+    audioVisualizer.attach(audioEl);
+    expect(mockCtx).not.toHaveBeenCalled();
+
+    (platform as any).canUseAudioProcessing = origCanUse;
+    (platform as any).isIOS = origIsIOS;
   });
 
   it('starts and stops gracefully without throwing errors in test environment', () => {

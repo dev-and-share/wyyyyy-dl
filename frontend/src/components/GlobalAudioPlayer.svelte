@@ -317,6 +317,7 @@
     const currentTrack = playerStore.activeTrack;
     if (currentTrack) prepareTrackInUI(currentTrack, audioEl);
     bindMediaSessionHandlers();
+    // ⚠️ iOS 严禁调用 navigator.audioSession (会导致 Safari 系统级死锁崩溃循环刷新)
 
     const onBeforeUnload = () => playerStore.save();
     const handleVisibilityChange = () => {
@@ -361,14 +362,10 @@
     };
 
     const listeners: [string, EventListener, EventTarget?][] = [
-      ['keydown', onGlobalKeyDown as EventListener],
-      ['beforeunload', onBeforeUnload as EventListener],
-      ['svelte:playFolder', onPlayFolder as EventListener],
-      ['wyy:play-tracks', onPlayTracksEvent as EventListener],
-      ['wyy:sleep-timer-trigger', handleSleepTimerTrigger as EventListener],
-      ['wyy:toggle-lyric-modal', onToggleLyricModal as EventListener],
-      ['wyy:toggle-play', onTogglePlayEvent as EventListener],
-      ['visibilitychange', handleVisibilityChange as EventListener, document]
+      ['keydown', onGlobalKeyDown as EventListener], ['beforeunload', onBeforeUnload as EventListener],
+      ['svelte:playFolder', onPlayFolder as EventListener], ['wyy:play-tracks', onPlayTracksEvent as EventListener],
+      ['wyy:sleep-timer-trigger', handleSleepTimerTrigger as EventListener], ['wyy:toggle-lyric-modal', onToggleLyricModal as EventListener],
+      ['wyy:toggle-play', onTogglePlayEvent as EventListener], ['visibilitychange', handleVisibilityChange as EventListener, document]
     ];
     listeners.forEach(([ev, fn, target]) => (target || window).addEventListener(ev, fn));
 
@@ -380,7 +377,10 @@
   function onAudioPlay() {
     if (isIosF3Holding()) return;
     playerStore.playing = true;
-    if (audioEl) { audioVisualizer.attach(audioEl); audioVisualizer.start(); }
+    if (audioEl) {
+      if (!platform.isIOS && platform.canUseAudioProcessing) audioVisualizer.attach(audioEl);
+      audioVisualizer.start();
+    }
     bindMediaSessionHandlers();
     updateMediaSessionPlaybackState(true);
     if (playerStore.activeTrack) {
@@ -469,9 +469,9 @@
   }
 </script>
 
-<!-- 全局原生 Audio 引擎 -->
+<!-- 全局原生 Audio 引擎 (严禁 crossorigin 与 iOS Web Audio 接入，确保外链 CDN 与熄屏直通播放) -->
 <audio
-  bind:this={audioEl} crossorigin="anonymous" playsinline preload="auto"
+  bind:this={audioEl} playsinline preload="auto"
   onplay={onAudioPlay} onpause={onAudioPause} ontimeupdate={onAudioTimeUpdate}
   onloadedmetadata={onAudioLoadedMetadata} onseeked={onAudioSeeked} onerror={onAudioError} onended={onAudioEnded}
 ></audio>
