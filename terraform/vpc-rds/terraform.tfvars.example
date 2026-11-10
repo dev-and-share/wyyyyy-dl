@@ -17,7 +17,7 @@ rds_instance_class    = "db.t4g.micro"
 rds_allocated_storage = 20
 rds_db_name           = "musicdb"
 rds_username          = "dbadmin"
-rds_password          = "WyyyyyDlSecurePass2026!" # 生产环境请替换为高强度密码
+rds_password          = "WyySecurePass2026!" # 生产环境请替换为高强度密码
 
 # CloudFront 边缘缓存层级 (PriceClass_100: 美欧, PriceClass_All: 全球)
 cloudfront_price_class = "PriceClass_100"

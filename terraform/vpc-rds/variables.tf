@@ -79,7 +79,7 @@ variable "rds_username" {
 variable "rds_password" {
   description = "RDS 管理员密码 (生产环境建议通过 tfvars 传入或 Secrets Manager 管理)"
   type        = string
-  default     = "WyyyyyDlSecurePass2026!"
+  default     = "WyySecurePass2026!"
   sensitive   = true
 }
 

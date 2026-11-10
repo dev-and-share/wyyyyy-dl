@@ -1,4 +1,4 @@
-# wyyyyy-dl 前端 TODO（Svelte 5 版本）
+# WYY 前端 TODO（Svelte 5 版本）
 
 > Tailwind 迁移计划已 100% 完成并归档。本文件为迁移后的持续优化清单。
 
