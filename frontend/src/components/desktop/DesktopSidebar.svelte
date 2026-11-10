@@ -82,11 +82,11 @@
 <!-- PC Desktop Left Sidebar (Visible >= 1024px) -->
 <aside
   data-testid="desktop-sidebar"
-  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width,height] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
+  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--sidebar-bg,var(--card-bg))] backdrop-blur-xl border-r border-[var(--border-subtle)] transition-[width,height] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
   style="height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'}; max-height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'};"
 >
   <!-- 1. Top Bar: Logo & Collapse Button -->
-  <div class="flex flex-col border-b border-[var(--border-color)] shrink-0 wco-drag-region">
+  <div class="flex flex-col border-b border-[var(--border-subtle)] shrink-0 wco-drag-region">
     <div class="w-full shrink-0" style="height: var(--wco-height, env(titlebar-area-height, 0px));"></div>
     <div class="h-12 flex items-center px-3 justify-between gap-1 overflow-hidden shrink-0">
       {#if !collapsed}
@@ -113,7 +113,7 @@
   </div>
 
   <!-- 2. Main Navigation Area -->
-  <nav class="p-1.5 flex flex-col gap-1 border-b border-[var(--border-color)] shrink-0">
+  <nav class="p-1.5 flex flex-col gap-1 border-b border-[var(--border-subtle)] shrink-0">
     <!-- Playlists -->
     <button
       type="button"
@@ -239,7 +239,7 @@
 
   <!-- 4. Bottom Version & Network Status (固定靠底) -->
   <div
-    class="mt-auto px-2 py-1.5 border-t border-[var(--border-color)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] opacity-70 hover:opacity-100 transition-opacity shrink-0 select-none {collapsed ? 'justify-center py-2' : 'px-3'}"
+    class="mt-auto px-2 py-1.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] opacity-70 hover:opacity-100 transition-opacity shrink-0 select-none {collapsed ? 'justify-center py-2' : 'px-3'}"
     data-testid="sidebar-version-info"
   >
     {#if !collapsed}

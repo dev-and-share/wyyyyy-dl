@@ -65,6 +65,7 @@
   --card-bg-solid: #0e3b64;
   --card-header-bg: rgba(14, 52, 88, 0.96);
   --card-header-hover: rgba(56, 189, 248, 0.18);
+  --sidebar-bg: rgba(14, 52, 88, 0.92);
   --border-color: rgba(56, 189, 248, 0.45);
   --border-subtle: rgba(56, 189, 248, 0.2);
   --primary-color: #38bdf8;
@@ -82,22 +83,27 @@
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(56, 189, 248, 0.4);
 }
 [data-theme="light"][data-skin="summer"], [data-theme="light"] [data-skin="summer"] {
-  --bg-color: #e0f2fe;
+  --bg-color: #bae6fd;
   --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(56, 189, 248, 0.32) 0%, transparent 70%), linear-gradient(180deg, #bae6fd 0%, #f0f9ff 100%);
-  --card-bg: #ffffff;
-  --card-bg-solid: #ffffff;
-  --card-header-bg: #ffffff;
-  --border-color: #7dd3fc;
-  --border-subtle: #e0f2fe;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-bg-solid: #e0f2fe;
+  --card-header-bg: rgba(255, 255, 255, 0.95);
+  --sidebar-bg: linear-gradient(180deg, #bae6fd 0%, rgba(186, 230, 253, 0.95) 86px, rgba(224, 242, 254, 0.8) 180px, rgba(240, 249, 255, 0.72) 100%);
+  --border-color: rgba(56, 189, 248, 0.3);
+  --border-subtle: rgba(56, 189, 248, 0.16);
   --primary-color: #0284c7;
   --primary-hover: #0369a1;
   --primary-glow: rgba(2, 132, 199, 0.28);
   --btn-primary-bg: linear-gradient(135deg, #0ea5e9, #38bdf8);
-  --nav-tabs-bg: #e0f2fe;
-  --nav-tab-active-bg: #ffffff;
+  --nav-tabs-bg: rgba(255, 255, 255, 0.45);
+  --nav-tab-active-bg: rgba(255, 255, 255, 0.95);
   --nav-tab-active-color: #0284c7;
-  --topbar-bg: rgba(255, 255, 255, 0.95);
-  --topbar-border: rgba(56, 189, 248, 0.28);
+  --topbar-bg: rgba(186, 230, 253, 0.95);
+  --topbar-border: rgba(56, 189, 248, 0.2);
+  --input-bg: rgba(255, 255, 255, 0.85);
+  --input-border: rgba(56, 189, 248, 0.32);
+  --btn-secondary-bg: rgba(255, 255, 255, 0.45);
+  --btn-secondary-hover-bg: rgba(255, 255, 255, 0.8);
   --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0284c7 0%, #0369a1 42%, #07477c 72%, #064272 100%);
 }
 [data-skin="summer"] .track-item-card.is-active-playing {

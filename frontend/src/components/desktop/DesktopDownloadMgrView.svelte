@@ -337,9 +337,16 @@
                     </td>
                     <td class="py-2.5 px-3 min-w-0">
                       <div class="flex flex-col gap-0.5">
-                        <span class="font-semibold text-[var(--text-main)] truncate max-w-xs group-hover:text-red-400 transition-colors" title={songTitle}>
-                          {songTitle}
-                        </span>
+                        <div class="flex items-center gap-1.5 min-w-0">
+                          <span class="font-semibold text-[var(--text-main)] truncate max-w-xs group-hover:text-red-400 transition-colors" title={songTitle}>
+                            {songTitle}
+                          </span>
+                          {#if item.source && item.source !== 'netease'}
+                            <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-500/15 text-purple-400 border border-purple-500/25 shrink-0 select-none" title={`来源: ${item.source}`}>
+                              {item.source.replace('musicfree-', '')}
+                            </span>
+                          {/if}
+                        </div>
                         {#if artist}
                           <span class="text-[11px] text-[var(--text-muted)] truncate" title={artist}>{artist}</span>
                         {/if}

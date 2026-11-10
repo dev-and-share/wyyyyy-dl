@@ -37,6 +37,12 @@ public interface IHistoryStorageRepository {
     // ==========================================
     long addRecord(Long songId, String songName, String artist, String album,
                    String filePath, Long fileSize, String quality, String status);
+
+    default long addRecord(Long songId, String songName, String artist, String album,
+                           String filePath, Long fileSize, String quality, String status, String source) {
+        return addRecord(songId, songName, artist, album, filePath, fileSize, quality, status);
+    }
+
     DownloadHistoryItem getRecordById(Long historyId);
     List<DownloadHistoryItem> getRecordsByIds(List<Long> ids);
     List<DownloadHistoryItem> getRecords(String keyword, int page, int pageSize);

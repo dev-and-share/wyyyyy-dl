@@ -124,4 +124,15 @@ describe('DesktopTitlebarIsland Component with Adaptive Dynamic Island States', 
 
     window.removeEventListener('wyy:toggle-play', togglePlayListener);
   });
+
+  it('renders seamless unified titlebar header', () => {
+    const { getByTestId } = render(DesktopTitlebarIsland, {
+      curTrack: null,
+      playing: false
+    });
+
+    const header = getByTestId('desktop-titlebar-island');
+    expect(header).toBeInTheDocument();
+    expect(header.className).toContain('bg-[var(--wco-titlebar-bg,var(--bg-color))]');
+  });
 });

@@ -8,11 +8,13 @@
   let {
     curTrack = null,
     playing = false,
+    sidebarCollapsed = false,
     onTogglePlay,
     onOpenLyric
   } = $props<{
     curTrack?: Track | null;
     playing?: boolean;
+    sidebarCollapsed?: boolean;
     onTogglePlay?: () => void;
     onOpenLyric?: () => void;
   }>();
@@ -85,13 +87,19 @@
      采用“左右拖拽区 + 中间完全独立 DOM 交互区”三栏架构，彻底消除原生 drag region 遮挡与点击失灵问题 -->
 <header
   data-testid="desktop-titlebar-island"
-  class="fixed top-0 inset-x-0 z-30 flex items-center justify-between select-none transition-colors duration-200 bg-[var(--wco-titlebar-bg,var(--bg-color))] border-b border-[var(--border-subtle)]"
+  class="fixed top-0 inset-x-0 z-30 flex items-center justify-between select-none transition-colors duration-200 bg-[var(--wco-titlebar-bg,var(--bg-color))] backdrop-blur-md"
   style="
     height: var(--wco-height, env(titlebar-area-height, 38px));
     padding-left: max(80px, var(--wco-left, 80px));
     padding-right: max(120px, var(--wco-right, 120px));
   "
 >
+  <!-- 📏 顶栏底部分割线：左侧侧边栏上方完全通透一体无横切，仅在右侧主视窗呈现微弱界线 -->
+  <div
+    class="pointer-events-none absolute bottom-0 right-0 h-[1px] bg-[var(--border-subtle)] transition-[left] duration-200 ease-in-out"
+    style="left: {sidebarCollapsed ? '58px' : '224px'};"
+    aria-hidden="true"
+  ></div>
   <!-- 🪟 左侧纯窗口拖拽区域 (交通灯与灵动岛之间，允许自由按住拖动窗口) -->
   <div class="flex-1 h-full wco-drag-region cursor-default" aria-hidden="true"></div>
 

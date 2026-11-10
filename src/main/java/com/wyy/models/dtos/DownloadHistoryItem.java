@@ -24,4 +24,9 @@ public class DownloadHistoryItem {
     private String status;
     private String createdAt;
     private Boolean fileExists;
+    private String source; // 🌟 来源标识: "netease" (默认网易云) | "musicfree" (第三方音源)
+
+    public boolean isMusicFree() {
+        return "musicfree".equalsIgnoreCase(source);
+    }
 }

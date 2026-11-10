@@ -154,7 +154,7 @@ export const SKIN_THEME_COLORS: Record<SkinId, { dark: string; light: string }> 
   aurora: { dark: '#0c0a1a', light: '#faf5ff' },
   rain: { dark: '#08101e', light: '#f0f7ff' },
   sakura: { dark: '#240d1e', light: '#fff0f5' },
-  summer: { dark: '#072b4a', light: '#e0f2fe' },
+  summer: { dark: '#072b4a', light: '#bae6fd' },
   autumn: { dark: '#1a1305', light: '#fffdf0' },
   winter: { dark: '#0b121e', light: '#f8fafc' },
   spring: { dark: '#06140f', light: '#f0fdf4' }

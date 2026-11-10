@@ -152,6 +152,7 @@
   <DesktopTitlebarIsland
     {curTrack}
     {playing}
+    sidebarCollapsed={routerState.sidebarCollapsed}
     onTogglePlay={() => {
       if (typeof togglePlayerPlay === 'function') {
         togglePlayerPlay();

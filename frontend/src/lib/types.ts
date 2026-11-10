@@ -40,6 +40,38 @@ export interface DownloadTask {
   timestamp?: number;
 }
 
+/**
+ * 🏷️ 音频存储来源枚举 (Audio Source Type)
+ */
+export enum AudioSourceType {
+  NETEASE = 'netease',
+  MUSICFREE = 'musicfree',
+  MUSICFREE_QQ = 'musicfree-qq',
+  MUSICFREE_KUGOU = 'musicfree-kugou',
+  MUSICFREE_KUWO = 'musicfree-kuwo',
+  MUSICFREE_MIGU = 'musicfree-migu',
+  MUSICFREE_BILIBILI = 'musicfree-bilibili',
+  MUSICFREE_MAOERFM = 'musicfree-maoerfm',
+  MUSICFREE_CUSTOM = 'musicfree-custom'
+}
+
+export interface DownloadHistoryItem {
+  id: number;
+  songId?: number;
+  songName: string;
+  artist?: string;
+  album?: string;
+  filePath: string;
+  relativePath?: string;
+  hostFilePath?: string;
+  fileSize: number;
+  quality?: string;
+  status: string;
+  createdAt?: string;
+  fileExists?: boolean;
+  source?: AudioSourceType | string;
+}
+
 export interface PlaylistInfo {
   id: number | string;
   name: string;

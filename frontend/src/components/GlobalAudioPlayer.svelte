@@ -15,6 +15,7 @@
   import { sleepTimer } from '../lib/sleepTimer.svelte';
   import { audioVisualizer } from '../lib/player/audioVisualizer.svelte';
   import { skin } from '../lib/skinStore.svelte';
+  import { checkAndTriggerAutoArchive } from '../lib/player/autoArchive';
 
   import PlayerBar from './PlayerBar.svelte';
   import PlayerOverlays from './PlayerOverlays.svelte';
@@ -411,6 +412,7 @@
       playerStore.duration = a.duration;
       if (getLastPositionSyncedKey() !== getCurrentTrackKey() && a.duration > 0) updateMediaSessionPosition(a);
     }
+    if (playerStore.activeTrack && playerStore.duration > 0) checkAndTriggerAutoArchive(playerStore.activeTrack, a.currentTime, playerStore.duration);
     if (playerStore.curTime > 0) { try { localStorage.setItem('wyy_player_time', String(playerStore.curTime)); } catch {} }
     if (parsedLyrics.length > 0 && playerStore.activeTrack) {
       const active = getActiveLyric(parsedLyrics, a.currentTime);
@@ -463,8 +465,7 @@
       try { a.load(); a.play().catch(() => {}); return; } catch {}
     }
     if (playerStore.playMode === 'single') {
-      playerStore.curTime = 0;
-      if (audioEl) { try { audioEl.currentTime = 0; } catch {} audioEl.play().catch(() => {}); }
+      playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} audioEl.play().catch(() => {}); }
     } else {
       next();
     }

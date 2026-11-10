@@ -120,13 +120,14 @@ export const api = {
 
   // 🧩 自定义/插件音源落盘下载
   downloadCustom: (track: {
-    id?: string;
+    id?: string | number;
     name: string;
     artist?: string;
     album?: string;
     url: string;
     coverUrl?: string;
     lyric?: string;
+    source?: string;
     headers?: Record<string, string>;
   }) => postJson('/v3/download/custom', track),
 

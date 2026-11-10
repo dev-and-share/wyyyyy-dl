@@ -336,5 +336,27 @@ public class DownloadHistoryDAOTest {
         assertTrue(track2.getIsLocal(), "原版 ID 应精准按 songId 命中本地");
         assertTrue(track1.getIsLocal(), "跨版本不同 ID 的同名同歌手曲目应成功被优先本地机制标记为 isLocal=true");
     }
+
+    @Test
+    @DisplayName("测试 source 音源标识与 isMusicFree 判断")
+    public void testSourceFlagAndIsMusicFree() throws Exception {
+        File audio1 = new File(tempDir.toFile(), "网易云歌曲.mp3");
+        try (FileWriter w = new FileWriter(audio1)) { w.write("mock audio"); }
+        long id1 = dao.addRecord(1001L, "网易云歌曲", "歌手A", "专辑A", audio1.getAbsolutePath(), audio1.length(), "lossless", "SUCCESS");
+
+        File audio2 = new File(tempDir.toFile(), "第三方歌曲.mp3");
+        try (FileWriter w = new FileWriter(audio2)) { w.write("mock audio 2"); }
+        long id2 = dao.addRecord(2002L, "第三方歌曲", "歌手B", "专辑B", audio2.getAbsolutePath(), audio2.length(), "standard", "SUCCESS", "musicfree");
+
+        DownloadHistoryItem item1 = dao.getRecordById(id1);
+        assertNotNull(item1);
+        assertEquals("netease", item1.getSource());
+        assertFalse(item1.isMusicFree());
+
+        DownloadHistoryItem item2 = dao.getRecordById(id2);
+        assertNotNull(item2);
+        assertEquals("musicfree", item2.getSource());
+        assertTrue(item2.isMusicFree());
+    }
 }
 

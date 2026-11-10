@@ -415,6 +415,7 @@ public class MusicDownloadService implements InitializingBean {
 		private java.util.Map<String, String> headers;
 		private String lyric;
 		private String cover;
+		private String source; // 🌟 音源来源: "musicfree" 或特定插件标识
 	}
 
 	public DownloadTaskStatus downloadCustomSong(CustomDownloadRequest request) {
@@ -477,8 +478,16 @@ public class MusicDownloadService implements InitializingBean {
 
 				FileUtils.writeToFile(file.toPath(), in);
 
-				if (!file.exists() || file.length() < 100000) {
-					throw new RuntimeException("音频文件过小或无效");
+				// 🛑 核心防污染拦截：如果音频文件缺失、大小为0、或小于 1.25MB (1,250,000 字节) 试听片段，统一拒绝落盘入库并清理残留
+				if (!file.exists() || file.length() < 1250000) {
+					long sz = file.exists() ? file.length() : 0L;
+					log.warn("检测到外部歌曲: {} 音频缺失或属于 30s VIP 试听片段 (大小: {} 字节)，自动擦除并拒绝入库!", fileName, sz);
+					try { if (file.exists()) file.delete(); } catch (Exception ignored) {}
+					File residualLrc = Paths.get(dir, fileName + ".lrc").toFile();
+					try { if (residualLrc.exists()) residualLrc.delete(); } catch (Exception ignored) {}
+					finalTaskStatus.setStatus("SKIP");
+					finalTaskStatus.setErrorMsg("音频文件过小或属于 30s 试听片段 (大小: " + sz + " 字节)，已自动拦截");
+					return;
 				}
 
 				TagUtils.setTags(file, trackName, artist, album);
@@ -492,6 +501,7 @@ public class MusicDownloadService implements InitializingBean {
 				finalTaskStatus.setStatus("SUCCESS");
 				finalTaskStatus.setFilePath(file.getAbsolutePath());
 
+				String source = StringUtils.defaultIfBlank(request.getSource(), "musicfree");
 				downloadHistoryDAO.addRecord(
 						finalId,
 						trackName,
@@ -500,9 +510,10 @@ public class MusicDownloadService implements InitializingBean {
 						file.getAbsolutePath(),
 						file.length(),
 						"standard",
-						"SUCCESS"
+						"SUCCESS",
+						source
 				);
-				log.info("外部音源 {} 下载并落盘完成: {}", trackName, file.getAbsolutePath());
+				log.info("外部音源 {} (source={}) 下载并落盘完成: {}", trackName, source, file.getAbsolutePath());
 			} catch (Exception e) {
 				log.warn("外部音源下载失败: name={}, url={}, error={}", trackName, request.getUrl(), e.getMessage());
 				finalTaskStatus.setStatus("FAILED");

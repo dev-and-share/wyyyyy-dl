@@ -3,6 +3,7 @@ import { extractRawAudioUrl, DEFAULT_VINYL_COVER } from '../utils';
 import { musicFreeStore } from './musicFreeStore.svelte';
 import { showToast } from '../toast.svelte';
 import { t } from '../i18n';
+import { resolveAudioSourceType } from '../player/autoArchive';
 
 /**
  * 🎯 统一执行第三方/外部音源曲目的下载与落盘 (Single Source of Truth)
@@ -10,15 +11,21 @@ import { t } from '../i18n';
 export async function downloadExternalTrack(
   track: any,
   rawTrack?: any,
-  pluginId?: string
+  pluginId?: string,
+  options?: { silent?: boolean; source?: string }
 ): Promise<boolean> {
+  const isSilent = options?.silent === true;
+  const inferredSource = resolveAudioSourceType(rawTrack || track);
+  const source = options?.source || inferredSource;
   const songName = (track?.name || track?.title || '').trim();
   const artist = (track?.artist || '').trim();
   const album = (track?.album || track?.al?.name || '').trim();
   const coverUrl = track?.cover || track?.artwork || track?.al?.picUrl || DEFAULT_VINYL_COVER;
   const pId = pluginId || track?._pluginId || track?.pluginHash || track?.pluginId;
 
-  showToast(t('download.submittedTask'), 'info', 1500);
+  if (!isSilent) {
+    showToast(t('download.submittedTask'), 'info', 1500);
+  }
 
   try {
     let audioUrl = track?.url;
@@ -31,7 +38,9 @@ export async function downloadExternalTrack(
 
     const cleanUrl = extractRawAudioUrl(audioUrl);
     if (!cleanUrl) {
-      showToast(t('cache.cannotGetAudioStream'), 'error');
+      if (!isSilent) {
+        showToast(t('cache.cannotGetAudioStream'), 'error');
+      }
       return false;
     }
 
@@ -42,21 +51,28 @@ export async function downloadExternalTrack(
       album,
       url: cleanUrl,
       coverUrl,
+      source,
       headers
     });
 
     if (res?.code === '000000') {
-      showToast(t('download.submittedTask'), 'success');
+      if (!isSilent) {
+        showToast(t('download.submittedTask'), 'success');
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       }
       return true;
     } else {
-      showToast(res?.msg || '创建下载任务失败', 'error');
+      if (!isSilent) {
+        showToast(res?.msg || '创建下载任务失败', 'error');
+      }
       return false;
     }
   } catch (e: any) {
-    showToast('创建下载任务失败: ' + (e.message || e), 'error');
+    if (!isSilent) {
+      showToast('创建下载任务失败: ' + (e.message || e), 'error');
+    }
     return false;
   }
 }

@@ -85,6 +85,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     "file_size BIGINT, " +
                     "quality VARCHAR(64), " +
                     "status VARCHAR(64), " +
+                    "source VARCHAR(64) DEFAULT 'netease', " +
                     "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                     ")";
             stmt.execute(sql);
@@ -154,6 +155,15 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
             createIndexesSafely(stmt);
             cleanDuplicatePlaylistTracksSafely(stmt);
             migrateLocalPlaylistsTableSafely(stmt);
+            migrateDownloadHistoryTableSafely(stmt);
+        }
+    }
+
+    protected void migrateDownloadHistoryTableSafely(Statement stmt) {
+        try {
+            stmt.execute("ALTER TABLE download_history ADD COLUMN source VARCHAR(64) DEFAULT 'netease'");
+            log.info("成功为 download_history 增加 source 字段");
+        } catch (Exception ignored) {
         }
     }
 
@@ -354,7 +364,12 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
     // ==========================================
     @Override
     public synchronized long addRecord(Long songId, String songName, String artist, String album, String filePath, Long fileSize, String quality, String status) {
-        String insertSql = "INSERT INTO download_history (song_id, song_name, artist, album, file_path, file_size, quality, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        return addRecord(songId, songName, artist, album, filePath, fileSize, quality, status, "netease");
+    }
+
+    @Override
+    public synchronized long addRecord(Long songId, String songName, String artist, String album, String filePath, Long fileSize, String quality, String status, String source) {
+        String insertSql = "INSERT INTO download_history (song_id, song_name, artist, album, file_path, file_size, quality, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             if (songId != null) {
@@ -369,6 +384,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
             pstmt.setLong(6, fileSize != null ? fileSize : 0L);
             pstmt.setString(7, quality);
             pstmt.setString(8, status);
+            pstmt.setString(9, StringUtils.defaultIfBlank(source, "netease"));
 
             int affected = pstmt.executeUpdate();
             if (affected > 0) {
@@ -379,7 +395,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                 }
             }
         } catch (Exception e) {
-            log.error("保存下载历史记录异常: songName={}, artist={}", songName, artist, e);
+            log.error("保存下载历史记录异常: songName={}, artist={}, source={}", songName, artist, source, e);
         }
         return -1;
     }
@@ -1265,6 +1281,12 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         item.setQuality(rs.getString("quality"));
         item.setStatus(rs.getString("status"));
         item.setCreatedAt(rs.getString("created_at"));
+        try {
+            String src = rs.getString("source");
+            item.setSource(StringUtils.defaultIfBlank(src, "netease"));
+        } catch (SQLException ignored) {
+            item.setSource("netease");
+        }
 
         boolean fileExists;
         if (storageService != null) {

@@ -28,7 +28,8 @@ describe('downloadExternalTrack', () => {
       expect.objectContaining({
         name: '测试歌曲',
         artist: '测试歌手',
-        url: 'http://test.audio/sample.mp3'
+        url: 'http://test.audio/sample.mp3',
+        source: 'musicfree-qq'
       })
     );
   });
@@ -48,7 +49,28 @@ describe('downloadExternalTrack', () => {
     expect(spyDownload).toHaveBeenCalledWith(
       expect.objectContaining({
         name: '代理歌曲',
-        url: 'https://cdn.kugou.com/song.mp3'
+        url: 'https://cdn.kugou.com/song.mp3',
+        source: 'musicfree-kugou'
+      })
+    );
+  });
+
+  it('supports silent option and custom source without throwing or showing toasts', async () => {
+    const spyDownload = vi.spyOn(api, 'downloadCustom').mockResolvedValue({ code: '000000', data: {} } as any);
+
+    const track = {
+      id: 'mf_custom_789',
+      name: '静默歌曲',
+      artist: '测试',
+      url: 'http://cdn.com/test.mp3'
+    };
+
+    const res = await downloadExternalTrack(track, null, undefined, { silent: true, source: 'musicfree' });
+    expect(res).toBe(true);
+    expect(spyDownload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: '静默歌曲',
+        source: 'musicfree'
       })
     );
   });

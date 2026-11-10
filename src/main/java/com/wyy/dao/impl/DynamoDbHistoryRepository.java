@@ -219,6 +219,12 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
     @Override
     public long addRecord(Long songId, String songName, String artist, String album,
                           String filePath, Long fileSize, String quality, String status) {
+        return addRecord(songId, songName, artist, album, filePath, fileSize, quality, status, "netease");
+    }
+
+    @Override
+    public long addRecord(Long songId, String songName, String artist, String album,
+                          String filePath, Long fileSize, String quality, String status, String source) {
         long id = System.currentTimeMillis();
         if (!dynamoDbEnabled) return id;
         try {
@@ -232,13 +238,14 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
             item.put("file_size", AttributeValue.builder().n(String.valueOf(fileSize != null ? fileSize : 0L)).build());
             item.put("quality", AttributeValue.builder().s(quality != null ? quality : "lossless").build());
             item.put("status", AttributeValue.builder().s(status != null ? status : "SUCCESS").build());
+            item.put("source", AttributeValue.builder().s(source != null ? source : "netease").build());
             item.put("created_at", AttributeValue.builder().s(Instant.now().toString()).build());
 
             dynamoDbClient.putItem(PutItemRequest.builder()
                     .tableName(historyTableName)
                     .item(item)
                     .build());
-            log.info("⚡ [DynamoDB] 保存历史记录成功, id={}, song={}", id, songName);
+            log.info("⚡ [DynamoDB] 保存历史记录成功, id={}, song={}, source={}", id, songName, source);
         } catch (Exception e) {
             log.error("保存历史记录至 DynamoDB 异常, id={}", id, e);
         }
@@ -555,6 +562,8 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
         if (item.containsKey("file_size")) dto.setFileSize(Long.parseLong(item.get("file_size").n()));
         if (item.containsKey("quality")) dto.setQuality(item.get("quality").s());
         if (item.containsKey("status")) dto.setStatus(item.get("status").s());
+        if (item.containsKey("source")) dto.setSource(item.get("source").s());
+        else dto.setSource("netease");
         if (item.containsKey("created_at")) dto.setCreatedAt(item.get("created_at").s());
         dto.setFileExists("SUCCESS".equalsIgnoreCase(dto.getStatus()));
         return dto;

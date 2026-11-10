@@ -77,6 +77,27 @@
       : localPlaylists
   );
 
+  // 🔍 搜索框占位符：直接将各分类的总数量无缝融入 Placeholder，消除多余占位栏
+  const searchPlaceholder = $derived.by<string>(() => {
+    if (filterMode === 'all') {
+      const count = allPlaylists.length;
+      return count > 0 ? t('playlist.searchAllCount', { count }) : t('playlist.filterPlaceholder');
+    }
+    if (filterMode === 'created') {
+      const count = createdPlaylists.length;
+      return count > 0 ? t('playlist.searchCreatedCount', { count }) : t('playlist.filterPlaceholder');
+    }
+    if (filterMode === 'subscribed') {
+      const count = subscribedPlaylists.length;
+      return count > 0 ? t('playlist.searchSubscribedCount', { count }) : t('playlist.filterPlaceholder');
+    }
+    if (filterMode === 'local') {
+      const count = localPlaylists.length;
+      return count > 0 ? t('playlist.searchLocalCount', { count }) : t('playlist.filterPlaceholder');
+    }
+    return t('playlist.filterPlaceholder');
+  });
+
   function checkAllScroll() {
     if (!allScrollEl) return;
     const { scrollTop, scrollHeight, clientHeight } = allScrollEl;
@@ -175,7 +196,7 @@
   <div class="relative shrink-0 my-0.5">
     <input
       type="text"
-      placeholder={t('playlist.filterPlaceholder')}
+      placeholder={searchPlaceholder}
       class="w-full pl-6 pr-2 py-1 rounded-lg text-[11px] bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-400/60 transition-colors"
       bind:value={sidebarSearchKw}
     />
@@ -199,10 +220,6 @@
         class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar"
       >
         {#if filteredAll.length > 0}
-          <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-            <span>{t('common.all')}</span>
-            <span class="text-[10px] opacity-70">{filteredAll.length}</span>
-          </div>
           {#each filteredAll as pl (pl.id)}
             {@const playCount = getPlaylistPlayCount(pl.id)}
             <div class="group relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
@@ -259,10 +276,6 @@
         class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar"
       >
         {#if filteredCreated.length > 0}
-          <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-            <span>{t('playlist.myPlaylists')}</span>
-            <span class="text-[10px] opacity-70">{filteredCreated.length}</span>
-          </div>
           {#each filteredCreated as pl (pl.id)}
             {@const playCount = getPlaylistPlayCount(pl.id)}
             <div class="group relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
@@ -319,10 +332,6 @@
         class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar"
       >
         {#if filteredSubscribed.length > 0}
-          <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-            <span>{t('sidebar.subscribedPlaylists')}</span>
-            <span class="text-[10px] opacity-70">{filteredSubscribed.length}</span>
-          </div>
           {#each filteredSubscribed as pl (pl.id)}
             {@const playCount = getPlaylistPlayCount(pl.id)}
             <div class="group relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)] transition-colors">
@@ -377,10 +386,6 @@
         class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5 custom-scrollbar"
       >
         {#if filteredLocal.length > 0}
-          <div class="px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center justify-between sticky top-0 bg-[var(--card-bg-solid,#111827)] z-10 border-b border-[var(--border-subtle)]/30">
-            <span>{t('sidebar.localPlaylists')}</span>
-            <span class="text-[10px] opacity-70">{filteredLocal.length}</span>
-          </div>
           {#each filteredLocal as pl (pl.id)}
             {@const playCount = getPlaylistPlayCount(pl.id)}
             {@const isSysFav = isSystemFavoritesPlaylist(pl.id)}

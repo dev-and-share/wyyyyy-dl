@@ -374,4 +374,41 @@ describe('DesktopSidebar', () => {
     const versionInfo = getByTestId('sidebar-version-info');
     expect(versionInfo.textContent).toContain('v');
   });
+
+  it('embeds playlist total count dynamically into search input placeholder without separate sticky count header', async () => {
+    myPlaylists.push(
+      { id: 101, name: '流行热歌', subscribed: false } as any,
+      { id: 102, name: '轻音乐', subscribed: true } as any
+    );
+
+    const { container, getByTestId, queryByText } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    await tick();
+    const input = container.querySelector('input');
+    // 1. All mode: includes all cloud + local playlists
+    expect(input?.placeholder).toContain('搜索全部');
+    expect(input?.placeholder).toContain('个歌单...');
+
+    // 2. Switch to created playlists filter
+    const createdFilterBtn = getByTestId('sidebar-filter-created');
+    await fireEvent.click(createdFilterBtn);
+    await tick();
+    expect(input?.placeholder).toBe('搜索 1 个自建歌单...');
+
+    // 3. Switch to saved playlists filter
+    const subscribedFilterBtn = getByTestId('sidebar-filter-subscribed');
+    await fireEvent.click(subscribedFilterBtn);
+    await tick();
+    expect(input?.placeholder).toBe('搜索 1 个收藏歌单...');
+
+    // 4. Playlists render directly, without separate sticky header block
+    expect(queryByText('全部 4')).toBeNull();
+  });
 });
