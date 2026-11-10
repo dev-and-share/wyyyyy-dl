@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DEFAULT_VINYL_COVER } from '../../lib/utils';
-  import { getTrackSourceStatus, isSameTrack, getTrackPlayActionLabel, isVipOrPaidTrack } from '../../lib/player/trackStatus.svelte';
+  import { getTrackSourceStatus, isSameTrack, getTrackPlayActionLabel } from '../../lib/player/trackStatus.svelte';
   import { musicFreeStore } from '../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../lib/adapters/musicFreeAdapter';
   import { api } from '../../lib/api';
@@ -139,7 +139,6 @@
         {@const pName = rawPlatform ? getPluginDisplayName(rawPlatform) : t('playlist.externalSourceBadge')}
         {@const trackId = item.id || `mf_${item._pluginId || item.pluginHash}_${item.rawId || title}`}
         {@const isCur = isSameTrack(curTrack, trackId)}
-        {@const isVip = isVipOrPaidTrack(item)}
         {@const status = getTrackSourceStatus(trackId, false, curTrack, true, title, artist)}
         <div
           class="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
@@ -181,13 +180,8 @@
             onclick={() => handlePlay(item)}
           >
             <!-- 歌名独立一行，确保无论屏幕多小都清晰完整可见 -->
-            <div class="text-xs sm:text-sm font-semibold truncate min-w-0 mb-1 flex items-center gap-1.5 {isCur ? 'text-purple-400 font-bold' : isVip ? 'text-[var(--text-secondary)] opacity-80' : 'text-[var(--text-main)]'}" title={title}>
+            <div class="text-xs sm:text-sm font-semibold truncate min-w-0 mb-1 flex items-center gap-1.5 {isCur ? 'text-purple-400 font-bold' : 'text-[var(--text-main)]'}" title={title}>
               <span class="truncate">{title}</span>
-              {#if isVip}
-                <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title={t('musicfree.vipBadgeTitle')}>
-                  VIP
-                </span>
-              {/if}
             </div>
             <!-- 音源平台标签 + 歌手 + 专辑 -->
             <div class="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate flex items-center gap-1.5 min-w-0">

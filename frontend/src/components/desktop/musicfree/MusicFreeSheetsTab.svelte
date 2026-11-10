@@ -3,7 +3,7 @@
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
   import { DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../../lib/utils';
-  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, isVipOrPaidTrack } from '../../../lib/player/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../../../lib/player/trackStatus.svelte';
   import { jumpToMusicFreeSearch } from '../../../lib/router.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
   import TrackSourceBadge from '../../TrackSourceBadge.svelte';
@@ -276,23 +276,17 @@
           {#each sheetTracks.slice(0, displayLimit) as trackItem, idx (trackItem.id || idx)}
             {@const trackObj = buildTrack(trackItem)}
             {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, trackItem)}
-            {@const isVip = isVipOrPaidTrack(trackItem) || isVipOrPaidTrack(trackObj)}
             {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, trackItem.title || trackItem.name, trackItem.artist)}
             {@const isLiked = isTrackLiked(trackObj.id, trackItem.title || trackItem.name, trackItem.artist)}
             <div
-              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group {isVip ? 'opacity-90' : ''}"
+              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group"
             >
               <span class="w-6 text-center text-xs text-[var(--text-muted)] font-mono">{idx + 1}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold truncate {isCur ? 'text-purple-400' : isVip ? 'text-[var(--text-secondary)] opacity-80' : 'text-[var(--text-main)]'}">
+                  <span class="text-xs font-semibold truncate {isCur ? 'text-purple-400' : 'text-[var(--text-main)]'}">
                     {trackItem.title || trackItem.name}
                   </span>
-                  {#if isVip}
-                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title={t('musicfree.vipBadgeTitle')}>
-                      VIP
-                    </span>
-                  {/if}
                   <TrackSourceBadge
                     id={trackObj.id}
                     name={trackItem.title || trackItem.name}
