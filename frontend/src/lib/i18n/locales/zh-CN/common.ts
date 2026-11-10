@@ -71,6 +71,7 @@ export default {
   'sidebar.collapseTooltip': '收起边栏 (紧凑纯图标)',
   'sidebar.expand': '展开边栏',
   'sidebar.collapse': '收起边栏',
+  'sidebar.proxyClickHint': '点击立即测速刷新代理',
   'sidebar.localAndDownload': '本地与下载',
   'sidebar.noMatch': '无匹配',
   'sidebar.subscribedPlaylists': '收藏歌单',

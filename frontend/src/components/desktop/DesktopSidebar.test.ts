@@ -4,6 +4,24 @@ import { tick } from 'svelte';
 import DesktopSidebar from './DesktopSidebar.svelte';
 import { myPlaylists, recordPlaylistPlay, playlistPlayCounts } from '../../lib/playlist.svelte';
 import { geoProxyState, updateGeoProxyState } from '../../lib/geoProxyStore.svelte';
+import { api } from '../../lib/api';
+
+vi.mock('../../lib/api', () => ({
+  api: {
+    getGeoProxyConfig: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
+    testGeoProxy: vi.fn().mockResolvedValue({
+      code: '000000',
+      data: {
+        success: true,
+        proxy: '112.5.6.7:8080',
+        location: '中国 广东 广州',
+        latencyMs: 88,
+        isFastestWinner: true
+      }
+    }),
+    refreshGeoProxyPool: vi.fn().mockResolvedValue({ code: '000000' })
+  }
+}));
 
 describe('DesktopSidebar', () => {
   beforeEach(() => {
@@ -302,6 +320,36 @@ describe('DesktopSidebar', () => {
     expect(tooltip.textContent).toContain('274 ms');
   });
 
+  it('triggers proxy refresh when clicking proxy network icon', async () => {
+    updateGeoProxyState({
+      enabled: true,
+      loaded: true,
+      activeProxy: '120.232.115.57:3128',
+      fallbackDirect: true,
+      mode: 'pool'
+    });
+
+    const showToast = vi.fn();
+    const { getByTestId } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn(),
+        showToast
+      }
+    });
+
+    const icon = getByTestId('sidebar-geo-proxy-icon');
+    expect(icon).toBeDefined();
+
+    await fireEvent.click(icon);
+    await tick();
+
+    expect(api.testGeoProxy).toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalled();
+  });
+
   it('renders local playlist tab in sidebar and switches to local playlists', async () => {
     myPlaylists.push(
       { id: 101, name: '云端歌单', trackCount: 5, subscribed: false }
@@ -355,19 +403,30 @@ describe('DesktopSidebar', () => {
       mode: 'pool'
     });
 
+    const onToggleCollapse = vi.fn();
     const { getByTestId, queryByText } = render(DesktopSidebar, {
       props: {
         tab: 'playlist',
         collapsed: true,
         onSwitchTab: vi.fn(),
-        onToggleCollapse: vi.fn()
+        onToggleCollapse
       }
     });
 
-    // Redundant folder button 📂 should not exist in collapsed mode
+    // 1. Unified center expand button exists with note icon and right arrow hint
+    const toggleBtn = getByTestId('btn-toggle-sidebar');
+    expect(toggleBtn).toBeDefined();
+    expect(toggleBtn.textContent).toContain('🎵');
+    expect(toggleBtn.textContent).toContain('»');
+
+    // 2. Click center button triggers toggle collapse
+    fireEvent.click(toggleBtn);
+    expect(onToggleCollapse).toHaveBeenCalledTimes(1);
+
+    // 3. Redundant folder button 📂 should not exist in collapsed mode
     expect(queryByText('📂')).toBeNull();
 
-    // Proxy icon and version info exist
+    // 4. Proxy icon and version info exist
     const proxyIcon = getByTestId('sidebar-geo-proxy-icon');
     expect(proxyIcon).toBeDefined();
 

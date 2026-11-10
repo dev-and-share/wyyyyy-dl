@@ -71,6 +71,7 @@ export default {
   'sidebar.collapseTooltip': '사이드바 접기',
   'sidebar.expand': '사이드바 펼치기',
   'sidebar.collapse': '사이드바 접기',
+  'sidebar.proxyClickHint': '클릭하여 프록시 새로고침',
   'sidebar.localAndDownload': '로컬 및 다운로드',
   'sidebar.noMatch': '일치 항목 없음',
   'sidebar.subscribedPlaylists': '즐겨찾기한 플레이리스트',

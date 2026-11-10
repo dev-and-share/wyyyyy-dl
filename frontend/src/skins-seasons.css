@@ -57,7 +57,7 @@
   color: #fff1f5 !important;
 }
 
-/* 🌻 盛夏晴空 (Summer Meadow) 全局主题 (明朗晴空纯正天蓝色) */
+/* 🌻 盛夏晴空 (Summer Meadow) 全局主题 (明朗晴空纯正天蓝色 + 方案 3 悬浮卡片 Floating Island) */
 [data-skin="summer"] {
   --bg-color: #072b4a;
   --bg-gradient: radial-gradient(ellipse at 25% 20%, rgba(56, 189, 248, 0.52) 0%, transparent 65%), radial-gradient(ellipse at 75% 80%, rgba(14, 165, 233, 0.42) 0%, transparent 65%), linear-gradient(180deg, #093963 0%, #06233d 100%);
@@ -65,7 +65,17 @@
   --card-bg-solid: #0e3b64;
   --card-header-bg: rgba(14, 52, 88, 0.96);
   --card-header-hover: rgba(56, 189, 248, 0.18);
-  --sidebar-bg: rgba(14, 52, 88, 0.92);
+  /* 🏝️ 方案 3：深海蓝晶悬浮卡片 (Floating Deep Ocean Card) */
+  --sidebar-mt: calc(var(--wco-height, env(titlebar-area-height, 38px)) + 8px);
+  --sidebar-mb: 10px;
+  --sidebar-ml: 10px;
+  --sidebar-mr: 6px;
+  --sidebar-radius: 16px;
+  --sidebar-border-width: 1px;
+  --sidebar-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(56, 189, 248, 0.28);
+  --sidebar-spacer-height: 0px;
+  --sidebar-bg: rgba(14, 52, 88, 0.88);
+  --titlebar-divider-opacity: 0;
   --border-color: rgba(56, 189, 248, 0.45);
   --border-subtle: rgba(56, 189, 248, 0.2);
   --primary-color: #38bdf8;
@@ -75,8 +85,8 @@
   --nav-tabs-bg: rgba(56, 189, 248, 0.18);
   --nav-tab-active-bg: rgba(56, 189, 248, 0.35);
   --nav-tab-active-color: #e0f2fe;
-  --topbar-bg: rgba(14, 52, 88, 0.95);
-  --topbar-border: rgba(56, 189, 248, 0.35);
+  --topbar-bg: transparent;
+  --topbar-border: transparent;
   --input-focus-border: #38bdf8;
   --input-focus-glow: rgba(56, 189, 248, 0.45);
   --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0f3d64 0%, #092c4b 55%, #072b4a 85%, #072b4a 100%);
@@ -85,25 +95,35 @@
 [data-theme="light"][data-skin="summer"], [data-theme="light"] [data-skin="summer"] {
   --bg-color: #bae6fd;
   --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(56, 189, 248, 0.32) 0%, transparent 70%), linear-gradient(180deg, #bae6fd 0%, #f0f9ff 100%);
-  --card-bg: rgba(255, 255, 255, 0.9);
-  --card-bg-solid: #e0f2fe;
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-bg-solid: #ffffff;
   --card-header-bg: rgba(255, 255, 255, 0.95);
-  --sidebar-bg: linear-gradient(180deg, #bae6fd 0%, rgba(186, 230, 253, 0.95) 86px, rgba(224, 242, 254, 0.8) 180px, rgba(240, 249, 255, 0.72) 100%);
-  --border-color: rgba(56, 189, 248, 0.3);
-  --border-subtle: rgba(56, 189, 248, 0.16);
+  /* 🏝️ 方案 3：悬浮纯白微晶卡片 (Floating White Island Card) */
+  --sidebar-mt: calc(var(--wco-height, env(titlebar-area-height, 38px)) + 8px);
+  --sidebar-mb: 10px;
+  --sidebar-ml: 10px;
+  --sidebar-mr: 6px;
+  --sidebar-radius: 16px;
+  --sidebar-border-width: 1px;
+  --sidebar-shadow: 0 14px 36px -4px rgba(2, 132, 199, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --sidebar-spacer-height: 0px;
+  --sidebar-bg: rgba(255, 255, 255, 0.9);
+  --titlebar-divider-opacity: 0;
+  --border-color: rgba(56, 189, 248, 0.28);
+  --border-subtle: rgba(56, 189, 248, 0.14);
   --primary-color: #0284c7;
   --primary-hover: #0369a1;
   --primary-glow: rgba(2, 132, 199, 0.28);
   --btn-primary-bg: linear-gradient(135deg, #0ea5e9, #38bdf8);
-  --nav-tabs-bg: rgba(255, 255, 255, 0.45);
-  --nav-tab-active-bg: rgba(255, 255, 255, 0.95);
+  --nav-tabs-bg: rgba(240, 249, 255, 0.85);
+  --nav-tab-active-bg: #ffffff;
   --nav-tab-active-color: #0284c7;
-  --topbar-bg: rgba(186, 230, 253, 0.95);
-  --topbar-border: rgba(56, 189, 248, 0.2);
-  --input-bg: rgba(255, 255, 255, 0.85);
-  --input-border: rgba(56, 189, 248, 0.32);
-  --btn-secondary-bg: rgba(255, 255, 255, 0.45);
-  --btn-secondary-hover-bg: rgba(255, 255, 255, 0.8);
+  --topbar-bg: transparent;
+  --topbar-border: transparent;
+  --input-bg: rgba(240, 249, 255, 0.7);
+  --input-border: rgba(56, 189, 248, 0.3);
+  --btn-secondary-bg: rgba(240, 249, 255, 0.65);
+  --btn-secondary-hover-bg: #ffffff;
   --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0284c7 0%, #0369a1 42%, #07477c 72%, #064272 100%);
 }
 [data-skin="summer"] .track-item-card.is-active-playing {

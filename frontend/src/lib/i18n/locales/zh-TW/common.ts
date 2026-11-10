@@ -71,6 +71,7 @@ export default {
   'sidebar.collapseTooltip': '收起側邊欄 (緊湊純圖示)',
   'sidebar.expand': '展開側邊欄',
   'sidebar.collapse': '收起側邊欄',
+  'sidebar.proxyClickHint': '點擊立即測速重新整理代理',
   'sidebar.localAndDownload': '本機與下載',
   'sidebar.noMatch': '無相符',
   'sidebar.subscribedPlaylists': '收藏播放清單',

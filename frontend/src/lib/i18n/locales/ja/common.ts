@@ -71,6 +71,7 @@ export default {
   'sidebar.collapseTooltip': 'サイドバーを折りたたむ',
   'sidebar.expand': 'サイドバーを展開',
   'sidebar.collapse': 'サイドバーを折りたたむ',
+  'sidebar.proxyClickHint': 'クリックしてプロキシを更新',
   'sidebar.localAndDownload': 'ローカルとダウンロード',
   'sidebar.noMatch': '一致なし',
   'sidebar.subscribedPlaylists': 'お気に入りプレイリスト',

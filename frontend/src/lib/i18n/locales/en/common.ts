@@ -71,6 +71,7 @@ export default {
   'sidebar.collapseTooltip': 'Collapse Sidebar (Icons only)',
   'sidebar.expand': 'Expand Sidebar',
   'sidebar.collapse': 'Collapse Sidebar',
+  'sidebar.proxyClickHint': 'Click to test & refresh proxy',
   'sidebar.localAndDownload': 'Local & Downloads',
   'sidebar.noMatch': 'No match',
   'sidebar.subscribedPlaylists': 'Subscribed Playlists',

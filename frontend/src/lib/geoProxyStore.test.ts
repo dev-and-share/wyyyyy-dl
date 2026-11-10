@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { geoProxyState, fetchGeoProxyConfig, updateGeoProxyState } from './geoProxyStore.svelte';
+import { geoProxyState, fetchGeoProxyConfig, updateGeoProxyState, refreshGeoProxy } from './geoProxyStore.svelte';
 import { api } from './api';
 
 vi.mock('./api', () => ({
   api: {
-    getGeoProxyConfig: vi.fn()
+    getGeoProxyConfig: vi.fn(),
+    testGeoProxy: vi.fn(),
+    refreshGeoProxyPool: vi.fn()
   }
 }));
 
@@ -23,7 +25,8 @@ describe('geoProxyStore', () => {
       activeLocation: '',
       activeLatencyMs: null,
       fallbackDirect: false,
-      loaded: false
+      loaded: false,
+      isRefreshing: false
     });
   });
 
@@ -65,5 +68,57 @@ describe('geoProxyStore', () => {
     expect(geoProxyState.activeLatencyMs).toBe(274);
     expect(geoProxyState.fallbackDirect).toBe(false);
     expect(geoProxyState.loaded).toBe(true);
+  });
+
+  it('refreshGeoProxy selects fastest node and shows toast on success', async () => {
+    (api.testGeoProxy as any).mockResolvedValue({
+      code: '000000',
+      data: {
+        success: true,
+        proxy: '118.123.45.67:8080',
+        location: '中国 浙江 杭州',
+        latencyMs: 95,
+        isFastestWinner: true
+      }
+    });
+    (api.getGeoProxyConfig as any).mockResolvedValue({
+      code: '000000',
+      data: {}
+    });
+
+    const mockToast = vi.fn();
+    const result = await refreshGeoProxy(mockToast);
+
+    expect(result.success).toBe(true);
+    expect(geoProxyState.activeProxy).toBe('118.123.45.67:8080');
+    expect(geoProxyState.activeLocation).toBe('中国 浙江 杭州');
+    expect(geoProxyState.activeLatencyMs).toBe(95);
+    expect(geoProxyState.fallbackDirect).toBe(false);
+    expect(mockToast).toHaveBeenCalledWith(expect.stringContaining('95'), 'success');
+  });
+
+  it('refreshGeoProxy triggers fallbackDirect and pool refresh when test fails', async () => {
+    (api.testGeoProxy as any).mockResolvedValue({
+      code: '000000',
+      data: {
+        success: false,
+        error: '所有代理超时'
+      }
+    });
+    (api.refreshGeoProxyPool as any).mockResolvedValue({
+      code: '000000'
+    });
+    (api.getGeoProxyConfig as any).mockResolvedValue({
+      code: '000000',
+      data: {}
+    });
+
+    const mockToast = vi.fn();
+    const result = await refreshGeoProxy(mockToast);
+
+    expect(result.success).toBe(false);
+    expect(geoProxyState.fallbackDirect).toBe(true);
+    expect(api.refreshGeoProxyPool).toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledWith(expect.stringContaining('所有代理超时'), 'warning');
   });
 });

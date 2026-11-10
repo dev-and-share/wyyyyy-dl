@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { t } from '../../lib/i18n';
   import { jumpToDownloadTasks, type ActiveTab, AppRoute, SpecialRouteId, isDailyRecommendRoute } from '../../lib/router.svelte';
-  import { geoProxyState, fetchGeoProxyConfig } from '../../lib/geoProxyStore.svelte';
+  import { geoProxyState, fetchGeoProxyConfig, refreshGeoProxy } from '../../lib/geoProxyStore.svelte';
   import DesktopSidebarPlaylists from './DesktopSidebarPlaylists.svelte';
   import WyyLogo from '../WyyLogo.svelte';
 
@@ -82,33 +82,59 @@
 <!-- PC Desktop Left Sidebar (Visible >= 1024px) -->
 <aside
   data-testid="desktop-sidebar"
-  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--sidebar-bg,var(--card-bg))] backdrop-blur-xl border-r border-[var(--border-subtle)] transition-[width,height] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
-  style="height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'}; max-height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'};"
+  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--sidebar-bg,var(--card-bg))] backdrop-blur-xl border-[var(--border-subtle)] transition-[width,height,margin,border-radius,box-shadow] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
+  style="
+    margin-top: var(--sidebar-mt, 0px);
+    margin-bottom: var(--sidebar-mb, 0px);
+    margin-left: var(--sidebar-ml, 0px);
+    margin-right: var(--sidebar-mr, 0px);
+    border-radius: var(--sidebar-radius, 0px);
+    border-width: var(--sidebar-border-width, 0 1px 0 0);
+    border-style: solid;
+    box-shadow: var(--sidebar-shadow, none);
+    height: calc(100vh - var(--sidebar-mt, 0px) - var(--sidebar-mb, 0px) - {hasPlayerBar ? '74px' : '0px'});
+    max-height: calc(100vh - var(--sidebar-mt, 0px) - var(--sidebar-mb, 0px) - {hasPlayerBar ? '74px' : '0px'});
+  "
 >
   <!-- 1. Top Bar: Logo & Collapse Button -->
   <div class="flex flex-col border-b border-[var(--border-subtle)] shrink-0 wco-drag-region">
-    <div class="w-full shrink-0" style="height: var(--wco-height, env(titlebar-area-height, 0px));"></div>
-    <div class="h-12 flex items-center px-3 justify-between gap-1 overflow-hidden shrink-0">
+    <div class="w-full shrink-0" style="height: var(--sidebar-spacer-height, var(--wco-height, env(titlebar-area-height, 0px)));"></div>
+    <div class="h-12 flex items-center justify-between gap-1 overflow-hidden shrink-0 {collapsed ? 'px-1 justify-center' : 'px-3'}">
       {#if !collapsed}
+        <!-- 展开态：完整 WYY 走马灯 Logo + 极简收起 « 按钮 -->
         <div class="flex items-center min-w-0 pl-0.5">
           <WyyLogo title="WYY · Whatever You Yearn" />
         </div>
+        <button
+          type="button"
+          data-testid="btn-toggle-sidebar"
+          class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0"
+          onclick={onToggleCollapse}
+          title={t('sidebar.collapseTooltip')}
+          aria-label={t('sidebar.collapse')}
+        >
+          «
+        </button>
       {:else}
-        <div class="w-full flex justify-center" title="WYY · Whatever You Yearn">
-          <span class="text-lg leading-none">🎵</span>
-        </div>
+        <!-- 🏝️ 收起态：单一精致居中交互大按钮 (默认优雅 🎵，hover 丝滑浮现展开提示 »，彻底消除挤压感) -->
+        <button
+          type="button"
+          data-testid="btn-toggle-sidebar"
+          class="wco-no-drag group/expand-btn relative w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--primary-color)] hover:bg-[var(--btn-secondary-hover-bg)] active:scale-95 transition-all duration-200 cursor-pointer border-none bg-transparent"
+          onclick={onToggleCollapse}
+          title={t('sidebar.expandTooltip')}
+          aria-label={t('sidebar.expand')}
+        >
+          <!-- 默认态：居中音符 -->
+          <span class="text-[15px] leading-none transition-all duration-200 group-hover/expand-btn:opacity-0 group-hover/expand-btn:scale-75 absolute">
+            🎵
+          </span>
+          <!-- Hover 态：平滑浮现展开双右箭头 -->
+          <span class="text-sm font-bold leading-none text-[var(--primary-color)] opacity-0 scale-75 group-hover/expand-btn:opacity-100 group-hover/expand-btn:scale-100 transition-all duration-200 absolute">
+            »
+          </span>
+        </button>
       {/if}
-
-      <button
-        type="button"
-        data-testid="btn-toggle-sidebar"
-        class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0"
-        onclick={onToggleCollapse}
-        title={collapsed ? t('sidebar.expandTooltip') : t('sidebar.collapseTooltip')}
-        aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
-      >
-        {collapsed ? '»' : '«'}
-      </button>
     </div>
   </div>
 
@@ -268,27 +294,46 @@
 </aside>
 
 {#snippet proxyIndicator(isCollapsed: boolean)}
-  <div
-    class="relative group/proxy inline-flex items-center justify-center cursor-pointer {isCollapsed ? 'p-0.5 rounded hover:bg-white/5' : ''}"
+  <button
+    type="button"
+    class="relative group/proxy inline-flex items-center justify-center cursor-pointer border-none bg-transparent p-0 transition-transform active:scale-95 {isCollapsed ? 'p-0.5 rounded hover:bg-white/5' : ''} {geoProxyState.isRefreshing ? 'cursor-wait opacity-80' : ''}"
     data-testid="sidebar-geo-proxy-icon"
-    role="status"
-    onmouseenter={() => fetchGeoProxyConfig()}
     aria-label={proxyTooltipSummary}
     title={proxyTooltipSummary}
+    disabled={geoProxyState.isRefreshing}
+    onclick={(e) => {
+      e.stopPropagation();
+      refreshGeoProxy(showToast);
+    }}
+    onmouseenter={() => {
+      if (!geoProxyState.isRefreshing) {
+        fetchGeoProxyConfig();
+      }
+    }}
   >
     <span
       class="flex items-center justify-center w-4 h-4 rounded transition-all duration-150 {geoProxyState.fallbackDirect
         ? 'text-amber-400 bg-amber-500/15 hover:bg-amber-500/25'
         : 'text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25'}"
     >
-      <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        class="w-2.5 h-2.5 transition-transform duration-300 {geoProxyState.isRefreshing ? 'animate-spin text-purple-400' : ''}"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="2" y1="12" x2="22" y2="12"></line>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
       </svg>
     </span>
     <span
-      class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full {geoProxyState.fallbackDirect ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}"
+      class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full {geoProxyState.isRefreshing
+        ? 'bg-purple-400 animate-ping'
+        : (geoProxyState.fallbackDirect ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse')}"
     ></span>
 
     <!-- Tooltip 浮层详情卡片 -->
@@ -302,8 +347,8 @@
           <span>🌐</span>
           <span>{t('settings.geoProxy.tooltipTitle')}</span>
         </div>
-        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium {geoProxyState.fallbackDirect ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">
-          {geoProxyState.fallbackDirect ? t('settings.geoProxy.fallbackDirectTitle') : t('settings.geoProxy.activeBadge')}
+        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium {geoProxyState.isRefreshing ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : (geoProxyState.fallbackDirect ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30')}">
+          {geoProxyState.isRefreshing ? t('settings.geoProxy.testing') : (geoProxyState.fallbackDirect ? t('settings.geoProxy.fallbackDirectTitle') : t('settings.geoProxy.activeBadge'))}
         </span>
       </div>
 
@@ -342,6 +387,12 @@
         </div>
       </div>
 
+      <!-- 底部提示：告知用户点击即可刷新 -->
+      <div class="mt-0.5 pt-1 border-t border-white/10 text-[9px] text-neutral-400 flex items-center justify-between">
+        <span>{geoProxyState.isRefreshing ? t('settings.geoProxy.refreshingPool') : t('sidebar.proxyClickHint')}</span>
+        <span class="text-[10px] {geoProxyState.isRefreshing ? 'animate-spin' : ''}">🔄</span>
+      </div>
+
       {#if !isCollapsed}
         <!-- 小指示三角 (展开时显示在下方) -->
         <div class="absolute -bottom-1 right-2 w-2 h-2 bg-neutral-900 border-r border-b border-neutral-700/60 rotate-45"></div>
@@ -350,5 +401,5 @@
         <div class="absolute bottom-2 -left-1 w-2 h-2 bg-neutral-900 border-l border-b border-neutral-700/60 rotate-45"></div>
       {/if}
     </div>
-  </div>
+  </button>
 {/snippet}
