@@ -41,7 +41,7 @@ variable "cloudfront_price_class" {
 }
 
 variable "netease_cookie" {
-  description = "网易云登录 Cookie (可选，启动即处于登录/VIP状态)"
+  description = "云端音乐登录 Cookie (可选，启动即处于登录/VIP状态)"
   type        = string
   default     = ""
 }

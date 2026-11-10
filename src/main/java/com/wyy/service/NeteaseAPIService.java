@@ -766,10 +766,10 @@ public class NeteaseAPIService implements InitializingBean{
 	    }
 
 	    /**
-	     * 网易云官方 Web 端 WEAPI 协议公开常量体系 (源自官方 core.js，10+ 年未变)
+	     * Web 端 WEAPI 协议公开常量体系 (源自官方 core.js，10+ 年未变)
 	     * 1. WEAPI_NONCE: 第一道 AES-128-CBC 预设对称密钥
 	     * 2. WEAPI_IV: AES-128-CBC 分组密码固定初始向量 (IV)
-	     * 3. WEAPI_RSA_PUBLIC_KEY: 网易云服务端公开的 1024 位 RSA 公钥模数 (Modulus)，用于非对称加密客户端随机生成的 16 位 AES 密钥
+	     * 3. WEAPI_RSA_PUBLIC_KEY: 服务端公开的 1024 位 RSA 公钥模数 (Modulus)，用于非对称加密客户端随机生成的 16 位 AES 密钥
 	     * 4. WEAPI_RSA_EXPONENT: RSA 标准公钥指数 (65537 -> 0x010001)
 	     * 5. BASE62: 客户端生成 16 字节随机密钥所用的 62 进制字符集
 	     */
@@ -798,7 +798,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        String params1 = aesCbcEncrypt(text, WEAPI_NONCE, WEAPI_IV);
 	        String encParams = aesCbcEncrypt(params1, secretKey, WEAPI_IV);
 
-	        // Step 3: 使用网易云官方 RSA 公钥模幂加密逆序后的 secretKey (生成 encSecKey)
+	        // Step 3: 使用官方 RSA 公钥模幂加密逆序后的 secretKey (生成 encSecKey)
 	        String reversedKey = new StringBuilder(secretKey).reverse().toString();
 	        BigInteger m = new BigInteger(WEAPI_RSA_PUBLIC_KEY, 16);
 	        BigInteger e = new BigInteger(WEAPI_RSA_EXPONENT, 16);
@@ -827,10 +827,10 @@ public class NeteaseAPIService implements InitializingBean{
 	    }
 
 	    /**
-	     * 通过网易云官方 Web 端 WEAPI 协议发送请求 (免设备指纹风控校验)
+	     * 通过 Web 端 WEAPI 协议发送请求 (免设备指纹风控校验)
 	     * @param url 请求目标端点 (如 https://music.163.com/weapi/playlist/subscribe)
 	     * @param data 请求参数负载 (自动追加 csrf_token)
-	     * @return 响应 JSON 字符串 (如网易云返回 HTTP 200 空内容则自动封装为标准成功 JSON)
+	     * @return 响应 JSON 字符串 (如返回 HTTP 200 空内容则自动封装为标准成功 JSON)
 	     * @throws Exception
 	     */
 	    public String requestWeapi(String url, Map<String, Object> data) throws Exception {
@@ -858,7 +858,7 @@ public class NeteaseAPIService implements InitializingBean{
 	    private static final String LINUX_KEY = "rFgB&h#%2?^eDg:Q";
 
 	    /**
-	     * 通过网易云官方 Linux Forward 接口代理请求 (用于无风控写操作)
+	     * 通过官方 Linux Forward 接口代理请求 (用于无风控写操作)
 	     */
 	    public String requestLinuxApi(String innerUrl, Map<String, Object> innerParams) throws Exception {
 	        Map<String, Object> body = new LinkedHashMap<>();

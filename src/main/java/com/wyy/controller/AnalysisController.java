@@ -56,7 +56,7 @@ public class AnalysisController {
 	@RequestMapping(value = "/cookie", method = {RequestMethod.GET, RequestMethod.POST})
 	public RespEntity<?> refreshCookie(@RequestParam(value = "cookie", required = true) String cookie) {
 		if (authContextService.isAuthEnabled() && !authContextService.isAdmin()) {
-			return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改网易云官方 Cookie", null);
+			return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改云端 Cookie", null);
 		}
 		analysisService.refreshCookie(cookie);
 		return RespEntity.apply(CommonRespInfo.SUCCESS, "OK");
@@ -327,7 +327,7 @@ public class AnalysisController {
 
     /**
      * 📁 本地/在线音频播放/流传输接口（支持 /v3/stream 与 /v3/stream/local 双路由别名）
-     * 支持传参：id (网易云歌曲ID)、historyId (下载历史主键ID)、path (物理文件绝对或相对路径)
+     * 支持传参：id (云端歌曲ID)、historyId (下载历史主键ID)、path (物理文件绝对或相对路径)
      */
     @RequestMapping(value = {"/stream", "/stream/local"}, method = {RequestMethod.GET, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public void streamAudio(@RequestParam(value = "id", required = false) String idStr,
@@ -451,7 +451,7 @@ public class AnalysisController {
         }
 
         try {
-            // 2. 尝试从网易云线上静默同步
+            // 2. 尝试从云端线上静默同步
             String jsonResp = neteaseAPIService.getLikedSongIds(null);
             if (jsonResp != null) {
                 com.alibaba.fastjson.JSONObject obj = com.alibaba.fastjson.JSON.parseObject(jsonResp);
@@ -472,14 +472,14 @@ public class AnalysisController {
                 }
             }
         } catch (Exception e) {
-            log.debug("静默拉取网易云线上红心失败 (使用本地数据库): {}", e.getMessage());
+            log.debug("静默拉取云端线上红心失败 (使用本地数据库): {}", e.getMessage());
         }
 
         return RespEntity.apply(CommonRespInfo.SUCCESS, new ArrayList<>(mergedIds));
     }
 
     /**
-     * 添加红心 / 取消红心单曲 (本地 SQLite 强持久化落库 + 网易云线上双向同步)
+     * 添加红心 / 取消红心单曲 (本地 SQLite 强持久化落库 + 云端线上双向同步)
      */
     @RequestMapping(value = "/like", method = {RequestMethod.POST, RequestMethod.GET})
     public RespEntity<?> toggleLikeTrack(@RequestParam Long id,
@@ -500,11 +500,11 @@ public class AnalysisController {
             downloadHistoryDAO.removeLikedSong(id);
         }
 
-        // 2. 尝试同步至网易云线上
+        // 2. 尝试同步至云端线上
         try {
             neteaseAPIService.likeTrack(id, like);
         } catch (Exception e) {
-            log.debug("同步网易云线上红心失败(未登录或离线): id={}, like={}, err={}", id, like, e.getMessage());
+            log.debug("同步云端线上红心失败(未登录或离线): id={}, like={}, err={}", id, like, e.getMessage());
         }
 
         return RespEntity.apply(CommonRespInfo.SUCCESS, "ok");
@@ -517,7 +517,7 @@ public class AnalysisController {
     public RespEntity<?> subscribePlaylist(@RequestParam Long id,
                                            @RequestParam(defaultValue = "true") boolean subscribe) {
         if (authContextService.isAuthEnabled() && !authContextService.isAdmin()) {
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改网易云线上收藏歌单", null);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改云端收藏歌单", null);
         }
         try {
             String jsonResp = neteaseAPIService.subscribePlaylist(id, subscribe);
@@ -544,7 +544,7 @@ public class AnalysisController {
     public RespEntity<?> addTracksToPlaylist(@RequestParam Long playlistId,
                                              @RequestParam String trackIds) {
         if (authContextService.isAuthEnabled() && !authContextService.isAdmin()) {
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改网易云线上歌单，请在【本地歌单】中管理曲目", null);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改云端歌单，请在【本地歌单】中管理曲目", null);
         }
         try {
             if (playlistId == null || playlistId <= 0) {
@@ -580,7 +580,7 @@ public class AnalysisController {
                 log.warn("获取歌单当前曲目列表失败，将跳过前置去重直接尝试添加, playlistId={}", playlistId, e);
             }
 
-            // 2. 歌单容量上限检测（网易云官方单歌单上限为 10,000 首）
+            // 2. 歌单容量上限检测（官方单歌单上限为 10,000 首）
             int MAX_PLAYLIST_CAPACITY = 10000;
             if (currentTrackCount >= MAX_PLAYLIST_CAPACITY || existingTrackIds.size() >= MAX_PLAYLIST_CAPACITY) {
                 return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(),
@@ -619,7 +619,7 @@ public class AnalysisController {
                 needToAdd = needToAdd.subList(0, canAddCount);
             }
 
-            // 5. 分批提交给网易云 Linux API 添加曲目（单批上限 500 首，防止大批量溢出）
+            // 5. 分批提交给 Linux API 添加曲目（单批上限 500 首，防止大批量溢出）
             int batchSize = 500;
             for (int i = 0; i < needToAdd.size(); i += batchSize) {
                 List<Long> chunk = needToAdd.subList(i, Math.min(i + batchSize, needToAdd.size()));
@@ -658,7 +658,7 @@ public class AnalysisController {
     public RespEntity<?> removeTracksFromPlaylist(@RequestParam Long playlistId,
                                                  @RequestParam String trackIds) {
         if (authContextService.isAuthEnabled() && !authContextService.isAdmin()) {
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改网易云线上歌单", null);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止修改云端歌单", null);
         }
         try {
             List<Long> idList = parseTrackIds(trackIds);
@@ -686,7 +686,7 @@ public class AnalysisController {
     public RespEntity<?> createPlaylist(@RequestParam String name,
                                         @RequestParam(defaultValue = "false") boolean isPrivate) {
         if (authContextService.isAuthEnabled() && !authContextService.isAdmin()) {
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止在网易云新建线上歌单，请创建【本地歌单】", null);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止新建云端歌单，请创建【本地歌单】", null);
         }
         try {
             String jsonResp = neteaseAPIService.createPlaylist(name, isPrivate);
@@ -714,7 +714,7 @@ public class AnalysisController {
                                       @RequestParam(defaultValue = "false") boolean isPrivate,
                                       @RequestParam String trackIds) {
         if (authContextService.isAuthEnabled() && !authContextService.isAdmin()) {
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止转存至网易云线上歌单", null);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止转存至云端歌单", null);
         }
         try {
             if (name == null || name.trim().isEmpty()) {
@@ -768,7 +768,7 @@ public class AnalysisController {
     @RequestMapping(value = "/playlist/delete", method = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE})
     public RespEntity<?> deletePlaylist(@RequestParam Long id) {
         if (authContextService.isAuthEnabled() && !authContextService.isAdmin()) {
-            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止删除网易云线上歌单", null);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "访客模式禁止删除云端歌单", null);
         }
         try {
             String jsonResp = neteaseAPIService.deletePlaylist(id);

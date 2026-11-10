@@ -12,7 +12,7 @@ export default {
   'comment.totalCount': '共 {count} 則評論',
   'comment.loadingCloud': '正在讀取雲端評論與熱評...',
   'comment.loadFailed': '暫無評論或獲取評論失敗',
-  'comment.emptyHint': '暫無評論，快去網易雲音樂留下第一則吧~',
+  'comment.emptyHint': '暫無評論，快去雲端留下第一則吧~',
   'comment.hotSection': '🔥 精彩熱評',
   'comment.latestSection': '💬 最新評論',
   'comment.defaultUser': '雲音樂聽友',

@@ -17,6 +17,8 @@ export default {
   'player.peq': '等化器 (PEQ)',
   'player.noTrackPlaying': '暫無播放歌曲',
   'player.loadingTrack': '正在載入音訊...',
+  'player.cancelLoading': '取消載入',
+  'player.loadingCancelled': '已取消載入音訊',
   'player.playError': '播放失敗，自動嘗試下一首',
   'player.lossless': '無損',
   'player.hires': 'Hi-Res',

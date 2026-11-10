@@ -367,7 +367,7 @@ public class AnalysisService {
                 }
             }
 
-            // 🚀 突破网易云 1000 首限制：若 trackIds 总数大于 tracks (1000)，自动批量请求 /song/detail 补齐剩余全部歌曲！
+            // 🚀 突破 1000 首限制：若 trackIds 总数大于 tracks (1000)，自动批量请求 /song/detail 补齐剩余全部歌曲！
             JSONArray trackIds = playlist.getJSONArray("trackIds");
             if (trackIds != null && trackIds.size() > trackList.size()) {
                 log.info("歌单总数超出 1000 首 (trackCount={}, trackIds={}), 正在批量补充后续歌曲详情...", playlistInfo.getTrackCount(), trackIds.size());

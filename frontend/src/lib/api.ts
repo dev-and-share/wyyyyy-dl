@@ -101,7 +101,7 @@ export const api = {
     return get(`/v3/reveal?${q.toString()}`);
   },
 
-  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染网易云云端)
+  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染云端)
   localPlaylistList: () => get('/v3/local-playlist/list'),
   localPlaylistCreate: (name: string, coverUrl?: string) => postJson('/v3/local-playlist/create', { name, coverUrl }),
   localPlaylistDelete: (id: string) => postForm('/v3/local-playlist/delete', { id }),

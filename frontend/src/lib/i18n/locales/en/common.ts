@@ -82,7 +82,7 @@ export default {
   'common.remark': 'Remark',
   'common.inProgress': 'In Progress',
   'common.retryAllFailed': 'Retry All Failed ({count})',
-  'common.neteaseCloudMusic': 'NetEase Cloud Music',
+  'common.neteaseCloudMusic': 'Cloud Music',
   'common.unknownTrack': 'Unknown Track',
   'common.song': 'Song',
   'common.locateFailed': 'Locate failed: {error}',

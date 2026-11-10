@@ -88,7 +88,7 @@
     {#if authStore.authEnabled && !authStore.isAdmin}
       <div class="pt-2 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)] flex items-center gap-1.5">
         <span>🔒</span>
-        <span>网易云主账号由超级管理员统一绑定托管，访客模式不支持换绑</span>
+        <span>云端主账号由超级管理员统一绑定托管，访客模式不支持换绑</span>
       </div>
     {:else}
       <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">

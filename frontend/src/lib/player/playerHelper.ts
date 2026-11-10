@@ -367,7 +367,7 @@ export async function prepareTrackInUI(track: Track, audioEl: HTMLAudioElement |
 }
 
 /**
- * 补齐网易云歌曲缺失歌词
+ * 补齐云端歌曲缺失歌词
  */
 export function fetchMissingLyric(tr: Track | null): void {
   const numId = Number(tr?.id);

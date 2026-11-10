@@ -82,7 +82,7 @@ export default {
   'common.remark': '备注',
   'common.inProgress': '进行中',
   'common.retryAllFailed': '重试所有失败 ({count})',
-  'common.neteaseCloudMusic': '网易云音乐',
+  'common.neteaseCloudMusic': '云端音乐',
   'common.unknownTrack': '未知曲目',
   'common.song': '歌曲',
   'common.locateFailed': '定位失败: {error}',

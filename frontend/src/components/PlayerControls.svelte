@@ -94,7 +94,7 @@
             : 'rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/35 hover:scale-105 active:scale-95 ' +
               (size === 'lg' ? 'w-12 h-12' : 'w-9.5 h-9.5')}"
     onclick={onTogglePlay}
-    title={playing ? t('player.pause') : t('player.play')}
+    title={loading ? t('player.cancelLoading') : (playing ? t('player.pause') : t('player.play'))}
   >
     {#if loading}
       <svg class="animate-spin text-white {size === 'lg' ? 'w-6 h-6' : 'w-4.5 h-4.5'}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

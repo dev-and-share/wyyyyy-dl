@@ -407,7 +407,7 @@ describe('playerHelper URL resolution & preload contracts', () => {
       raw: { pay: { payplay: 0 } }
     })).toBe(false);
 
-    // 6. 通用/网易云 VIP/Fee
+    // 6. 通用 VIP/Fee
     expect(isVipOrPaidTrack({ fee: 1 })).toBe(true);
     expect(isVipOrPaidTrack({ freeTrial: true })).toBe(true);
     expect(isVipOrPaidTrack({ fee: 0 })).toBe(false);

@@ -248,7 +248,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 🖼️ 分支 B：网易云 CDN 封面图片 / 图片资源请求 (Cache First + 异步写入缓存)
+  // 🖼️ 分支 B：在线 CDN 封面图片 / 图片资源请求 (Cache First + 异步写入缓存)
   const isCdnImage = requestUrl.hostname.includes('126.net') ||
                      requestUrl.hostname.includes('music.163.com') ||
                      event.request.destination === 'image';

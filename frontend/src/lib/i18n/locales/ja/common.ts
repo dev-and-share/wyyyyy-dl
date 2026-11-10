@@ -82,7 +82,7 @@ export default {
   'common.remark': '備考',
   'common.inProgress': '進行中',
   'common.retryAllFailed': 'すべての失敗を再試行 ({count})',
-  'common.neteaseCloudMusic': 'NetEase Cloud Music',
+  'common.neteaseCloudMusic': 'クラウド音楽',
   'common.unknownTrack': '不明なトラック',
   'common.song': '楽曲',
   'common.locateFailed': 'ファイルの特定に失敗しました: {error}',

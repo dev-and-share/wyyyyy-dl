@@ -137,7 +137,7 @@ public class S3StorageService implements IStorageService {
 
     @Override
     public String resolveOnlineStreamUrl(Long songId, String rawUrl, String playlistName, String albumName, String songName, Boolean isTrial) {
-        // 云原生架构：直连网易云原生 CDN 直链播放 (自带 CORS 与 Range，避免 Lambda 6MB payload 限制)
+        // 云原生架构：直连云端原生 CDN 直链播放 (自带 CORS 与 Range，避免 Lambda 6MB payload 限制)
         return rawUrl;
     }
 

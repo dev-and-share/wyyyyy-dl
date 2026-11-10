@@ -82,7 +82,7 @@ export default {
   'common.remark': '備註',
   'common.inProgress': '進行中',
   'common.retryAllFailed': '重試所有失敗 ({count})',
-  'common.neteaseCloudMusic': '網易雲音樂',
+  'common.neteaseCloudMusic': '雲端音樂',
   'common.unknownTrack': '未知曲目',
   'common.song': '歌曲',
   'common.locateFailed': '定位失敗: {error}',

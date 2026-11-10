@@ -183,7 +183,7 @@ wyy/
 ├── src/main/java/com/wyy/  # Spring Boot 3 后端源码
 │   ├── config/             # 全局异常处理与过滤器
 │   ├── controller/         # /v3/ RESTful API 控制器层
-│   ├── service/            # 网易云解析与多线程下载调度服务
+│   ├── service/            # 在线音乐解析与多线程下载调度服务
 │   ├── dao/                # SQLite 本地音轨索引与历史持久化
 │   └── utils/              # 音频流 Range 分片传输、ID3 标签读写
 └── Dockerfile              # 多阶段容器化构建 (Node.js 22 + JDK 21)

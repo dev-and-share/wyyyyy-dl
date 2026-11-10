@@ -17,6 +17,8 @@ export default {
   'player.peq': 'イコライザー (PEQ)',
   'player.noTrackPlaying': '再生中の楽曲はありません',
   'player.loadingTrack': '楽曲を読み込み中...',
+  'player.cancelLoading': '読み込みをキャンセル',
+  'player.loadingCancelled': '楽曲の読み込みをキャンセルしました',
   'player.playError': '再生に失敗しました。次の曲を試します',
   'player.lossless': 'ロスレス',
   'player.hires': 'ハイレゾ',

@@ -161,7 +161,7 @@ export default {
   'artist.cacheTooltip': 'Offline cache all 50 songs to browser',
   'artist.downloadAllTooltip': 'Download all songs to server disk',
   'search.cacheToBrowserTooltip': 'Offline cache to browser',
-  'search.sourceNetease': 'NetEase',
+  'search.sourceNetease': 'Cloud',
   'search.sourceMusicFree': 'MusicFree Aggregation',
   'search.placeholderMusicFree': 'Enter song or artist to search across plugins...',
   'search.mfNoResults': 'No matching results found in enabled MusicFree plugins',

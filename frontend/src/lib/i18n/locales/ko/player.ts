@@ -17,6 +17,8 @@ export default {
   'player.peq': '이퀄라이저 (PEQ)',
   'player.noTrackPlaying': '재생 중인 곡 없음',
   'player.loadingTrack': '오디오 로딩 중...',
+  'player.cancelLoading': '로딩 취소',
+  'player.loadingCancelled': '오디오 로딩이 취소되었습니다',
   'player.playError': '재생 실패, 다음 곡으로 전환합니다',
   'player.lossless': '무손실',
   'player.hires': 'Hi-Res',

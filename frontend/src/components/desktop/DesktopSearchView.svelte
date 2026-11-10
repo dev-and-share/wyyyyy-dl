@@ -155,7 +155,7 @@
       return;
     }
 
-    // 2. 网易云原生检索分支
+    // 2. 原生云端检索分支
     const cacheKey = 'search_' + sType + '_' + query;
     const cached = getApiCache(cacheKey);
     if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {

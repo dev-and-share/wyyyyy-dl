@@ -82,7 +82,7 @@ export default {
   'common.remark': '비고',
   'common.inProgress': '진행 중',
   'common.retryAllFailed': '실패한 모든 작업 재시도 ({count})',
-  'common.neteaseCloudMusic': '넷이즈뮤직',
+  'common.neteaseCloudMusic': '클라우드 음악',
   'common.unknownTrack': '알 수 없는 트랙',
   'common.song': '노래',
   'common.locateFailed': '위치 찾기 실패: {error}',

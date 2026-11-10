@@ -146,7 +146,7 @@ public class DownloadHistoryDAOTest {
     @DisplayName("测试旧版宿主机外部曲库路径可映射到容器挂载路径")
     public void testResolveLegacyExternalLibraryPath() throws Exception {
         File containerRoot = new File(tempDir.toFile(), "external");
-        File albumDir = new File(containerRoot, "网易云音乐");
+        File albumDir = new File(containerRoot, "CloudMusic");
         albumDir.mkdirs();
         File externalAudio = new File(albumDir, "张学友 - 吻别.mp3");
         try (FileWriter writer = new FileWriter(externalAudio)) {
@@ -156,7 +156,7 @@ public class DownloadHistoryDAOTest {
         ReflectionTestUtils.setField(dao, "externalLibraryHostPath", "/mock/user/Music");
         ReflectionTestUtils.setField(dao, "externalLibraryContainerPath", containerRoot.getAbsolutePath());
 
-        File resolved = dao.resolveFile("/mock/user/Music/网易云音乐/张学友 - 吻别.mp3");
+        File resolved = dao.resolveFile("/mock/user/Music/CloudMusic/张学友 - 吻别.mp3");
         assertEquals(externalAudio.getCanonicalPath(), resolved.getCanonicalPath());
         assertTrue(resolved.exists(), "旧版宿主机绝对路径应能访问到容器挂载的音频文件");
     }
@@ -183,7 +183,7 @@ public class DownloadHistoryDAOTest {
     @DisplayName("测试 toHostPath 对外部曲库与主下载路径的精准映射与隔离")
     public void testToHostPathExternalVsDownload() throws Exception {
         File containerExtRoot = new File(tempDir.toFile(), "external_container");
-        File musicExtDir = new File(containerExtRoot, "网易云音乐");
+        File musicExtDir = new File(containerExtRoot, "CloudMusic");
         musicExtDir.mkdirs();
         File extAudio = new File(musicExtDir, "RobTop - MenuLoop.mp3");
         try (FileWriter w = new FileWriter(extAudio)) { w.write("external audio"); }
@@ -194,7 +194,7 @@ public class DownloadHistoryDAOTest {
 
         // 1. 外部曲库文件应准确映射至宿主机 Music 目录，绝对不能拼接 Downloads/fast_sr
         String hostExtPath = dao.toHostPath(extAudio);
-        assertEquals(new File("/Users/testuser/Music/网易云音乐/RobTop - MenuLoop.mp3").getPath(), hostExtPath);
+        assertEquals(new File("/Users/testuser/Music/CloudMusic/RobTop - MenuLoop.mp3").getPath(), hostExtPath);
         assertFalse(hostExtPath.contains("Downloads/fast_sr"), "外部曲库宿主机路径绝不能包含 hostDownloadPath");
 
         // 2. 主下载目录文件应映射至 hostDownloadPath
@@ -208,7 +208,7 @@ public class DownloadHistoryDAOTest {
     @DisplayName("测试 resolveFile 容错解析错误嵌套的外部路径")
     public void testResolveCorruptedNestedPath() throws Exception {
         File containerExtRoot = new File(tempDir.toFile(), "external");
-        File albumDir = new File(containerExtRoot, "网易云");
+        File albumDir = new File(containerExtRoot, "Cloud");
         albumDir.mkdirs();
         File audio = new File(albumDir, "test.mp3");
         try (FileWriter w = new FileWriter(audio)) { w.write("test"); }
@@ -217,8 +217,8 @@ public class DownloadHistoryDAOTest {
         ReflectionTestUtils.setField(dao, "externalLibraryContainerPath", containerExtRoot.getAbsolutePath());
         ReflectionTestUtils.setField(dao, "hostDownloadPath", "/Users/testuser/Downloads/fast_sr");
 
-        // 模拟错误嵌套路径: /Users/testuser/Downloads/fast_sr + containerExtRoot + /网易云/test.mp3
-        String corruptedPath = "/Users/testuser/Downloads/fast_sr" + containerExtRoot.getAbsolutePath() + "/网易云/test.mp3";
+        // 模拟错误嵌套路径: /Users/testuser/Downloads/fast_sr + containerExtRoot + /Cloud/test.mp3
+        String corruptedPath = "/Users/testuser/Downloads/fast_sr" + containerExtRoot.getAbsolutePath() + "/Cloud/test.mp3";
         File resolved = dao.resolveFile(corruptedPath);
         assertEquals(audio.getCanonicalPath(), resolved.getCanonicalPath());
         assertTrue(resolved.exists(), "容错机制应当成功定位到底层真实物理文件");

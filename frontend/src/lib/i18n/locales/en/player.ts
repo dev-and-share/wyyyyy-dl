@@ -17,6 +17,8 @@ export default {
   'player.peq': 'Equalizer (PEQ)',
   'player.noTrackPlaying': 'No track playing',
   'player.loadingTrack': 'Loading audio...',
+  'player.cancelLoading': 'Cancel loading',
+  'player.loadingCancelled': 'Audio loading cancelled',
   'player.playError': 'Playback failed, trying next track',
   'player.lossless': 'Lossless',
   'player.hires': 'Hi-Res',

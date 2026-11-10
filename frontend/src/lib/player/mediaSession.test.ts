@@ -117,7 +117,7 @@ describe('mediaSession iOS contracts', () => {
     expect(navigator.mediaSession.metadata).not.toBeNull();
     expect(navigator.mediaSession.metadata?.title).toBe('七里香');
     expect(navigator.mediaSession.metadata?.artist).toBe('周杰伦');
-    expect(navigator.mediaSession.metadata?.album).toBe('网易云音乐');
+    expect(navigator.mediaSession.metadata?.album).toBe('云端音乐');
     // 封面为空时兜底到 /favicon.png
     expect(navigator.mediaSession.metadata?.artwork[0].src).toContain('/favicon.png');
   });

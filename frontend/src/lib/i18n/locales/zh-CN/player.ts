@@ -17,6 +17,8 @@ export default {
   'player.peq': '均衡器 (PEQ)',
   'player.noTrackPlaying': '暂无播放歌曲',
   'player.loadingTrack': '正在加载音频...',
+  'player.cancelLoading': '取消加载',
+  'player.loadingCancelled': '已取消加载音频',
   'player.playError': '播放失败，自动尝试下一首',
   'player.lossless': '无损',
   'player.hires': 'Hi-Res',

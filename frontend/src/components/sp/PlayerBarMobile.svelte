@@ -154,8 +154,15 @@
           {curTrack?.name || t('player.noTrackPlaying')}
         </span>
         {#if loading}
-          <span class="text-[9px] px-1 py-0.2 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 shrink-0 animate-pulse font-normal">
-            {t('player.loadingTrack')}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span
+            class="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 shrink-0 animate-pulse font-normal flex items-center gap-1 cursor-pointer active:scale-95"
+            onclick={(e) => { e.stopPropagation(); onTogglePlay(); }}
+            title={t('player.cancelLoading')}
+          >
+            <span>{t('player.loadingTrack')}</span>
+            <span class="text-[8px] opacity-70 font-bold">✕</span>
           </span>
         {/if}
         {#if curTrack}
@@ -289,7 +296,7 @@
               ? 'w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/40'
               : 'w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md shadow-red-500/40'}"
       onclick={onTogglePlay}
-      title={playing ? t('player.pause') : t('player.play')}
+      title={loading ? t('player.cancelLoading') : (playing ? t('player.pause') : t('player.play'))}
     >
       {#if loading}
         <svg class="animate-spin text-white w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

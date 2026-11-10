@@ -77,7 +77,7 @@ variable "cloudfront_price_class" {
 }
 
 variable "netease_cookie" {
-  description = "网易云音乐 Cookie (可选，优先从本地文件或此变量注入)"
+  description = "云端音乐 Cookie (可选，优先从本地文件或此变量注入)"
   type        = string
   default     = ""
   sensitive   = true

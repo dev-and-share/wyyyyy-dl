@@ -12,8 +12,8 @@ import { getTrackSourceStatus } from '../player/trackStatus.svelte';
 import { t } from '../i18n';
 
 /**
- * ☁️ 网易云音乐平台适配器 (NeteasePlatformAdapter)
- * 将网易云专有数据结构（ar, al, songId, 专属码率等）清洗归一化为通用 Track 实体
+ * ☁️ 在线平台适配器 (NeteasePlatformAdapter)
+ * 将专有数据结构（ar, al, songId, 专属码率等）清洗归一化为通用 Track 实体
  */
 export class NeteaseAdapter implements MusicPlatformAdapter {
   readonly id = 'netease';

@@ -157,9 +157,16 @@
               {curTrack?.name || t('player.noTrackPlaying')}
             </span>
             {#if loading}
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1 shrink-0 animate-pulse font-normal">
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1 shrink-0 animate-pulse font-normal cursor-pointer hover:bg-purple-500/25 active:scale-95 transition-all"
+                onclick={(e) => { e.stopPropagation(); onTogglePlay(); }}
+                title={t('player.cancelLoading')}
+              >
                 <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span>
                 <span>{t('player.loadingTrack')}</span>
+                <span class="text-[9px] opacity-70 hover:opacity-100 ml-0.5 font-bold">✕</span>
               </span>
             {/if}
             {#if curTrack}
