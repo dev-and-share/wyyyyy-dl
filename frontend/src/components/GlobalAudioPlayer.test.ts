@@ -311,4 +311,28 @@ describe('GlobalAudioPlayer & iOS Mode F3 Integration Contracts', () => {
 
     unmount();
   });
+
+  it('interrupts loading and cancels playback session when togglePlay is clicked during loading state', async () => {
+    const { unmount } = render(GlobalAudioPlayer);
+
+    const asyncTrack = {
+      id: 'mf_test_track_1',
+      name: '异步加载歌曲',
+      artist: '插件歌手',
+      url: ''
+    };
+
+    playerStore.setQueue([asyncTrack], 0);
+    playerStore.loading = true;
+    playerStore.playing = true;
+
+    // Simulate user clicking play/pause button (the red loading button) while loading
+    window.dispatchEvent(new CustomEvent('wyy:toggle-play'));
+
+    // Contract: loading must be aborted immediately, playing reset to false
+    expect(playerStore.loading).toBe(false);
+    expect(playerStore.playing).toBe(false);
+
+    unmount();
+  });
 });
