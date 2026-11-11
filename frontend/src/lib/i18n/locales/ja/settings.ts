@@ -171,4 +171,6 @@ export default {
   'settings.guestDesc': '楽曲試聴およびローカル自作プレイリストの作成・編集が可能（クラウド変更は保護）',
   'settings.openDesc': '管理者制限は未設定です。すべてのユーザーが全特権で利用できます',
   'settings.refreshUserStatus': '権限状態を更新',
+  'settings.updateNowBadge': '更新する',
+  'settings.newVersionClickToUpdate': '新バージョン {version} が利用可能です。タップして更新',
 } as const;

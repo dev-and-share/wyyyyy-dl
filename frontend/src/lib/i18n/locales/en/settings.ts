@@ -171,4 +171,6 @@ export default {
   'settings.guestDesc': 'Can play tracks & manage private local playlists (cloud edits protected)',
   'settings.openDesc': 'No admin filter configured; all users have full privileges',
   'settings.refreshUserStatus': 'Refresh Status',
+  'settings.updateNowBadge': 'Update',
+  'settings.newVersionClickToUpdate': 'New version {version} available, click to update',
 } as const;

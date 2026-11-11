@@ -66,8 +66,6 @@
       try {
         if (onRefresh) {
           await onRefresh();
-        } else {
-          window.location.reload();
         }
       } catch {}
       setTimeout(() => {

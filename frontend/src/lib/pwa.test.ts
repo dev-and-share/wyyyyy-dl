@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   registerServiceWorker,
   checkForPwaUpdate,
+  probeForPwaUpdate,
+  triggerManualPwaUpdate,
   notifyPlaybackStateToSw,
   applyPendingPwaUpdate,
   hasPendingPwaUpdate,
@@ -195,7 +197,33 @@ describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
 
     expect(onUpdateFoundSpy).toHaveBeenCalledWith('v5.5.39');
     expect(getPendingUpdateVersion()).toBe('v5.5.39');
+    // 🛡️ 即使未播放音频，registerServiceWorker 也绝不擅自发送 SKIP_WAITING，必须等用户手动点击设置按钮
+    expect(mockPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SKIP_WAITING' }));
 
     global.fetch = originalFetch;
+  });
+
+  it('probeForPwaUpdate detects waiting worker without sending SKIP_WAITING, and triggerManualPwaUpdate activates on manual click', async () => {
+    const mockPostMessage = vi.fn();
+    const mockWorker = { postMessage: mockPostMessage };
+
+    mockGetRegistration.mockResolvedValue({
+      waiting: mockWorker,
+      update: vi.fn().mockResolvedValue(undefined)
+    });
+
+    const found = await probeForPwaUpdate({ isAudioPlaying: () => false });
+    expect(found).toBe(true);
+    expect(hasPendingPwaUpdate()).toBe(true);
+    expect(mockPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SKIP_WAITING' }));
+
+    const triggered = await triggerManualPwaUpdate();
+    expect(triggered).toBe(true);
+    expect(mockPostMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+      isPlaying: false,
+      force: true
+    });
+    expect(hasPendingPwaUpdate()).toBe(false);
   });
 });

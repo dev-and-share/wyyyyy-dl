@@ -172,4 +172,26 @@ describe('TopBar & SettingsDrawer Integration', () => {
     expect(easterEgg).toBeTruthy();
     expect(easterEgg.textContent).toContain('Whatever You Yearn');
   });
+
+  it('transforms top header version badge into clickable update button when new version is available', async () => {
+    render(SettingsDrawer, {
+      repeat: false,
+      themeMode: 'dark',
+      onToggleRepeat: vi.fn(),
+      onSelectTheme: vi.fn(),
+      onOpenPeq: vi.fn(),
+      onClose: vi.fn()
+    });
+
+    expect(screen.getByTestId('settings-header-version')).toBeTruthy();
+    expect(screen.queryByTestId('btn-settings-update-version')).toBeNull();
+
+    window.dispatchEvent(new CustomEvent('wyy:pwa-update-available', { detail: { version: 'v5.5.99' } }));
+    await new Promise((r) => setTimeout(r, 10));
+
+    const updateBtn = screen.getByTestId('btn-settings-update-version');
+    expect(updateBtn).toBeTruthy();
+    expect(updateBtn.textContent).toContain('v5.5.99');
+    expect(updateBtn.textContent).toContain('点击更新');
+  });
 });

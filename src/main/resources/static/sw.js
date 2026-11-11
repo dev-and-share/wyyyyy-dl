@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wyy-v5.5.38';
+const CACHE_NAME = 'wyy-v5.5.40';
 const AUDIO_CACHE_NAME = 'netease-music-audio-v1';
 const IMAGE_CACHE_NAME = 'netease-music-image-v1';
 const MAX_IMAGE_CACHE_ITEMS = 2000;
@@ -125,24 +125,16 @@ self.addEventListener('activate', (event) => {
 });
 
 let isAudioPlaying = false;
-let pendingSkipWaiting = false;
 
-// 3. 监听客户端指令（用于发现新版本时立即接管并跳过等待，或清除图片缓存）
+// 3. 监听客户端指令（仅在用户手动点击更新按钮时执行 skipWaiting，严禁自动接管或自动刷新）
 self.addEventListener('message', (event) => {
   if (event.data) {
     if (event.data.type === 'AUDIO_PLAYBACK_STATE') {
       isAudioPlaying = Boolean(event.data.isPlaying);
-      // 🎵 如果音频停止播放，且之前暂存了 SKIP_WAITING，此时安全激活新版本
-      if (!isAudioPlaying && pendingSkipWaiting) {
-        console.log('[SW] 🎵 音频播放已停止，安全激活此前暂存的新版本');
-        pendingSkipWaiting = false;
-        self.skipWaiting();
-      }
     } else if (event.data.type === 'SKIP_WAITING') {
-      // 🛡️ 核心防御：正在播放时绝对不更新新版本！
+      // 🛡️ 仅在用户主动触发更新 (force: true) 或非播放态手动请求时激活新版本
       if ((isAudioPlaying || event.data.isPlaying) && !event.data.force) {
-        console.log('[SW] 🛡️ 客户端正在播放音频，安全拦截 SKIP_WAITING，推迟至播放停止后再激活新版本');
-        pendingSkipWaiting = true;
+        console.log('[SW] 🛡️ 客户端正在播放音频且非手动强制更新，安全拦截 SKIP_WAITING');
         return;
       }
       self.skipWaiting();

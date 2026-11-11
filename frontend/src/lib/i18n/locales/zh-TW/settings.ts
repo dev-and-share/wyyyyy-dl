@@ -171,4 +171,6 @@ export default {
   'settings.guestDesc': '支援歌曲試聽與自建專屬本地歌單（雲端線上歌單唯讀保護）',
   'settings.openDesc': '未配置管理員限制，當前全量特權開放',
   'settings.refreshUserStatus': '重新整理權限狀態',
+  'settings.updateNowBadge': '點擊更新',
+  'settings.newVersionClickToUpdate': '發現新版本 {version}，點擊立即更新',
 } as const;

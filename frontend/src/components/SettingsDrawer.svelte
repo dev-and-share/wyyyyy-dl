@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { platform } from '../lib/platform';
   import type { ThemeMode } from '../lib/theme';
   import { skin } from '../lib/skinStore.svelte';
@@ -11,6 +12,12 @@
   import SettingsGeoProxySection from './settings/SettingsGeoProxySection.svelte';
   import SettingsUserProfileSection from './settings/SettingsUserProfileSection.svelte';
   import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
+  import {
+    hasPendingPwaUpdate,
+    getPendingUpdateVersion,
+    probeForPwaUpdate,
+    triggerManualPwaUpdate
+  } from '../lib/pwa';
   import { t } from '../lib/i18n';
 
   let {
@@ -37,6 +44,39 @@
   let dragOffset = $state(0);
   let isDragging = $state(false);
   let iosKeepAliveMin = $state(getF3TimeoutMinutes());
+  let hasUpdateAvailable = $state(hasPendingPwaUpdate());
+  let pendingVer = $state<string | null>(getPendingUpdateVersion());
+  let isUpdatingVersion = $state(false);
+
+  async function handleManualUpdate() {
+    if (isUpdatingVersion) return;
+    isUpdatingVersion = true;
+    await triggerManualPwaUpdate();
+  }
+
+  onMount(() => {
+    const syncUpdateState = (e?: Event) => {
+      const customEv = e as CustomEvent<{ version?: string }> | undefined;
+      if (customEv?.detail?.version) {
+        pendingVer = customEv.detail.version;
+      } else {
+        pendingVer = getPendingUpdateVersion();
+      }
+      hasUpdateAvailable = hasPendingPwaUpdate() || Boolean(customEv?.type === 'wyy:pwa-update-available');
+    };
+
+    window.addEventListener('wyy:pwa-update-available', syncUpdateState);
+    probeForPwaUpdate().then((found) => {
+      if (found) {
+        hasUpdateAvailable = true;
+        pendingVer = getPendingUpdateVersion();
+      }
+    }).catch(() => {});
+
+    return () => {
+      window.removeEventListener('wyy:pwa-update-available', syncUpdateState);
+    };
+  });
 
   function handleClose() {
     if (closing) return;
@@ -114,10 +154,30 @@
 
   <!-- Header -->
   <div class="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border-color)] shrink-0 select-none">
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 min-w-0">
       <span class="text-xl leading-none">⚙️</span>
-      <h2 class="text-base font-bold text-[var(--text-main)] m-0">{t('settings.title')}</h2>
-      <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--text-muted)]/10 text-[var(--text-muted)] border border-[var(--border-color)] leading-none select-none">v{__APP_VERSION__}</span>
+      <h2 class="text-base font-bold text-[var(--text-main)] m-0 truncate">{t('settings.title')}</h2>
+      {#if hasUpdateAvailable}
+        <button
+          type="button"
+          data-testid="btn-settings-update-version"
+          disabled={isUpdatingVersion}
+          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 hover:from-red-600 hover:to-amber-600 shadow-[0_0_12px_rgba(239,68,68,0.55)] border border-white/25 cursor-pointer transition-all active:scale-95 animate-pulse shrink-0"
+          onclick={handleManualUpdate}
+          title={t('settings.newVersionClickToUpdate', { version: pendingVer || 'NEW' })}
+        >
+          <span>🚀</span>
+          <span class="font-mono">v{__APP_VERSION__}{pendingVer && pendingVer !== `v${__APP_VERSION__}` ? ` → ${pendingVer}` : ''}</span>
+          <span>{t('settings.updateNowBadge')}</span>
+        </button>
+      {:else}
+        <span
+          data-testid="settings-header-version"
+          class="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--text-muted)]/10 text-[var(--text-muted)] border border-[var(--border-color)] leading-none select-none shrink-0"
+        >
+          v{__APP_VERSION__}
+        </span>
+      {/if}
     </div>
     <button
       type="button"

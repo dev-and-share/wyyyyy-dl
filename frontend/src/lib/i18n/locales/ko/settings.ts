@@ -171,4 +171,6 @@ export default {
   'settings.guestDesc': '음악 재생 및 로컬 플레이리스트 생성/관리 가능 (클라우드 변경 제한)',
   'settings.openDesc': '관리자 제한이 설정되지 않았으며, 모든 권한이 허용됩니다',
   'settings.refreshUserStatus': '권한 상태 새로고침',
+  'settings.updateNowBadge': '업데이트',
+  'settings.newVersionClickToUpdate': '새 버전 {version} 사용 가능, 클릭하여 업데이트',
 } as const;
