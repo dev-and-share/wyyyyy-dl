@@ -1,6 +1,7 @@
 import { render, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi } from 'vitest';
 import TopBar from './TopBar.svelte';
+import { globalUiState } from '../lib/ui.svelte';
 
 describe('TopBar Component', () => {
   it('renders mobile top bar when isDesktopLayout is false', () => {
@@ -85,5 +86,20 @@ describe('TopBar Component', () => {
     const localTab = getByTestId('tab-download-mgr');
     await fireEvent.click(localTab);
     expect(onSwitchTab).toHaveBeenCalledWith('download-mgr');
+  });
+
+  it('displays red update badge on settings button when hasPwaUpdate is true', () => {
+    globalUiState.hasPwaUpdate = true;
+    const { getByTestId } = render(TopBar, {
+      tab: 'playlist',
+      themeMode: 'dark',
+      isDesktopLayout: false,
+      onSwitchTab: vi.fn(),
+      onToggleTheme: vi.fn(),
+      onOpenSettings: vi.fn()
+    });
+
+    expect(getByTestId('badge-topbar-update')).toBeTruthy();
+    globalUiState.hasPwaUpdate = false;
   });
 });

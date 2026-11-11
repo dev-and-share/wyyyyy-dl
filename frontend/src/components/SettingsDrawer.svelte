@@ -18,6 +18,7 @@
     probeForPwaUpdate,
     triggerManualPwaUpdate
   } from '../lib/pwa';
+  import { globalUiState } from '../lib/ui.svelte';
   import { t } from '../lib/i18n';
 
   let {
@@ -44,8 +45,8 @@
   let dragOffset = $state(0);
   let isDragging = $state(false);
   let iosKeepAliveMin = $state(getF3TimeoutMinutes());
-  let hasUpdateAvailable = $state(hasPendingPwaUpdate());
-  let pendingVer = $state<string | null>(getPendingUpdateVersion());
+  let hasUpdateAvailable = $derived(globalUiState.hasPwaUpdate || hasPendingPwaUpdate());
+  let pendingVer = $derived(globalUiState.pwaUpdateVersion || getPendingUpdateVersion());
   let isUpdatingVersion = $state(false);
 
   async function handleManualUpdate() {
@@ -55,27 +56,9 @@
   }
 
   onMount(() => {
-    const syncUpdateState = (e?: Event) => {
-      const customEv = e as CustomEvent<{ version?: string }> | undefined;
-      if (customEv?.detail?.version) {
-        pendingVer = customEv.detail.version;
-      } else {
-        pendingVer = getPendingUpdateVersion();
-      }
-      hasUpdateAvailable = hasPendingPwaUpdate() || Boolean(customEv?.type === 'wyy:pwa-update-available');
-    };
-
-    window.addEventListener('wyy:pwa-update-available', syncUpdateState);
-    probeForPwaUpdate().then((found) => {
-      if (found) {
-        hasUpdateAvailable = true;
-        pendingVer = getPendingUpdateVersion();
-      }
-    }).catch(() => {});
-
-    return () => {
-      window.removeEventListener('wyy:pwa-update-available', syncUpdateState);
-    };
+    if (!hasUpdateAvailable) {
+      probeForPwaUpdate().catch(() => {});
+    }
   });
 
   function handleClose() {

@@ -134,7 +134,15 @@
     // 🌌 注册空白区域快速双击切换沉浸模式（PC 端关闭双击避免与窗口/选词冲突，SP 移动端保留双触切换）
     const cleanupImmersiveDblClick = setupImmersiveDblClick();
 
+    // 🛡️ 启动 1.5 秒后在非播放状态下静默探查是否有新版本（不打扰用户，仅激活设置红点与更新按钮）
+    const probeTimer = setTimeout(() => {
+      if (!playerStore.playing && !isAudioCurrentlyPlaying()) {
+        probeForPwaUpdate().catch(() => {});
+      }
+    }, 1500);
+
     return () => {
+      clearTimeout(probeTimer);
       stopRouter();
       stopLayout();
       cleanupImmersiveDblClick();
@@ -144,17 +152,14 @@
   });
 
   async function handleRefresh() {
-    showToast(t('app.checkingUpdate'), 'info', 1200);
     try {
       await initLikeList();
       if (!playerStore.playing && !isAudioCurrentlyPlaying()) {
         // 🛡️ 仅静默探查是否存在新版本供设置菜单顶部按钮高亮提示，严禁擅自激活或自动刷新页面！
         await probeForPwaUpdate();
       }
-      showToast(t('app.syncSuccess'), 'success', 1500);
     } catch (e: any) {
       console.warn('[App] Refresh check failed:', e);
-      showToast(t('common.failed'), 'warning', 1500);
     }
   }
 </script>
