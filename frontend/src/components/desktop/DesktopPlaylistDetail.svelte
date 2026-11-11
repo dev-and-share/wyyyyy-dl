@@ -47,23 +47,27 @@
 
   let sentinelEl = $state<HTMLElement | null>(null);
   let isLoadingNext = $state(false);
+  let lastLoadTime = 0;
 
-  function loadNextPage() {
-    if (!hasMore || isLoadingNext) return;
+  function loadNextPage(isInitialAutoFill = false) {
+    const now = Date.now();
+    if (!hasMore || isLoadingNext || now - lastLoadTime < 150) return;
     isLoadingNext = true;
+    lastLoadTime = now;
     desktopCurPage = Math.min(totalPages, desktopCurPage + 1);
-    tick().then(() => {
+    setTimeout(() => {
       isLoadingNext = false;
-      checkSentinel();
-    });
+      if (isInitialAutoFill && desktopCurPage < 3) checkSentinel(true);
+    }, 150);
   }
 
-  function checkSentinel() {
+  function checkSentinel(isInitialAutoFill = false) {
     if (!sentinelEl || !hasMore || isLoadingNext) return;
     const rect = sentinelEl.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
     const vh = window.innerHeight || document.documentElement.clientHeight;
-    if (rect.top <= vh + 200) {
-      loadNextPage();
+    if (rect.top <= vh + 200 && rect.bottom >= -50) {
+      loadNextPage(isInitialAutoFill);
     }
   }
 

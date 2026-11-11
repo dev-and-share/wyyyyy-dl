@@ -125,6 +125,9 @@ export class AudioVisualizerEngine {
   }
 
   private updateFrame() {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return;
+    }
     if (platform.isIOS || !this.analyser || !this.freqData) {
       // iOS 或未接通 Web Audio 时的智能优雅律动兜底
       this.fallbackTick();

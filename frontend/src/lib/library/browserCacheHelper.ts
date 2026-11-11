@@ -51,6 +51,8 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
   const byKey = new Map<string, BrowserCacheItem>();
 
   for (const cacheName of await caches.keys()) {
+    // 🛡️ 跳过封面图片缓存池 (最多含 2000 张图片) 与静态资源缓存池，杜绝 iOS WebKit 扫描大量 Request 引发的内存洪峰
+    if (cacheName === 'netease-music-image-v1' || cacheName.startsWith('wyy-')) continue;
     const cache = await caches.open(cacheName);
     for (const request of await cache.keys()) {
       if (!isAudioCacheUrl(request.url)) continue;
@@ -58,8 +60,11 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
         ? (new URL(request.url).pathname + new URL(request.url).search)
         : request.url;
       const meta = metaMap[relUrl] || metaMap[request.url] || {};
-      const response = await cache.match(request);
-      const size = Number(response?.headers.get('content-length') || meta.fileSize || 0);
+      let size = Number(meta.fileSize || 0);
+      if (!size) {
+        const response = await cache.match(request);
+        size = Number(response?.headers.get('content-length') || 0);
+      }
 
       // 提取真实歌曲 ID 与历史记录 ID
       const urlIdMatch = relUrl.match(/[?&]id=([1-9]\d*)/);
@@ -277,8 +282,9 @@ export async function scanImageCache(): Promise<{ count: number; totalBytes: num
     const cache = await caches.open(IMAGE_CACHE_NAME);
     const requests = await cache.keys();
     let totalBytes = 0;
-    for (const req of requests) {
-      const res = await cache.match(req);
+    const sampleLimit = Math.min(requests.length, 25);
+    for (let i = 0; i < sampleLimit; i++) {
+      const res = await cache.match(requests[i]);
       const cl = Number(res?.headers.get('content-length') || 0);
       totalBytes += cl;
     }

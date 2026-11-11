@@ -4,7 +4,7 @@
   import SlotBtn from './SlotBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { formatBytes, DEFAULT_VINYL_COVER } from '../lib/utils';
-  import { autoCacheState, setAutoCacheEnabled } from '../lib/pwaCache.svelte';
+  import { autoCacheState, setAutoCacheEnabled, getSongPlayCount } from '../lib/pwaCache.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { playerStore } from '../lib/playerStore.svelte';
   import { t } from '../lib/i18n';
@@ -156,7 +156,7 @@
     });
   }
 
-  let wasOpen = false;
+  let wasOpen = open;
   $effect(() => {
     if (accBrowserCache && !wasOpen) {
       loadList();
@@ -165,20 +165,25 @@
   });
 
   onMount(() => {
-    loadList();
+    if (accBrowserCache) {
+      loadList();
+    }
     const reload = () => { loadList(); };
-    window.addEventListener('wyy:browser-cache-updated', reload);
-    window.addEventListener('wyy:song-play-updated', reload);
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible' && accBrowserCache) loadList();
+    const onPlayUpdated = () => {
+      if (browserCacheList.length === 0) return;
+      browserCacheList = browserCacheList
+        .map((item) => ({
+          ...item,
+          playCount: item.id ? Math.max(item.playCount, getSongPlayCount(item.id)) : item.playCount
+        }))
+        .sort((a, b) => (b.playCount !== a.playCount ? b.playCount - a.playCount : b.time - a.time));
     };
-    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('wyy:browser-cache-updated', reload);
+    window.addEventListener('wyy:song-play-updated', onPlayUpdated);
 
     return () => {
       window.removeEventListener('wyy:browser-cache-updated', reload);
-      window.removeEventListener('wyy:song-play-updated', reload);
-      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('wyy:song-play-updated', onPlayUpdated);
     };
   });
 </script>

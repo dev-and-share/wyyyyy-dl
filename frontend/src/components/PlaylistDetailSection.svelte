@@ -155,19 +155,22 @@
 
   function checkSentinel(isInitialAutoFill = false) {
     if (!hasMore || isLoadingNext) return;
+    if (sentinelEl) {
+      const sRect = sentinelEl.getBoundingClientRect();
+      if (sRect.width === 0 && sRect.height === 0) return;
+    }
     if (listContainerEl) {
       const { scrollTop, scrollHeight, clientHeight } = listContainerEl;
-      if (scrollTop + clientHeight >= scrollHeight - 120) {
-        loadNextPage(isInitialAutoFill);
+      const overflowY = typeof window !== 'undefined' ? window.getComputedStyle(listContainerEl).overflowY : 'auto';
+      if (overflowY !== 'visible' && scrollHeight > clientHeight + 10) {
+        if (scrollTop + clientHeight >= scrollHeight - 120) loadNextPage(isInitialAutoFill);
         return;
       }
     }
     if (sentinelEl) {
       const rect = sentinelEl.getBoundingClientRect();
       const vh = window.innerHeight || document.documentElement.clientHeight;
-      if (rect.top <= vh + 120 && rect.bottom >= -50) {
-        loadNextPage(isInitialAutoFill);
-      }
+      if (rect.top <= vh + 120 && rect.bottom >= -50) loadNextPage(isInitialAutoFill);
     }
   }
 
@@ -185,18 +188,12 @@
 
   $effect(() => {
     if (!sentinelEl || typeof IntersectionObserver === 'undefined') return;
+    const overflowY = listContainerEl && typeof window !== 'undefined' ? window.getComputedStyle(listContainerEl).overflowY : 'visible';
     const observer = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry && entry.isIntersecting) {
-        loadNextPage(false);
-      }
-    }, {
-      root: listContainerEl,
-      rootMargin: '120px'
-    });
+      if (entries[0]?.isIntersecting) loadNextPage(false);
+    }, { root: overflowY !== 'visible' ? listContainerEl : null, rootMargin: '120px' });
     observer.observe(sentinelEl);
     window.addEventListener('scroll', throttledCheckSentinel, { passive: true });
-    // 页面初次进入时，仅执行一次受控初次探测
     checkSentinel(true);
     return () => {
       observer.disconnect();
