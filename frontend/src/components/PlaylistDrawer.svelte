@@ -768,7 +768,15 @@
                       - {formatArtist(trackItem.artist)}
                     </span>
                   {/if}
-                  <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} curTrack={queue[qIndex]} />
+                  <TrackSourceBadge
+                    id={trackItem.id}
+                    name={trackItem.name}
+                    artist={trackItem.artist}
+                    path={trackItem.filePath}
+                    item={trackItem}
+                    isLocal={trackItem.isLocal}
+                    curTrack={queue[qIndex]}
+                  />
                   {#if !status.isServer}
                     <button
                       type="button"

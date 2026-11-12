@@ -170,7 +170,16 @@
               </span>
             {/if}
             {#if curTrack}
-              <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1 shrink-0" />
+              <TrackSourceBadge
+                id={curTrack.id}
+                name={curTrack.name}
+                artist={curTrack.artist}
+                path={curTrack.filePath}
+                item={curTrack}
+                isLocal={curTrack.isLocal}
+                {curTrack}
+                class="ml-1 shrink-0"
+              />
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <span class="inline-flex items-center shrink-0 ml-0.5" onclick={(e) => e.stopPropagation()}>

@@ -32,14 +32,48 @@
     class?: string;
   }>();
 
+  let isMatchingCurTrack = $derived(
+    Boolean(
+      curTrack &&
+      (id == null ||
+        Number(curTrack.id) === Number(id) ||
+        String(curTrack.id) === String(id) ||
+        (name && curTrack.name === name))
+    )
+  );
+
+  let effectiveName = $derived(
+    name ||
+    item?.name ||
+    item?.songName ||
+    (isMatchingCurTrack ? (curTrack?.name || '') : '') ||
+    ''
+  );
+
+  let effectiveArtist = $derived(
+    artist ||
+    item?.artist ||
+    item?.ar_name ||
+    (isMatchingCurTrack ? (curTrack?.artist || '') : '') ||
+    ''
+  );
+
+  let effectivePath = $derived(
+    path ||
+    item?.filePath ||
+    item?.path ||
+    (isMatchingCurTrack ? (curTrack?.filePath || '') : '') ||
+    ''
+  );
+
   let computedStatus = $derived(
     getTrackSourceStatus(
-      id,
-      Boolean(isLocal && (path || item?.filePath)),
+      id ?? curTrack?.id,
+      Boolean((isLocal || (isMatchingCurTrack && curTrack?.isLocal)) && (effectivePath || item?.filePath)),
       curTrack,
-      typeof id === 'string' && (id.startsWith('mf_') || id.startsWith('ext_')),
-      name,
-      artist
+      typeof (id ?? curTrack?.id) === 'string' && (String(id ?? curTrack?.id).startsWith('mf_') || String(id ?? curTrack?.id).startsWith('ext_')),
+      effectiveName,
+      effectiveArtist
     )
   );
 
@@ -61,13 +95,20 @@
       e.stopPropagation();
       e.preventDefault();
     }
-    const cleanPath = (path && !path.startsWith('/v3/stream') && !path.startsWith('http')) ? path : '';
+    const rawPath = effectivePath || '';
+    const cleanPath = (rawPath && !rawPath.startsWith('/v3/stream') && !rawPath.startsWith('http')) ? rawPath : '';
     const targetItem = item
-      ? { ...item, path: (item.path && !item.path.startsWith('/v3/stream') && !item.path.startsWith('http')) ? item.path : cleanPath }
+      ? {
+          ...item,
+          id: item.id ?? item.songId ?? id ?? curTrack?.id,
+          name: item.name || item.songName || effectiveName,
+          artist: item.artist || item.ar_name || effectiveArtist,
+          path: (item.path && !item.path.startsWith('/v3/stream') && !item.path.startsWith('http')) ? item.path : cleanPath
+        }
       : {
-          id,
-          name,
-          artist,
+          id: id ?? curTrack?.id,
+          name: effectiveName,
+          artist: effectiveArtist,
           path: cleanPath
         };
     showToast(t('toast.locatingFile'), 'info', 1200);

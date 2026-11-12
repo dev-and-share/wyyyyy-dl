@@ -363,7 +363,16 @@
                     <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
                       {trackItem.name}
                     </span>
-                    <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="shrink-0" />
+                    <TrackSourceBadge
+                      id={trackItem.id}
+                      name={trackItem.name}
+                      artist={artist}
+                      path={trackItem.filePath}
+                      item={trackItem}
+                      isLocal={trackItem.isLocal}
+                      {curTrack}
+                      class="shrink-0"
+                    />
                     {#if onToggleLike}
                       <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike?.(Number(trackItem.id), trackItem.name, artist)} />
                     {/if}

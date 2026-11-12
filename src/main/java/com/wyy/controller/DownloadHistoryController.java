@@ -30,6 +30,9 @@ public class DownloadHistoryController {
     private MusicDownloadService musicDownloadService;
 
     @Resource
+    private com.wyy.service.NeteaseAPIService neteaseAPIService;
+
+    @Resource
     private com.wyy.service.storage.IStorageService storageService;
 
     @org.springframework.beans.factory.annotation.Value("${reveal.auto-open.enabled:true}")
@@ -67,6 +70,36 @@ public class DownloadHistoryController {
             file = downloadHistoryDAO.resolveFile(targetPath);
         } else if ((songId != null && songId > 0) || StringUtils.isNotBlank(name)) {
             DownloadHistoryItem found = downloadHistoryDAO.findLocalFileBySongOrName(songId, name, artist);
+            if (found == null && songId != null && songId > 0 && StringUtils.isBlank(name)) {
+                // 兜底自愈：若只传入 songId 且通过 ID 未命中，尝试向网易云查询元数据并按歌名+歌手二次匹配
+                try {
+                    String detailStr = neteaseAPIService.songDetail(java.util.Collections.singletonList(songId));
+                    if (StringUtils.isNotBlank(detailStr)) {
+                        com.alibaba.fastjson.JSONObject detailJson = com.alibaba.fastjson.JSON.parseObject(detailStr);
+                        com.alibaba.fastjson.JSONArray songs = detailJson != null ? detailJson.getJSONArray("songs") : null;
+                        if (songs != null && !songs.isEmpty()) {
+                            com.alibaba.fastjson.JSONObject songObj = songs.getJSONObject(0);
+                            String fetchedName = songObj.getString("name");
+                            String fetchedArtist = null;
+                            com.alibaba.fastjson.JSONArray arArr = songObj.getJSONArray("ar");
+                            if (arArr != null && !arArr.isEmpty()) {
+                                List<String> arNames = new java.util.ArrayList<>();
+                                for (int i = 0; i < arArr.size(); i++) {
+                                    String n = arArr.getJSONObject(i).getString("name");
+                                    if (StringUtils.isNotBlank(n)) arNames.add(n);
+                                }
+                                fetchedArtist = String.join("/", arNames);
+                            }
+                            if (StringUtils.isNotBlank(fetchedName)) {
+                                found = downloadHistoryDAO.findLocalFileBySongOrName(songId, fetchedName, fetchedArtist);
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.warn("Reveal 自动补全歌曲元数据异常: songId={}", songId, ex);
+                }
+            }
+
             if (found != null && StringUtils.isNotBlank(found.getFilePath())) {
                 file = downloadHistoryDAO.resolveFile(found.getFilePath());
             }

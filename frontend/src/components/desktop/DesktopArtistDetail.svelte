@@ -335,7 +335,16 @@
                     >
                       {s.name}
                     </button>
-                    <TrackSourceBadge id={s.id} isLocal={s.isLocal} {curTrack} class="shrink-0" />
+                    <TrackSourceBadge
+                      id={s.id}
+                      name={s.name}
+                      artist={artistName}
+                      path={s.filePath}
+                      item={s}
+                      isLocal={s.isLocal}
+                      {curTrack}
+                      class="shrink-0"
+                    />
                     {#if onToggleLike}
                       <TrackLikeBtn liked={likedSet.has(Number(s.id))} onclick={() => onToggleLike(Number(s.id), s.name, artistName)} />
                     {/if}

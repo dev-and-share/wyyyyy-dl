@@ -186,7 +186,16 @@
               {i + 1}. {s.name}
             </button>
             {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
-            <TrackSourceBadge id={s.id} isLocal={s.isLocal} {curTrack} class="ml-1.5" />
+            <TrackSourceBadge
+              id={s.id}
+              name={s.name}
+              artist={artistName}
+              path={s.filePath}
+              item={s}
+              isLocal={s.isLocal}
+              {curTrack}
+              class="ml-1.5"
+            />
           </div>
           <div class="track-action-group">
             <!-- 💻 PC 桌面端快捷操作 -->

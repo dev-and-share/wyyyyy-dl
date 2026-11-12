@@ -114,4 +114,36 @@ describe('TrackSourceBadge Component', () => {
       path: ''
     });
   });
+
+  it('falls back to curTrack metadata when props name/artist/path are omitted', async () => {
+    const onReveal = vi.fn();
+    const curTrackMock = {
+      id: 108242,
+      name: '她说',
+      artist: '林俊杰',
+      filePath: '/media/external/下载音乐/80后经典流行歌曲.com/林俊杰 - 她说.mp3',
+      isLocal: true
+    };
+
+    const { getByTitle } = render(TrackSourceBadge, {
+      props: {
+        id: 108242,
+        isLocal: true,
+        curTrack: curTrackMock,
+        onReveal
+      }
+    });
+
+    const badge = getByTitle(/已下载到本地服务器磁盘/);
+    expect(badge).toBeDefined();
+
+    await fireEvent.dblClick(badge);
+
+    expect(onReveal).toHaveBeenCalledWith({
+      id: 108242,
+      name: '她说',
+      artist: '林俊杰',
+      path: '/media/external/下载音乐/80后经典流行歌曲.com/林俊杰 - 她说.mp3'
+    });
+  });
 });

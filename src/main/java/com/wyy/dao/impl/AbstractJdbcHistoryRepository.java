@@ -637,6 +637,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                                     if (isArtistMatch(targetArtist, localArtist)) {
                                         log.info("🎯 跨专辑/版本精准命中本地音轨: 《{}》({}) -> 《{}》({}), path: {}",
                                                 targetCleanName, targetArtist, localName, localArtist, item.getFilePath());
+                                        autoBindSongIdIfMissing(conn, songId, item);
                                         return item;
                                     }
                                     // Case B: 未剥离括号的完整歌名严格全字相等，且一方缺少歌手，且歌名长度 >= 4 字符
@@ -644,6 +645,7 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                                             && targetCleanName.equalsIgnoreCase(localName) 
                                             && targetNormName.length() >= 4) {
                                         log.info("🎯 歌名全字精确命中无歌手音轨: 《{}》 -> 《{}》, path: {}", targetCleanName, localName, item.getFilePath());
+                                        autoBindSongIdIfMissing(conn, songId, item);
                                         return item;
                                     }
                                 }
@@ -658,6 +660,27 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
 
         log.warn("⚠️ 未找到本地可用的匹配文件: songId={}, name={}, artist={}", songId, name, artist);
         return null;
+    }
+
+    private void autoBindSongIdIfMissing(Connection conn, Long songId, DownloadHistoryItem item) {
+        if (conn == null || songId == null || songId <= 0 || item == null || item.getId() == null) {
+            return;
+        }
+        if (item.getSongId() != null && item.getSongId() > 0) {
+            return;
+        }
+        try (PreparedStatement updateStmt = conn.prepareStatement(
+                "UPDATE download_history SET song_id = ? WHERE id = ? AND (song_id IS NULL OR song_id = 0)")) {
+            updateStmt.setLong(1, songId);
+            updateStmt.setLong(2, item.getId());
+            int affected = updateStmt.executeUpdate();
+            if (affected > 0) {
+                item.setSongId(songId);
+                log.info("🔗 [自愈] 自动补全历史记录关联 songId: recordId={}, songId={}", item.getId(), songId);
+            }
+        } catch (Exception updateEx) {
+            log.warn("自动补全历史记录关联 songId 异常: recordId={}, songId={}", item.getId(), songId, updateEx);
+        }
     }
 
     @Override

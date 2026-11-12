@@ -131,6 +131,34 @@ public class DownloadHistoryControllerTest {
     }
 
     @Test
+    @DisplayName("测试 /v3/reveal: 当仅有 songId 时自动通过 NeteaseAPIService 兜底补全元数据并定位成功")
+    public void testRevealFileFallbackByNeteaseService() throws Exception {
+        java.io.File mockFile = java.io.File.createTempFile("mock_she_shuo", ".mp3");
+        mockFile.deleteOnExit();
+
+        DownloadHistoryItem mockFound = new DownloadHistoryItem();
+        mockFound.setFilePath(mockFile.getAbsolutePath());
+
+        // 第一次仅传 songId 时返回 null
+        Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(108242L), isNull(), isNull())).thenReturn(null);
+
+        // 网易云返回歌曲详情 JSON
+        String mockSongDetailJson = "{\"code\":200,\"songs\":[{\"name\":\"她说\",\"ar\":[{\"name\":\"林俊杰\"}]}]}";
+        Mockito.when(neteaseAPIService.songDetail(any())).thenReturn(mockSongDetailJson);
+
+        // 第二次补全歌名歌手后命中
+        Mockito.when(downloadHistoryDAO.findLocalFileBySongOrName(eq(108242L), eq("她说"), eq("林俊杰"))).thenReturn(mockFound);
+        Mockito.when(downloadHistoryDAO.resolveFile(anyString())).thenReturn(mockFile);
+        Mockito.when(downloadHistoryDAO.toHostPath(any())).thenReturn("/Users/testuser/Music/林俊杰 - 她说.mp3");
+
+        mockMvc.perform(get("/v3/reveal")
+                .param("id", "108242"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data").value("/Users/testuser/Music/林俊杰 - 她说.mp3"));
+    }
+
+    @Test
     @DisplayName("测试 /v3/history/missing: 获取缺失文件清单")
     public void testGetMissingRecords() throws Exception {
         java.util.List<DownloadHistoryItem> list = new ArrayList<>();

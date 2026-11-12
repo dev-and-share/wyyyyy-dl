@@ -325,7 +325,16 @@
                 >
                   <span class="text-[var(--text-muted)] font-mono mr-1 text-[11px]">{idx + 1}.</span>{trackItem.name}
                 </button>
-                <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="shrink-0" />
+                <TrackSourceBadge
+                  id={trackItem.id}
+                  name={trackItem.name}
+                  artist={artistName}
+                  path={trackItem.filePath}
+                  item={trackItem}
+                  isLocal={trackItem.isLocal}
+                  {curTrack}
+                  class="shrink-0"
+                />
                 {#if trackItem.reason}
                   <span class="text-[10px] text-amber-500 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20 shrink-0 font-normal">
                     {trackItem.reason}

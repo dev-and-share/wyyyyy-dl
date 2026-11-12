@@ -166,7 +166,16 @@
           </span>
         {/if}
         {#if curTrack}
-          <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
+          <TrackSourceBadge
+            id={curTrack.id}
+            name={curTrack.name}
+            artist={curTrack.artist}
+            path={curTrack.filePath}
+            item={curTrack}
+            isLocal={curTrack.isLocal}
+            {curTrack}
+            class="ml-1"
+          />
         {/if}
       </div>
 

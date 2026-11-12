@@ -224,7 +224,16 @@
                 >
                   <span class="text-[var(--text-muted)] font-mono mr-1 text-[11px]">{idx + 1}.</span>{r.name}
                 </button>
-                <TrackSourceBadge id={r.id} isLocal={r.isLocal} {curTrack} class="shrink-0" />
+                <TrackSourceBadge
+                  id={r.id}
+                  name={r.name}
+                  artist={artistName}
+                  path={r.filePath}
+                  item={r}
+                  isLocal={r.isLocal}
+                  {curTrack}
+                  class="shrink-0"
+                />
               </div>
               <div class="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] truncate mt-0.5">
                 {#if artistName}
