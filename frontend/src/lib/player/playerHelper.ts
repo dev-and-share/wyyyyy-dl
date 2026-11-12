@@ -288,7 +288,7 @@ export function computeNextTrackOnSkip(
       showToast(
         isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }),
         isTrial ? 'info' : 'warning',
-        isVipReason ? 4000 : 2000,
+        isVipReason ? 7000 : 2500,
         toastAction
       );
       playerStore.qIndex = nextLocalIdx;
@@ -309,7 +309,7 @@ export function computeNextTrackOnSkip(
   showToast(
     isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }),
     isTrial ? 'info' : 'warning',
-    isVipReason ? 4000 : 2000,
+    isVipReason ? 7000 : 2500,
     toastAction
   );
   playerStore.qIndex = nextIdx;
