@@ -133,7 +133,14 @@ public class AnalysisService {
             if (songInfo.containsKey("pc")) {
                 JSONObject pcObj = songInfo.getJSONObject("pc");
                 if (pcObj != null && StringUtils.isNotBlank(pcObj.getString("ar"))) {
-                    fullArtistName = pcObj.getString("ar");
+                    // 🛡️ 对 pc.ar 做去重清洗：网易云私人云盘字段有时会返回 "林俊杰;林俊杰" 这样的重复歌手名
+                    String rawPcAr = pcObj.getString("ar").trim();
+                    String deduped = java.util.Arrays.stream(rawPcAr.split("[;；/]"))
+                            .map(String::trim)
+                            .filter(StringUtils::isNotBlank)
+                            .distinct()
+                            .collect(Collectors.joining("/"));
+                    fullArtistName = StringUtils.isNotBlank(deduped) ? deduped : rawPcAr;
                 }
             }
 
@@ -723,6 +730,36 @@ public class AnalysisService {
         } catch (Exception e) {
             log.error("获取每日推荐异常", e);
             throw new ServiceException(CommonRespInfo.SERVICE_EXECUTION_ERROR, e);
+        }
+    }
+
+    /**
+     * 听歌打卡 (向网易云官方上报播放完成事件)
+     * @param songId 网易云正整数数字 ID
+     * @param sourceId 来源歌单/专辑 ID
+     * @param time 播放时长(秒)
+     * @return 是否打卡成功
+     */
+    public boolean scrobbleTrack(Long songId, Long sourceId, Integer time) {
+        if (!checkReady()) {
+            log.warn("⚠️ [Scrobble] 未配置有效 Cookie，跳过网易云听歌打卡");
+            return false;
+        }
+        if (songId == null || songId <= 0) {
+            log.warn("⚠️ [Scrobble] songId 无效或非网易云曲目，跳过打卡: songId={}", songId);
+            return false;
+        }
+        try {
+            String respStr = neteaseAPIService.scrobbleTrack(songId, sourceId, time);
+            JSONObject json = JSON.parseObject(respStr);
+            boolean success = json != null && json.getIntValue("code") == 200;
+            if (!success) {
+                log.warn("⚠️ [Scrobble] 网易云打卡响应非 200: resp={}", respStr);
+            }
+            return success;
+        } catch (Exception e) {
+            log.error("❌ [Scrobble] 听歌打卡异常: songId={}, sourceId={}, time={}", songId, sourceId, time, e);
+            return false;
         }
     }
 	
