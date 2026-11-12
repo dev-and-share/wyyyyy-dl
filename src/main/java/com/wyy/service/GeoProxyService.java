@@ -54,7 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 public class GeoProxyService {
 
     public static final String CONFIG_KEY = "GEO_PROXY_CONFIG";
-    public static final String DEFAULT_SUB_URL = "https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&country=cn";
+    public static final String DEFAULT_SUB_URL = "https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&country=cn&protocol=http&anonymity=elite&ssl=yes";
 
     @Resource
     private IConfigRepository configRepository;
@@ -88,6 +88,11 @@ public class GeoProxyService {
             if (StringUtils.isNotBlank(savedJson)) {
                 GeoProxyConfig saved = objectMapper.readValue(savedJson, GeoProxyConfig.class);
                 if (saved != null) {
+                    // 若旧配置仍为未加优化参数的原默认链接，自动平滑升级为包含 protocol/anonymity/ssl 过滤的高匿链接
+                    if (saved.getSubscriptionUrl() != null && saved.getSubscriptionUrl().contains("api.proxyscrape.com")
+                            && !saved.getSubscriptionUrl().contains("anonymity=elite")) {
+                        saved.setSubscriptionUrl(DEFAULT_SUB_URL);
+                    }
                     this.currentConfig = saved;
                     log.info("🇨🇳 [GeoProxy] 载入持久化配置: enabled={}, mode={}, scope={}",
                             saved.isEnabled(), saved.getMode(), saved.getScope());

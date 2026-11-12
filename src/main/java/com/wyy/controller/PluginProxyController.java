@@ -183,12 +183,12 @@ public class PluginProxyController {
                 httpRequest = new HttpGet(targetUri);
             }
 
-            // 3. 填充 Headers (过滤掉 host, content-length, accept-encoding，防止远端返回压缩乱码)
+            // 3. 填充 Headers (过滤掉 host, content-length, accept-encoding 以及潜在泄露真实客户端 IP 的代理敏感标头)
             boolean hasUa = false;
             if (payload.getHeaders() != null) {
                 for (Map.Entry<String, String> entry : payload.getHeaders().entrySet()) {
                     String key = entry.getKey();
-                    if ("host".equalsIgnoreCase(key) || "content-length".equalsIgnoreCase(key) || "accept-encoding".equalsIgnoreCase(key)) {
+                    if (isSensitiveProxyHeader(key)) {
                         continue;
                     }
                     if ("user-agent".equalsIgnoreCase(key)) {
@@ -333,5 +333,26 @@ public class PluginProxyController {
             return resp;
         }
         return HttpClientUtil.getInstance().execute(request);
+    }
+
+    /**
+     * 判断是否属于应剥离的敏感/暴露源 IP 标头或影响传输编码的标头
+     */
+    private boolean isSensitiveProxyHeader(String headerName) {
+        if (StringUtils.isBlank(headerName)) return true;
+        String lower = headerName.trim().toLowerCase();
+        return "host".equals(lower)
+                || "content-length".equals(lower)
+                || "accept-encoding".equals(lower)
+                || "x-forwarded-for".equals(lower)
+                || "x-real-ip".equals(lower)
+                || "x-client-ip".equals(lower)
+                || "client-ip".equals(lower)
+                || "via".equals(lower)
+                || "forwarded".equals(lower)
+                || "cf-connecting-ip".equals(lower)
+                || "true-client-ip".equals(lower)
+                || "fastly-client-ip".equals(lower)
+                || "x-cluster-client-ip".equals(lower);
     }
 }

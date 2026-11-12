@@ -8,7 +8,7 @@
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
   }>();
 
-  const DEFAULT_SUB_URL = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&country=cn';
+  const DEFAULT_SUB_URL = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&country=cn&protocol=http&anonymity=elite&ssl=yes';
   const MONOSANS_SUB_URL = 'https://fastly.jsdelivr.net/gh/monosans/proxy-list@main/proxies/http.txt';
 
   let enabled = $state(false);
