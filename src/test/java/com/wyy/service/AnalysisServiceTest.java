@@ -95,4 +95,37 @@ public class AnalysisServiceTest {
         Assertions.assertEquals("Song 1", result.getPlaylist().getTracks().get(0).getName());
         Assertions.assertEquals("Song 1002", result.getPlaylist().getTracks().get(1001).getName());
     }
+
+    @Test
+    @DisplayName("测试 scrobbleTrack: 成功向网易云打卡")
+    public void testScrobbleTrackSuccess() throws Exception {
+        Mockito.when(neteaseAPIService.checkReady()).thenReturn(true);
+        Mockito.when(neteaseAPIService.scrobbleTrack(eq(1393659632L), eq(100L), eq(240)))
+                .thenReturn("{\"code\":200,\"data\":\"success\"}");
+
+        boolean success = analysisService.scrobbleTrack(1393659632L, 100L, 240);
+        Assertions.assertTrue(success);
+    }
+
+    @Test
+    @DisplayName("测试 scrobbleTrack: 非网易云歌曲 (id<=0 或 null) 严格拦截跳过")
+    public void testScrobbleTrackInvalidId() {
+        boolean r1 = analysisService.scrobbleTrack(null, null, 100);
+        Assertions.assertFalse(r1);
+
+        boolean r2 = analysisService.scrobbleTrack(0L, null, 100);
+        Assertions.assertFalse(r2);
+
+        boolean r3 = analysisService.scrobbleTrack(-1L, null, 100);
+        Assertions.assertFalse(r3);
+    }
+
+    @Test
+    @DisplayName("测试 scrobbleTrack: 未登录或接口异常时安全返回 false")
+    public void testScrobbleTrackNotReady() {
+        Mockito.when(neteaseAPIService.checkReady()).thenReturn(false);
+
+        boolean success = analysisService.scrobbleTrack(1393659632L, null, 120);
+        Assertions.assertFalse(success);
+    }
 }

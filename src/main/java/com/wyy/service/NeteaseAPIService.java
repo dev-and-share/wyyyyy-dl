@@ -6,6 +6,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1016,6 +1017,81 @@ public class NeteaseAPIService implements InitializingBean{
 	        innerParams.put("limit", Math.max(1, limit));
 	        innerParams.put("beforeTime", 0);
 	        return requestLinuxApi(innerUrl, innerParams);
+	    }
+
+	    /**
+	     * 通过官方 EAPI 客户端协议发送请求 (移动端/桌面端协议)
+	     * @param apiPath 相对端点路径 (如 /api/feedback/weblog)
+	     * @param payload 业务参数负载 Map
+	     * @return 响应原始 JSON
+	     */
+	    public String requestEapi(String apiPath, Map<String, Object> payload) throws Exception {
+	        String url = "https://interface.music.163.com/eapi" + apiPath;
+
+	        Map<String, Object> config = new LinkedHashMap<>();
+	        config.put("os", "pc");
+	        config.put("appver", "");
+	        config.put("osver", "");
+	        config.put("deviceId", "pyncm!");
+	        config.put("requestId", String.valueOf(20000000 + new Random().nextInt(10000000)));
+
+	        Map<String, Object> fullPayload = new LinkedHashMap<>();
+	        fullPayload.put("header", new ObjectMapper().writeValueAsString(config));
+	        if (payload != null && !payload.isEmpty()) {
+	            fullPayload.putAll(payload);
+	        }
+
+	        String jsonPayload = new ObjectMapper().writeValueAsString(fullPayload);
+	        String digest = md5Hex("nobody" + apiPath + "use" + jsonPayload + "md5forencrypt");
+	        String rawParams = apiPath + "-36cd479b6b5-" + jsonPayload + "-36cd479b6b5-" + digest;
+	        String encParams = aesEncryptECB(rawParams, AES_KEY);
+
+	        Map<String, String> headers = new HashMap<>();
+	        headers.put("Referer", "https://interface.music.163.com");
+	        headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.69");
+	        headers.put("Cookie", getCookieValue(this.cookie));
+
+	        Map<String, String> params = new HashMap<>();
+	        params.put("params", encParams);
+
+	        return HttpClientUtil.postForm(url, headers, params);
+	    }
+
+	    /**
+	     * 听歌打卡 (使用 EAPI 客户端协议上报，记录用户播放行为并更新每日推荐池)
+	     * @param songId 歌曲 ID (必须来自网易云)
+	     * @param sourceId 来源歌单/专辑 ID (可选)
+	     * @param time 播放时长 (秒)
+	     * @return 服务端原始响应 JSON
+	     */
+	    public String scrobbleTrack(Long songId, Long sourceId, Integer time) throws Exception {
+	        if (songId == null || songId <= 0) {
+	            throw new IllegalArgumentException("songId 必须是有效的正整型数字");
+	        }
+	        int playTime = (time != null && time > 0) ? time : 60;
+	        String sourceIdStr = (sourceId != null && sourceId > 0) ? String.valueOf(sourceId) : "";
+
+	        Map<String, Object> logItem = new LinkedHashMap<>();
+	        logItem.put("action", "play");
+	        Map<String, Object> logJson = new LinkedHashMap<>();
+	        logJson.put("download", 0);
+	        logJson.put("end", "playend");
+	        logJson.put("id", songId);
+	        logJson.put("sourceId", sourceIdStr);
+	        logJson.put("time", playTime);
+	        logJson.put("type", "song");
+	        logJson.put("wifi", 0);
+	        logItem.put("json", logJson);
+
+	        List<Map<String, Object>> logs = new ArrayList<>();
+	        logs.add(logItem);
+
+	        Map<String, Object> payload = new LinkedHashMap<>();
+	        payload.put("logs", com.alibaba.fastjson.JSON.toJSONString(logs));
+
+	        String resp = requestEapi("/api/feedback/weblog", payload);
+	        log.info("🎯 [Scrobble] 听歌打卡已成功发送至网易云: songId={}, sourceId={}, time={}s, resp={}", songId, sourceIdStr, playTime, resp);
+	        return resp;
 	    }
 
 

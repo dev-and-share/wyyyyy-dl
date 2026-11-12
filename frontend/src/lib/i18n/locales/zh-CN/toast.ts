@@ -13,4 +13,6 @@ export default {
   'toast.like.removed': '已取消红心',
   'toast.like.added': '已收藏 {name}',
   'toast.like.failed': '收藏状态更新失败',
+  'toast.scrobble.success': '☁️ 网易云听歌打卡成功：《{name}》',
+  'toast.scrobble.failed': '☁️ 网易云听歌打卡失败',
 } as const;

@@ -741,15 +741,12 @@ public class AnalysisService {
      * @return 是否打卡成功
      */
     public boolean scrobbleTrack(Long songId, Long sourceId, Integer time) {
-        if (!checkReady()) {
-            log.warn("⚠️ [Scrobble] 未配置有效 Cookie，跳过网易云听歌打卡");
-            return false;
-        }
         if (songId == null || songId <= 0) {
             log.warn("⚠️ [Scrobble] songId 无效或非网易云曲目，跳过打卡: songId={}", songId);
             return false;
         }
         try {
+            checkReady();
             String respStr = neteaseAPIService.scrobbleTrack(songId, sourceId, time);
             JSONObject json = JSON.parseObject(respStr);
             boolean success = json != null && json.getIntValue("code") == 200;
@@ -758,7 +755,7 @@ public class AnalysisService {
             }
             return success;
         } catch (Exception e) {
-            log.error("❌ [Scrobble] 听歌打卡异常: songId={}, sourceId={}, time={}", songId, sourceId, time, e);
+            log.warn("⚠️ [Scrobble] 听歌打卡未完成 (账号未就绪或接口响应异常): songId={}, error={}", songId, e.getMessage());
             return false;
         }
     }

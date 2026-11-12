@@ -16,6 +16,7 @@
   import { audioVisualizer } from '../lib/player/audioVisualizer.svelte';
   import { skin } from '../lib/skinStore.svelte';
   import { checkAndTriggerAutoArchive } from '../lib/player/autoArchive';
+  import { handleTrackEndedScrobble } from '../lib/player/scrobble';
 
   import PlayerBar from './PlayerBar.svelte';
   import PlayerOverlays from './PlayerOverlays.svelte';
@@ -466,11 +467,10 @@
       console.warn('[Player] Audio stream interrupted prematurely, attempting reconnect');
       try { a.load(); a.play().catch(() => {}); return; } catch {}
     }
+    handleTrackEndedScrobble(playerStore.activeTrack, a.duration, playerStore.playlistId);
     if (playerStore.playMode === 'single') {
       playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} audioEl.play().catch(() => {}); }
-    } else {
-      next();
-    }
+    } else { next(); }
   }
 </script>
 

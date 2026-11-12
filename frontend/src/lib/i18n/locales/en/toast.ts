@@ -13,4 +13,6 @@ export default {
   'toast.like.removed': 'Removed from favorites',
   'toast.like.added': 'Added "{name}" to favorites',
   'toast.like.failed': 'Failed to update favorite status',
+  'toast.scrobble.success': '☁️ Scrobbled to NetEase: "{name}"',
+  'toast.scrobble.failed': '☁️ Failed to scrobble to NetEase',
 } as const;

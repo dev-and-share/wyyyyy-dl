@@ -330,4 +330,31 @@ public class AnalysisControllerTest {
 
         Mockito.verify(storageService, Mockito.atLeastOnce()).serveMedia(eq("陈楚生/陈楚生 - 有没有人告诉你.mp3"), any(), any());
     }
+
+    @Test
+    @DisplayName("测试 /v3/scrobble: 成功提交网易云听歌打卡")
+    public void testScrobbleEndpointSuccess() throws Exception {
+        Mockito.when(analysisService.scrobbleTrack(eq(1393659632L), eq(200L), eq(180))).thenReturn(true);
+
+        mockMvc.perform(post("/v3/scrobble")
+                .param("songId", "1393659632")
+                .param("sourceId", "200")
+                .param("time", "180"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data").value(true));
+    }
+
+    @Test
+    @DisplayName("测试 /v3/scrobble: 非网易云曲目 (songId 缺失或为负数) 绝不调用服务并安全返回 false")
+    public void testScrobbleEndpointNonNeteaseTrack() throws Exception {
+        mockMvc.perform(post("/v3/scrobble")
+                .param("songId", "0")
+                .param("time", "180"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data").value(false));
+
+        Mockito.verify(analysisService, Mockito.never()).scrobbleTrack(any(), any(), any());
+    }
 }

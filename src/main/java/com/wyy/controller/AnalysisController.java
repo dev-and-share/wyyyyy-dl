@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.wyy.enums.CommonRespInfo;
@@ -109,6 +110,48 @@ public class AnalysisController {
             downloadHistoryDAO.markLocalStatusBatch(tracks);
         }
         return RespEntity.apply(CommonRespInfo.SUCCESS, tracks);
+    }
+
+    /**
+     * 听歌打卡 (客户端自然播放结束时向网易云官方同步播放记录)
+     * 仅允许网易云官方曲目 (songId > 0)
+     */
+    @RequestMapping(value = "/scrobble", method = {RequestMethod.POST, RequestMethod.GET})
+    public RespEntity<?> scrobble(
+            @RequestParam(required = false) Long songId,
+            @RequestParam(required = false) Long sourceId,
+            @RequestParam(required = false) Integer time,
+            @RequestBody(required = false) Map<String, Object> body) {
+        Long finalSongId = songId;
+        Long finalSourceId = sourceId;
+        Integer finalTime = time;
+
+        if (finalSongId == null && body != null) {
+            if (body.get("songId") != null) {
+                try {
+                    finalSongId = Long.valueOf(String.valueOf(body.get("songId")));
+                } catch (Exception ignored) {}
+            }
+            if (finalSourceId == null && body.get("sourceId") != null) {
+                try {
+                    finalSourceId = Long.valueOf(String.valueOf(body.get("sourceId")));
+                } catch (Exception ignored) {}
+            }
+            if (finalTime == null && body.get("time") != null) {
+                try {
+                    finalTime = Integer.valueOf(String.valueOf(body.get("time")));
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // 🛡️ 严格安全防线：非正整型或非网易云曲目，绝不调用官方接口
+        if (finalSongId == null || finalSongId <= 0) {
+            log.debug("🛡️ [Scrobble] 跳过非网易云曲目打卡: songId={}", finalSongId);
+            return RespEntity.apply(CommonRespInfo.SUCCESS, false);
+        }
+
+        boolean success = analysisService.scrobbleTrack(finalSongId, finalSourceId, finalTime);
+        return RespEntity.apply(CommonRespInfo.SUCCESS, success);
     }
     
     /**

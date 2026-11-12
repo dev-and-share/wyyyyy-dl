@@ -3,6 +3,7 @@
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
   import { authStore } from '../../lib/authStore.svelte';
+  import { isScrobbleEnabled, setScrobbleEnabled } from '../../lib/player/scrobble';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -13,6 +14,17 @@
   let showCookieInput = $state(false);
   let cookieText = $state('');
   let isSavingCookie = $state(false);
+  let scrobbleEnabled = $state(isScrobbleEnabled());
+
+  function toggleScrobble() {
+    scrobbleEnabled = !scrobbleEnabled;
+    setScrobbleEnabled(scrobbleEnabled);
+    showToast(
+      scrobbleEnabled ? t('settings.scrobbleEnabledToast') : t('settings.scrobbleDisabledToast'),
+      'info',
+      2000
+    );
+  }
 
   export async function checkLogin() {
     isCheckingLogin = true;
@@ -137,5 +149,30 @@
         </div>
       </div>
     {/if}
+
+    <!-- 🎧 网易云听歌打卡 (Scrobble) 开关 -->
+    <div class="pt-3 border-t border-[var(--border-color)] flex items-center justify-between gap-3">
+      <div class="flex flex-col gap-0.5 min-w-0">
+        <span class="font-semibold text-xs text-[var(--text-main)] flex items-center gap-1">
+          <span>🎧</span>
+          <span>{t('settings.scrobbleLabel')}</span>
+        </span>
+        <span class="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          {t('settings.scrobbleDesc')}
+        </span>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={scrobbleEnabled}
+        aria-label={t('settings.scrobbleLabel')}
+        class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {scrobbleEnabled ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
+        onclick={toggleScrobble}
+      >
+        <span
+          class="block w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform duration-200 {scrobbleEnabled ? 'translate-x-5.5' : 'translate-x-0'}"
+        ></span>
+      </button>
+    </div>
   </div>
 </section>

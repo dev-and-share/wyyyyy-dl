@@ -45,6 +45,8 @@ export const api = {
   search: (keywords: string, type: string, limit: string) => postForm('/v3/search', { keywords, type, limit }),
   myPlaylist: () => postForm('/v3/my_playlists', {}),
   recommendSongs: () => get('/v3/recommend/songs'),
+  scrobble: (songId: string | number, sourceId?: string | number | null, time?: number) =>
+    postJson('/v3/scrobble', { songId: Number(songId), sourceId: sourceId ? Number(sourceId) : undefined, time: time ? Number(time) : undefined }),
 
   // ❤️ 红心与歌单操作
   likeList: () => get('/v3/like/list'),
