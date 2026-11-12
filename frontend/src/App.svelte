@@ -10,7 +10,7 @@
   import { taskState, startTaskPolling, initDownloadedSet, getActiveDownloadingCount } from './lib/taskStore.svelte';
   import { fetchGeoProxyConfig } from './lib/geoProxyStore.svelte';
   import { sheetState, globalUiState, openSettings, closeSettings, toggleTheme, setThemeMode } from './lib/ui.svelte';
-  import { executeReveal } from './lib/revealHelper';
+  import { executeReveal, type RevealResult } from './lib/revealHelper';
   import { playPlaylistTracks } from './lib/playerHelper';
   import { playerStore, type SetQueueOptions } from './lib/playerStore.svelte';
   import type { Track } from './lib/types';
@@ -44,7 +44,7 @@
   // ---------- 全局状态 ----------
   let repeat = $state(false);
   let themeMode = $derived(globalUiState.themeMode);
-  let revealData: { path: string; msg: string } | null = $state(null);
+  let revealData: RevealResult | null = $state(null);
   let viewingSongId: string | null = $state(null);
   let showSettings = $derived(globalUiState.showSettings);
   let showPlayerPeq = $state(false);
@@ -370,7 +370,16 @@
 
 <!-- 📂 文件定位弹窗 -->
 {#if revealData}
-  <RevealModal path={revealData.path} msg={revealData.msg} onClose={() => revealData = null} {showToast} />
+  <RevealModal
+    path={revealData.path}
+    msg={revealData.msg}
+    songId={revealData.songId}
+    songName={revealData.songName}
+    isServer={revealData.isServer}
+    isPhone={revealData.isPhone}
+    onClose={() => revealData = null}
+    {showToast}
+  />
 {/if}
 
 <!-- 🎧 单曲详情与音质弹窗 -->

@@ -90,7 +90,7 @@
   let isLongPress = false;
 
   function doReveal(e?: Event) {
-    if (!status.isServer) return;
+    if (!status.isServer && !status.isPhone) return;
     if (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -103,13 +103,17 @@
           id: item.id ?? item.songId ?? id ?? curTrack?.id,
           name: item.name || item.songName || effectiveName,
           artist: item.artist || item.ar_name || effectiveArtist,
-          path: (item.path && !item.path.startsWith('/v3/stream') && !item.path.startsWith('http')) ? item.path : cleanPath
+          path: (item.path && !item.path.startsWith('/v3/stream') && !item.path.startsWith('http')) ? item.path : cleanPath,
+          isServer: Boolean(status.isServer),
+          isPhone: Boolean(status.isPhone)
         }
       : {
           id: id ?? curTrack?.id,
           name: effectiveName,
           artist: effectiveArtist,
-          path: cleanPath
+          path: cleanPath,
+          isServer: Boolean(status.isServer),
+          isPhone: Boolean(status.isPhone)
         };
     showToast(t('toast.locatingFile'), 'info', 1200);
     if (onReveal) {
@@ -121,13 +125,13 @@
   }
 
   function handleClick(e: MouseEvent) {
-    if (variant === 'tile' && status.isServer) {
+    if (variant === 'tile' && (status.isServer || status.isPhone)) {
       doReveal(e);
     }
   }
 
   function handleTouchStart(e: TouchEvent) {
-    if (!status.isServer) return;
+    if (!status.isServer && !status.isPhone) return;
     if (e.touches.length !== 1) return;
     isLongPress = false;
     startX = e.touches[0].clientX;
@@ -164,12 +168,12 @@
   }
 
   function handleDblClick(e: MouseEvent) {
-    if (!status.isServer) return;
+    if (!status.isServer && !status.isPhone) return;
     doReveal(e);
   }
 
   function handleContextMenu(e: MouseEvent) {
-    if (status.isServer) {
+    if (status.isServer || status.isPhone) {
       // 避免长按时弹出移动端浏览器默认的菜单
       e.preventDefault();
       e.stopPropagation();
@@ -214,9 +218,19 @@
       <span class="text-lg leading-none filter drop-shadow-sm">🖥️</span>
     </div>
   {:else if status.isPhone}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
-      class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-purple-500/15 dark:bg-purple-500/20 border border-purple-500/30 text-purple-400 shadow-sm select-none {customClass}"
+      role="button"
+      tabindex="0"
+      class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-purple-500/15 dark:bg-purple-500/20 border border-purple-500/30 text-purple-400 shadow-sm cursor-pointer select-none active:scale-92 transition-all {customClass}"
       title={t('track.badgePhone')}
+      onclick={handleClick}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
     >
       <span class="text-lg leading-none filter drop-shadow-sm">📲</span>
     </div>
@@ -260,9 +274,20 @@
       🖥️
     </span>
   {:else if status.isPhone}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <span
-      class="audio-source-badge icon-only badge-browser {customClass}"
+      role="button"
+      tabindex="0"
+      class="audio-source-badge icon-only badge-browser cursor-pointer select-none active:scale-90 transition-transform {customClass}"
       title={t('track.badgePhone')}
+      onclick={doReveal}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
     >
       📲
     </span>

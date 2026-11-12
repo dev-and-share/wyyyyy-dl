@@ -309,3 +309,56 @@ export async function clearAllImageCache(): Promise<void> {
   }
 }
 
+/**
+ * 查询指定歌曲在浏览器离线缓存中的状态与大小
+ */
+export async function getTrackBrowserCacheInfo(songId: string | number | null | undefined): Promise<{ isCached: boolean; size: number }> {
+  if (!songId || typeof window === 'undefined') {
+    return { isCached: false, size: 0 };
+  }
+  const idStr = String(songId).trim();
+  if (!idStr) return { isCached: false, size: 0 };
+
+  try {
+    const metaMap = readCachedTrackMeta();
+    let foundSize = 0;
+    let cached = false;
+
+    for (const key of Object.keys(metaMap)) {
+      const item = metaMap[key];
+      if (String(item?.id) === idStr || key.includes(`id=${idStr}`)) {
+        cached = true;
+        if (item.fileSize) {
+          foundSize = Number(item.fileSize);
+          break;
+        }
+      }
+    }
+
+    if (!cached && 'caches' in window) {
+      for (const cacheName of await caches.keys()) {
+        if (cacheName === 'netease-music-image-v1' || cacheName.startsWith('wyy-')) continue;
+        const cache = await caches.open(cacheName);
+        const match = await cache.match(`/v3/stream?id=${idStr}`);
+        if (match) {
+          cached = true;
+          const cl = match.headers.get('content-length');
+          if (cl) {
+            foundSize = Number(cl);
+          } else {
+            const blob = await match.clone().blob();
+            foundSize = blob.size;
+          }
+          break;
+        }
+      }
+    }
+
+    return { isCached: cached, size: foundSize };
+  } catch (err) {
+    console.warn('[PWA] Failed to get track cache info:', err);
+    return { isCached: false, size: 0 };
+  }
+}
+
+
