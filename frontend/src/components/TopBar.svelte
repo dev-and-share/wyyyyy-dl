@@ -2,6 +2,7 @@
   import { t } from '../lib/i18n/index.svelte';
   import { scrollToPageTop, type ActiveTab } from '../lib/router.svelte';
   import { globalUiState } from '../lib/ui.svelte';
+  import { layoutState } from '../lib/layout.svelte';
   import WyyLogo from './WyyLogo.svelte';
 
   let {
@@ -29,9 +30,9 @@
 
 <!-- 顶栏 (TopBar) -->
 {#if !isDesktopLayout}
-  <!-- 📱 移动端 / 窄屏：标准顶栏 (撑满两端对齐，全面适配 PWA WCO 顶栏拖拽与安全区，解决 SP 顶部空白) -->
+  <!-- 📱 移动端 / 窄屏：标准顶栏 (在 WCO 沉浸窗口模式下铺满通栏并同色融合，普通模式下保持精致卡片) -->
   <div
-    class="mobile-top-bar w-full max-w-[900px] mx-auto mb-1 md:mb-4 px-3.5 py-2 md:px-4 md:py-2 bg-[var(--topbar-bg)] backdrop-blur-md rounded-none md:rounded-[26px] shadow-sm md:shadow-md border-x-0 md:border border-t-0 md:border-t border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region"
+    class="mobile-top-bar w-full {layoutState.wco.visible ? 'max-w-none rounded-none border-x-0 border-t-0 mb-1 bg-[var(--wco-titlebar-bg,var(--bg-color))]' : 'max-w-[900px] mx-auto mb-1 md:mb-4 rounded-none md:rounded-[26px] md:border border-x-0 border-t-0 md:border-t bg-[var(--topbar-bg)] shadow-sm md:shadow-md'} px-3.5 py-2 md:px-4 md:py-2 backdrop-blur-md border-b border-[var(--topbar-border)] flex items-center justify-between gap-2 transition-all duration-300 wco-drag-region"
     style="
       padding-top: max(8px, calc(env(safe-area-inset-top, 0px) + 8px));
       padding-left: max(14px, var(--wco-left, env(titlebar-area-x, 0px)), env(safe-area-inset-left, 0px));

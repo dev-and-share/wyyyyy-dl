@@ -42,8 +42,17 @@ public class MusicDownloadController {
 	}
 	
 	@GetMapping("/single")
-	public RespEntity<DownloadTaskStatus> downloadSingle(@RequestParam(value = "id") Long id) {
-		musicService.downloadSingleSongV2(id);
+	public RespEntity<DownloadTaskStatus> downloadSingle(
+			@RequestParam(value = "id") Long id,
+			@RequestParam(value = "force", required = false, defaultValue = "false") Boolean force) {
+		musicService.downloadSingleSongV2(id, Boolean.TRUE.equals(force));
+		DownloadTaskStatus task = musicService.getDownloadTask(id);
+		return RespEntity.apply(CommonRespInfo.SUCCESS, task);
+	}
+
+	@PostMapping("/force")
+	public RespEntity<DownloadTaskStatus> forceDownloadSingle(@RequestParam(value = "id") Long id) {
+		musicService.downloadSingleSongV2(id, true);
 		DownloadTaskStatus task = musicService.getDownloadTask(id);
 		return RespEntity.apply(CommonRespInfo.SUCCESS, task);
 	}

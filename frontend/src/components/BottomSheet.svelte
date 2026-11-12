@@ -1,5 +1,13 @@
 <script lang="ts">
   import { sheetState, closeSheet, type SheetActionStyle } from '../lib/ui.svelte';
+  import { pushModalBackdrop } from '../lib/skinStore.svelte';
+
+  $effect(() => {
+    if (sheetState.data) {
+      const release = pushModalBackdrop();
+      return () => release();
+    }
+  });
 
   // Style map for action buttons
   const styleClass: Record<SheetActionStyle, string> = {

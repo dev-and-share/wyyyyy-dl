@@ -106,7 +106,7 @@
       const track = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
       if (!track) return;
 
-      const isTrial = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true;
+      const isTrial = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true && !track.allowTrial;
       if (isTrial || track.unplayable === true) {
         const reason = isTrial ? t('player.isTrialClip') : (track.unplayableReason || t('player.regionOrCopyrightRestricted'));
         const hasNext = advanceToNextTrack(track, reason, isTrial);
@@ -143,7 +143,7 @@
         const url = await resolveTrackUrl(track);
         if (currentSession !== playSessionId) return;
 
-        const isTrialAfterResolve = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true;
+        const isTrialAfterResolve = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true && !track.allowTrial;
         if (isTrialAfterResolve || !url || track.unplayable) {
           track.unplayable = true;
           playerStore.loading = false;
@@ -238,7 +238,7 @@
     if (playerStore.queue.length === 0) return;
     resetTrackPlayback();
     const nextIdx = playerStore.getNextTrackIndex();
-    if ((nextIdx < 0 || nextIdx === playerStore.qIndex) && playerStore.autoSkipTrial && !playerStore.activeTrack?.isLocal && (playerStore.activeTrack as any)?.freeTrial === true) {
+    if ((nextIdx < 0 || nextIdx === playerStore.qIndex) && playerStore.autoSkipTrial && !playerStore.activeTrack?.isLocal && (playerStore.activeTrack as any)?.freeTrial === true && !(playerStore.activeTrack as any)?.allowTrial) {
       playerStore.playing = false; if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} }
       showToast(t('player.noMoreCompleteTracksToPlay'), 'info', 2000); return;
     }

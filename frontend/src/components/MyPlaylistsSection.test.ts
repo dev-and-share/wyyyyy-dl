@@ -41,7 +41,7 @@ describe('MyPlaylistsSection (SP) Tab Ordering Contracts', () => {
     });
 
     // 1. Check tab button order in DOM: All -> Created -> Subscribed -> Local
-    const tabContainer = container.querySelector('.flex.gap-1\\.5.items-center.flex-wrap');
+    const tabContainer = container.querySelector('[data-testid="my-playlists-filter-tabs"]') || container.querySelector('.flex.items-center button')?.parentElement;
     expect(tabContainer).not.toBeNull();
     const buttons = tabContainer?.querySelectorAll('button') || [];
     expect(buttons.length).toBe(4);

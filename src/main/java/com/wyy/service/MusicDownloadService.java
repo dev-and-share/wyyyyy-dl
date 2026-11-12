@@ -139,7 +139,11 @@ public class MusicDownloadService implements InitializingBean {
 	private com.wyy.service.storage.IStorageService storageService;
 
 	public void downloadSingleSongV2(Long id) {
-		doDownloadSingleSongV2(id, this.path, "未知歌曲");
+		downloadSingleSongV2(id, false);
+	}
+
+	public void downloadSingleSongV2(Long id, boolean force) {
+		doDownloadSingleSongV2(id, this.path, "未知歌曲", force);
 	}
 
 	/**
@@ -169,13 +173,20 @@ public class MusicDownloadService implements InitializingBean {
 	}
 
 	public void doDownloadSingleSongV2(Long id, String path, String trackName) {
+		doDownloadSingleSongV2(id, path, trackName, false);
+	}
+
+	public void doDownloadSingleSongV2(Long id, String path, String trackName, boolean force) {
 		DownloadTaskStatus taskStatus = downloadTasks.get(id);
 		if (taskStatus == null) {
 			taskStatus = new DownloadTaskStatus(id, trackName, "PENDING", null, System.currentTimeMillis(), null);
 			downloadTasks.put(id, taskStatus);
+		} else {
+			taskStatus.setStatus("PENDING");
+			taskStatus.setErrorMsg(null);
 		}
 
-		if (!repeat && downloadHistoryDAO.isSongDownloaded(id)) {
+		if (!force && !repeat && downloadHistoryDAO.isSongDownloaded(id)) {
 			log.info("歌曲id: {} 在 SQLite 已下载数据库中已存在, 跳过重复下载!", id);
 			taskStatus.setStatus("SKIP");
 			taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
@@ -189,15 +200,19 @@ public class MusicDownloadService implements InitializingBean {
 				throw new RuntimeException("分析歌曲URL失败");
 			}
 
-			// 🛑 核心防污染拦截：如果标记为试听，直接拒绝落盘
+			// 🛑 核心防污染拦截：如果标记为试听，直接拒绝落盘（若人工强制落盘则放行）
 			if (Boolean.TRUE.equals(analysisSingleMusic.getFreeTrial())) {
-				log.info("歌曲 id: {} 为 VIP 试听片段，已阻止落盘入库", id);
-				if (analysisSingleMusic.getName() != null) {
-					taskStatus.setName(analysisSingleMusic.getName());
+				if (!force) {
+					log.info("歌曲 id: {} 为 VIP 试听片段，已阻止落盘入库", id);
+					if (analysisSingleMusic.getName() != null) {
+						taskStatus.setName(analysisSingleMusic.getName());
+					}
+					taskStatus.setStatus("SKIP");
+					taskStatus.setErrorMsg("此曲为 VIP 试听片段(无法获取完整版音频)，已自动阻止落盘入库");
+					return;
+				} else {
+					log.info("歌曲 id: {} 为 VIP 试听片段，用户人工确认允许强制落盘入库", id);
 				}
-				taskStatus.setStatus("SKIP");
-				taskStatus.setErrorMsg("此曲为 VIP 试听片段(无法获取完整版音频)，已自动阻止落盘入库");
-				return;
 			}
 
 			taskStatus.setName(analysisSingleMusic.getName());
@@ -222,9 +237,13 @@ public class MusicDownloadService implements InitializingBean {
 			FileUtils.writeToFile(file.toPath(),
 					HttpClientUtil.getInputStream(analysisSingleMusic.getUrl(), null));
 
-			// 🛑 核心防污染拦截：如果音频文件缺失、大小为0、或小于 1.25MB (1,250,000 字节) 试听片段，统一拒绝落盘入库并清理残留
-			if (!file.exists() || file.length() < 1250000) {
-				long sz = file.exists() ? file.length() : 0L;
+			// 🛑 核心防污染拦截：如果音频文件缺失、大小为0、或在非强制模式下小于 1.25MB (1,250,000 字节) 试听片段，统一拒绝落盘入库并清理残留
+			long sz = file.exists() ? file.length() : 0L;
+			if (!file.exists() || sz == 0) {
+				try { if (file.exists()) file.delete(); } catch (Exception ignored) {}
+				throw new RuntimeException("音频文件下载失败或内容为空(0字节)");
+			}
+			if (!force && sz < 1250000) {
 				log.warn("检测到歌曲: {} 音频缺失或属于 30s VIP 试听片段 (大小: {} 字节)，自动擦除并拒绝入库!", fileName, sz);
 				try { if (file.exists()) file.delete(); } catch (Exception ignored) {}
 				File residualLrc = Paths.get(dir, fileName + ".lrc").toFile();
@@ -416,6 +435,7 @@ public class MusicDownloadService implements InitializingBean {
 		private String lyric;
 		private String cover;
 		private String source; // 🌟 音源来源: "musicfree" 或特定插件标识
+		private Boolean force; // 🌟 是否人工允许强制落盘
 	}
 
 	public DownloadTaskStatus downloadCustomSong(CustomDownloadRequest request) {
@@ -448,7 +468,7 @@ public class MusicDownloadService implements InitializingBean {
 			downloadTasks.put(syntheticId, taskStatus);
 		}
 
-		if (!repeat && downloadHistoryDAO.isSongDownloaded(syntheticId)) {
+		if (!Boolean.TRUE.equals(request.getForce()) && !repeat && downloadHistoryDAO.isSongDownloaded(syntheticId)) {
 			taskStatus.setStatus("SKIP");
 			taskStatus.setErrorMsg("该歌曲已存在于本地磁盘中，跳过重复下载");
 			return taskStatus;
@@ -478,9 +498,15 @@ public class MusicDownloadService implements InitializingBean {
 
 				FileUtils.writeToFile(file.toPath(), in);
 
-				// 🛑 核心防污染拦截：如果音频文件缺失、大小为0、或小于 1.25MB (1,250,000 字节) 试听片段，统一拒绝落盘入库并清理残留
-				if (!file.exists() || file.length() < 1250000) {
-					long sz = file.exists() ? file.length() : 0L;
+				// 🛑 核心防污染拦截：如果音频文件缺失、大小为0、或在非强制模式下小于 1.25MB (1,250,000 字节) 试听片段，统一拒绝落盘入库并清理残留
+				long sz = file.exists() ? file.length() : 0L;
+				if (!file.exists() || sz == 0) {
+					try { if (file.exists()) file.delete(); } catch (Exception ignored) {}
+					finalTaskStatus.setStatus("FAILED");
+					finalTaskStatus.setErrorMsg("音频流为空或下载失败");
+					return;
+				}
+				if (!Boolean.TRUE.equals(request.getForce()) && sz < 1250000) {
 					log.warn("检测到外部歌曲: {} 音频缺失或属于 30s VIP 试听片段 (大小: {} 字节)，自动擦除并拒绝入库!", fileName, sz);
 					try { if (file.exists()) file.delete(); } catch (Exception ignored) {}
 					File residualLrc = Paths.get(dir, fileName + ".lrc").toFile();

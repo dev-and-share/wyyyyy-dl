@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { skin, SkinStore, setImmersiveThemeColor, getIsImmersiveActive } from './skinStore.svelte';
+import { skin, SkinStore, setImmersiveThemeColor, getIsImmersiveActive, pushModalBackdrop, getModalBackdropCount } from './skinStore.svelte';
 import { DEFAULT_PALETTE } from '../components/skins/skinTypes';
 import * as colorExt from './colorExtractor';
 
@@ -76,6 +76,43 @@ describe('skinStore', () => {
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#faf5ff');
     skin.set('sakura');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fff0f5');
+    document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('supports modal backdrop synchronization to prevent topbar light gaps', () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('autumn');
+    // 秋季浅色底色为 #fffdf0
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
+    expect(getModalBackdropCount()).toBe(0);
+
+    // 1. 打开第一个 Modal
+    const release1 = pushModalBackdrop();
+    expect(getModalBackdropCount()).toBe(1);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#121212');
+
+    // 2. 嵌套打开第二个 Modal / 菜单
+    const release2 = pushModalBackdrop();
+    expect(getModalBackdropCount()).toBe(2);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
+
+    // 3. 关闭第二个 Modal，仍处于遮罩暗化中
+    release2();
+    expect(getModalBackdropCount()).toBe(1);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
+
+    // 4. 关闭最后一个 Modal，自动恢复秋季浅色底色
+    release1();
+    expect(getModalBackdropCount()).toBe(0);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
+
+    // 5. 多次调用 release 不会下溢
+    release1();
+    expect(getModalBackdropCount()).toBe(0);
+
     document.documentElement.removeAttribute('data-theme');
   });
 

@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { skin } from '../lib/skinStore.svelte';
+  import { onMount } from 'svelte';
+  import { skin, pushModalBackdrop } from '../lib/skinStore.svelte';
+
+  onMount(() => {
+    const release = pushModalBackdrop();
+    return () => release();
+  });
   import { SKIN_LIST, type SkinId } from './skins/skinTypes';
   import PlayerIcon from './PlayerIcon.svelte';
   import { t } from '../lib/i18n/index.svelte';

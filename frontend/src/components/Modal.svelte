@@ -1,6 +1,12 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import { t } from '../lib/i18n/index.svelte';
+  import { pushModalBackdrop } from '../lib/skinStore.svelte';
+
+  onMount(() => {
+    const release = pushModalBackdrop();
+    return () => release();
+  });
 
   let {
     title = '',

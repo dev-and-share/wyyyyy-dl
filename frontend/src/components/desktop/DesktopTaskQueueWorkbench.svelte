@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { api } from '../../lib/api';
   import { taskState, fetchTasks, clearTasks, getActiveDownloadingCount, startTaskPolling } from '../../lib/taskStore.svelte';
+  import { playerStore } from '../../lib/playerStore.svelte';
+  import type { Track } from '../../lib/types';
   import TaskStatusBadge from '../TaskStatusBadge.svelte';
   import LocalSearchBox from '../LocalSearchBox.svelte';
   import { t } from '../../lib/i18n';
@@ -23,12 +25,15 @@
   let clearing = $state(false);
   let retryingAll = $state(false);
   let retryingIds = $state<Set<string>>(new Set());
+  let forcingIds = $state<Set<string>>(new Set());
 
   // 统计指标
   let activeCount = $derived(getActiveDownloadingCount());
   let totalCount = $derived(taskState.tasks.length);
   let successCount = $derived(taskState.tasks.filter((t: any) => t.status === 'SUCCESS').length);
-  let failedCount = $derived(taskState.tasks.filter((t: any) => t.status === 'FAILED' || t.status === 'ERROR').length);
+  let failedCount = $derived(
+    taskState.tasks.filter((t: any) => t.status === 'FAILED' || t.status === 'ERROR' || (t.status === 'SKIP' && t.errorMsg?.includes('阻止落盘'))).length
+  );
 
   // 过滤后的任务列表
   let filteredTasks = $derived.by(() => {
@@ -39,7 +44,7 @@
     } else if (statusFilter === 'success') {
       list = list.filter((item: any) => item.status === 'SUCCESS');
     } else if (statusFilter === 'failed') {
-      list = list.filter((item: any) => item.status === 'FAILED' || item.status === 'ERROR');
+      list = list.filter((item: any) => item.status === 'FAILED' || item.status === 'ERROR' || (item.status === 'SKIP' && item.errorMsg?.includes('阻止落盘')));
     }
 
     const kw = searchKw.trim();
@@ -108,6 +113,70 @@
       const cleanup = new Set(retryingIds);
       cleanup.delete(songId);
       retryingIds = cleanup;
+    }
+  }
+
+  function isTrackPlaying(item: any): boolean {
+    const songId = String(item.id || item.songId || '');
+    return Boolean(
+      playerStore.playing &&
+      playerStore.activeTrack &&
+      String(playerStore.activeTrack.id) === songId
+    );
+  }
+
+  function handlePreviewSingle(item: any) {
+    const songId = String(item.id || item.songId || '');
+    if (!songId) return;
+    const songTitle = item.name || item.songName || item.title || `Task #${songId}`;
+
+    if (isTrackPlaying(item)) {
+      playerStore.togglePlay();
+      return;
+    }
+
+    const previewTrack: Track = {
+      id: songId,
+      name: songTitle,
+      artist: item.artist || '',
+      isLocal: false,
+      allowTrial: true
+    };
+
+    playerStore.setQueue([previewTrack], 0);
+    showToast(t('download.previewStarted', { name: songTitle }), 'info', 1800);
+  }
+
+  async function handleForceDownloadSingle(item: any) {
+    const songId = String(item.id || item.songId || '');
+    if (!songId || forcingIds.has(songId)) return;
+
+    const next = new Set(forcingIds);
+    next.add(songId);
+    forcingIds = next;
+
+    const songTitle = item.name || item.songName || item.title || songId;
+
+    // 🚀 乐观更新：立刻在界面上置为排队状态 PENDING
+    taskState.tasks = taskState.tasks.map((t: any) => {
+      if (String(t.id || t.songId || '') === songId) {
+        return { ...t, status: 'PENDING', errorMsg: null };
+      }
+      return t;
+    });
+
+    try {
+      await api.downloadSingle(songId, true);
+      showToast(t('download.forceDownloadSubmitted', { name: songTitle }), 'info');
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
+      startTaskPolling();
+      await fetchTasks();
+    } catch (err: any) {
+      showToast(err?.message || 'Force download failed', 'error');
+    } finally {
+      const cleanup = new Set(forcingIds);
+      cleanup.delete(songId);
+      forcingIds = cleanup;
     }
   }
 
@@ -269,7 +338,7 @@
           <th class="py-3 px-3 font-semibold">{t('search.tableTitle')}</th>
           <th class="py-3 px-3 font-semibold w-36">{t('common.status')}</th>
           <th class="py-3 px-3 font-semibold hidden md:table-cell">{t('download.filePath')} / {t('common.remark')}</th>
-          <th class="py-3 pr-4 text-right font-semibold w-28">{t('search.tableActions')}</th>
+          <th class="py-3 pr-4 text-right font-semibold min-w-[210px]">{t('search.tableActions')}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-[var(--border-subtle)]">
@@ -298,7 +367,7 @@
           {#each filteredTasks as item, i (item.id || item.songId || i)}
             {@const songTitle = item.name || item.songName || item.title || `Task #${item.id || i + 1}`}
             {@const isSuccess = item.status === 'SUCCESS'}
-            {@const isFailed = item.status === 'FAILED' || item.status === 'ERROR'}
+            {@const isFailed = item.status === 'FAILED' || item.status === 'ERROR' || (item.status === 'SKIP' && item.errorMsg?.includes('阻止落盘'))}
             {@const isActive = ACTIVE_STATUSES.has(item.status)}
             {@const formattedError = item.errorMsg === '分析歌曲URL失败' ? '分析歌曲URL失败 (因版权保护或需VIP会员)' : item.errorMsg}
             <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isActive ? 'bg-amber-500/5' : ''} {isFailed ? 'bg-rose-500/[0.03]' : ''}">
@@ -340,17 +409,45 @@
                     {t('common.reveal')}
                   </button>
                 {:else if isFailed}
-                  <button
-                    type="button"
-                    data-testid="btn-retry-task"
-                    class="px-2.5 py-1 text-[11px] rounded-lg bg-rose-500/15 hover:bg-rose-500/25 active:scale-95 text-rose-500 dark:text-rose-400 border border-rose-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
-                    disabled={retryingIds.has(String(item.id || item.songId))}
-                    onclick={() => handleRetrySingle(item)}
-                    title={t('common.retry')}
-                  >
-                    <span class={retryingIds.has(String(item.id || item.songId)) ? 'animate-spin inline-block' : ''}>🔄</span>
-                    <span>{t('common.retry')}</span>
-                  </button>
+                  <div class="inline-flex items-center justify-end gap-1.5">
+                    <!-- 🎧 试听按钮 -->
+                    <button
+                      type="button"
+                      data-testid="btn-preview-task"
+                      class="px-2 py-1 text-[11px] rounded-lg font-semibold cursor-pointer transition-all inline-flex items-center gap-1 active:scale-95 {isTrackPlaying(item) ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/40' : 'bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-main)] border border-[var(--btn-secondary-border)]'}"
+                      onclick={() => handlePreviewSingle(item)}
+                      title={t('common.audition')}
+                    >
+                      <span>{isTrackPlaying(item) ? '⏸️' : '🎧'}</span>
+                      <span>{isTrackPlaying(item) ? t('common.auditioning') : t('common.audition')}</span>
+                    </button>
+
+                    <!-- 💾 强制落盘按钮 -->
+                    <button
+                      type="button"
+                      data-testid="btn-force-download-task"
+                      class="px-2 py-1 text-[11px] rounded-lg bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
+                      disabled={forcingIds.has(String(item.id || item.songId))}
+                      onclick={() => handleForceDownloadSingle(item)}
+                      title={t('download.forceDownloadTooltip')}
+                    >
+                      <span class={forcingIds.has(String(item.id || item.songId)) ? 'animate-spin inline-block' : ''}>{forcingIds.has(String(item.id || item.songId)) ? '⏳' : '💾'}</span>
+                      <span>{t('common.forceSave')}</span>
+                    </button>
+
+                    <!-- 🔄 重试按钮 -->
+                    <button
+                      type="button"
+                      data-testid="btn-retry-task"
+                      class="px-2 py-1 text-[11px] rounded-lg bg-rose-500/15 hover:bg-rose-500/25 active:scale-95 text-rose-500 dark:text-rose-400 border border-rose-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
+                      disabled={retryingIds.has(String(item.id || item.songId))}
+                      onclick={() => handleRetrySingle(item)}
+                      title={t('common.retry')}
+                    >
+                      <span class={retryingIds.has(String(item.id || item.songId)) ? 'animate-spin inline-block' : ''}>🔄</span>
+                      <span>{t('common.retry')}</span>
+                    </button>
+                  </div>
                 {:else if isActive}
                   <span class="text-[11px] text-amber-500 font-medium animate-pulse">
                     ⏳ ...

@@ -13,6 +13,7 @@
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import { getTrackSourceStatus, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { isTrackLiked } from '../lib/likeStore.svelte';
+  import { pushModalBackdrop } from '../lib/skinStore.svelte';
 
   let {
     queue = [],
@@ -180,8 +181,10 @@
 
   let cleanUpDrag: (() => void) | null = null;
   let cleanUpResize: (() => void) | null = null;
+  let releaseBackdrop: (() => void) | null = null;
 
   onMount(() => {
+    releaseBackdrop = pushModalBackdrop();
     const checkDesktop = () => {
       isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
       if (isDesktop && drawerPos.x !== null && drawerPos.y !== null) {
@@ -225,6 +228,7 @@
   });
 
   onDestroy(() => {
+    if (releaseBackdrop) releaseBackdrop();
     if (cleanUpDrag) cleanUpDrag();
     if (cleanUpResize) cleanUpResize();
     if (typeof document !== 'undefined') {

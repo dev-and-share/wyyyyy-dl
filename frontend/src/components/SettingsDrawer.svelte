@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { platform } from '../lib/platform';
   import type { ThemeMode } from '../lib/theme';
-  import { skin } from '../lib/skinStore.svelte';
+  import { skin, pushModalBackdrop } from '../lib/skinStore.svelte';
   import { SKIN_LIST } from './skins/skinTypes';
   import SettingsCacheSection from './settings/SettingsCacheSection.svelte';
   import SettingsAccountSection from './settings/SettingsAccountSection.svelte';
@@ -56,9 +56,13 @@
   }
 
   onMount(() => {
+    const releaseBackdrop = pushModalBackdrop();
     if (!hasUpdateAvailable) {
       probeForPwaUpdate().catch(() => {});
     }
+    return () => {
+      releaseBackdrop();
+    };
   });
 
   function handleClose() {
@@ -117,10 +121,10 @@
   role="dialog"
   aria-modal="true"
   aria-label={t('settings.title')}
-  class="fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-transform duration-200 ease-out flex flex-col
+  class="settings-drawer-panel fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-transform duration-200 ease-out flex flex-col
     inset-x-0 bottom-0 max-h-[88vh] rounded-t-[28px] border-t border-[var(--border-color)] backdrop-blur-2xl
     pb-[calc(16px+env(safe-area-inset-bottom,0px))]
-    lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[420px] lg:max-h-full lg:rounded-none lg:border-l lg:border-t-0 lg:pb-0"
+    lg:right-0 lg:left-auto lg:w-[420px] lg:rounded-none lg:border-l lg:border-t lg:border-[var(--border-color)] lg:pb-0"
   style="transform: {closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`};
          box-shadow: 0 -12px 40px var(--primary-glow, rgba(0, 0, 0, 0.5)), 0 -1px 0 0 var(--border-color);"
 >
@@ -360,6 +364,14 @@
 </div>
 
 <style>
+  @media (min-width: 1024px) {
+    .settings-drawer-panel {
+      top: var(--wco-height, 0px) !important;
+      height: calc(100dvh - var(--wco-height, 0px)) !important;
+      max-height: calc(100dvh - var(--wco-height, 0px)) !important;
+    }
+  }
+
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: var(--border-color, rgba(255, 255, 255, 0.15)) transparent;

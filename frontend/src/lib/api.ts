@@ -61,7 +61,8 @@ export const api = {
   // 📥 下载调度
   setRepeat: (v: boolean) => get(`/v3/download/setRepeat?repeat=${v}`),
   getRepeat: () => get('/v3/download/getRepeat'),
-  downloadSingle: (id: string) => get(`/v3/download/single?id=${encodeURIComponent(id)}`),
+  downloadSingle: (id: string, force = false) => get(`/v3/download/single?id=${encodeURIComponent(id)}${force ? '&force=true' : ''}`),
+  forceDownloadSingle: (id: string) => req(`/v3/download/force?id=${encodeURIComponent(id)}`, { method: 'POST' }),
   downloadPlaylist: (id: string) => get(`/v3/download/playlist?id=${encodeURIComponent(id)}`),
   downloadAlbum: (id: string) => get(`/v3/download/album?id=${encodeURIComponent(id)}`),
   tasks: () => get('/v3/download/tasks'),

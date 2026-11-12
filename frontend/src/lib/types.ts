@@ -23,6 +23,7 @@ export interface Track {
   }>;
   freeTrial?: boolean;
   freeTrialDuration?: number;
+  allowTrial?: boolean; // 🎧 试听模式：允许播放试听片段，不被全局自动跳过拦截
   unplayable?: boolean;
   unplayableReason?: string;
   isVip?: boolean;

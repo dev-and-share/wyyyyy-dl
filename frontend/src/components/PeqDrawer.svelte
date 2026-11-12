@@ -1,6 +1,13 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { INITIAL_BANDS, BUILTIN_PRESETS, type Band } from '../lib/peq';
   import { t } from '../lib/i18n/index.svelte';
+  import { pushModalBackdrop } from '../lib/skinStore.svelte';
+
+  onMount(() => {
+    const release = pushModalBackdrop();
+    return () => release();
+  });
 
   const PEQ_STORAGE_KEY = 'wyy_peq_settings';
 

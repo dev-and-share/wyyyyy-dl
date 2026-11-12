@@ -2,6 +2,7 @@ import { render, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi } from 'vitest';
 import TopBar from './TopBar.svelte';
 import { globalUiState } from '../lib/ui.svelte';
+import { layoutState } from '../lib/layout.svelte';
 
 describe('TopBar Component', () => {
   it('renders mobile top bar when isDesktopLayout is false', () => {
@@ -101,5 +102,23 @@ describe('TopBar Component', () => {
 
     expect(getByTestId('badge-topbar-update')).toBeTruthy();
     globalUiState.hasPwaUpdate = false;
+  });
+
+  it('adopts seamless full-width background in WCO standalone mode to prevent light gaps', () => {
+    layoutState.wco.visible = true;
+    const { container } = render(TopBar, {
+      tab: 'playlist',
+      themeMode: 'light',
+      isDesktopLayout: false,
+      onSwitchTab: vi.fn(),
+      onToggleTheme: vi.fn(),
+      onOpenSettings: vi.fn()
+    });
+
+    const bar = container.querySelector('.mobile-top-bar');
+    expect(bar?.className).toContain('bg-[var(--wco-titlebar-bg,var(--bg-color))]');
+    expect(bar?.className).toContain('max-w-none');
+    expect(bar?.className).toContain('rounded-none');
+    layoutState.wco.visible = false;
   });
 });

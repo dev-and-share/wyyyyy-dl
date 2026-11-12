@@ -229,19 +229,19 @@
     <!-- 💻 桌面端独立 WCO 顶栏安全占位区 (与侧边栏对齐，避免右侧窗口控制按钮与视图头部重叠) -->
     <div class="w-full shrink-0 hidden lg:block pointer-events-none" style="height: var(--wco-height, env(titlebar-area-height, 0px));"></div>
 
-    <!-- 内容居中容器 (限制最大宽度 max-w-[1400px] 居中) -->
-    <div class="w-full max-w-[1400px] mx-auto px-0 md:px-4 pt-0 md:pt-4 pb-8 lg:pb-0 relative flex flex-col min-w-0">
-      <!-- 顶栏导航 -->
-      <TopBar
-        tab={routerState.tab} {themeMode} {repeat}
-        isDesktopLayout={layoutState.isDesktop}
-        onSwitchTab={switchTab}
-        onToggleTheme={toggleTheme}
-        onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
-        onRefresh={handleRefresh}
-        onOpenSettings={openSettings}
-      />
+    <!-- 顶栏导航 (宽屏由 DesktopTitlebarIsland 接管，窄屏在此渲染并与 WCO 顶栏无缝同色贯通) -->
+    <TopBar
+      tab={routerState.tab} {themeMode} {repeat}
+      isDesktopLayout={layoutState.isDesktop}
+      onSwitchTab={switchTab}
+      onToggleTheme={toggleTheme}
+      onToggleRepeat={() => { repeat = !repeat; api.setRepeat(repeat); }}
+      onRefresh={handleRefresh}
+      onOpenSettings={openSettings}
+    />
 
+    <!-- 内容居中容器 (限制最大宽度 max-w-[1400px] 居中) -->
+    <div class="w-full max-w-[1400px] mx-auto px-0 md:px-4 pt-0 {layoutState.wco.visible ? 'md:pt-1' : 'md:pt-3'} pb-8 lg:pb-0 relative flex flex-col min-w-0">
       <!-- 内容区 (按视口分支挂载 PC 或 SP 组件，杜绝双份 DOM 与后台隐藏哨兵死循环；已访问 Tab 保活瞬时切换) -->
       <div class="flex flex-col gap-1 md:gap-3 px-3.5 sm:px-4 md:px-0 pb-[140px] md:pb-[80px] lg:pb-4">
         <!-- 📁 歌单 Tab -->

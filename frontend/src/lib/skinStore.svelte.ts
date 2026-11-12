@@ -4,6 +4,7 @@ import { extractCoverPalette } from './colorExtractor';
 const STORAGE_KEY = 'player_skin';
 
 let isImmersiveActive = false;
+let modalBackdropCount = 0;
 
 /**
  * 设置全屏沉浸模式状态
@@ -16,6 +17,27 @@ export function setImmersiveThemeColor(active: boolean) {
 
 export function getIsImmersiveActive(): boolean {
   return isImmersiveActive;
+}
+
+/**
+ * 注册一个活动的弹窗/抽屉/操作菜单全屏遮罩引用
+ * 保证在浮层打开时，macOS WCO 左右两侧原生窗口控件底色同步暗化为遮罩深色，彻底杜绝天花板浅色漏光断层
+ * 返回清理函数（在组件销毁或关闭时执行）
+ */
+export function pushModalBackdrop(): () => void {
+  modalBackdropCount++;
+  syncMetaThemeColor();
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    modalBackdropCount = Math.max(0, modalBackdropCount - 1);
+    syncMetaThemeColor();
+  };
+}
+
+export function getModalBackdropCount(): number {
+  return modalBackdropCount;
 }
 
 function isValidSkinId(val: any): val is SkinId {
@@ -40,9 +62,11 @@ export function syncMetaThemeColor(skinId?: SkinId) {
     ? (isLight
         ? (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.light || '#064272')
         : (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.dark || '#0a0e1a'))
-    : (isLight
-        ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
-        : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a'));
+    : (modalBackdropCount > 0
+        ? '#121212'
+        : (isLight
+            ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
+            : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a')));
 
   let meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) {
