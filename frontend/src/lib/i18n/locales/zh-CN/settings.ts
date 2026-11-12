@@ -177,4 +177,20 @@ export default {
   'settings.refreshUserStatus': '刷新权限状态',
   'settings.updateNowBadge': '点击更新',
   'settings.newVersionClickToUpdate': '发现新版本 {version}，点击立即更新',
+
+  // 🌄 自定义播放器背景
+  'settings.customBgTitle': '自定义播放器背景',
+  'settings.customBgDesc': '支持上传个人照片或无声视频作为播放器沉浸背景',
+  'settings.customBgUpload': '选择照片 / 视频',
+  'settings.customBgChange': '更换背景',
+  'settings.customBgClear': '恢复默认',
+  'settings.customBgNotSet': '未设置（使用皮肤预设背景）',
+  'settings.customBgImageType': '照片背景',
+  'settings.customBgVideoType': '动态视频（已静音）',
+  'settings.customBgDim': '暗化遮罩',
+  'settings.customBgBlur': '虚化程度',
+  'settings.customBgVideoMutedHint': '🔇 视频背景将自动静音无声播放，不干扰音乐体验',
+  'settings.customBgSaved': '播放器背景已更新',
+  'settings.customBgCleared': '已恢复默认皮肤背景',
+  'settings.customBgEnableToggle': '启用自定义背景',
 } as const;

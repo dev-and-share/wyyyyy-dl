@@ -177,4 +177,20 @@ export default {
   'settings.refreshUserStatus': 'Refresh Status',
   'settings.updateNowBadge': 'Update',
   'settings.newVersionClickToUpdate': 'New version {version} available, click to update',
+
+  // 🌄 Custom Player Background
+  'settings.customBgTitle': 'Custom Player Background',
+  'settings.customBgDesc': 'Set your own photo or muted video as the player background',
+  'settings.customBgUpload': 'Choose Photo / Video',
+  'settings.customBgChange': 'Change Background',
+  'settings.customBgClear': 'Restore Default',
+  'settings.customBgNotSet': 'Not set (using skin default)',
+  'settings.customBgImageType': 'Photo Background',
+  'settings.customBgVideoType': 'Video (Muted)',
+  'settings.customBgDim': 'Dim Overlay',
+  'settings.customBgBlur': 'Blur',
+  'settings.customBgVideoMutedHint': '🔇 Video background plays muted automatically without disturbing music',
+  'settings.customBgSaved': 'Player background updated',
+  'settings.customBgCleared': 'Restored default skin background',
+  'settings.customBgEnableToggle': 'Enable Custom Background',
 } as const;

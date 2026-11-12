@@ -177,4 +177,20 @@ export default {
   'settings.refreshUserStatus': '権限状態を更新',
   'settings.updateNowBadge': '更新する',
   'settings.newVersionClickToUpdate': '新バージョン {version} が利用可能です。タップして更新',
+
+  // 🌄 カスタムプレイヤー背景
+  'settings.customBgTitle': 'カスタムプレイヤー背景',
+  'settings.customBgDesc': '写真や無音動画をプレイヤーの背景に設定できます',
+  'settings.customBgUpload': '写真・動画を選択',
+  'settings.customBgChange': '背景を変更',
+  'settings.customBgClear': 'デフォルトに戻す',
+  'settings.customBgNotSet': '未設定（スキンのデフォルト背景）',
+  'settings.customBgImageType': '写真背景',
+  'settings.customBgVideoType': '動画（自動ミュート）',
+  'settings.customBgDim': '暗さ調整',
+  'settings.customBgBlur': 'ぼかし',
+  'settings.customBgVideoMutedHint': '🔇 動画は自動的に無音（ミュート）で再生され、音楽の邪魔をしません',
+  'settings.customBgSaved': 'プレイヤーの背景を更新しました',
+  'settings.customBgCleared': 'デフォルトのスキン背景に戻しました',
+  'settings.customBgEnableToggle': 'カスタム背景を有効化',
 } as const;

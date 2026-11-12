@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { skin, pushModalBackdrop } from '../lib/skinStore.svelte';
+  import { customBgStore } from '../lib/customBgStore.svelte';
+  import { showToast } from '../lib/toast.svelte';
 
   onMount(() => {
     const release = pushModalBackdrop();
@@ -29,6 +31,28 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') handleClose();
+  }
+
+  async function handleCustomBgUpload(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      await customBgStore.setMedia(file);
+      showToast(t('settings.customBgSaved'), 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to update background', 'error');
+    } finally {
+      input.value = '';
+    }
+  }
+
+  async function handleClearCustomBg() {
+    try {
+      await customBgStore.clear();
+      showToast(t('settings.customBgCleared'), 'info');
+    } catch {}
   }
 </script>
 
@@ -213,5 +237,39 @@
         </div>
       </button>
     {/each}
+  </div>
+
+  <!-- 🌄 自定义照片 / 静音视频背景快速入口 -->
+  <div class="pt-3 border-t border-[var(--border-color)] flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <span class="text-xl shrink-0">🌄</span>
+      <div class="flex flex-col min-w-0">
+        <span class="text-xs font-bold text-[var(--text-main)] truncate">{t('settings.customBgTitle')}</span>
+        <span class="text-[11px] text-[var(--text-secondary)] truncate">
+          {#if customBgStore.enabled && customBgStore.url}
+            {customBgStore.type === 'video' ? '🎬 ' + t('settings.customBgVideoType') : '📷 ' + t('settings.customBgImageType')}
+            {#if customBgStore.name} ({customBgStore.name}){/if}
+          {:else}
+            {t('settings.customBgNotSet')}
+          {/if}
+        </span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <label class="px-3 py-1.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold cursor-pointer transition-all active:scale-95 shadow-sm inline-flex items-center gap-1">
+        <span>{customBgStore.enabled && customBgStore.url ? t('settings.customBgChange') : t('settings.customBgUpload')}</span>
+        <input type="file" accept="image/*,video/*" class="hidden" onchange={handleCustomBgUpload} />
+      </label>
+      {#if customBgStore.enabled && customBgStore.url}
+        <button
+          type="button"
+          class="px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/10 text-[var(--text-secondary)] hover:text-red-500 text-xs font-medium cursor-pointer transition-colors"
+          onclick={handleClearCustomBg}
+          title={t('settings.customBgClear')}
+        >
+          {t('settings.customBgClear')}
+        </button>
+      {/if}
+    </div>
   </div>
 </div>

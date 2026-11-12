@@ -11,6 +11,7 @@
   import { skin } from '../../lib/skinStore.svelte';
   import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
+  import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
 
   let {
@@ -64,7 +65,7 @@
 
 <div
   data-testid="player-bar-desktop"
-  class="fixed bottom-0 left-0 right-0 h-[76px] z-[9998] px-6 flex items-center transition-all duration-300 select-none {skin.current === 'winamp'
+  class="fixed bottom-0 left-0 right-0 h-[76px] z-[9998] px-6 flex items-center transition-all duration-300 select-none overflow-hidden {skin.current === 'winamp'
     ? 'bg-gradient-to-b from-[#303642] via-[#21252d] to-[#171920] border-t-2 border-l-2 border-white/20 border-b-2 border-r-2 border-black/90 shadow-2xl'
     : skin.current === 'cassette'
       ? 'bg-[#181a1f] border-t-2 border-[#2c3038] shadow-2xl'
@@ -75,7 +76,36 @@
           : 'bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[-12px_48px_rgba(0,0,0,0.45)]'}"
   style="{skin.cssVars}"
 >
-  <div class="w-full max-w-[1280px] mx-auto flex justify-between items-center gap-5">
+  {#if customBgStore.enabled && customBgStore.url}
+    <!-- 🌄 自定义背景半透明毛玻璃层 -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none" aria-hidden="true">
+      {#if customBgStore.type === 'image'}
+        <img
+          src={customBgStore.url}
+          alt=""
+          class="w-full h-full object-cover object-center scale-110 transition-[filter] duration-300"
+          style="filter: blur({Math.max(customBgStore.blur, 10)}px);"
+        />
+      {:else if customBgStore.type === 'video'}
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video
+          src={customBgStore.url}
+          autoplay
+          loop
+          muted
+          playsinline
+          class="w-full h-full object-cover object-center scale-110 transition-[filter] duration-300"
+          style="filter: blur({Math.max(customBgStore.blur, 10)}px);"
+        ></video>
+      {/if}
+      <div
+        class="absolute inset-0 pointer-events-none transition-colors duration-200"
+        style="background: rgba(10, 14, 26, {Math.max(customBgStore.dimOpacity, 0.45)});"
+      ></div>
+    </div>
+  {/if}
+
+  <div class="relative z-10 w-full max-w-[1280px] mx-auto flex justify-between items-center gap-5">
     <!-- 1. 左侧：根据皮肤渲染专属封面/状态槽 -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->

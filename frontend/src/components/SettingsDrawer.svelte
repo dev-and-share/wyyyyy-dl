@@ -11,6 +11,7 @@
   import SettingsSleepTimerSection from './settings/SettingsSleepTimerSection.svelte';
   import SettingsGeoProxySection from './settings/SettingsGeoProxySection.svelte';
   import SettingsUserProfileSection from './settings/SettingsUserProfileSection.svelte';
+  import SettingsCustomBgSection from './settings/SettingsCustomBgSection.svelte';
   import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
   import {
     hasPendingPwaUpdate,
@@ -341,6 +342,9 @@
         </button>
       </div>
     </section>
+
+    <!-- 🌄 自定义播放器背景 (移至菜单最底部) -->
+    <SettingsCustomBgSection {showToast} />
 
     <!-- 品牌极客彩蛋: 抽屉底部版本信息与 Hover 展开微交互 -->
     <div class="pt-4 pb-2 flex flex-col items-center justify-center gap-1 border-t border-[var(--border-color)]/40 mt-2 select-none">

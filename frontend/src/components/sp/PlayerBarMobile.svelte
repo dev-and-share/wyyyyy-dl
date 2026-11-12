@@ -9,6 +9,7 @@
   import { skin } from '../../lib/skinStore.svelte';
   import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
+  import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
 
   let {
@@ -62,7 +63,7 @@
 
 <div
   data-testid="player-bar-mobile"
-  class="mobile-player-docked-bar fixed left-0 right-0 z-[9995] px-3 pt-1.5 pb-1.5 flex flex-col gap-1 transition-all duration-300 select-none {skin.current === 'winamp'
+  class="mobile-player-docked-bar fixed left-0 right-0 z-[9995] px-3 pt-1.5 pb-1.5 flex flex-col gap-1 transition-all duration-300 select-none overflow-hidden {skin.current === 'winamp'
     ? 'bg-gradient-to-b from-[#2e3441] via-[#21252d] to-[#171920] border-t-2 border-white/25 shadow-2xl'
     : skin.current === 'cassette'
       ? 'bg-[#181a1f] border-t-2 border-[#2b2f38] shadow-2xl'
@@ -73,8 +74,37 @@
           : 'bg-[var(--card-bg-solid)] backdrop-blur-2xl border-t border-[var(--border-color)]'}"
   style="{skin.cssVars}"
 >
+  {#if customBgStore.enabled && customBgStore.url}
+    <!-- 🌄 自定义背景半透明毛玻璃层 -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none" aria-hidden="true">
+      {#if customBgStore.type === 'image'}
+        <img
+          src={customBgStore.url}
+          alt=""
+          class="w-full h-full object-cover object-center scale-110 transition-[filter] duration-300"
+          style="filter: blur({Math.max(customBgStore.blur, 10)}px);"
+        />
+      {:else if customBgStore.type === 'video'}
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video
+          src={customBgStore.url}
+          autoplay
+          loop
+          muted
+          playsinline
+          class="w-full h-full object-cover object-center scale-110 transition-[filter] duration-300"
+          style="filter: blur({Math.max(customBgStore.blur, 10)}px);"
+        ></video>
+      {/if}
+      <div
+        class="absolute inset-0 pointer-events-none transition-colors duration-200"
+        style="background: rgba(10, 14, 26, {Math.max(customBgStore.dimOpacity, 0.45)});"
+      ></div>
+    </div>
+  {/if}
+
   <!-- 2.1 顶部区域：左侧封面；右侧上下两行 -->
-  <div class="flex items-center gap-2.5 w-full">
+  <div class="relative z-10 flex items-center gap-2.5 w-full">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div onclick={onLyric} title={t('player.expandLyric')}>
@@ -243,17 +273,17 @@
     </div>
   </div>
 
-  <!-- 2.2 第二排：全宽进度条 -->
-  <PlayerProgressBar
-    {curTime}
-    {duration}
-    progressRatio={progressRatio}
-    {onSeek}
-    skinId={skin.current}
-  />
+  <!-- 2.2 第二排与第三排：全宽进度条与控制按键 (z-10 确保位于毛玻璃背景之上) -->
+  <div class="relative z-10 w-full flex flex-col gap-1">
+    <PlayerProgressBar
+      {curTime}
+      {duration}
+      progressRatio={progressRatio}
+      {onSeek}
+      skinId={skin.current}
+    />
 
-  <!-- 2.3 第三排：5个控制按键 (精致紧凑版) -->
-  <div class="flex items-center justify-between w-full px-2 py-0.5">
+    <div class="flex items-center justify-between w-full px-2 py-0.5">
     <button
       data-testid="btn-toggle-mode"
       type="button"
@@ -351,5 +381,6 @@
     >
       <PlayerIcon name="heart" liked={isLiked} size={16} />
     </button>
+  </div>
   </div>
 </div>

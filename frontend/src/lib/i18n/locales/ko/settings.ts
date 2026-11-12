@@ -177,4 +177,20 @@ export default {
   'settings.refreshUserStatus': '권한 상태 새로고침',
   'settings.updateNowBadge': '업데이트',
   'settings.newVersionClickToUpdate': '새 버전 {version} 사용 가능, 클릭하여 업데이트',
+
+  // 🌄 사용자 지정 플레이어 배경
+  'settings.customBgTitle': '사용자 지정 플레이어 배경',
+  'settings.customBgDesc': '사진 또는 무음 동영상을 플레이어 배경으로 설정할 수 있습니다',
+  'settings.customBgUpload': '사진 / 동영상 선택',
+  'settings.customBgChange': '배경 변경',
+  'settings.customBgClear': '기본값 복원',
+  'settings.customBgNotSet': '설정 안 됨 (스킨 기본 배경)',
+  'settings.customBgImageType': '사진 배경',
+  'settings.customBgVideoType': '동영상 (음소거됨)',
+  'settings.customBgDim': '어둡기 조절',
+  'settings.customBgBlur': '블러',
+  'settings.customBgVideoMutedHint': '🔇 동영상 배경은 자동으로 음소거 재생되어 음악 감상을 방해하지 않습니다',
+  'settings.customBgSaved': '플레이어 배경이 업데이트되었습니다',
+  'settings.customBgCleared': '기본 스킨 배경으로 복원되었습니다',
+  'settings.customBgEnableToggle': '사용자 지정 배경 활성화',
 } as const;

@@ -80,40 +80,49 @@ describe('skinStore', () => {
   });
 
   it('supports modal backdrop synchronization to prevent topbar light gaps', () => {
+    // 1. 白天浅色模式下：打开 Modal 保持白天皮肤底色，杜绝死黑方块补丁
     document.documentElement.setAttribute('data-theme', 'light');
     skin.set('autumn');
-    // 秋季浅色底色为 #fffdf0
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
     expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
     expect(getModalBackdropCount()).toBe(0);
 
-    // 1. 打开第一个 Modal
+    const releaseLight = pushModalBackdrop();
+    expect(getModalBackdropCount()).toBe(1);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
+    releaseLight();
+    expect(getModalBackdropCount()).toBe(0);
+
+    // 2. 深色模式下：打开 Modal 同步压暗至深色 (#121212)，关闭后恢复深色皮肤底色
+    document.documentElement.removeAttribute('data-theme');
+    skin.set('vinyl');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+
     const release1 = pushModalBackdrop();
     expect(getModalBackdropCount()).toBe(1);
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
     expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#121212');
 
-    // 2. 嵌套打开第二个 Modal / 菜单
+    // 嵌套打开第二个 Modal / 菜单
     const release2 = pushModalBackdrop();
     expect(getModalBackdropCount()).toBe(2);
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
 
-    // 3. 关闭第二个 Modal，仍处于遮罩暗化中
+    // 关闭第二个 Modal，仍处于遮罩暗化中
     release2();
     expect(getModalBackdropCount()).toBe(1);
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
 
-    // 4. 关闭最后一个 Modal，自动恢复秋季浅色底色
+    // 关闭最后一个 Modal，自动恢复深色皮肤底色
     release1();
     expect(getModalBackdropCount()).toBe(0);
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
-    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#0a0e1a');
 
-    // 5. 多次调用 release 不会下溢
+    // 多次调用 release 不会下溢
     release1();
     expect(getModalBackdropCount()).toBe(0);
-
-    document.documentElement.removeAttribute('data-theme');
   });
 
   it('supports dynamic dark synchronization for immersive playback mode', () => {

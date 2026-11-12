@@ -63,7 +63,9 @@ export function syncMetaThemeColor(skinId?: SkinId) {
         ? (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.light || '#064272')
         : (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.dark || '#0a0e1a'))
     : (modalBackdropCount > 0
-        ? '#121212'
+        ? (isLight
+            ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
+            : '#121212')
         : (isLight
             ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
             : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a')));
