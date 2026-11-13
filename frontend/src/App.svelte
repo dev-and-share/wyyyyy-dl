@@ -220,6 +220,9 @@
         onPlayPlaylist={(id: string, name: string) => playPlaylistTracks(id, name, setQueue, showToast)}
         onToggleCollapse={toggleSidebarCollapse}
         onOpenDownloadTasks={jumpToDownloadTasks}
+        onToggleTheme={toggleTheme}
+        onOpenSettings={openSettings}
+        {themeMode}
         {showToast}
       />
     </div>

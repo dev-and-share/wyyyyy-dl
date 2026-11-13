@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../../lib/i18n';
   import { globalUiState, toggleTheme, openSettings } from '../../lib/ui.svelte';
+  import { Moon, Sun, SunMoon, Settings } from '@lucide/svelte';
 </script>
 
 <!-- 🖥️ PC 桌面端统一全局控制图标组 (🌙/☀️ 主题 · ⚙️ 设置) -->
@@ -22,7 +23,13 @@
     onclick={toggleTheme}
     title={t('topbar.toggleTheme')}
   >
-    {globalUiState.themeMode === 'dark' ? '🌙' : globalUiState.themeMode === 'light' ? '☀️' : '🌓'}
+    {#if globalUiState.themeMode === 'dark'}
+      <Moon size={15} />
+    {:else if globalUiState.themeMode === 'light'}
+      <Sun size={15} />
+    {:else}
+      <SunMoon size={15} />
+    {/if}
   </button>
 
   <button
@@ -32,7 +39,7 @@
     onclick={openSettings}
     title={t('topbar.settings')}
   >
-    ⚙️
+    <Settings size={15} />
     {#if globalUiState.hasPwaUpdate}
       <span
         data-testid="badge-desktop-update"

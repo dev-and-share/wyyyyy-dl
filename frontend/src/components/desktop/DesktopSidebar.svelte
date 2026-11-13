@@ -3,8 +3,11 @@
   import { t } from '../../lib/i18n';
   import { jumpToDownloadTasks, type ActiveTab, AppRoute, SpecialRouteId, isDailyRecommendRoute } from '../../lib/router.svelte';
   import { geoProxyState, fetchGeoProxyConfig, refreshGeoProxy } from '../../lib/geoProxyStore.svelte';
+  import { globalUiState, toggleTheme, openSettings } from '../../lib/ui.svelte';
+  import type { ThemeMode } from '../../lib/theme';
   import DesktopSidebarPlaylists from './DesktopSidebarPlaylists.svelte';
   import WyyLogo from '../WyyLogo.svelte';
+  import { Music, Folder, Calendar, Search, HardDriveDownload, Puzzle, Moon, Sun, SunMoon, Settings, Globe, RefreshCw, ChevronsLeft, ChevronsRight } from '@lucide/svelte';
 
   let {
     tab,
@@ -17,6 +20,9 @@
     onPlayPlaylist,
     onToggleCollapse,
     onOpenDownloadTasks,
+    onToggleTheme,
+    onOpenSettings,
+    themeMode = globalUiState.themeMode,
     showToast
   } = $props<{
     tab: ActiveTab;
@@ -29,6 +35,9 @@
     onPlayPlaylist?: (id: string, name: string) => void;
     onToggleCollapse: () => void;
     onOpenDownloadTasks?: () => void;
+    onToggleTheme?: () => void;
+    onOpenSettings?: () => void;
+    themeMode?: ThemeMode;
     showToast?: (m: string, t?: string) => void;
   }>();
 
@@ -108,12 +117,12 @@
         <button
           type="button"
           data-testid="btn-toggle-sidebar"
-          class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0"
+          class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0 flex items-center justify-center"
           onclick={onToggleCollapse}
           title={t('sidebar.collapseTooltip')}
           aria-label={t('sidebar.collapse')}
         >
-          «
+          <ChevronsLeft size={16} />
         </button>
       {:else}
         <!-- 🏝️ 收起态：单一精致居中交互大按钮 (默认优雅 🎵，hover 丝滑浮现展开提示 »，彻底消除挤压感) -->
@@ -126,12 +135,12 @@
           aria-label={t('sidebar.expand')}
         >
           <!-- 默认态：居中音符 -->
-          <span class="text-[15px] leading-none transition-all duration-200 group-hover/expand-btn:opacity-0 group-hover/expand-btn:scale-75 absolute">
-            🎵
+          <span class="flex items-center justify-center transition-all duration-200 group-hover/expand-btn:opacity-0 group-hover/expand-btn:scale-75 absolute">
+            <Music size={16} />
           </span>
           <!-- Hover 态：平滑浮现展开双右箭头 -->
-          <span class="text-sm font-bold leading-none text-[var(--primary-color)] opacity-0 scale-75 group-hover/expand-btn:opacity-100 group-hover/expand-btn:scale-100 transition-all duration-200 absolute">
-            »
+          <span class="flex items-center justify-center text-[var(--primary-color)] opacity-0 scale-75 group-hover/expand-btn:opacity-100 group-hover/expand-btn:scale-100 transition-all duration-200 absolute">
+            <ChevronsRight size={16} />
           </span>
         </button>
       {/if}
@@ -154,7 +163,7 @@
       }}
       title={t('topbar.playlist')}
     >
-      <span class="text-[15px] leading-none shrink-0">📁</span>
+      <Folder size={16} class="shrink-0" />
       {#if !collapsed}
         <span class="truncate flex-1 text-left">{t('topbar.playlist')}</span>
       {/if}
@@ -174,7 +183,7 @@
       }}
       title={t('recommend.dailyExclusive')}
     >
-      <span class="text-[15px] leading-none shrink-0">📅</span>
+      <Calendar size={16} class="shrink-0" />
       {#if !collapsed}
         <span class="truncate flex-1 text-left">{t('recommend.dailyRecommendShort')}</span>
       {/if}
@@ -188,7 +197,7 @@
       onclick={() => onSwitchTab('search')}
       title={t('topbar.search')}
     >
-      <span class="text-[15px] leading-none shrink-0">🔍</span>
+      <Search size={16} class="shrink-0" />
       {#if !collapsed}
         <span class="truncate flex-1 text-left">{t('topbar.search')}</span>
       {/if}
@@ -205,7 +214,7 @@
         onclick={() => onSwitchTab('download-mgr')}
         title={t('sidebar.localAndDownload')}
       >
-        <span class="text-[15px] leading-none shrink-0">📥</span>
+        <HardDriveDownload size={16} class="shrink-0" />
         {#if !collapsed}
           <span class="truncate flex-1 text-left">{t('topbar.local')}</span>
         {/if}
@@ -248,7 +257,7 @@
       onclick={() => onSwitchTab('musicfree')}
       title={t('musicfree.navDiscoverTooltip')}
     >
-      <span class="text-[15px] leading-none shrink-0">🧩</span>
+      <Puzzle size={16} class="shrink-0" />
       {#if !collapsed}
         <span class="truncate flex-1 text-left">{t('musicfree.navDiscover')}</span>
       {/if}
@@ -263,7 +272,7 @@
     />
   {/if}
 
-  <!-- 4. Bottom Version & Network Status (固定靠底) -->
+  <!-- 4. Bottom Version, Actions & Network Status (固定靠底) -->
   <div
     class="mt-auto px-2 py-1.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] opacity-70 hover:opacity-100 transition-opacity shrink-0 select-none {collapsed ? 'justify-center py-2' : 'px-3'}"
     data-testid="sidebar-version-info"
@@ -271,14 +280,20 @@
     {#if !collapsed}
       <span class="truncate text-[11px] font-semibold text-[var(--text-secondary)]">{t('topbar.title')}</span>
       <div class="flex items-center gap-1.5 shrink-0">
+        {@render themeButton(false)}
+        {@render settingsButton(false)}
         <span class="text-[9px] px-1.5 py-0.5 rounded bg-[var(--btn-secondary-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] leading-none">v{__APP_VERSION__}</span>
         {#if geoProxyState.enabled}
           {@render proxyIndicator(false)}
         {/if}
       </div>
     {:else}
-      <!-- 收拢模式：网络图标与版本号纵向居中排布，呼吸感充足，不挤压边界 -->
-      <div class="flex flex-col items-center justify-center gap-1 w-full">
+      <!-- 收拢模式：主题、设置、网络图标与版本号居中整齐排布 -->
+      <div class="flex flex-col items-center justify-center gap-1.5 w-full">
+        <div class="flex items-center justify-center gap-1">
+          {@render themeButton(true)}
+          {@render settingsButton(true)}
+        </div>
         {#if geoProxyState.enabled}
           {@render proxyIndicator(true)}
         {/if}
@@ -292,6 +307,52 @@
     {/if}
   </div>
 </aside>
+
+{#snippet themeButton(isCollapsed: boolean)}
+  <button
+    type="button"
+    data-testid={isCollapsed ? 'sidebar-btn-toggle-theme-collapsed' : 'sidebar-btn-toggle-theme'}
+    class="w-5 h-5 rounded flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] active:scale-90 border-none bg-transparent cursor-pointer transition-all duration-150"
+    onclick={(e) => {
+      e.stopPropagation();
+      if (onToggleTheme) onToggleTheme();
+      else toggleTheme();
+    }}
+    title={t('topbar.toggleTheme')}
+    aria-label={t('topbar.toggleTheme')}
+  >
+    {#if themeMode === 'dark'}
+      <Moon size={14} />
+    {:else if themeMode === 'light'}
+      <Sun size={14} />
+    {:else}
+      <SunMoon size={14} />
+    {/if}
+  </button>
+{/snippet}
+
+{#snippet settingsButton(isCollapsed: boolean)}
+  <button
+    type="button"
+    data-testid={isCollapsed ? 'sidebar-btn-open-settings-collapsed' : 'sidebar-btn-open-settings'}
+    class="relative w-5 h-5 rounded flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] active:scale-90 border-none bg-transparent cursor-pointer transition-all duration-150"
+    onclick={(e) => {
+      e.stopPropagation();
+      if (onOpenSettings) onOpenSettings();
+      else openSettings();
+    }}
+    title={t('topbar.settings')}
+    aria-label={t('topbar.settings')}
+  >
+    <Settings size={14} />
+    {#if globalUiState.hasPwaUpdate}
+      <span
+        data-testid={isCollapsed ? 'badge-sidebar-update-collapsed' : 'badge-sidebar-update'}
+        class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 ring-1 ring-[var(--card-bg)] animate-pulse pointer-events-none"
+      ></span>
+    {/if}
+  </button>
+{/snippet}
 
 {#snippet proxyIndicator(isCollapsed: boolean)}
   <button
@@ -344,7 +405,7 @@
       <!-- 顶部状态栏 -->
       <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
         <div class="flex items-center gap-1.5 font-semibold text-xs text-white">
-          <span>🌐</span>
+          <Globe size={13} />
           <span>{t('settings.geoProxy.tooltipTitle')}</span>
         </div>
         <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium {geoProxyState.isRefreshing ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : (geoProxyState.fallbackDirect ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30')}">
@@ -390,7 +451,7 @@
       <!-- 底部提示：告知用户点击即可刷新 -->
       <div class="mt-0.5 pt-1 border-t border-white/10 text-[9px] text-neutral-400 flex items-center justify-between">
         <span>{geoProxyState.isRefreshing ? t('settings.geoProxy.refreshingPool') : t('sidebar.proxyClickHint')}</span>
-        <span class="text-[10px] {geoProxyState.isRefreshing ? 'animate-spin' : ''}">🔄</span>
+        <RefreshCw size={10} class={geoProxyState.isRefreshing ? 'animate-spin' : ''} />
       </div>
 
       {#if !isCollapsed}

@@ -15,6 +15,7 @@
   } from '../../lib/localPlaylistStore.svelte';
   import { matchesKeyword } from '../../lib/utils';
   import { t } from '../../lib/i18n';
+  import { Search, X, Star, Heart, HardDrive, Folder, Play } from '@lucide/svelte';
 
   let {
     onPlaylistClick,
@@ -200,13 +201,15 @@
       class="w-full pl-6 pr-2 py-1 rounded-lg text-[11px] bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-400/60 transition-colors"
       bind:value={sidebarSearchKw}
     />
-    <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none">🔍</span>
+    <span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none flex items-center justify-center">
+      <Search size={11} />
+    </span>
     {#if sidebarSearchKw}
       <button
         type="button"
-        class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer p-0 bg-transparent border-none leading-none"
+        class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer p-0 bg-transparent border-none leading-none flex items-center justify-center"
         onclick={() => sidebarSearchKw = ''}
-      >✕</button>
+      ><X size={11} /></button>
     {/if}
   </div>
 
@@ -229,8 +232,20 @@
                 onclick={() => onPlaylistClick(pl.id)}
                 title={cleanPlaylistDisplayName(pl)}
               >
-                <span class="shrink-0 text-xs text-[var(--text-muted)] {pl.subscribed ? 'group-hover:text-amber-400' : (pl.isLocal || isLocalPlaylist(pl.id)) ? 'group-hover:text-emerald-400' : 'group-hover:text-red-400'}">
-                  {pl.subscribed ? '⭐' : (pl.isLocal || isLocalPlaylist(pl.id)) ? (isSystemFavoritesPlaylist(pl.id) ? '❤️' : '🖥️') : isFavoritePlaylist(pl) ? '❤️' : '📂'}
+                <span class="shrink-0 flex items-center justify-center text-xs text-[var(--text-muted)] {pl.subscribed ? 'group-hover:text-amber-400' : (pl.isLocal || isLocalPlaylist(pl.id)) ? 'group-hover:text-emerald-400' : 'group-hover:text-red-400'}">
+                  {#if pl.subscribed}
+                    <Star size={12} class="text-amber-400 shrink-0" />
+                  {:else if pl.isLocal || isLocalPlaylist(pl.id)}
+                    {#if isSystemFavoritesPlaylist(pl.id)}
+                      <Heart size={12} class="text-red-500 fill-current shrink-0" />
+                    {:else}
+                      <HardDrive size={12} class="text-emerald-400 shrink-0" />
+                    {/if}
+                  {:else if isFavoritePlaylist(pl)}
+                    <Heart size={12} class="text-red-500 fill-current shrink-0" />
+                  {:else}
+                    <Folder size={12} class="shrink-0" />
+                  {/if}
                 </span>
                 <span class="truncate flex-1 font-medium">{cleanPlaylistDisplayName(pl)}</span>
                 {#if playCount > 0}
@@ -285,8 +300,12 @@
                 onclick={() => onPlaylistClick(pl.id)}
                 title={cleanPlaylistDisplayName(pl)}
               >
-                <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-red-400">
-                  {isFavoritePlaylist(pl) ? '❤️' : '📂'}
+                <span class="shrink-0 flex items-center justify-center text-xs text-[var(--text-muted)] group-hover:text-red-400">
+                  {#if isFavoritePlaylist(pl)}
+                    <Heart size={12} class="text-red-500 fill-current shrink-0" />
+                  {:else}
+                    <Folder size={12} class="shrink-0" />
+                  {/if}
                 </span>
                 <span class="truncate flex-1 font-medium">{cleanPlaylistDisplayName(pl)}</span>
                 {#if playCount > 0}
@@ -304,10 +323,10 @@
                 <button
                   type="button"
                   data-testid="sidebar-playbtn-{pl.id}"
-                  class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
                   onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
                   title={t('playlist.playWholePlaylistTooltip')}
-                >▶</button>
+                ><Play size={10} fill="currentColor" class="ml-0.5" /></button>
               {/if}
             </div>
           {/each}
@@ -341,7 +360,9 @@
                 onclick={() => onPlaylistClick(pl.id)}
                 title={pl.name}
               >
-                <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-amber-400">⭐</span>
+                <span class="shrink-0 flex items-center justify-center text-xs text-[var(--text-muted)] group-hover:text-amber-400">
+                  <Star size={12} class="text-amber-400 shrink-0" />
+                </span>
                 <span class="truncate flex-1 font-medium">{pl.name}</span>
                 {#if playCount > 0}
                   <span
@@ -396,8 +417,12 @@
                 onclick={() => onPlaylistClick(pl.id)}
                 title={cleanPlaylistDisplayName(pl)}
               >
-                <span class="shrink-0 text-xs text-[var(--text-muted)] group-hover:text-emerald-400">
-                  {isSysFav ? '❤️' : '🖥️'}
+                <span class="shrink-0 flex items-center justify-center text-xs text-[var(--text-muted)] group-hover:text-emerald-400">
+                  {#if isSysFav}
+                    <Heart size={12} class="text-red-500 fill-current shrink-0" />
+                  {:else}
+                    <HardDrive size={12} class="text-emerald-400 shrink-0" />
+                  {/if}
                 </span>
                 <span class="truncate flex-1 font-medium">{cleanPlaylistDisplayName(pl)}</span>
                 {#if playCount > 0}
@@ -415,10 +440,10 @@
                 <button
                   type="button"
                   data-testid="sidebar-playbtn-{pl.id}"
-                  class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[9px] flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-all duration-150 cursor-pointer border-none shadow-md"
                   onclick={(e) => { e.stopPropagation(); onPlayPlaylist(String(pl.id), pl.name); }}
                   title={t('playlist.playWholePlaylistTooltip')}
-                >▶</button>
+                ><Play size={10} fill="currentColor" class="ml-0.5" /></button>
               {/if}
             </div>
           {/each}

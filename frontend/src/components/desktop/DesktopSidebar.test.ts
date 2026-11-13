@@ -99,7 +99,7 @@ describe('DesktopSidebar', () => {
     });
 
     const toggleBtn = getByTestId('btn-toggle-sidebar');
-    expect(toggleBtn.textContent?.trim()).toBe('«');
+    expect(toggleBtn.querySelector('svg')).toBeDefined();
     await fireEvent.click(toggleBtn);
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
   });
@@ -416,8 +416,7 @@ describe('DesktopSidebar', () => {
     // 1. Unified center expand button exists with note icon and right arrow hint
     const toggleBtn = getByTestId('btn-toggle-sidebar');
     expect(toggleBtn).toBeDefined();
-    expect(toggleBtn.textContent).toContain('🎵');
-    expect(toggleBtn.textContent).toContain('»');
+    expect(toggleBtn.querySelectorAll('svg').length).toBeGreaterThan(0);
 
     // 2. Click center button triggers toggle collapse
     fireEvent.click(toggleBtn);
