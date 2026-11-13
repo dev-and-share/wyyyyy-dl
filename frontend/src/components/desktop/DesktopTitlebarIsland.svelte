@@ -94,10 +94,10 @@
     padding-right: max(120px, var(--wco-right, 120px));
   "
 >
-  <!-- 📏 顶栏底部分割线：左侧侧边栏上方完全通透一体无横切，仅在右侧主视窗呈现微弱界线 -->
+  <!-- 📏 顶栏底部分割线：默认完全透明无硬切线（消灭生硬顶栏割裂感，全通透一体漫流） -->
   <div
     class="pointer-events-none absolute bottom-0 right-0 h-[1px] bg-[var(--border-subtle)] transition-[left,opacity] duration-200 ease-in-out"
-    style="left: {sidebarCollapsed ? '58px' : '224px'}; opacity: var(--titlebar-divider-opacity, 1);"
+    style="left: {sidebarCollapsed ? '58px' : '224px'}; opacity: var(--titlebar-divider-opacity, 0);"
     aria-hidden="true"
   ></div>
   <!-- 🪟 左侧纯窗口拖拽区域 (交通灯与灵动岛之间，允许自由按住拖动窗口) -->
