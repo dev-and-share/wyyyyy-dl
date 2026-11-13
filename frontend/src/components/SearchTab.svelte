@@ -16,6 +16,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import { routerState } from '../lib/router.svelte';
   import { t } from '../lib/i18n';
+  import { Cloud, Puzzle } from '@lucide/svelte';
 
   let {
     albumId = '', albumTrigger = 0, curTrack = null, playing = false,
@@ -382,7 +383,7 @@
           class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center justify-center gap-1 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { searchSource = 'netease'; if (kw.trim()) doSearch(false); }}
         >
-          <span>☁️</span> <span>{t('search.sourceNetease')}</span>
+          <Cloud size={13} /> <span>{t('search.sourceNetease')}</span>
         </button>
         <button
           type="button"
@@ -390,7 +391,7 @@
           class="flex-1 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center justify-center gap-1 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { searchSource = 'musicfree'; if (kw.trim()) doSearch(false); }}
         >
-          <span>🧩</span> <span>{t('search.sourceMusicFree')}</span>
+          <Puzzle size={13} /> <span>{t('search.sourceMusicFree')}</span>
         </button>
       </div>
 

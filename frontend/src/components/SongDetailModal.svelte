@@ -8,6 +8,7 @@
   import { t } from '../lib/i18n';
   import Modal from './Modal.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import { Play, Pause, Download, Loader2, Plus, Heart, FileText, Volume2 } from '@lucide/svelte';
 
   let {
     songId,
@@ -180,7 +181,7 @@
             />
             {#if isPlaying}
               <div class="absolute inset-0 bg-black/40 backdrop-blur-xs rounded-xl flex items-center justify-center">
-                <span class="text-white text-xl animate-pulse">🔊</span>
+                <Volume2 size={24} class="text-white animate-pulse" />
               </div>
             {/if}
           </div>
@@ -262,7 +263,11 @@
               }
             }}
           >
-            <span>{isPlaying ? '⏸️' : '▶️'}</span>
+            {#if isPlaying}
+              <Pause size={13} fill="currentColor" />
+            {:else}
+              <Play size={13} fill="currentColor" />
+            {/if}
             <span>{isPlaying ? t('player.pausePlay') : t('song.previewNow')}</span>
           </button>
 
@@ -273,7 +278,11 @@
             class="btn-secondary flex items-center justify-center gap-1.5 py-2.5 sm:py-2 px-3 rounded-xl text-xs font-medium cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
             onclick={() => handleDownloadSingle(String(targetId), songInfo.name)}
           >
-            <span>{downloading ? '🔄' : '📥'}</span>
+            {#if downloading}
+              <Loader2 size={13} class="animate-spin" />
+            {:else}
+              <Download size={13} />
+            {/if}
             <span>{downloading ? t('common.submitting') : t('download.downloadSingle')}</span>
           </button>
 
@@ -285,7 +294,7 @@
               addToPlaylistSong = { id: targetId, name: songInfo.name || songInfo.songName, artist: arText };
             }}
           >
-            <span>➕</span>
+            <Plus size={13} />
             <span>{t('playlist.collectTo')}</span>
           </button>
 
@@ -296,7 +305,7 @@
               class="btn-secondary flex items-center justify-center gap-1.5 py-2.5 sm:py-2 px-3 rounded-xl text-xs font-medium cursor-pointer active:scale-95 transition-all {isLiked ? 'text-red-400 border-red-500/30' : ''}"
               onclick={() => onToggleLike(Number(targetId), songInfo.name, arText)}
             >
-              <span>{isLiked ? '❤️' : '🤍'}</span>
+              <Heart size={13} fill={isLiked ? '#ef4444' : 'none'} color={isLiked ? '#ef4444' : 'currentColor'} />
               <span>{isLiked ? t('player.alreadyLiked') : t('player.myFavorite')}</span>
             </button>
           {/if}
@@ -304,8 +313,8 @@
 
         <!-- 歌词预览面板 -->
         <div class="mb-3">
-          <div class="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1">
-            <span>📜</span>
+          <div class="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1.5">
+            <FileText size={13} />
             <span>{t('song.lyricsContent')}</span>
           </div>
           <div class="max-h-[140px] overflow-y-auto bg-black/5 dark:bg-black/20 p-3 rounded-xl border border-black/5 dark:border-white/5 text-xs text-[var(--text-secondary)] font-mono leading-relaxed select-text">

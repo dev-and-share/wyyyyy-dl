@@ -3,6 +3,7 @@
   import { t } from '../lib/i18n';
   import { formatBytes } from '../lib/utils';
   import { getTrackBrowserCacheInfo, removeTrackBrowserCache } from '../lib/library/browserCacheHelper';
+  import { Smartphone, Trash2 } from '@lucide/svelte';
 
   let {
     path = '',
@@ -152,7 +153,7 @@
   {#if cacheInfo.isCached}
     <div class="mt-3.5 border border-purple-500/30 bg-purple-500/10 dark:bg-purple-950/30 rounded-xl p-3 flex items-center justify-between gap-3 select-none">
       <div class="flex items-center gap-2.5 min-w-0">
-        <span class="text-xl leading-none">📲</span>
+        <Smartphone size={22} class="text-purple-400 shrink-0" />
         <div class="min-w-0">
           <div class="text-xs font-semibold text-purple-600 dark:text-purple-300">
             {t('reveal.browserCacheCard')}
@@ -169,7 +170,7 @@
         onclick={handleClearBrowserCache}
         title={t('reveal.clearCacheBtn')}
       >
-        <span>🗑️</span>
+        <Trash2 size={12} />
         <span>{isClearing ? t('common.loading') : t('reveal.clearCacheBtn')}</span>
       </button>
     </div>

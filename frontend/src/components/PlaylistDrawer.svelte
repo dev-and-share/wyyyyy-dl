@@ -14,6 +14,7 @@
   import { getTrackSourceStatus, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { isTrackLiked } from '../lib/likeStore.svelte';
   import { pushModalBackdrop } from '../lib/skinStore.svelte';
+  import { ListMusic, HardDriveDownload, Shuffle, Save, X, HardDrive, Smartphone, Loader2, Download, Plus } from '@lucide/svelte';
 
   let {
     queue = [],
@@ -595,17 +596,19 @@
       <div class="flex items-center gap-1 sm:gap-1.5 min-w-0">
         <button
           type="button"
-          class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer {activeTab === 'queue' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
+          class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer inline-flex items-center gap-1.5 {activeTab === 'queue' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'queue'}
         >
-          📜 <span class="hidden sm:inline">{t('player.play')}</span>{t('drawer.queue')} {displayedCount < countAll ? `(${displayedCount}/${countAll})` : `(${countAll})`}
+          <ListMusic size={13} />
+          <span><span class="hidden sm:inline">{t('player.play')}</span>{t('drawer.queue')} {displayedCount < countAll ? `(${displayedCount}/${countAll})` : `(${countAll})`}</span>
         </button>
         <button
           type="button"
-          class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-1 {activeTab === 'tasks' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
+          class="px-2 sm:px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer inline-flex items-center gap-1.5 {activeTab === 'tasks' ? 'bg-black/10 dark:bg-white/15 text-[var(--text-main)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'}"
           onclick={() => activeTab = 'tasks'}
         >
-          📥 <span class="hidden sm:inline">{t('download.title').slice(0, 2)}</span>{t('drawer.tasks')}
+          <HardDriveDownload size={13} />
+          <span><span class="hidden sm:inline">{t('download.title').slice(0, 2)}</span>{t('drawer.tasks')}</span>
           {#if activeTasksCount > 0}
             <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-px rounded-full leading-tight animate-pulse">
               {activeTasksCount}
@@ -621,24 +624,26 @@
         {#if activeTab === 'queue' && queue.length > 1}
           <button
             type="button"
-            class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium"
+            class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium inline-flex items-center gap-1"
             onclick={() => {
               onShuffle();
               showToast(t('drawer.shuffleToast'), 'info', 2000);
             }}
             title={t('drawer.shuffleTooltip')}
           >
-            🎲 {t('drawer.shuffle')}
+            <Shuffle size={12} />
+            <span>{t('drawer.shuffle')}</span>
           </button>
         {/if}
         {#if activeTab === 'queue' && queue.length > 0}
           <button
             type="button"
-            class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium"
+            class="px-1.5 sm:px-2 py-1 rounded-lg text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-95 whitespace-nowrap shrink-0 transition-all cursor-pointer font-medium inline-flex items-center gap-1"
             onclick={() => showForkModal = true}
             title={t('drawer.saveAsPlaylistTooltip')}
           >
-            💾 <span class="hidden sm:inline">{t('common.save')}</span>{t('topbar.playlist')}
+            <Save size={12} />
+            <span><span class="hidden sm:inline">{t('common.save')}</span>{t('topbar.playlist')}</span>
           </button>
         {/if}
         <button
@@ -655,11 +660,11 @@
         <!-- 💻 PC 桌面端保留 X 按钮；📱 SP 移动端去除 X 按钮（靠遮罩层点击与下拉手势关闭） -->
         <button
           type="button"
-          class="hidden md:flex w-7 h-7 rounded-lg items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all cursor-pointer text-sm"
+          class="hidden md:flex w-7 h-7 rounded-lg items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all cursor-pointer"
           onclick={handleClose}
           title={t('common.close')}
         >
-          ✕
+          <X size={15} strokeWidth={2.2} />
         </button>
       </div>
     </div>
@@ -690,19 +695,19 @@
               </button>
               <button
                 type="button"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {serverOnly ? 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1 {serverOnly ? 'bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 border border-indigo-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
                 onclick={() => { pendingOnly = false; onToggleServerOnly(!serverOnly); }}
                 title={t('drawer.serverTooltip')}
               >
-                💻 {t('drawer.server')} {countServer}
+                <HardDrive size={11} /> <span>{t('drawer.server')} {countServer}</span>
               </button>
               <button
                 type="button"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap {offlineOnly ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1 {offlineOnly ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold shadow-sm' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}"
                 onclick={() => { pendingOnly = false; onToggleOfflineOnly(!offlineOnly); }}
                 title={t('drawer.offlineTooltip')}
               >
-                📴 {t('drawer.offline')} {countPhone}
+                <Smartphone size={11} /> <span>{t('drawer.offline')} {countPhone}</span>
               </button>
               <button
                 type="button"
@@ -789,9 +794,9 @@
                       title={t('drawer.fastDownloadTooltip')}
                     >
                       {#if downloadingIds.has(String(trackItem.id))}
-                        <span class="animate-spin inline-block text-[9px]">⏳</span>
+                        <Loader2 size={10} class="animate-spin" />
                       {:else}
-                        <span>⬇️</span>
+                        <Download size={10} />
                       {/if}
                     </button>
                   {/if}
@@ -813,7 +818,7 @@
                     }}
                     title={t('playlist.collectTo')}
                   >
-                    ➕
+                    <Plus size={12} strokeWidth={2.5} />
                   </button>
                   <button
                     type="button"
@@ -821,7 +826,7 @@
                     onclick={(e) => { e.stopPropagation(); onRemoveItem(realIdx); }}
                     title={t('drawer.removeTrack')}
                   >
-                    ✕
+                    <X size={12} strokeWidth={2.2} />
                   </button>
                 </div>
               </li>

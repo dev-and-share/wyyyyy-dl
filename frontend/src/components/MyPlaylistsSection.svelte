@@ -12,6 +12,7 @@
   import { openSheet } from '../lib/ui.svelte';
   import { matchesKeyword } from '../lib/utils';
   import { t } from '../lib/i18n';
+  import { Search, Plus, HardDrive } from '@lucide/svelte';
 
   let {
     open = $bindable(true),
@@ -188,11 +189,11 @@
     <div class="flex items-center gap-1.5 shrink-0">
       <button
         type="button"
-        class="btn-secondary rounded-lg px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-color)] bg-black/5 dark:bg-white/5 transition-all active:scale-95 flex items-center gap-1 {showSearch || playlistSearchKw ? '!text-blue-500 !border-blue-500/40 !bg-blue-500/10 font-bold' : ''}"
+        class="btn-secondary rounded-lg px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-color)] bg-black/5 dark:bg-white/5 transition-all active:scale-95 flex items-center justify-center {showSearch || playlistSearchKw ? '!text-blue-500 !border-blue-500/40 !bg-blue-500/10 font-bold' : ''}"
         onclick={() => { showSearch = !showSearch; if (!showSearch) playlistSearchKw = ''; }}
         title={t('common.search')}
       >
-        <span>🔍</span>
+        <Search size={13} />
       </button>
       <button
         type="button"
@@ -200,7 +201,7 @@
         onclick={() => showCreateModal = true}
         title={t('playlist.createTitle')}
       >
-        ➕ <span class="hidden sm:inline">{t('playlist.create')}</span>
+        <Plus size={13} strokeWidth={2.5} /> <span class="hidden sm:inline">{t('playlist.create')}</span>
       </button>
     </div>
   </div>
@@ -223,8 +224,8 @@
       <li class="track-item-card">
         <div class="track-title-row">
           {#if pl.isLocal}
-            <span class="status-badge shrink-0 !bg-emerald-500/15 !text-emerald-400 font-bold">
-              🖥️ 本地自建
+            <span class="status-badge shrink-0 !bg-emerald-500/15 !text-emerald-400 font-bold inline-flex items-center gap-1">
+              <HardDrive size={11} /> 本地自建
             </span>
           {:else if isFavoritePlaylist(pl)}
             <span class="status-badge shrink-0 !bg-red-500/15 !text-red-500 font-bold" title={t('myPlaylists.pinnedTitle')}>

@@ -15,6 +15,7 @@
   import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
   import { routerState } from '../lib/router.svelte';
+  import { RefreshCw } from '@lucide/svelte';
   import { t } from '../lib/i18n';
   import type { Track } from '../lib/types';
 
@@ -39,13 +40,9 @@
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(mobileTab)));
 
   $effect(() => {
-    if (routerState.downloadSubTab === 'local-playlists') {
-      mobileTab = 'playlists';
-    } else if (routerState.downloadSubTab === 'history') {
-      mobileTab = 'history';
-    } else if (routerState.downloadSubTab === 'browser-cache') {
-      mobileTab = 'cache';
-    }
+    if (routerState.downloadSubTab === 'local-playlists') mobileTab = 'playlists';
+    else if (routerState.downloadSubTab === 'history') mobileTab = 'history';
+    else if (routerState.downloadSubTab === 'browser-cache') mobileTab = 'cache';
   });
 
   function setMobileTab(id: 'playlists' | 'folder' | 'history' | 'cache') {
@@ -324,7 +321,10 @@
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanExternalLibraries}>{t('download.btnExternal')}</button>
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanDiskFiles}>{t('download.btnAlignDisk')}</button>
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={cleanMissingRecords}>{t('download.btnCleanMissing')}</button>
-          <button class="btn-secondary px-2.5 py-1 text-xs" onclick={() => loadHistory(1)}>🔄 {t('common.refresh')}</button>
+          <button class="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1.5" onclick={() => loadHistory(1)}>
+            <RefreshCw size={12} />
+            <span>{t('common.refresh')}</span>
+          </button>
         </div>
       </div>
 

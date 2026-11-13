@@ -10,6 +10,7 @@
   import { openSheet } from '../lib/ui.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../lib/trackStatus.svelte';
   import { t } from '../lib/i18n';
+  import { Disc } from '@lucide/svelte';
 
   let {
     album,
@@ -253,8 +254,8 @@
       {/each}
     </ul>
   {:else}
-    <div class="empty-placeholder-card">
-      <div class="empty-icon">💽</div>
+    <div class="empty-placeholder-card flex flex-col items-center justify-center gap-2 py-8">
+      <Disc size={40} class="opacity-40 text-[var(--text-muted)]" />
       <div class="empty-title">{t('album.emptyPrompt')}</div>
     </div>
   {/if}

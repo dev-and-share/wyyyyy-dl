@@ -1,4 +1,20 @@
 <script lang="ts">
+  import type { Component } from 'svelte';
+  import { Search, Disc, Mic, ListMusic, Music2, Calendar, Folder, FolderOpen, HardDriveDownload, Smartphone } from '@lucide/svelte';
+
+  const TAB_ICON_MAP: Record<string, Component<{ size?: number | string; strokeWidth?: number | string; class?: string }>> = {
+    '🔍': Search,
+    '💽': Disc,
+    '🎤': Mic,
+    '📋': ListMusic,
+    '🎼': Music2,
+    '📅': Calendar,
+    '📁': Folder,
+    '📂': FolderOpen,
+    '📥': HardDriveDownload,
+    '📲': Smartphone
+  };
+
   export interface SegmentItem {
     id: string;
     label: string;
@@ -44,7 +60,14 @@
         onclick={() => onChange(item.id)}
       >
         {#if item.icon}
-          <span class="text-xs sm:text-sm md:text-base leading-none shrink-0">{item.icon}</span>
+          {@const IconComp = TAB_ICON_MAP[item.icon]}
+          {#if IconComp}
+            <span class="shrink-0 flex items-center justify-center">
+              <IconComp size={14} />
+            </span>
+          {:else}
+            <span class="text-xs sm:text-sm md:text-base leading-none shrink-0">{item.icon}</span>
+          {/if}
         {/if}
         <span class="truncate text-[11px] sm:text-xs">{item.label}</span>
         {#if item.badge}

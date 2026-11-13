@@ -5,6 +5,7 @@
   import FolderNode from './FolderNode.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { formatBytes } from '../lib/utils';
+  import { ChevronDown, ChevronRight, Folder, FolderOpen, Music, RefreshCw, Play, ExternalLink, MoreHorizontal, Loader2 } from '@lucide/svelte';
 
   let {
     item,
@@ -108,11 +109,11 @@
       if (item.hostPath || item.path) {
         actions.push({ label: t('common.reveal'), onclick: () => handleReveal() });
       }
-      actions.push({ label: `🔄 ${t('common.refresh')}`, onclick: () => { loaded = false; toggle(); } });
+      actions.push({ label: t('common.refresh'), onclick: () => { loaded = false; toggle(); } });
       actions.push({ label: t('folder.ignoreFolder'), style: 'danger', onclick: () => { if (confirm('Ignore ' + item.name + '?')) alert('Ignored'); } });
       actions.push({ label: t('folder.physicalDelete'), style: 'danger', onclick: () => { if (confirm('Delete ' + item.name + '?')) alert('Deleted'); } });
     } else {
-      actions.push({ label: `▶ ${t('player.play')}`, style: 'primary', onclick: () => handlePlay() });
+      actions.push({ label: t('player.play'), style: 'primary', onclick: () => handlePlay() });
       if (item.hostPath || item.path) {
         actions.push({ label: t('common.reveal'), onclick: () => handleReveal() });
       }
@@ -145,12 +146,20 @@
           class="text-[10px] w-3.5 h-3.5 flex items-center justify-center text-[var(--text-muted)] shrink-0 hover:text-[var(--text-main)] transition-colors"
           onclick={(e) => { e.stopPropagation(); toggle(); }}
         >
-          {expanded ? '▼' : '▶'}
+          {#if expanded}
+            <ChevronDown size={13} />
+          {:else}
+            <ChevronRight size={13} />
+          {/if}
         </span>
-        <span class="text-sm shrink-0 leading-none">{expanded ? '📂' : '📁'}</span>
+        {#if expanded}
+          <FolderOpen size={15} class="text-amber-500 shrink-0" />
+        {:else}
+          <Folder size={15} class="text-amber-500/80 shrink-0" />
+        {/if}
       {:else}
         <span class="w-3.5 shrink-0"></span>
-        <span class="text-xs shrink-0 text-sky-400 leading-none">🎵</span>
+        <Music size={13} class="text-sky-400 shrink-0" />
       {/if}
 
       <!-- Folder / Track Name -->
@@ -215,7 +224,7 @@
             title={t('folder.revealFolderTooltip')}
             onclick={(e) => handleReveal(e)}
           >
-            📁
+            <ExternalLink size={12} />
           </button>
         {/if}
         <button
@@ -224,7 +233,7 @@
           title={t('folder.refreshFolderTooltip')}
           onclick={(e) => { e.stopPropagation(); loaded = false; toggle(); }}
         >
-          🔄
+          <RefreshCw size={12} class={loading ? 'animate-spin' : ''} />
         </button>
         <button
           type="button"
@@ -232,7 +241,7 @@
           title={t('common.moreActions')}
           onclick={(e) => { e.stopPropagation(); showOptions(); }}
         >
-          ···
+          <MoreHorizontal size={13} />
         </button>
       {:else}
         <button
@@ -241,7 +250,7 @@
           title={t('folder.playTrackTooltip')}
           onclick={(e) => handlePlay(e)}
         >
-          ▶
+          <Play size={10} fill="currentColor" />
         </button>
         {#if item.hostPath || item.path}
           <button
@@ -250,7 +259,7 @@
             title={t('folder.revealFileTooltip')}
             onclick={(e) => handleReveal(e)}
           >
-            📁
+            <ExternalLink size={12} />
           </button>
         {/if}
         <button
@@ -259,7 +268,7 @@
           title={t('common.moreActions')}
           onclick={(e) => { e.stopPropagation(); showOptions(); }}
         >
-          ···
+          <MoreHorizontal size={13} />
         </button>
       {/if}
     </div>
@@ -269,7 +278,8 @@
     <div>
       {#if loading}
         <div class="py-1.5 px-3 text-[var(--text-muted)] text-xs flex items-center gap-1.5">
-          <span class="animate-spin text-[10px]">⏳</span> {t('common.loading')}
+          <Loader2 size={12} class="animate-spin" />
+          <span>{t('common.loading')}</span>
         </div>
       {:else if children.length === 0}
         <div class="py-1 px-3 text-[var(--text-muted)] text-[11px]">{t('folder.empty')}</div>

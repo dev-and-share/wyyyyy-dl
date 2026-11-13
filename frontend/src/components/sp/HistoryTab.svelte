@@ -5,6 +5,7 @@
   import AccordionCard from '../AccordionCard.svelte';
   import LocalSearchBox from '../LocalSearchBox.svelte';
   import SlotBtn from '../SlotBtn.svelte';
+  import { RefreshCw, Search, Trash2 } from '@lucide/svelte';
 
   let histKw = $state('');
   let histPage = $state(1);
@@ -46,14 +47,15 @@
     <div class="ml-auto flex gap-1.5">
       <button
         type="button"
-        class="btn-primary px-3 py-1 text-xs"
+        class="btn-primary px-3 py-1 text-xs inline-flex items-center gap-1.5"
         onclick={() => loadHistory(1)}
       >
-        🔄 {t('common.refresh')}
+        <RefreshCw size={12} />
+        <span>{t('common.refresh')}</span>
       </button>
       <button
         type="button"
-        class="btn-secondary px-3 py-1 text-xs"
+        class="btn-secondary px-3 py-1 text-xs inline-flex items-center gap-1.5"
         onclick={() => {
           const v = prompt(t('download.searchHistoryPrompt'));
           if (v !== null) {
@@ -62,7 +64,8 @@
           }
         }}
       >
-        🔍 {t('common.search')}
+        <Search size={12} />
+        <span>{t('common.search')}</span>
       </button>
     </div>
   </div>
@@ -104,7 +107,12 @@
           </div>
           <div class="flex gap-1.5 shrink-0 transition-all duration-150 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
             <SlotBtn onclick={() => copy(h.hostFilePath || h.filePath)}>{t('common.reveal')}</SlotBtn>
-            <SlotBtn onclick={() => { if (confirm(t('download.confirmDeleteRecord'))) alert('Deleted'); }}>🗑️ {t('common.delete')}</SlotBtn>
+            <SlotBtn onclick={() => { if (confirm(t('download.confirmDeleteRecord'))) alert('Deleted'); }}>
+              <span class="inline-flex items-center gap-1">
+                <Trash2 size={11} />
+                <span>{t('common.delete')}</span>
+              </span>
+            </SlotBtn>
           </div>
         </li>
       {:else}

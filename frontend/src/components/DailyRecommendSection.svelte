@@ -14,6 +14,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import Modal from './Modal.svelte';
   import CreatePlaylistModal from './CreatePlaylistModal.svelte';
+  import { Calendar, RefreshCw, Play, Download, Loader2, Plus, Lock, Folder } from '@lucide/svelte';
 
   let {
     open = $bindable(false),
@@ -188,8 +189,8 @@
     <!-- 日期与今日私房歌标题 + 右上角固定刷新按钮 -->
     <div class="flex items-center justify-between gap-2 w-full sm:w-auto">
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-xs font-bold text-amber-500 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 flex items-center gap-1">
-          <span>📅</span>
+        <span class="text-xs font-bold text-amber-500 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 flex items-center gap-1.5">
+          <Calendar size={13} />
           <span>{todayText}</span>
         </span>
         <span class="text-xs text-[var(--text-muted)] font-medium">
@@ -205,11 +206,11 @@
 
       <button
         type="button"
-        class="text-xs py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border border-transparent hover:border-[var(--border-subtle)] cursor-pointer flex items-center gap-1 shrink-0 transition-all active:scale-95"
+        class="text-xs py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border border-transparent hover:border-[var(--border-subtle)] cursor-pointer flex items-center gap-1.5 shrink-0 transition-all active:scale-95"
         onclick={() => loadRecommend(true)}
         title={t('recommend.refreshTooltip')}
       >
-        <span>🔄</span>
+        <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
         <span class="hidden sm:inline">{t('common.refresh')}</span>
       </button>
     </div>
@@ -219,20 +220,24 @@
       {#if recommendTracks.length > 0}
         <button
           type="button"
-          class="btn-primary text-xs py-1.5 px-3 rounded-lg font-semibold flex items-center gap-1 cursor-pointer active:scale-95 transition-all shadow-xs"
+          class="btn-primary text-xs py-1.5 px-3 rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-xs"
           onclick={handlePlayAll}
         >
-          <span>▶️</span>
+          <Play size={13} fill="currentColor" />
           <span>{t('recommend.playAll')}</span>
         </button>
 
         <button
           type="button"
           disabled={isDownloadingAll}
-          class="btn-secondary text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
+          class="btn-secondary text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
           onclick={handleDownloadAll}
         >
-          <span>{isDownloadingAll ? '🔄' : '📥'}</span>
+          {#if isDownloadingAll}
+            <Loader2 size={13} class="animate-spin" />
+          {:else}
+            <Download size={13} />
+          {/if}
           <span>{isDownloadingAll ? t('common.submitting') : t('recommend.downloadAll')}</span>
         </button>
 
@@ -242,11 +247,15 @@
             <button
               type="button"
               disabled={isBackingUp}
-              class="text-xs py-1.5 px-2.5 font-medium text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1 border-none bg-transparent disabled:opacity-50"
+              class="text-xs py-1.5 px-2.5 font-medium text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border-none bg-transparent disabled:opacity-50"
               onclick={handleOneClickBackup}
               title={t('recommend.backupToTooltip', { name: lastBackup.name })}
             >
-              <span>{isBackingUp ? '⏳' : '➕'}</span>
+              {#if isBackingUp}
+                <Loader2 size={13} class="animate-spin" />
+              {:else}
+                <Plus size={13} />
+              {/if}
               <span class="truncate max-w-[130px] sm:max-w-[180px]">{isBackingUp ? t('recommend.backingUp') : t('recommend.backupTo', { name: lastBackup.name })}</span>
             </button>
             <button
@@ -261,10 +270,10 @@
         {:else}
           <button
             type="button"
-            class="btn-secondary text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 cursor-pointer active:scale-95 transition-all text-emerald-400 border-emerald-500/30"
+            class="btn-secondary text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all text-emerald-400 border-emerald-500/30"
             onclick={() => showSelectModal = true}
           >
-            <span>➕</span>
+            <Plus size={13} />
             <span>{t('recommend.backupBtn')}</span>
           </button>
         {/if}
@@ -280,7 +289,7 @@
     </div>
   {:else if errorMsg}
     <div class="py-10 px-4 text-center flex flex-col items-center gap-2.5 bg-black/5 dark:bg-white/[0.02] rounded-xl border border-dashed border-black/10 dark:border-white/10 my-2">
-      <span class="text-2xl">🔒</span>
+      <Lock size={28} class="text-[var(--text-muted)]" />
       <div class="text-xs text-[var(--text-main)] font-semibold">{errorMsg}</div>
       <div class="text-[11px] text-[var(--text-muted)] max-w-sm leading-relaxed">
         {t('recommend.cookieTip')}
@@ -427,7 +436,8 @@
         class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-transparent border-none cursor-pointer flex items-center gap-1"
         onclick={() => showCreateModal = true}
       >
-        ➕ {t('playlist.create')}
+        <Plus size={13} />
+        <span>{t('playlist.create')}</span>
       </button>
     </div>
 
@@ -437,7 +447,7 @@
           class="flex justify-between items-center p-2.5 rounded-xl border border-black/5 dark:border-white/10 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group"
         >
           <div class="flex items-center gap-2 flex-1 min-w-0">
-            <span class="text-sm">📁</span>
+            <Folder size={16} class="text-[var(--text-muted)] group-hover:text-emerald-400 shrink-0" />
             <div class="flex-1 min-w-0">
               <div class="text-xs font-semibold text-[var(--text-main)] truncate">{pl.name}</div>
               <div class="text-[10px] text-[var(--text-muted)]">{pl.trackCount || 0} {t('common.unit.tracks')}</div>

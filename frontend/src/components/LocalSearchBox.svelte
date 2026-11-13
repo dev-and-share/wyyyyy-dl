@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { Search, X, History } from '@lucide/svelte';
   import { t } from '../lib/i18n/index.svelte';
 
   let {
@@ -112,8 +113,8 @@
   <!-- 输入框容器 (使用 type="text" 彻底根除 WebKit 浏览器双重 ✕ 问题) -->
   <div class="relative w-full flex items-center">
     {#if !hideIcon}
-      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-50 pointer-events-none select-none">
-        🔍
+      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-50 pointer-events-none select-none flex items-center justify-center">
+        <Search size={14} />
       </span>
     {/if}
     <input
@@ -137,12 +138,12 @@
     {#if value}
       <button
         type="button"
-        class="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer p-0 bg-transparent border-none"
+        class="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer p-0 bg-transparent border-none"
         onclick={handleClear}
         title={clearTitle || t('common.clear')}
         aria-label={clearTitle || t('common.clear')}
       >
-        ✕
+        <X size={13} strokeWidth={2.2} />
       </button>
     {/if}
   </div>
@@ -150,7 +151,10 @@
   <!-- 🕒 搜索历史小胶囊列表 -->
   {#if showHistory && historyKey && historyList.length > 0}
     <div class="flex items-center flex-wrap gap-1.5 mt-2 text-xs">
-      <span class="text-[var(--text-muted)] text-[11px] shrink-0">🕒 {t('search.history')}:</span>
+      <span class="text-[var(--text-muted)] text-[11px] shrink-0 inline-flex items-center gap-1">
+        <History size={12} />
+        <span>{t('search.history')}:</span>
+      </span>
       {#each historyList as item}
         <div
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-black/5 dark:bg-white/10 text-[var(--text-secondary)] border border-black/5 dark:border-white/10 transition-all hover:bg-red-500/10 hover:text-red-400 group"
@@ -168,14 +172,14 @@
           </button>
           <button
             type="button"
-            class="opacity-40 hover:opacity-100 group-hover:opacity-70 transition-opacity cursor-pointer p-0 bg-transparent border-none text-[10px] leading-none"
+            class="opacity-40 hover:opacity-100 group-hover:opacity-70 transition-opacity cursor-pointer p-0 bg-transparent border-none inline-flex items-center"
             onclick={(e) => {
               e.stopPropagation();
               removeHistory(item);
             }}
             title={t('search.deleteHistory')}
           >
-            ✕
+            <X size={11} strokeWidth={2} />
           </button>
         </div>
       {/each}

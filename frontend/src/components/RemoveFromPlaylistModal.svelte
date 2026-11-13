@@ -5,6 +5,7 @@
   import { unmarkSongDownloaded } from '../lib/trackStatus.svelte';
   import { isLocalPlaylist } from '../lib/localPlaylistStore.svelte';
   import Modal from './Modal.svelte';
+  import { Music, Smartphone, HardDrive, Loader2, Trash2 } from '@lucide/svelte';
   import { t } from '../lib/i18n/index.svelte';
 
   let {
@@ -102,8 +103,8 @@
   <Modal title={t('playlist.removeTitle')} icon="🗑️" maxWidth="max-w-[460px]" {zIndex} {onClose}>
     <!-- 目标曲目与歌单卡片 -->
     <div class="flex items-center gap-3 p-3 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 mb-3.5">
-      <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-lg shrink-0">
-        🎵
+      <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
+        <Music size={18} />
       </div>
       <div class="flex-1 min-w-0">
         <div class="text-xs font-bold text-[var(--text-main)] truncate" title={song.name}>{song.name}</div>
@@ -124,7 +125,7 @@
         class="flex items-center justify-between p-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/5 dark:hover:bg-white/[0.05] transition-colors cursor-pointer select-none"
       >
         <div class="flex items-start gap-2.5 min-w-0 pr-2">
-          <span class="text-sm mt-0.5 shrink-0">📲</span>
+          <Smartphone size={16} class="text-blue-400 mt-0.5 shrink-0" />
           <div class="flex-1 min-w-0">
             <div class="text-xs font-semibold text-[var(--text-main)] flex items-center gap-1.5">
               <span>{t('playlist.removeDeleteBrowserCache')}</span>
@@ -148,7 +149,7 @@
         class="flex items-center justify-between p-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/5 dark:hover:bg-white/[0.05] transition-colors cursor-pointer select-none"
       >
         <div class="flex items-start gap-2.5 min-w-0 pr-2">
-          <span class="text-sm mt-0.5 shrink-0">🖥️</span>
+          <HardDrive size={16} class="text-purple-400 mt-0.5 shrink-0" />
           <div class="flex-1 min-w-0">
             <div class="text-xs font-semibold text-[var(--text-main)] flex items-center gap-1.5">
               <span>{t('playlist.removeDeleteServerFile')}</span>
@@ -186,10 +187,11 @@
         onclick={handleConfirm}
       >
         {#if loading}
-          <span class="inline-block animate-spin text-xs">⏳</span>
+          <Loader2 size={13} class="animate-spin" />
           <span>{t('playlist.removing')}</span>
         {:else}
-          <span>🗑️ {t('playlist.removeConfirmBtn')}</span>
+          <Trash2 size={13} />
+          <span>{t('playlist.removeConfirmBtn')}</span>
         {/if}
       </button>
     </div>

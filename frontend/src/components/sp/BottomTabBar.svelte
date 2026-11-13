@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Music2, Search, Puzzle, HardDriveDownload } from '@lucide/svelte';
   import { t } from '../../lib/i18n/index.svelte';
   import type { ActiveTab } from '../../lib/router.svelte';
 
@@ -22,11 +23,7 @@
     class="flex-1 flex flex-col items-center justify-center py-0.5 rounded-xl transition-all cursor-pointer bg-transparent border-none select-none {tab === 'playlist' ? 'text-red-500 dark:text-red-400 font-bold scale-105' : 'text-[var(--text-secondary)] opacity-75 hover:opacity-100 font-medium'}"
     onclick={() => onSwitchTab('playlist')}
   >
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block shrink-0">
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-    </svg>
+    <Music2 size={18} class="inline-block shrink-0" />
     <span class="text-[10px] mt-0.5 leading-none">{t('topbar.playlist')}</span>
   </button>
 
@@ -36,10 +33,7 @@
     class="flex-1 flex flex-col items-center justify-center py-0.5 rounded-xl transition-all cursor-pointer bg-transparent border-none select-none {tab === 'search' ? 'text-red-500 dark:text-red-400 font-bold scale-105' : 'text-[var(--text-secondary)] opacity-75 hover:opacity-100 font-medium'}"
     onclick={() => onSwitchTab('search')}
   >
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="inline-block shrink-0">
-      <circle cx="11" cy="11" r="7" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
+    <Search size={18} class="inline-block shrink-0" />
     <span class="text-[10px] mt-0.5 leading-none">{t('topbar.search')}</span>
   </button>
 
@@ -49,10 +43,7 @@
     class="flex-1 flex flex-col items-center justify-center py-0.5 rounded-xl transition-all cursor-pointer bg-transparent border-none select-none {tab === 'musicfree' ? 'text-purple-500 dark:text-purple-400 font-bold scale-105' : 'text-[var(--text-secondary)] opacity-75 hover:opacity-100 font-medium'}"
     onclick={() => onSwitchTab('musicfree')}
   >
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block shrink-0">
-      <circle cx="12" cy="12" r="10" />
-      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-    </svg>
+    <Puzzle size={18} class="inline-block shrink-0" />
     <span class="text-[10px] mt-0.5 leading-none">{t('topbar.discover')}</span>
   </button>
 
@@ -62,11 +53,7 @@
     class="flex-1 flex flex-col items-center justify-center py-0.5 rounded-xl transition-all cursor-pointer bg-transparent border-none select-none {tab === 'download-mgr' ? 'text-red-500 dark:text-red-400 font-bold scale-105' : 'text-[var(--text-secondary)] opacity-75 hover:opacity-100 font-medium'}"
     onclick={() => onSwitchTab('download-mgr')}
   >
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block shrink-0">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
+    <HardDriveDownload size={18} class="inline-block shrink-0" />
     <span class="text-[10px] mt-0.5 leading-none">{t('topbar.local')}</span>
   </button>
 </nav>

@@ -21,6 +21,7 @@
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { t } from '../lib/i18n';
+  import { Loader2, Music2, HardDrive, Play, Link, Package, HeartCrack, Star, Search } from '@lucide/svelte';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -307,7 +308,7 @@
       onclick={() => onViewPlaylist(pidInput)}
     >
       {#if isPlaylistLoading()}
-        <span class="inline-block animate-spin text-xs">⏳</span>
+        <Loader2 size={12} class="animate-spin text-red-500" />
       {:else}
         <span>{t('playlist.viewDetailBtn')}</span>
       {/if}
@@ -316,14 +317,14 @@
 
   {#if !playlist && !isPlaylistLoading()}
     <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2 min-h-[200px]">
-      <div class="text-3xl opacity-60">🎼</div>
+      <Music2 size={36} class="opacity-40" />
       <div class="text-xs text-[var(--text-muted)] text-center">可去左侧「我的歌单」挑选，或在上方直接输入 ID / 链接解析</div>
     </div>
   {/if}
 
   {#if isPlaylistLoading() && (!playlist || String(playlist.id) !== pid)}
     <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm min-h-[220px]">
-      <div class="text-3xl animate-spin text-red-500">⏳</div>
+      <Loader2 size={36} class="animate-spin text-red-500" />
       <div class="text-sm font-semibold text-[var(--text-main)]">{t('playlist.fetchingData', { id: pid })}</div>
       <p class="text-xs text-[var(--text-muted)] text-center max-w-sm m-0 leading-relaxed">
         {t('playlist.fetchingDataHint')}
@@ -337,7 +338,7 @@
   {:else if playlist}
     <DetailHeaderCard cover={playlist.coverImgUrl || '/favicon.png'} title={playlist.name} subtitle={`${playlist.creator || t('common.unknown')} | ${t('playlist.trackCount', { count: allTracks.length })}`}>
       <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))} title={t('playlist.downloadToPcTooltip')}>
-        <span>🖥️</span><span>{t('playlist.downloadToPc')}</span>
+        <HardDrive size={13} /><span>{t('playlist.downloadToPc')}</span>
       </button>
       <button
         class="btn-secondary"
@@ -347,7 +348,7 @@
         }}
         title={t('playlist.playAllTooltip')}
       >
-        <span>▶️</span><span>{t('playlist.playAll')}</span>
+        <Play size={13} fill="currentColor" /><span>{t('playlist.playAll')}</span>
       </button>
       <button
         type="button"
@@ -355,14 +356,14 @@
         onclick={() => showIdInput = !showIdInput}
         title={t('playlist.parseDetail')}
       >
-        <span>🔗</span><span class="hidden sm:inline">{t('playlist.parseDetail')}</span>
+        <Link size={13} /><span class="hidden sm:inline">{t('playlist.parseDetail')}</span>
       </button>
       {#if playlist && !playlist.isCreator}
         <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title={t('playlist.forkTooltip')}>
-          <span>📦</span><span>{t('playlist.forkBtn')}</span>
+          <Package size={13} /><span>{t('playlist.forkBtn')}</span>
         </button>
         <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}>
-          <span>{playlist.subscribed ? '💔' : '⭐'}</span><span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
+          {#if playlist.subscribed}<HeartCrack size={13} />{:else}<Star size={13} />{/if}<span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
         </button>
       {/if}
     </DetailHeaderCard>
@@ -370,8 +371,8 @@
     <PlaylistTrackFilter />
 
     {#if filteredTracks.length === 0}
-      <div class="py-12 text-center text-xs text-[var(--text-muted)] bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl p-6 my-2 border border-dashed border-[var(--border-color)]">
-        <span class="text-2xl block mb-1">🔍</span>
+      <div class="py-12 text-center text-xs text-[var(--text-muted)] bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl p-6 my-2 border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center">
+        <Search size={28} class="mb-1 opacity-40 text-[var(--text-muted)]" />
         <span>{t('playlist.notFoundSong', { kw: getPlaylistSearchKeyword() })}</span>
       </div>
     {:else}
@@ -466,7 +467,7 @@
       >
         {#if hasMore}
           <div class="flex items-center justify-center gap-2 text-[var(--text-secondary)] py-1">
-            <span class="inline-block animate-spin text-red-500 text-sm">⏳</span>
+            <Loader2 size={14} class="animate-spin text-red-500" />
             <span>{t('playlist.loadingMoreTracks', { loaded: paged.length, total: filteredTracks.length })}</span>
           </div>
         {:else}

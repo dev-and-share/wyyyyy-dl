@@ -12,6 +12,7 @@
   import { deleteApiCache } from '../lib/utils';
   import Modal from './Modal.svelte';
   import CreatePlaylistModal from './CreatePlaylistModal.svelte';
+  import { Puzzle, Music, Plus, AlertTriangle, Loader2, Folder, Monitor } from '@lucide/svelte';
   import { t } from '../lib/i18n/index.svelte';
 
   let {
@@ -138,7 +139,11 @@
   <Modal title={t('playlist.addToTitle')} icon="📂" maxWidth="max-w-[480px]" {zIndex} {onClose}>
     <!-- 目标曲目提示卡片 -->
     <div class="flex items-center gap-2 p-2.5 rounded-xl bg-black/5 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 mb-3">
-      <span class="text-base">{isExternal ? '🧩' : '🎵'}</span>
+      {#if isExternal}
+        <Puzzle size={16} class="text-purple-400 shrink-0" />
+      {:else}
+        <Music size={16} class="text-theme-accent shrink-0" />
+      {/if}
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-1.5">
           <span class="text-xs font-bold text-[var(--text-main)] truncate">{song.name}</span>
@@ -188,7 +193,8 @@
           class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-transparent border-none cursor-pointer flex items-center gap-1"
           onclick={() => showCreateNetease = true}
         >
-          ➕ {t('playlist.create')}
+          <Plus size={13} />
+          <span>{t('playlist.create')}</span>
         </button>
       {:else}
         <button
@@ -196,7 +202,8 @@
           class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-transparent border-none cursor-pointer flex items-center gap-1"
           onclick={() => showCreateLocal = !showCreateLocal}
         >
-          {t('playlist.createLocalBtn')}
+          <Plus size={13} />
+          <span>{t('playlist.createLocalBtn')}</span>
         </button>
       {/if}
     </div>
@@ -224,8 +231,9 @@
     <!-- 外部音源未落盘阻断提示 -->
     {#if isExternal && !isDownloadedOrCached}
       <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300/90 leading-relaxed mb-3">
-        <div class="font-bold mb-1 flex items-center gap-1">
-          <span>⚠️</span> <span>{t('playlist.externalWarningTitle')}</span>
+        <div class="font-bold mb-1 flex items-center gap-1.5">
+          <AlertTriangle size={14} class="text-amber-400 shrink-0" />
+          <span>{t('playlist.externalWarningTitle')}</span>
         </div>
         <p class="text-[11px] opacity-80 mb-2">
           {t('playlist.externalWarningDesc')}
@@ -236,8 +244,9 @@
     <!-- 歌单列表 -->
     <div class="max-h-[48vh] sm:max-h-[320px] overflow-y-auto space-y-1.5 pr-1">
       {#if loading}
-        <div class="py-8 text-center text-xs text-[var(--text-muted)]">
-          🔄 {t('playlist.loadingMine')}
+        <div class="py-8 text-center text-xs text-[var(--text-muted)] flex items-center justify-center gap-1.5">
+          <Loader2 size={14} class="animate-spin" />
+          <span>{t('playlist.loadingMine')}</span>
         </div>
       {:else if activeTab === 'netease'}
         {#each createdPlaylists as pl}
@@ -248,7 +257,7 @@
             onclick={() => handleAddToNetease(pl)}
           >
             <div class="flex items-center gap-2 flex-1 min-w-0">
-              <span class="text-sm">📁</span>
+              <Folder size={16} class="text-[var(--text-muted)] group-hover:text-blue-400 shrink-0" />
               <div class="flex-1 min-w-0">
                 <div class="text-xs font-semibold text-[var(--text-main)] truncate">{pl.name}</div>
                 <div class="text-[10px] text-[var(--text-muted)]">{t('playlist.trackItemCount', { count: pl.trackCount || 0 })}</div>
@@ -257,10 +266,16 @@
             <button
               type="button"
               disabled={addingId === String(pl.id)}
-              class="btn-primary text-xs px-3 py-1 rounded-lg font-medium shrink-0 cursor-pointer disabled:opacity-50 pointer-events-auto"
+              class="btn-primary text-xs px-3 py-1 rounded-lg font-medium shrink-0 cursor-pointer disabled:opacity-50 pointer-events-auto flex items-center gap-1"
               onclick={(e) => { e.stopPropagation(); handleAddToNetease(pl); }}
             >
-              {addingId === String(pl.id) ? t('playlist.adding') : `➕ ${t('playlist.add')}`}
+              {#if addingId === String(pl.id)}
+                <Loader2 size={12} class="animate-spin" />
+                <span>{t('playlist.adding')}</span>
+              {:else}
+                <Plus size={12} />
+                <span>{t('playlist.add')}</span>
+              {/if}
             </button>
           </div>
         {:else}
@@ -278,7 +293,7 @@
             onclick={() => handleAddToLocal(pl)}
           >
             <div class="flex items-center gap-2 flex-1 min-w-0">
-              <span class="text-sm">🖥️</span>
+              <Monitor size={16} class="text-[var(--text-muted)] group-hover:text-emerald-400 shrink-0" />
               <div class="flex-1 min-w-0">
                 <div class="text-xs font-semibold text-[var(--text-main)] truncate">{pl.name}</div>
                 <div class="text-[10px] text-[var(--text-muted)]">{t('playlist.downloadedTrackCount', { count: pl.trackCount || 0 })}</div>

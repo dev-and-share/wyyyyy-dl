@@ -12,6 +12,7 @@
   import { matchesKeyword } from '../lib/utils';
   import { t } from '../lib/i18n';
   import SlotBtn from './SlotBtn.svelte';
+  import { Folder, Plus, Search, Heart, Trash2 } from '@lucide/svelte';
 
   let {
     onPlayQueue,
@@ -78,7 +79,7 @@
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
     <div class="flex items-center justify-between w-full sm:w-auto gap-2">
       <div class="flex items-center gap-2">
-        <span class="text-base text-emerald-400">📁</span>
+        <Folder size={16} class="text-emerald-400" />
         <h3 class="font-bold text-sm text-[var(--text-main)]">{t('localPlaylist.title')}</h3>
         <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
           {localPlaylistState.playlists.length}
@@ -90,7 +91,7 @@
         class="sm:hidden px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors flex items-center gap-1 shrink-0 active:scale-95"
         onclick={() => showCreateInput = !showCreateInput}
       >
-        <span>➕</span>
+        <Plus size={13} strokeWidth={2.5} />
         <span>{t('localPlaylist.createBtn')}</span>
       </button>
     </div>
@@ -104,7 +105,9 @@
           class="w-full pl-6 pr-2 py-1 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-emerald-500 transition-colors"
           bind:value={searchKw}
         />
-        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none">🔍</span>
+        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none flex items-center justify-center">
+          <Search size={11} />
+        </span>
       </div>
 
       <button
@@ -112,7 +115,7 @@
         class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors items-center gap-1 shrink-0 active:scale-95"
         onclick={() => showCreateInput = !showCreateInput}
       >
-        <span>➕</span>
+        <Plus size={13} strokeWidth={2.5} />
         <span>{t('localPlaylist.createBtn')}</span>
       </button>
     </div>
@@ -121,7 +124,7 @@
   <!-- 新建歌单行内输入框 -->
   {#if showCreateInput}
     <div class="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 animate-fade-in">
-      <span class="text-sm">📁</span>
+      <Folder size={14} class="text-emerald-400" />
       <input
         type="text"
         placeholder={t('localPlaylist.inputPlaceholder')}
@@ -158,8 +161,12 @@
           onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewPlaylist?.(pl.id); } }}
         >
           <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-lg {isSystemFavoritesPlaylist(pl.id) ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-400'} flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
-              {isSystemFavoritesPlaylist(pl.id) ? '❤️' : '📁'}
+            <div class="w-10 h-10 rounded-lg {isSystemFavoritesPlaylist(pl.id) ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-400'} flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              {#if isSystemFavoritesPlaylist(pl.id)}
+                <Heart size={20} class="fill-current" />
+              {:else}
+                <Folder size={20} class="fill-current/20" />
+              {/if}
             </div>
             <div class="flex-1 min-w-0">
               <h4 class="font-semibold text-xs text-[var(--text-main)] truncate group-hover:text-emerald-400 transition-colors">
@@ -183,7 +190,7 @@
                 <SlotBtn
                   onclick={() => handleDelete(pl)}
                 >
-                  🗑️
+                  <Trash2 size={12} />
                 </SlotBtn>
               {/if}
             </div>
@@ -193,7 +200,7 @@
     </div>
   {:else}
     <div class="flex flex-col items-center justify-center py-10 text-center text-[var(--text-muted)] bg-[var(--card-bg)]/40 rounded-xl border border-dashed border-[var(--border-subtle)]">
-      <span class="text-3xl mb-2">📁</span>
+      <Folder size={32} class="mb-2 opacity-50 text-emerald-400" />
       <p class="text-xs">
         {searchKw ? t('localPlaylist.emptySearch') : t('localPlaylist.empty')}
       </p>

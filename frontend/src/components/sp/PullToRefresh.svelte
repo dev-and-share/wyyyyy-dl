@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { RefreshCw } from '@lucide/svelte';
   import { t } from '../../lib/i18n/index.svelte';
 
   let {
@@ -98,10 +99,10 @@
       class="px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 shadow-2xl backdrop-blur-xl transition-all border duration-200 {pullDistance >= THRESHOLD || isRefreshing ? 'bg-purple-600/95 text-white border-purple-400/40 shadow-purple-500/30 scale-105' : 'bg-[var(--card-bg-solid,#0f172a)]/95 text-[var(--text-main)] border-[var(--border-color,rgba(255,255,255,0.15))]'}"
     >
       <span
-        class="inline-block text-sm transition-transform duration-75 {isRefreshing ? 'animate-[spin_0.8s_linear_infinite]' : ''}"
+        class="inline-block transition-transform duration-75 {isRefreshing ? 'animate-[spin_0.8s_linear_infinite]' : ''}"
         style={!isRefreshing ? `transform: rotate(${pullDistance * 4.5}deg);` : ''}
       >
-        🔄
+        <RefreshCw size={14} />
       </span>
       <span>
         {isRefreshing ? t('pullRefresh.refreshing') : pullDistance >= THRESHOLD ? t('pullRefresh.release') : t('pullRefresh.pull')}

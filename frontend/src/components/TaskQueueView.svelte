@@ -1,5 +1,6 @@
 <script lang="ts">
   import TaskStatusBadge from './TaskStatusBadge.svelte';
+  import { Headphones, Pause, Save, Loader2, RefreshCw } from '@lucide/svelte';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import { taskState, startTaskPolling, fetchTasks } from '../lib/taskStore.svelte';
@@ -148,11 +149,15 @@
               <button
                 type="button"
                 data-testid="btn-preview-task"
-                class="px-1.5 py-0.5 text-[11px] rounded font-semibold cursor-pointer transition-all inline-flex items-center gap-0.5 active:scale-95 {isTrackPlaying(taskItem) ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/40' : 'bg-black/5 dark:bg-white/10 text-[var(--text-main)] border border-black/10 dark:border-white/10'}"
+                class="px-1.5 py-0.5 text-[11px] rounded font-semibold cursor-pointer transition-all inline-flex items-center gap-1 active:scale-95 {isTrackPlaying(taskItem) ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/40' : 'bg-black/5 dark:bg-white/10 text-[var(--text-main)] border border-black/10 dark:border-white/10'}"
                 onclick={() => handlePreview(taskItem)}
                 title={t('common.audition')}
               >
-                <span>{isTrackPlaying(taskItem) ? '⏸️' : '🎧'}</span>
+                {#if isTrackPlaying(taskItem)}
+                  <Pause size={12} fill="currentColor" />
+                {:else}
+                  <Headphones size={12} />
+                {/if}
                 <span>{isTrackPlaying(taskItem) ? t('common.auditioning') : t('common.audition')}</span>
               </button>
 
@@ -160,12 +165,16 @@
               <button
                 type="button"
                 data-testid="btn-force-download-task"
-                class="px-1.5 py-0.5 text-[11px] rounded bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-0.5"
+                class="px-1.5 py-0.5 text-[11px] rounded bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
                 disabled={forcingIds.has(String(taskItem.id || taskItem.songId))}
                 onclick={() => handleForceDownload(taskItem)}
                 title={t('download.forceDownloadTooltip')}
               >
-                <span class={forcingIds.has(String(taskItem.id || taskItem.songId)) ? 'animate-spin inline-block' : ''}>{forcingIds.has(String(taskItem.id || taskItem.songId)) ? '⏳' : '💾'}</span>
+                {#if forcingIds.has(String(taskItem.id || taskItem.songId))}
+                  <Loader2 size={12} class="animate-spin" />
+                {:else}
+                  <Save size={12} />
+                {/if}
                 <span>{t('common.forceSave')}</span>
               </button>
 
@@ -173,12 +182,12 @@
               <button
                 type="button"
                 data-testid="btn-retry-task"
-                class="px-1.5 py-0.5 text-[11px] rounded bg-rose-500/15 hover:bg-rose-500/25 active:scale-95 text-rose-500 dark:text-rose-400 border border-rose-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-0.5"
+                class="px-1.5 py-0.5 text-[11px] rounded bg-rose-500/15 hover:bg-rose-500/25 active:scale-95 text-rose-500 dark:text-rose-400 border border-rose-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
                 disabled={retryingIds.has(String(taskItem.id || taskItem.songId))}
                 onclick={() => handleRetry(taskItem)}
                 title={t('common.retry')}
               >
-                <span class={retryingIds.has(String(taskItem.id || taskItem.songId)) ? 'animate-spin inline-block' : ''}>🔄</span>
+                <RefreshCw size={12} class={retryingIds.has(String(taskItem.id || taskItem.songId)) ? 'animate-spin' : ''} />
                 <span>{t('common.retry')}</span>
               </button>
             {/if}
