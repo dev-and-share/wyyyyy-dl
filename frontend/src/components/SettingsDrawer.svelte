@@ -20,6 +20,7 @@
     triggerManualPwaUpdate
   } from '../lib/pwa';
   import { globalUiState } from '../lib/ui.svelte';
+  import { layoutState } from '../lib/layout.svelte';
   import { t } from '../lib/i18n';
 
   let {
@@ -104,6 +105,19 @@
       dragOffset = 0;
     }
   }
+
+  // 💻 桌面端沉浸居中浮动控制台 / 📱 移动端底部手势抽屉 自适应样式
+  const isDesktop = $derived(layoutState.isDesktop);
+
+  const panelStyle = $derived.by(() => {
+    if (isDesktop) {
+      const transform = closing ? 'translate(-50%, -48%) scale(0.96)' : 'translate(-50%, -50%) scale(1)';
+      const opacity = closing ? '0' : '1';
+      return `top: 50%; left: 50%; transform: ${transform}; opacity: ${opacity}; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--border-color);`;
+    }
+    const transform = closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`;
+    return `transform: ${transform}; box-shadow: 0 -12px 40px var(--primary-glow, rgba(0, 0, 0, 0.5)), 0 -1px 0 0 var(--border-color);`;
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -113,21 +127,20 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="fixed inset-0 z-[100049] transition-opacity duration-200 backdrop-blur-md {closing ? 'opacity-0' : 'opacity-100'}
-    bg-black/40 dark:bg-gradient-to-b dark:from-[var(--bg-color)]/95 dark:via-[var(--bg-color)]/70 dark:to-black/80"
+    bg-black/45 dark:bg-black/65"
   onclick={handleClose}
 ></div>
 
-<!-- Settings Drawer Panel -->
+<!-- Settings Panel (💻 桌面端：优雅居中无界沉浸悬浮控制台 / 📱 移动端：底部手势抽屉) -->
 <div
   role="dialog"
   aria-modal="true"
   aria-label={t('settings.title')}
-  class="settings-drawer-panel fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-transform duration-200 ease-out flex flex-col
+  class="settings-drawer-panel fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-all duration-200 ease-out flex flex-col
     inset-x-0 bottom-0 max-h-[88vh] rounded-t-[28px] border-t border-[var(--border-color)] backdrop-blur-2xl
     pb-[calc(16px+env(safe-area-inset-bottom,0px))]
-    lg:right-0 lg:left-auto lg:w-[420px] lg:rounded-none lg:border-l lg:border-t lg:border-[var(--border-color)] lg:pb-0"
-  style="transform: {closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`};
-         box-shadow: 0 -12px 40px var(--primary-glow, rgba(0, 0, 0, 0.5)), 0 -1px 0 0 var(--border-color);"
+    lg:inset-auto lg:w-[680px] lg:max-w-[calc(100vw-64px)] lg:max-h-[82vh] lg:rounded-[28px] lg:border lg:border-[var(--border-color)] lg:pb-0 select-text overflow-hidden"
+  style={panelStyle}
 >
   <!-- Mobile Drag Handle -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -368,14 +381,6 @@
 </div>
 
 <style>
-  @media (min-width: 1024px) {
-    .settings-drawer-panel {
-      top: var(--wco-height, 0px) !important;
-      height: calc(100dvh - var(--wco-height, 0px)) !important;
-      max-height: calc(100dvh - var(--wco-height, 0px)) !important;
-    }
-  }
-
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: var(--border-color, rgba(255, 255, 255, 0.15)) transparent;
