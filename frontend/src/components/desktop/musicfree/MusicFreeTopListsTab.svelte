@@ -16,6 +16,7 @@
   import { getPluginDisplayName, getTopListGroupTitle, getTopListDisplayInfo } from '../../../lib/musicfree/pluginI18n';
   import SlotBtn from '../../SlotBtn.svelte';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
+  import { Puzzle, Plus, Trophy } from '@lucide/svelte';
 
   let {
     curTrack = null,
@@ -307,7 +308,7 @@
                   onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
                   title={t('musicfree.mfSearchTooltip')}
                 >
-                  🧩 {t('musicfree.mfSearchShort')}
+                  <span class="inline-flex items-center gap-1"><Puzzle size={11} /> {t('musicfree.mfSearchShort')}</span>
                 </SlotBtn>
                 {#if status.isServer}
                   <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
@@ -322,7 +323,7 @@
                   {status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}
                 </SlotBtn>
                 <SlotBtn onclick={() => addToPlaylistSong = buildChartTrack(trackItem)}>
-                  ➕
+                  <Plus size={12} strokeWidth={2.5} />
                 </SlotBtn>
               </div>
             </div>
@@ -345,7 +346,7 @@
       <!-- 🏆 音源下拉选择器 (默认酷狗 Kugou 官方榜单) -->
       <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-xs">
         <div class="flex items-center gap-1.5 shrink-0">
-          <span class="text-sm">🏆</span>
+          <Trophy size={14} class="text-amber-400" />
           <span class="text-xs font-semibold text-[var(--text-main)]">{t('musicfree.selectChartSource')}</span>
         </div>
         <div class="relative min-w-0 max-w-[60%]">

@@ -44,8 +44,9 @@ describe('DesktopPlaylistGallery Session Freeze & UI Stability Contracts', () =>
     // Verify initial play counts
     const countA = getByTestId('gallery-playcount-101');
     const countB = getByTestId('gallery-playcount-102');
-    expect(countA.textContent).toContain('🔥 5');
-    expect(countB.textContent).toContain('🔥 4');
+    expect(countA.textContent).toContain('5');
+    expect(countA.querySelector('svg')).toBeDefined();
+    expect(countB.textContent).toContain('4');
 
     // Initial order: Card A is before Card B because 5 > 4
     let cards = container.querySelectorAll('[data-testid^="gallery-card-1"]');
@@ -58,7 +59,7 @@ describe('DesktopPlaylistGallery Session Freeze & UI Stability Contracts', () =>
     await tick();
 
     // 1. Instant value feedback: Card B badge immediately updates from 4 to 6
-    expect(getByTestId('gallery-playcount-102').textContent).toContain('🔥 6');
+    expect(getByTestId('gallery-playcount-102').textContent).toContain('6');
 
     // 2. Session Freeze / No UI Jitter: Card B does NOT jump in front of Card A!
     cards = container.querySelectorAll('[data-testid^="gallery-card-1"]');

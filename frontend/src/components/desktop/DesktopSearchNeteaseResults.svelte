@@ -5,6 +5,7 @@
   import TrackSourceBadge from '../TrackSourceBadge.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../../lib/player/trackStatus.svelte';
   import { t } from '../../lib/i18n';
+  import { Loader2, Plus, Download } from '@lucide/svelte';
 
   let {
     results = [],
@@ -134,9 +135,17 @@
                     <SlotBtn onclick={() => onDownloadTrack(String(r.id), r.name)}>{t('download.downloadSingle')}</SlotBtn>
                   {/if}
                   <SlotBtn onclick={() => onCacheTrack(r)}>
-                    {status.isPhone ? t('search.cachedShort') : cachingTrackId === r.id ? '⏳' : t('search.cacheShort')}
+                    {#if status.isPhone}
+                      {t('search.cachedShort')}
+                    {:else if cachingTrackId === r.id}
+                      <Loader2 size={12} class="animate-spin text-red-500" />
+                    {:else}
+                      {t('search.cacheShort')}
+                    {/if}
                   </SlotBtn>
-                  <SlotBtn onclick={() => onOpenAddToPlaylist({ id: r.id, name: r.name, artist: artistName })}>➕</SlotBtn>
+                  <SlotBtn onclick={() => onOpenAddToPlaylist({ id: r.id, name: r.name, artist: artistName })}>
+                    <Plus size={12} strokeWidth={2.5} />
+                  </SlotBtn>
                 </div>
               </td>
             </tr>
@@ -159,7 +168,9 @@
           {#if onAlbum}
             <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onAlbum(String(al.id), al.name)}>{t('album.viewShort')}</button>
           {/if}
-          <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onDownloadAlbum(String(al.id), al.name)} title={t('album.downloadFull')}>📥</button>
+          <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer inline-flex items-center justify-center" onclick={() => onDownloadAlbum(String(al.id), al.name)} title={t('album.downloadFull')}>
+            <Download size={13} />
+          </button>
         </div>
       </div>
     {/each}
@@ -179,7 +190,9 @@
         </div>
         <div class="flex items-center gap-1.5 pt-1">
           <button type="button" class="btn-primary flex-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onPlaylist(String(pl.id))}>{t('playlist.viewShort')}</button>
-          <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer" onclick={() => onDownloadPlaylist(String(pl.id), pl.name)} title={t('playlist.downloadAllShort')}>📥</button>
+          <button type="button" class="btn-secondary py-1 px-2 rounded-lg text-[11px] font-semibold cursor-pointer inline-flex items-center justify-center" onclick={() => onDownloadPlaylist(String(pl.id), pl.name)} title={t('playlist.downloadAllShort')}>
+            <Download size={13} />
+          </button>
         </div>
       </div>
     {/each}

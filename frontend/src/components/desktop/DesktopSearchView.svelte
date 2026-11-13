@@ -12,6 +12,7 @@
   import { musicFreeStore } from '../../lib/musicfree/musicFreeStore.svelte';
   import { routerState } from '../../lib/router.svelte';
   import { t } from '../../lib/i18n';
+  import { Search, Loader2, Music, X, Cloud, Puzzle } from '@lucide/svelte';
 
   let {
     curTrack = null,
@@ -290,7 +291,7 @@
             class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('netease')}
           >
-            <span>☁️</span> <span>{t('search.sourceNetease')}</span>
+            <Cloud size={13} /> <span>{t('search.sourceNetease')}</span>
           </button>
           <button
             type="button"
@@ -298,7 +299,7 @@
             class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('musicfree')}
           >
-            <span>🧩</span> <span>{t('search.sourceMusicFree')}</span>
+            <Puzzle size={13} /> <span>{t('search.sourceMusicFree')}</span>
           </button>
         </div>
       {/snippet}
@@ -327,13 +328,15 @@
             bind:value={kw}
             onkeydown={(e) => e.key === 'Enter' && executeSearch()}
           />
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">🔍</span>
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50 flex items-center justify-center pointer-events-none">
+            <Search size={14} />
+          </span>
           {#if kw}
             <button
               type="button"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none bg-transparent"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none bg-transparent flex items-center justify-center p-0.5"
               onclick={() => kw = ''}
-            >✕</button>
+            ><X size={14} /></button>
           {/if}
         </div>
 
@@ -365,7 +368,7 @@
     <!-- 2. 结果展示区 -->
     {#if searchLoading}
       <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
-        <span class="text-3xl animate-spin">⏳</span>
+        <Loader2 size={32} class="animate-spin text-red-500" />
         <span>{searchSource === 'musicfree' ? t('musicfree.searchingParallel') : t('search.searchingLibrary')}</span>
       </div>
     {:else if searchSource === 'musicfree'}
@@ -402,13 +405,13 @@
       />
     {:else if hasSearched}
       <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-        <span class="text-4xl">🔍</span>
+        <Search size={40} class="opacity-40 text-[var(--text-muted)]" />
         <span class="text-sm font-medium text-[var(--text-secondary)]">{t('search.noResultsForKw', { kw })}</span>
         <span class="text-xs text-[var(--text-muted)]">{t('search.tryDifferentKw')}</span>
       </div>
     {:else}
       <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-        <span class="text-4xl">🎵</span>
+        <Music size={40} class="opacity-40 text-[var(--text-muted)]" />
         <span class="text-sm font-bold text-[var(--text-main)]">{t('search.librarySearchTitle')}</span>
         <span class="text-xs text-[var(--text-muted)] max-w-md">{t('search.librarySearchPrompt')}</span>
       </div>

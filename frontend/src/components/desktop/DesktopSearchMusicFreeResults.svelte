@@ -13,6 +13,7 @@
   import { openSheet } from '../../lib/ui.svelte';
   import { t } from '../../lib/i18n';
   import { getPluginDisplayName } from '../../lib/musicfree/pluginI18n';
+  import { Pause, Play, Loader2, Plus } from '@lucide/svelte';
 
   let {
     results = [],
@@ -165,9 +166,9 @@
               onclick={() => handlePlay(item)}
             >
               {#if isCur && playing}
-                <span class="text-xs sm:text-sm">⏸</span>
+                <Pause size={14} fill="currentColor" />
               {:else}
-                <span class="text-xs sm:text-sm ml-0.5">▶</span>
+                <Play size={14} fill="currentColor" class="ml-0.5" />
               {/if}
             </button>
           </div>
@@ -222,16 +223,26 @@
               </SlotBtn>
             {:else}
               <SlotBtn onclick={() => handleDownload(item)}>
-                {actionLoadingId === item.id ? '⏳' : t('download.downloadSingle')}
+                {#if actionLoadingId === item.id}
+                  <Loader2 size={12} class="animate-spin text-red-500" />
+                {:else}
+                  {t('download.downloadSingle')}
+                {/if}
               </SlotBtn>
             {/if}
 
             <SlotBtn onclick={() => handleCache(item)}>
-              {status.isPhone ? t('search.cachedShort') : actionLoadingId === item.id ? '⏳' : t('search.cacheShort')}
+              {#if status.isPhone}
+                {t('search.cachedShort')}
+              {:else if actionLoadingId === item.id}
+                <Loader2 size={12} class="animate-spin text-red-500" />
+              {:else}
+                {t('search.cacheShort')}
+              {/if}
             </SlotBtn>
 
             <SlotBtn onclick={() => handleAdd(item)}>
-              ➕
+              <Plus size={12} strokeWidth={2.5} />
             </SlotBtn>
           </div>
 
@@ -241,7 +252,11 @@
               playing={isCur && playing}
               onclick={() => handlePlay(item)}
             >
-              {isCur && playing ? '⏸' : t('search.play')}
+              {#if isCur && playing}
+                <Pause size={12} fill="currentColor" />
+              {:else}
+                {t('search.play')}
+              {/if}
             </SlotBtn>
             <button
               type="button"

@@ -18,6 +18,7 @@
     isLocalPlaylist
   } from '../../lib/localPlaylistStore.svelte';
   import DesktopViewHeader from './DesktopViewHeader.svelte';
+  import { RefreshCw, Heart, Monitor, Flame, Folder, Play } from '@lucide/svelte';
 
   let {
     onSelectPlaylist,
@@ -150,11 +151,11 @@
 
       <button
         type="button"
-        class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer shrink-0"
+        class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer shrink-0 flex items-center justify-center"
         onclick={handleRefresh}
         title={t('playlist.syncFromCloudTooltip')}
       >
-        {loading ? '⏳' : '🔄'}
+        <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
       </button>
     {/snippet}
   </DesktopViewHeader>
@@ -265,12 +266,14 @@
             {/if}
 
             {#if isFav || isSysFav}
-              <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-500/90 text-white backdrop-blur-xs">
-                {isSysFav ? '❤️ 本地喜欢' : t('playlist.favoriteTag')}
+              <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-500/90 text-white backdrop-blur-xs flex items-center gap-1">
+                <Heart size={10} fill="currentColor" />
+                <span>{isSysFav ? '本地喜欢' : t('playlist.favoriteTag')}</span>
               </span>
             {:else if isLocalPl}
-              <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600/90 text-white backdrop-blur-xs">
-                🖥️ 本地自建
+              <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600/90 text-white backdrop-blur-xs flex items-center gap-1">
+                <Monitor size={10} />
+                <span>本地自建</span>
               </span>
             {/if}
           </div>
@@ -284,9 +287,12 @@
               {#if playCount > 0}
                 <span
                   data-testid="gallery-playcount-{pl.id}"
-                  class="text-amber-400/80 font-medium inline-flex items-center gap-0.5"
+                  class="text-amber-400/80 font-medium inline-flex items-center gap-1"
                   title={t('myPlaylists.historyPlayTooltip', { count: playCount })}
-                >🔥 {playCount}</span>
+                >
+                  <Flame size={12} class="text-amber-500" />
+                  <span>{playCount}</span>
+                </span>
               {/if}
             </div>
           </div>
@@ -295,7 +301,11 @@
     </div>
   {:else}
     <div class="py-16 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-      <span class="text-4xl">{filter === 'local' ? '🖥️' : '📁'}</span>
+      {#if filter === 'local'}
+        <Monitor size={36} class="text-[var(--text-muted)]" />
+      {:else}
+        <Folder size={36} class="text-[var(--text-muted)]" />
+      {/if}
       <span class="text-sm font-medium text-[var(--text-secondary)]">
         {searchKeyword ? t('playlist.noMatchingPlaylists') : (filter === 'local' ? (t('sidebar.noLocalPlaylists') || '暂无本地专属歌单') : t('playlist.noPlaylistsData'))}
       </span>

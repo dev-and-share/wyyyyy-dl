@@ -27,6 +27,7 @@
   import { toPlayerTrack } from '../../lib/playerHelper';
   import { t } from '../../lib/i18n';
   import DesktopHeaderActions from './DesktopHeaderActions.svelte';
+  import { Play, HardDrive, Package, HeartCrack, Star, Search, Plus, Trash2, Loader2, Sparkles, TriangleAlert } from '@lucide/svelte';
 
   let {
     playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
@@ -251,8 +252,8 @@
       <div class="flex-1 min-w-0 flex flex-col gap-1.5">
         <div class="flex items-center gap-2">
           {#if playlist.isLocal}
-            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              🖥️ 本地歌单
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+              <HardDrive size={10} /> 本地歌单
             </span>
           {:else}
             <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
@@ -282,7 +283,7 @@
             class="btn-primary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
             onclick={handlePlayAll}
           >
-            <span>▶️</span>
+            <Play size={13} fill="currentColor" />
             <span>{t('playlist.playAll')}</span>
           </button>
           {#if !playlist.isLocal}
@@ -292,7 +293,7 @@
               class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
               onclick={handleDownloadAll}
             >
-              <span>🖥️</span> <span>{t('playlist.downloadAllToPc')}</span>
+              <HardDrive size={13} /> <span>{t('playlist.downloadAllToPc')}</span>
             </button>
           {/if}
           {#if playlist && !playlist.isLocal && !playlist.isCreator}
@@ -303,7 +304,7 @@
               onclick={() => showForkModal = true}
               title={t('playlist.forkDesc')}
             >
-              <span>📦</span> <span>{t('playlist.forkTitle')}</span>
+              <Package size={13} /> <span>{t('playlist.forkTitle')}</span>
             </button>
             <button
               type="button"
@@ -312,7 +313,7 @@
               onclick={handleToggleSubscribe}
               title={playlist.subscribed ? t('playlist.unsubscribeTooltip') : t('playlist.subscribeTooltip')}
             >
-              <span>{playlist.subscribed ? '💔' : '⭐'}</span> <span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
+              {#if playlist.subscribed}<HeartCrack size={13} />{:else}<Star size={13} />{/if} <span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
             </button>
           {/if}
         </div>
@@ -324,8 +325,8 @@
 
     <!-- 3. 宽屏歌曲大表格 (流式平滑展开，表头吸顶，与外层视口完美契合) -->
     {#if filteredTracks.length === 0}
-      <div class="py-16 text-center text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-dashed border-[var(--border-color)] p-8">
-        <span class="text-3xl block mb-2">🔍</span>
+      <div class="py-16 text-center text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-dashed border-[var(--border-color)] p-8 flex flex-col items-center justify-center">
+        <Search size={32} class="mb-2 opacity-40 text-[var(--text-muted)]" />
         <span>{t('playlist.notFoundSong', { kw: getPlaylistSearchKeyword() })}</span>
       </div>
     {:else}
@@ -407,9 +408,9 @@
                       <SlotBtn onclick={() => handleCache(trackItem)}>
                         {status.isPhone ? t('search.cachedShort') : cachingTrackId === trackItem.id ? t('playlist.cachingBadge') : t('search.cacheShort')}
                       </SlotBtn>
-                      <SlotBtn onclick={() => addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist }}>➕</SlotBtn>
+                      <SlotBtn onclick={() => addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist }}><Plus size={12} strokeWidth={2.5} /></SlotBtn>
                       {#if playlist && (playlist.isCreator || !playlist.subscribed)}
-                        <SlotBtn onclick={() => removingTrack = { id: trackItem.id, name: trackItem.name, artist }}>🗑️</SlotBtn>
+                        <SlotBtn onclick={() => removingTrack = { id: trackItem.id, name: trackItem.name, artist }}><Trash2 size={12} /></SlotBtn>
                       {/if}
                     </div>
                   </td>
@@ -427,12 +428,12 @@
         >
           {#if hasMore}
             <div class="flex items-center gap-2 text-[var(--text-secondary)] py-1">
-              <span class="inline-block animate-spin text-red-500 text-sm">⏳</span>
+              <Loader2 size={14} class="animate-spin text-red-500" />
               <span>{t('playlist.loadingMoreTracks', { loaded: paged.length, total: filteredTracks.length })}</span>
             </div>
           {:else}
             <div class="flex items-center gap-2 text-[var(--text-muted)] text-[11px] py-1">
-              <span>✨</span>
+              <Sparkles size={12} class="text-amber-400" />
               <span>{t('playlist.loadedAllTracks', { count: filteredTracks.length })}{#if getPlaylistSearchKeyword()}{t('playlist.filteredFromTotal', { count: allTracks.length })}{/if}</span>
             </div>
           {/if}
@@ -441,7 +442,7 @@
     {/if}
   {:else if loadError}
     <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
-      <span class="text-3xl">⚠️</span>
+      <TriangleAlert size={32} class="text-amber-500" />
       <span class="text-sm font-semibold text-red-400">{loadError}</span>
       <div class="flex items-center gap-2 mt-2">
         <button
@@ -462,7 +463,7 @@
     </div>
   {:else}
     <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
-      <span class="text-3xl animate-spin text-red-500">⏳</span>
+      <Loader2 size={32} class="animate-spin text-red-500" />
       <span class="text-sm font-semibold text-[var(--text-main)]">{t('playlist.loadingContent')}</span>
       <span class="text-xs text-[var(--text-muted)] max-w-sm">{t('playlist.loadingLargeNotice')}</span>
     </div>

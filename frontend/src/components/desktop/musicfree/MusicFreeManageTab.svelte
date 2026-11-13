@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Download, Loader2, Package, RefreshCw } from '@lucide/svelte';
   import { t } from '../../../lib/i18n';
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { getPluginDisplayName, getPluginDisplayAuthor } from '../../../lib/musicfree/pluginI18n';
@@ -95,7 +96,8 @@
   <!-- 导入订阅源 / 单插件卡片 -->
   <section class="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
     <h2 class="text-sm font-semibold text-[var(--text-main)] flex items-center gap-1.5">
-      <span>📥</span> {t('musicfree.importTitle')}
+      <Download size={15} class="text-purple-400" />
+      <span>{t('musicfree.importTitle')}</span>
     </h2>
 
     <div class="flex flex-col sm:flex-row gap-2.5">
@@ -113,7 +115,7 @@
         class="px-5 py-2.5 rounded-xl bg-purple-600 text-white font-medium text-xs lg:text-sm hover:bg-purple-500 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 flex items-center justify-center gap-2"
       >
         {#if musicFreeStore.loading}
-          <span class="animate-spin text-sm">⏳</span>
+          <Loader2 size={15} class="animate-spin" />
           <span>{musicFreeStore.statusMessage || t('musicfree.fetchingParsing')}</span>
         {:else}
           <span>{t('musicfree.importBtn')}</span>
@@ -161,17 +163,19 @@
   <section class="space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold text-[var(--text-main)] flex items-center gap-1.5 shrink-0">
-        <span>📦</span> {t('musicfree.installedPluginsTitle', { count: musicFreeStore.plugins.length })}
+        <Package size={15} class="text-purple-400" />
+        <span>{t('musicfree.installedPluginsTitle', { count: musicFreeStore.plugins.length })}</span>
       </h2>
       <div class="flex items-center gap-2 flex-wrap">
         {#if musicFreeStore.canRestoreBuiltins}
           <button
             type="button"
             onclick={handleRestoreBuiltins}
-            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/30 transition-colors cursor-pointer flex items-center gap-1"
+            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/30 transition-colors cursor-pointer flex items-center gap-1.5"
             title={t('musicfree.restoreBuiltinsTooltip')}
           >
-            <span>🔄</span> {t('musicfree.restoreBuiltins')}
+            <RefreshCw size={12} />
+            <span>{t('musicfree.restoreBuiltins')}</span>
           </button>
         {/if}
         {#if musicFreeStore.plugins.length > 0}

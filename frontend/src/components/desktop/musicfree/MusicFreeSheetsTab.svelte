@@ -15,6 +15,7 @@
   import { t } from '../../../lib/i18n';
   import { getPluginDisplayName } from '../../../lib/musicfree/pluginI18n';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
+  import { Puzzle, Plus, Radio } from '@lucide/svelte';
 
   let { curTrack = null, playing = false, onPlayQueue, showToast } = $props<{
     curTrack?: any;
@@ -318,7 +319,7 @@
                   onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
                   title={t('musicfree.mfSearchTooltip')}
                 >
-                  🧩 {t('musicfree.mfSearchShort')}
+                  <span class="inline-flex items-center gap-1"><Puzzle size={11} /> {t('musicfree.mfSearchShort')}</span>
                 </SlotBtn>
                 {#if status.isServer}
                   <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
@@ -333,7 +334,7 @@
                   {status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}
                 </SlotBtn>
                 <SlotBtn onclick={() => addToPlaylistSong = buildTrack(trackItem)}>
-                  ➕
+                  <Plus size={12} strokeWidth={2.5} />
                 </SlotBtn>
               </div>
             </div>
@@ -444,7 +445,7 @@
         </div>
       {:else if sheets.length === 0}
         <div class="py-16 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-2.5">
-          <span class="text-3xl">📻</span>
+          <Radio size={36} class="opacity-40 text-purple-400" />
           <span class="font-semibold text-sm text-[var(--text-secondary)]">{t('musicfree.pluginNoSheetsTitle', { name: currentPluginName })}</span>
           <span class="text-[11px] opacity-75 max-w-md">
             {t('musicfree.pluginNoSheetsDesc')}

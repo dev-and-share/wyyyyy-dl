@@ -7,6 +7,7 @@
   import DesktopTaskQueueWorkbench from './DesktopTaskQueueWorkbench.svelte';
   import DesktopViewHeader from './DesktopViewHeader.svelte';
   import SlotBtn from '../SlotBtn.svelte';
+  import { Folder, Download, FolderArchive, Smartphone, Zap, AlertTriangle, Save, RefreshCw, Trash2, Play, Pause } from '@lucide/svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
   import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
@@ -171,7 +172,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'local-playlists' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'local-playlists'; routerState.downloadSubTab = 'local-playlists'; }}
         >
-          <span>📁</span> <span>本地歌单</span>
+          <Folder size={14} /> <span>本地歌单</span>
           {#if localPlaylistState.playlists.length > 0}
             <span class="text-[10px] px-1.5 py-0.2 rounded-full {subTab === 'local-playlists' ? 'bg-white/20 text-white' : 'bg-black/10 dark:bg-white/10 text-[var(--text-muted)]'}">
               {localPlaylistState.playlists.length}
@@ -184,7 +185,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'history' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'history'; routerState.downloadSubTab = 'history'; }}
         >
-          <span>📥</span> <span>{t('download.tabHistory')}</span>
+          <Download size={14} /> <span>{t('download.tabHistory')}</span>
         </button>
         <button
           type="button"
@@ -192,7 +193,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'folder' ? 'bg-sky-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'folder'; routerState.downloadSubTab = 'folder'; }}
         >
-          <span>🗂️</span> <span>{t('download.localLibrary')}</span>
+          <FolderArchive size={14} /> <span>{t('download.localLibrary')}</span>
         </button>
         <button
           type="button"
@@ -200,7 +201,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'browser-cache' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'browser-cache'; routerState.downloadSubTab = 'browser-cache'; }}
         >
-          <span>📱</span> <span>{t('artist.offlineCache')}</span>
+          <Smartphone size={14} /> <span>{t('artist.offlineCache')}</span>
         </button>
         <button
           type="button"
@@ -208,7 +209,7 @@
           class="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {subTab === 'tasks' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => { subTab = 'tasks'; routerState.downloadSubTab = 'tasks'; }}
         >
-          <span>⚡</span> <span>{t('drawer.tasksTab')}</span>
+          <Zap size={14} /> <span>{t('drawer.tasksTab')}</span>
           {#if activeTasksCount > 0}
             <span class="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-none animate-pulse">
               {activeTasksCount}
@@ -227,12 +228,14 @@
   <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs">
     <div class="flex items-center gap-3 flex-wrap">
       {#if (histStats?.missingCount ?? 0) > 0}
-        <span class="text-amber-400 font-medium bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
-          ⚠️ {t('download.missingCount', { count: histStats.missingCount })}
+        <span class="text-amber-400 font-medium bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20 inline-flex items-center gap-1.5">
+          <AlertTriangle size={13} />
+          <span>{t('download.missingCount', { count: histStats.missingCount })}</span>
         </span>
       {:else}
-        <span class="text-[var(--text-secondary)]">
-          💾 {t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}
+        <span class="text-[var(--text-secondary)] inline-flex items-center gap-1.5">
+          <Save size={13} class="text-emerald-500" />
+          <span>{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
         </span>
       {/if}
     </div>
@@ -287,11 +290,11 @@
           </div>
           <button
             type="button"
-            class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer"
+            class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer flex items-center justify-center"
             onclick={() => loadHistory(histPage)}
             title={t('download.refreshHistoryTooltip')}
           >
-            🔄
+            <RefreshCw size={13} class={loadingHistory ? 'animate-spin' : ''} />
           </button>
         </div>
 
@@ -375,18 +378,24 @@
                             isLocal: true
                           }])}
                         >
-                          {isPlayingThis && playing ? '⏸ ' + t('player.pause') : '▶ ' + t('common.local')}
+                          {#if isPlayingThis && playing}
+                            <Pause size={11} fill="currentColor" />
+                            <span>{t('player.pause')}</span>
+                          {:else}
+                            <Play size={11} fill="currentColor" />
+                            <span>{t('common.local')}</span>
+                          {/if}
                         </SlotBtn>
                         <SlotBtn onclick={() => onReveal({ id: item.songId || item.id, name: songTitle, artist, path: displayPath })}>
                           {t('common.reveal')}
                         </SlotBtn>
                         <button
                           type="button"
-                          class="p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 cursor-pointer border-none bg-transparent transition-colors"
+                          class="p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 cursor-pointer border-none bg-transparent transition-colors flex items-center justify-center"
                           onclick={() => handleDeleteHistory(item)}
                           title={t('download.removeFromHistoryTooltip')}
                         >
-                          🗑️
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </td>
@@ -424,7 +433,7 @@
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm flex flex-col gap-3">
         <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
           <div class="flex items-center gap-2">
-            <span class="text-base">📁</span>
+            <Folder size={16} class="text-sky-500" />
             <h2 class="font-bold text-sm text-[var(--text-main)]">{t('download.localLibraryAndTree')}</h2>
           </div>
           <span class="text-[10px] text-[var(--text-muted)]">{t('download.clickToExpandPlay')}</span>

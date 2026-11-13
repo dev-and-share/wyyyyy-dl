@@ -6,6 +6,7 @@
   import type { Track } from '../../lib/types';
   import TaskStatusBadge from '../TaskStatusBadge.svelte';
   import LocalSearchBox from '../LocalSearchBox.svelte';
+  import { RefreshCw, Trash2, Headphones, Pause, Save, Loader2, Zap, Check, X } from '@lucide/svelte';
   import { t } from '../../lib/i18n';
   import { matchesKeyword } from '../../lib/utils';
 
@@ -240,7 +241,8 @@
         class="px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {statusFilter === 'active' ? 'bg-amber-500 text-white shadow-xs' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
         onclick={() => statusFilter = 'active'}
       >
-        <span>⚡ {t('common.inProgress')} ({activeCount})</span>
+        <Zap size={13} class="text-amber-400" />
+        <span>{t('common.inProgress')} ({activeCount})</span>
         {#if activeCount > 0}
           <span class="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-none animate-pulse">
             {activeCount}
@@ -250,19 +252,21 @@
 
       <button
         type="button"
-        class="px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all {statusFilter === 'success' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+        class="px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all inline-flex items-center gap-1 {statusFilter === 'success' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-[var(--btn-secondary-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
         onclick={() => statusFilter = 'success'}
       >
-        ✓ SUCCESS ({successCount})
+        <Check size={13} />
+        <span>SUCCESS ({successCount})</span>
       </button>
 
       {#if failedCount > 0}
         <button
           type="button"
-          class="px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all {statusFilter === 'failed' ? 'bg-rose-500 text-white shadow-xs' : 'bg-[var(--btn-secondary-bg)] text-rose-400 hover:text-rose-300'}"
+          class="px-2.5 py-1 rounded-xl text-xs font-semibold cursor-pointer border-none transition-all inline-flex items-center gap-1 {statusFilter === 'failed' ? 'bg-rose-500 text-white shadow-xs' : 'bg-[var(--btn-secondary-bg)] text-rose-400 hover:text-rose-300'}"
           onclick={() => statusFilter = 'failed'}
         >
-          ✕ FAILED ({failedCount})
+          <X size={13} />
+          <span>FAILED ({failedCount})</span>
         </button>
       {/if}
     </div>
@@ -273,35 +277,35 @@
         <button
           type="button"
           data-testid="btn-retry-all-failed"
-          class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+          class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
           disabled={retryingAll}
           onclick={handleRetryAllFailed}
           title={t('common.retryAllFailed', { count: failedCount })}
         >
-          <span class={retryingAll ? 'animate-spin inline-block' : ''}>🔄</span>
+          <RefreshCw size={13} class={retryingAll ? 'animate-spin' : ''} />
           <span>{t('common.retryAllFailed', { count: failedCount })}</span>
         </button>
       {/if}
 
       <button
         type="button"
-        class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer flex items-center gap-1"
+        class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer flex items-center gap-1.5"
         disabled={refreshing}
         onclick={handleRefresh}
         title={t('topbar.refresh')}
       >
-        <span class={refreshing ? 'animate-spin inline-block' : ''}>🔄</span>
+        <RefreshCw size={13} class={refreshing ? 'animate-spin' : ''} />
         <span class="hidden sm:inline">{t('common.refresh')}</span>
       </button>
 
       <button
         type="button"
-        class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors cursor-pointer flex items-center gap-1"
+        class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors cursor-pointer flex items-center gap-1.5"
         disabled={clearing || totalCount === 0}
         onclick={handleClearAll}
         title={t('drawer.clearTasks')}
       >
-        <span>🗑️</span>
+        <Trash2 size={13} />
         <span class="hidden sm:inline">{t('common.clear')}</span>
       </button>
     </div>
@@ -350,13 +354,17 @@
               {:else if statusFilter === 'active'}
                 {#if failedCount > 0}
                   <div class="flex flex-col items-center gap-1 text-xs">
-                    <span class="text-[var(--text-main)] font-medium">⚡ 当前没有正在下载中的任务</span>
+                    <span class="text-[var(--text-main)] font-medium inline-flex items-center gap-1">
+                      <Zap size={13} class="text-amber-500" /> 当前没有正在下载中的任务
+                    </span>
                     <span class="text-[11px] text-rose-400">
-                      （有 {failedCount} 首曲目下载失败，请点击上方「✕ FAILED ({failedCount})」药丸查看或重试）
+                      （有 {failedCount} 首曲目下载失败，请点击上方「FAILED ({failedCount})」药丸查看或重试）
                     </span>
                   </div>
                 {:else}
-                  <span>⚡ 队列中所有歌曲已全部处理完成！</span>
+                  <span class="inline-flex items-center gap-1">
+                    <Check size={13} class="text-emerald-500" /> 队列中所有歌曲已全部处理完成！
+                  </span>
                 {/if}
               {:else}
                 {t('download.empty')}
@@ -373,9 +381,9 @@
             <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isActive ? 'bg-amber-500/5' : ''} {isFailed ? 'bg-rose-500/[0.03]' : ''}">
               <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
                 {#if isActive}
-                  <span class="text-amber-500 animate-pulse">⚡</span>
+                  <Zap size={12} class="text-amber-500 animate-pulse inline-block" />
                 {:else if isFailed}
-                  <span class="text-rose-500 font-bold">✕</span>
+                  <X size={12} class="text-rose-500 font-bold inline-block" />
                 {:else}
                   {i + 1}
                 {/if}
@@ -418,7 +426,11 @@
                       onclick={() => handlePreviewSingle(item)}
                       title={t('common.audition')}
                     >
-                      <span>{isTrackPlaying(item) ? '⏸️' : '🎧'}</span>
+                      {#if isTrackPlaying(item)}
+                        <Pause size={12} fill="currentColor" />
+                      {:else}
+                        <Headphones size={12} />
+                      {/if}
                       <span>{isTrackPlaying(item) ? t('common.auditioning') : t('common.audition')}</span>
                     </button>
 
@@ -431,7 +443,11 @@
                       onclick={() => handleForceDownloadSingle(item)}
                       title={t('download.forceDownloadTooltip')}
                     >
-                      <span class={forcingIds.has(String(item.id || item.songId)) ? 'animate-spin inline-block' : ''}>{forcingIds.has(String(item.id || item.songId)) ? '⏳' : '💾'}</span>
+                      {#if forcingIds.has(String(item.id || item.songId))}
+                        <Loader2 size={12} class="animate-spin" />
+                      {:else}
+                        <Save size={12} />
+                      {/if}
                       <span>{t('common.forceSave')}</span>
                     </button>
 
@@ -444,13 +460,13 @@
                       onclick={() => handleRetrySingle(item)}
                       title={t('common.retry')}
                     >
-                      <span class={retryingIds.has(String(item.id || item.songId)) ? 'animate-spin inline-block' : ''}>🔄</span>
+                      <RefreshCw size={12} class={retryingIds.has(String(item.id || item.songId)) ? 'animate-spin' : ''} />
                       <span>{t('common.retry')}</span>
                     </button>
                   </div>
                 {:else if isActive}
-                  <span class="text-[11px] text-amber-500 font-medium animate-pulse">
-                    ⏳ ...
+                  <span class="text-[11px] text-amber-500 font-medium inline-flex items-center gap-1">
+                    <Loader2 size={12} class="animate-spin" /> ...
                   </span>
                 {:else}
                   <span class="text-[11px] text-[var(--text-muted)]">-</span>
