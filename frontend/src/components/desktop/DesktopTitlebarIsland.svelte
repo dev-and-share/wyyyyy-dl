@@ -4,6 +4,7 @@
   import { playerStore } from '../../lib/player/playerStore.svelte';
   import { parseLrc, getActiveLyric, type LrcLine } from '../../lib/player/lyricParser';
   import type { Track } from '../../lib/types';
+  import { Play, Pause } from '@lucide/svelte';
 
   let {
     curTrack = null,
@@ -184,7 +185,7 @@
             title={t('player.pause')}
             aria-label={t('player.pause')}
           >
-            <span class="pointer-events-none select-none text-[11px] leading-none">⏸</span>
+            <Pause size={11} fill="currentColor" />
           </button>
         </div>
       {:else}
@@ -226,7 +227,7 @@
             title={t('player.play')}
             aria-label={t('player.play')}
           >
-            <span class="pointer-events-none select-none text-[11px] leading-none pl-0.5">▶</span>
+            <Play size={11} fill="currentColor" class="ml-0.5" />
           </button>
         </div>
       {/if}

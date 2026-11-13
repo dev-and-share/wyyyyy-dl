@@ -5,6 +5,7 @@
   import { t } from '../lib/i18n/index.svelte';
   import PlayerProgressBar from './PlayerProgressBar.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
+  import { Palette } from '@lucide/svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import SongCommentModal from './SongCommentModal.svelte';
   import LyricPanel from './LyricPanel.svelte';
@@ -332,7 +333,7 @@
       title={t('player.skin')}
       data-testid="btn-open-skin-picker"
     >
-      <span>🎨</span>
+      <Palette size={16} />
     </button>
 
     <!-- 顶部中央：下拉手势收起指示条 (Pull indicator) -->

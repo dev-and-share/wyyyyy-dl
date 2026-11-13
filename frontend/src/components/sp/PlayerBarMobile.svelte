@@ -11,6 +11,7 @@
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
   import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
+  import { X } from '@lucide/svelte';
 
   let {
     curTrack,
@@ -192,7 +193,7 @@
             title={t('player.cancelLoading')}
           >
             <span>{t('player.loadingTrack')}</span>
-            <span class="text-[8px] opacity-70 font-bold">✕</span>
+            <X size={9} strokeWidth={2.5} class="opacity-70" />
           </span>
         {/if}
         {#if curTrack}

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { layoutState } from '../lib/layout.svelte';
   import { buildCinemaCornerGradient } from '../lib/cinemaCorner';
+  import { isModalBackdropActive } from '../lib/skinStore.svelte';
 
   let {
     alwaysVisible = false,
     color,
     radiusX,
     radiusY,
-    opacity = 1,
+    opacity,
     zIndex = 100060,
     height = '320px',
     class: customClass = ''
@@ -23,6 +24,14 @@
   }>();
 
   const isVisible = $derived(alwaysVisible || layoutState.wco.visible);
+
+  // 🌟 核心：默认仅在全屏浮层遮罩激活时展开电影级柔焦暗化漫反射；
+  // 在日常无弹窗状态下保持 0 不透明度，杜绝在顶层覆盖遮蔽 Logo 与右上角控制按钮！
+  const computedOpacity = $derived.by(() => {
+    if (opacity !== undefined) return opacity;
+    if (alwaysVisible) return 1;
+    return isModalBackdropActive() ? 1 : 0;
+  });
 
   const customGradient = $derived.by(() => {
     if (color || radiusX !== undefined || radiusY !== undefined) {
@@ -41,7 +50,7 @@
     style="
       height: {height};
       z-index: {zIndex};
-      opacity: {opacity};
+      opacity: {computedOpacity};
       background: {customGradient ? customGradient : 'var(--cinema-corner-bg)'};
     "
     aria-hidden="true"

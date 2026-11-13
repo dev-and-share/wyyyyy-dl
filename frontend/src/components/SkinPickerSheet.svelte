@@ -11,6 +11,7 @@
   import { SKIN_LIST, type SkinId } from './skins/skinTypes';
   import PlayerIcon from './PlayerIcon.svelte';
   import { t } from '../lib/i18n/index.svelte';
+  import { Palette, Check } from '@lucide/svelte';
 
   let { onClose } = $props<{ onClose: () => void }>();
 
@@ -78,7 +79,7 @@
   <!-- 头部：标题与关闭按钮 -->
   <div class="flex items-center justify-between pb-1">
     <div class="flex items-center gap-2">
-      <span class="text-xl leading-none">🎨</span>
+      <Palette size={18} class="text-red-500" />
       <h3 class="text-base font-bold text-[var(--text-main)] m-0">{t('player.skin')}</h3>
       <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[var(--text-secondary)]">12</span>
     </div>
@@ -105,8 +106,8 @@
       >
         <!-- 选中角标 -->
         {#if isSelected}
-          <div class="absolute top-1.5 right-1.5 w-4.5 h-4.5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-bold shadow-xs z-20">
-            ✓
+          <div class="absolute top-1.5 right-1.5 w-4.5 h-4.5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-xs z-20">
+            <Check size={11} strokeWidth={3} />
           </div>
         {/if}
 

@@ -1,7 +1,9 @@
 import { render } from '@testing-library/svelte';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { tick } from 'svelte';
 import CinemaCornerStage from './CinemaCornerStage.svelte';
 import { layoutState } from '../lib/layout.svelte';
+import { pushModalBackdrop } from '../lib/skinStore.svelte';
 
 describe('CinemaCornerStage', () => {
   beforeEach(() => {
@@ -13,13 +15,24 @@ describe('CinemaCornerStage', () => {
     expect(queryByTestId('cinema-corner-stage')).toBeNull();
   });
 
-  it('renders when layoutState.wco.visible is true', () => {
+  it('renders when layoutState.wco.visible is true and controls opacity based on modal backdrop', async () => {
     layoutState.wco.visible = true;
     const { getByTestId } = render(CinemaCornerStage);
     const el = getByTestId('cinema-corner-stage');
     expect(el).toBeDefined();
     expect(el.style.background).toContain('var(--cinema-corner-bg)');
     expect(el.style.zIndex).toBe('100060');
+    // 无弹窗常态：透明度为 0，杜绝在顶层遮盖正常 Logo 与控制按钮
+    expect(el.style.opacity).toBe('0');
+
+    // 唤起浮层遮罩：透明度激活为 1，展开柔焦漫反射
+    const release = pushModalBackdrop();
+    await tick();
+    expect(el.style.opacity).toBe('1');
+
+    release();
+    await tick();
+    expect(el.style.opacity).toBe('0');
   });
 
   it('renders when alwaysVisible is true regardless of WCO', () => {

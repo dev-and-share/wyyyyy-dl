@@ -5,7 +5,7 @@ import { detectTitlebarHarmony, buildCinemaCornerGradient, type TitlebarHarmonyR
 const STORAGE_KEY = 'player_skin';
 
 let isImmersiveActive = false;
-let modalBackdropCount = 0;
+let modalBackdropCount = $state(0);
 let lastHarmonyResult: TitlebarHarmonyResult | null = null;
 
 /**
@@ -40,6 +40,10 @@ export function pushModalBackdrop(): () => void {
 
 export function getModalBackdropCount(): number {
   return modalBackdropCount;
+}
+
+export function isModalBackdropActive(): boolean {
+  return modalBackdropCount > 0;
 }
 
 function isValidSkinId(val: any): val is SkinId {

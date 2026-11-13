@@ -3,6 +3,7 @@
   import PlayerIcon from './PlayerIcon.svelte';
   import { platform } from '../lib/utils';
   import { t } from '../lib/i18n/index.svelte';
+  import { MessageSquare } from '@lucide/svelte';
 
   let {
     track,
@@ -83,7 +84,7 @@
           onclick={() => { onOpenComments(); onKickTimer(); }}
           title={t('comment.view')}
         >
-          <span class="text-xs">💬</span>
+          <MessageSquare size={13} />
           <span class="text-[11px] font-medium">{t('comment.view')}</span>
         </button>
       {/if}

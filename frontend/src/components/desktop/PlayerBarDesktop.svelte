@@ -13,6 +13,7 @@
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
   import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
+  import { X } from '@lucide/svelte';
 
   let {
     curTrack,
@@ -196,7 +197,7 @@
               >
                 <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span>
                 <span>{t('player.loadingTrack')}</span>
-                <span class="text-[9px] opacity-70 hover:opacity-100 ml-0.5 font-bold">✕</span>
+                <X size={10} strokeWidth={2.5} class="opacity-70 hover:opacity-100 ml-0.5" />
               </span>
             {/if}
             {#if curTrack}
