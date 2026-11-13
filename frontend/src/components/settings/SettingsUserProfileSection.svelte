@@ -1,5 +1,6 @@
 <script lang="ts">
   import { authStore } from '../../lib/authStore.svelte';
+  import { User, RefreshCw, Mail, Unlock, Crown, Headphones } from '@lucide/svelte';
   import { t } from '../../lib/i18n';
 
   let { showToast = () => {} } = $props<{
@@ -24,16 +25,16 @@
 <section class="flex flex-col gap-2.5" data-testid="settings-user-profile-section">
   <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
     <div class="flex items-center gap-1.5">
-      <span>👤</span>
+      <User size={13} />
       <span>{t('settings.userAuthTitle')}</span>
     </div>
     <button
       type="button"
-      class="text-[11px] text-[var(--primary-color)] hover:underline cursor-pointer bg-transparent border-none p-0 flex items-center gap-1 transition-opacity {isRefreshing ? 'opacity-50' : ''}"
+      class="text-[11px] text-[var(--primary-color)] hover:underline cursor-pointer bg-transparent border-none p-0 flex items-center gap-1.5 transition-opacity {isRefreshing ? 'opacity-50' : ''}"
       onclick={handleRefresh}
       disabled={isRefreshing}
     >
-      <span class={isRefreshing ? 'animate-spin inline-block' : ''}>🔄</span>
+      <RefreshCw size={11} class={isRefreshing ? 'animate-spin' : ''} />
       <span>{t('settings.refreshUserStatus')}</span>
     </button>
   </div>
@@ -42,7 +43,7 @@
     <!-- 当前登录邮箱 -->
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2 min-w-0">
-        <span class="text-base shrink-0">📧</span>
+        <Mail size={16} class="text-[var(--text-muted)] shrink-0" />
         <div class="flex flex-col min-w-0">
           <span class="text-[11px] text-[var(--text-muted)] leading-tight">{t('settings.currentLoginAccount')}</span>
           <span class="text-xs font-semibold text-[var(--text-main)] truncate max-w-[200px] sm:max-w-[260px] font-mono">
@@ -55,17 +56,17 @@
       <div class="shrink-0 flex items-center">
         {#if !authStore.authEnabled}
           <span class="text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-400/20 flex items-center gap-1.5 shadow-sm">
-            <span class="text-xs">🔓</span>
+            <Unlock size={12} />
             <span>{t('settings.roleOpen')}</span>
           </span>
         {:else if authStore.isAdmin}
           <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-orange-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 flex items-center gap-1.5 shadow-[0_1px_3px_rgba(245,158,11,0.15)]">
-            <span class="text-xs">👑</span>
+            <Crown size={12} />
             <span>{t('settings.roleAdmin')}</span>
           </span>
         {:else}
           <span class="text-[11px] font-semibold px-2.5 py-0.8 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 shadow-sm">
-            <span class="text-xs">🎧</span>
+            <Headphones size={12} />
             <span>{t('settings.roleGuest')}</span>
           </span>
         {/if}

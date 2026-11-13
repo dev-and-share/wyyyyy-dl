@@ -22,6 +22,7 @@
   import { globalUiState } from '../lib/ui.svelte';
   import { layoutState } from '../lib/layout.svelte';
   import { t } from '../lib/i18n';
+  import { Settings, Rocket, X, Palette, Sun, Moon, SunMoon, Sliders, HardDriveDownload } from '@lucide/svelte';
 
   let {
     repeat,
@@ -156,18 +157,18 @@
   <!-- Header -->
   <div class="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border-color)] shrink-0 select-none">
     <div class="flex items-center gap-2 min-w-0">
-      <span class="text-xl leading-none">⚙️</span>
+      <Settings size={20} class="text-[var(--primary-color)]" />
       <h2 class="text-base font-bold text-[var(--text-main)] m-0 truncate">{t('settings.title')}</h2>
       {#if hasUpdateAvailable}
         <button
           type="button"
           data-testid="btn-settings-update-version"
           disabled={isUpdatingVersion}
-          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 hover:from-red-600 hover:to-amber-600 shadow-[0_0_12px_rgba(239,68,68,0.55)] border border-white/25 cursor-pointer transition-all active:scale-95 animate-pulse shrink-0"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 hover:from-red-600 hover:to-amber-600 shadow-[0_0_12px_rgba(239,68,68,0.55)] border border-white/25 cursor-pointer transition-all active:scale-95 animate-pulse shrink-0"
           onclick={handleManualUpdate}
           title={t('settings.newVersionClickToUpdate', { version: pendingVer || 'NEW' })}
         >
-          <span>🚀</span>
+          <Rocket size={12} />
           <span class="font-mono">v{__APP_VERSION__}{pendingVer && pendingVer !== `v${__APP_VERSION__}` ? ` → ${pendingVer}` : ''}</span>
           <span>{t('settings.updateNowBadge')}</span>
         </button>
@@ -187,7 +188,7 @@
       onclick={handleClose}
       aria-label={t('settings.close')}
     >
-      ✕
+      <X size={18} strokeWidth={2.2} />
     </button>
   </div>
 
@@ -199,7 +200,7 @@
     <!-- Section 2: Appearance -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>🎨</span>
+        <Palette size={14} />
         <span>{t('settings.interfaceAppearance')}</span>
       </div>
       <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-3 gap-1">
@@ -208,21 +209,21 @@
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'light' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('light')}
         >
-          <span>☀️</span> {t('settings.themeLight')}
+          <Sun size={13} /> {t('settings.themeLight')}
         </button>
         <button
           type="button"
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'dark' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('dark')}
         >
-          <span>🌙</span> {t('settings.themeDark')}
+          <Moon size={13} /> {t('settings.themeDark')}
         </button>
         <button
           type="button"
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'auto' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('auto')}
         >
-          <span>🌓</span> {t('settings.themeAuto')}
+          <SunMoon size={13} /> {t('settings.themeAuto')}
         </button>
       </div>
 
@@ -252,7 +253,7 @@
     <!-- Section 3: Audio Experience -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>🎛️</span>
+        <Sliders size={14} />
         <span>{t('settings.audioExperience')}</span>
       </div>
       <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
@@ -332,7 +333,7 @@
     <!-- Section 7: Download Preferences (低频使用项，放置于底部) -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>📥</span>
+        <HardDriveDownload size={14} />
         <span>{t('settings.downloadPreference')}</span>
       </div>
       <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">

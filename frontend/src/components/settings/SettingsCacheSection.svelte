@@ -3,6 +3,7 @@
   import { platform } from '../../lib/platform';
   import { formatBytes } from '../../lib/utils';
   import { autoCacheState, setAutoCacheEnabled } from '../../lib/pwaCache.svelte';
+  import { Smartphone, RefreshCw, Zap, ExternalLink } from '@lucide/svelte';
   import { t } from '../../lib/i18n';
   import {
     scanBrowserCache,
@@ -125,16 +126,17 @@
 <section class="flex flex-col gap-2.5">
   <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
     <div class="flex items-center gap-1.5">
-      <span>📲</span>
+      <Smartphone size={13} class="text-blue-400" />
       <span>{t('settings.mobileOfflineCacheTitle')}</span>
     </div>
     {#if platform.supportsCache}
       <button
         type="button"
-        class="text-[11px] text-red-500 hover:underline cursor-pointer bg-transparent border-none p-0 flex items-center gap-0.5"
+        class="text-[11px] text-red-500 hover:underline cursor-pointer bg-transparent border-none p-0 inline-flex items-center gap-1"
         onclick={refreshCache}
       >
-        {isCacheLoading ? t('settings.checkingStatus') : '🔄 ' + t('common.refresh')}
+        <RefreshCw size={11} class={isCacheLoading ? 'animate-spin' : ''} />
+        <span>{isCacheLoading ? t('settings.checkingStatus') : t('common.refresh')}</span>
       </button>
     {/if}
   </div>
@@ -210,16 +212,17 @@
     <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-2">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-1.5 font-semibold text-xs text-[var(--text-main)]">
-          <span>⚡</span>
+          <Zap size={13} class="text-amber-400" />
           <span>{t('settings.iosShortcutTitle')}</span>
         </div>
         <a
           href="https://github.com/dev-and-share/wyy/blob/main/docs/ios-shortcuts-pwa.md"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-[11px] text-red-500 hover:underline flex items-center gap-0.5"
+          class="text-[11px] text-red-500 hover:underline flex items-center gap-1"
         >
-          {t('settings.iosShortcutDoc')} ↗
+          <span>{t('settings.iosShortcutDoc')}</span>
+          <ExternalLink size={11} />
         </a>
       </div>
       <p class="text-xs text-[var(--text-secondary)] m-0 leading-relaxed">

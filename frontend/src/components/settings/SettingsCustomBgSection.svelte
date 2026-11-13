@@ -1,6 +1,7 @@
 <script lang="ts">
   import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n';
+  import { Image, Film, Camera } from '@lucide/svelte';
 
   let {
     showToast = () => {}
@@ -51,7 +52,7 @@
   <!-- 标题栏 -->
   <div class="flex items-center justify-between text-xs text-[var(--text-secondary)] px-1">
     <div class="flex items-center gap-1.5 font-bold text-[var(--text-muted)] uppercase tracking-wider">
-      <span>🌄</span>
+      <Image size={14} />
       <span>{t('settings.customBgTitle')}</span>
     </div>
     {#if customBgStore.url}
@@ -112,7 +113,11 @@
 
         <!-- 浮空类型徽标 -->
         <div class="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-white backdrop-blur-md border border-white/10 flex items-center gap-1">
-          <span>{customBgStore.type === 'video' ? '🎬' : '📷'}</span>
+          {#if customBgStore.type === 'video'}
+            <Film size={12} />
+          {:else}
+            <Camera size={12} />
+          {/if}
           <span>{customBgStore.type === 'video' ? t('settings.customBgVideoType') : t('settings.customBgImageType')}</span>
         </div>
 
@@ -197,7 +202,7 @@
         onclick={() => fileInputEl?.click()}
       >
         <div class="w-10 h-10 rounded-full bg-[var(--primary-color)]/10 text-[var(--primary-color)] flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-          📸
+          <Camera size={20} />
         </div>
         <div class="flex flex-col gap-0.5">
           <span class="text-xs font-bold text-[var(--text-main)]">{t('settings.customBgUpload')}</span>

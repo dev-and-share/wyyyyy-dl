@@ -4,6 +4,7 @@
   import { t } from '../../lib/i18n';
   import { authStore } from '../../lib/authStore.svelte';
   import { isScrobbleEnabled, setScrobbleEnabled } from '../../lib/player/scrobble';
+  import { User, Lock, Headphones } from '@lucide/svelte';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -69,7 +70,7 @@
 <section class="flex flex-col gap-2.5">
   <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
     <div class="flex items-center gap-1.5">
-      <span>👤</span>
+      <User size={14} />
       <span>{t('settings.accountSectionTitle')}</span>
     </div>
     <button
@@ -99,7 +100,7 @@
 
     {#if authStore.authEnabled && !authStore.isAdmin}
       <div class="pt-2 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-        <span>🔒</span>
+        <Lock size={13} />
         <span>云端主账号由超级管理员统一绑定托管，访客模式不支持换绑</span>
       </div>
     {:else}
@@ -153,8 +154,8 @@
     <!-- 🎧 网易云听歌打卡 (Scrobble) 开关 -->
     <div class="pt-3 border-t border-[var(--border-color)] flex items-center justify-between gap-3">
       <div class="flex flex-col gap-0.5 min-w-0">
-        <span class="font-semibold text-xs text-[var(--text-main)] flex items-center gap-1">
-          <span>🎧</span>
+        <span class="font-semibold text-xs text-[var(--text-main)] flex items-center gap-1.5">
+          <Headphones size={13} />
           <span>{t('settings.scrobbleLabel')}</span>
         </span>
         <span class="text-[11px] text-[var(--text-secondary)] leading-relaxed">

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
+  import { HardDrive } from '@lucide/svelte';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -31,7 +32,7 @@
 
 <section class="flex flex-col gap-2.5">
   <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-    <span>💽</span>
+    <HardDrive size={14} />
     <span>{t('settings.maintenanceSectionTitle')}</span>
   </div>
   <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex flex-col gap-2">
