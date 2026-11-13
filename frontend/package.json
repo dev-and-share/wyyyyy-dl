@@ -17,6 +17,7 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
+    "@lucide/svelte": "^1.72.0",
     "@playwright/test": "^1.62.1",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.5",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",

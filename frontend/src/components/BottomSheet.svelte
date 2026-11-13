@@ -1,6 +1,7 @@
 <script lang="ts">
   import { sheetState, closeSheet, type SheetActionStyle } from '../lib/ui.svelte';
   import { pushModalBackdrop } from '../lib/skinStore.svelte';
+  import { X } from '@lucide/svelte';
 
   $effect(() => {
     if (sheetState.data) {
@@ -120,7 +121,7 @@
           onclick={handleClose}
           class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer"
         >
-          ✕
+          <X size={15} strokeWidth={2.2} />
         </button>
       </div>
 

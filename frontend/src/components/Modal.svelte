@@ -1,7 +1,27 @@
 <script lang="ts">
-  import { onMount, type Snippet } from 'svelte';
+  import { onMount, type Snippet, type Component } from 'svelte';
+  import { X, Folder, Plus, Package, Headphones, Trash2, HeartCrack, Settings, Sparkles, Sliders, TriangleAlert, Info, MessageSquare, Rocket, Smartphone } from '@lucide/svelte';
   import { t } from '../lib/i18n/index.svelte';
   import { pushModalBackdrop } from '../lib/skinStore.svelte';
+
+  const MODAL_ICON_MAP: Record<string, Component<{ size?: number | string; strokeWidth?: number | string; class?: string }>> = {
+    '📂': Folder,
+    '📁': Folder,
+    '➕': Plus,
+    '📦': Package,
+    '🎧': Headphones,
+    '🗑️': Trash2,
+    '💔': HeartCrack,
+    '✨': Sparkles,
+    '⚙️': Settings,
+    '🎛️': Sliders,
+    '⚠️': TriangleAlert,
+    'ℹ️': Info,
+    '💡': Sparkles,
+    '💬': MessageSquare,
+    '🚀': Rocket,
+    '📲': Smartphone
+  };
 
   onMount(() => {
     const release = pushModalBackdrop();
@@ -128,17 +148,26 @@
       ontouchend={handleTouchEnd}
     >
       <div class="flex items-center gap-2 font-bold text-[var(--text-main)] text-base select-none">
-        {#if icon}<span class="text-xl leading-none">{icon}</span>{/if}
+        {#if icon}
+          {@const IconComp = MODAL_ICON_MAP[icon]}
+          {#if IconComp}
+            <span class="text-[var(--primary-color)] flex items-center justify-center shrink-0">
+              <IconComp size={18} strokeWidth={2.2} />
+            </span>
+          {:else}
+            <span class="text-xl leading-none">{icon}</span>
+          {/if}
+        {/if}
         <h2 class="text-base font-bold text-[var(--text-main)] m-0">{title}</h2>
       </div>
       <button
         type="button"
-        class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent text-sm"
+        class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent"
         onclick={handleClose}
         title={t('common.close')}
         aria-label={t('common.close')}
       >
-        ✕
+        <X size={18} strokeWidth={2.2} />
       </button>
     </div>
 

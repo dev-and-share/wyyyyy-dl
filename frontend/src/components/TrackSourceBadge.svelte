@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Sparkles, HardDrive, Smartphone } from '@lucide/svelte';
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { showToast } from '../lib/toast.svelte';
   import { t } from '../lib/i18n';
@@ -198,7 +199,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      <span class="text-lg leading-none filter drop-shadow-sm">✨</span>
+      <Sparkles size={20} class="text-amber-400" />
     </div>
   {:else if status.isServer}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -215,7 +216,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      <span class="text-lg leading-none filter drop-shadow-sm">🖥️</span>
+      <HardDrive size={20} class="text-emerald-400" />
     </div>
   {:else if status.isPhone}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -232,7 +233,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      <span class="text-lg leading-none filter drop-shadow-sm">📲</span>
+      <Smartphone size={20} class="text-purple-400" />
     </div>
   {/if}
 {:else}
@@ -243,7 +244,7 @@
     <span
       role="button"
       tabindex="0"
-      class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform {customClass}"
+      class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform inline-flex items-center justify-center {customClass}"
       title={t('track.badgeBoth')}
       onclick={doReveal}
       ondblclick={handleDblClick}
@@ -253,7 +254,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      ✨
+      <Sparkles size={12} class="text-amber-400" />
     </span>
   {:else if status.isServer}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -261,7 +262,7 @@
     <span
       role="button"
       tabindex="0"
-      class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform {customClass}"
+      class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform inline-flex items-center justify-center {customClass}"
       title={t('track.badgeServer')}
       onclick={doReveal}
       ondblclick={handleDblClick}
@@ -271,7 +272,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      🖥️
+      <HardDrive size={12} class="text-emerald-400" />
     </span>
   {:else if status.isPhone}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -279,7 +280,7 @@
     <span
       role="button"
       tabindex="0"
-      class="audio-source-badge icon-only badge-browser cursor-pointer select-none active:scale-90 transition-transform {customClass}"
+      class="audio-source-badge icon-only badge-browser cursor-pointer select-none active:scale-90 transition-transform inline-flex items-center justify-center {customClass}"
       title={t('track.badgePhone')}
       onclick={doReveal}
       ondblclick={handleDblClick}
@@ -289,7 +290,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      📲
+      <Smartphone size={12} class="text-purple-400" />
     </span>
   {/if}
 {/if}

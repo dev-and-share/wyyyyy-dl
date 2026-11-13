@@ -20,7 +20,7 @@ describe('TrackSourceBadge Component', () => {
 
     const badge = getByTitle(/已下载到本地服务器磁盘/);
     expect(badge).toBeDefined();
-    expect(badge.textContent?.trim()).toBe('🖥️');
+    expect(badge.querySelector('svg')).not.toBeNull();
   });
 
   it('triggers onReveal and wyy:reveal event on PC double click', async () => {
@@ -173,7 +173,7 @@ describe('TrackSourceBadge Component', () => {
 
     const badge = getByTitle(/已离线缓存到当前手机/);
     expect(badge).toBeDefined();
-    expect(badge.textContent?.trim()).toBe('📲');
+    expect(badge.querySelector('svg')).not.toBeNull();
 
     // 纯手机缓存状态下，点击 📲 即可触发定位 / 管理 Modal
     await fireEvent.click(badge);
