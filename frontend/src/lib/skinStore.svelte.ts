@@ -1,10 +1,12 @@
 import { DEFAULT_PALETTE, type CoverPalette, type SkinId, SKINS, SKIN_THEME_COLORS, SKIN_IMMERSIVE_ANCHORS } from '../components/skins/skinTypes';
 import { extractCoverPalette } from './colorExtractor';
+import { detectTitlebarHarmony, buildCinemaCornerGradient, type TitlebarHarmonyResult } from './cinemaCorner';
 
 const STORAGE_KEY = 'player_skin';
 
 let isImmersiveActive = false;
 let modalBackdropCount = 0;
+let lastHarmonyResult: TitlebarHarmonyResult | null = null;
 
 /**
  * 设置全屏沉浸模式状态
@@ -50,25 +52,35 @@ function syncRootSkinAttribute(id: SkinId) {
   }
 }
 
+export function getTitlebarHarmony(): TitlebarHarmonyResult | null {
+  return lastHarmonyResult;
+}
+
 /**
- * 动态同步 <meta name="theme-color"> 与 --wco-titlebar-bg
- * 保证 macOS PWA (Safari 添加到程序坞 / Chrome 顶栏) 与移动端标题栏实时感知皮肤、深浅色以及全屏沉浸播放模式切换
+ * 动态同步 <meta name="theme-color">、--wco-titlebar-bg 与 --cinema-corner-bg
+ * 保证 macOS PWA / Chrome WCO 顶栏原生区域与 Web 内容、皮肤底色及全屏沉浸播放模式无缝融合
  */
 export function syncMetaThemeColor(skinId?: SkinId) {
   if (typeof document === 'undefined') return;
   const currentSkin: SkinId = skinId || (skin?.current ? skin.current : 'vinyl');
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const color = isImmersiveActive
+
+  const baseSkinColor = isImmersiveActive
     ? (isLight
         ? (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.light || '#064272')
         : (SKIN_IMMERSIVE_ANCHORS[currentSkin]?.dark || '#0a0e1a'))
-    : (modalBackdropCount > 0
-        ? (isLight
-            ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
-            : '#121212')
-        : (isLight
-            ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
-            : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a')));
+    : (isLight
+        ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
+        : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a'));
+
+  lastHarmonyResult = detectTitlebarHarmony({
+    skinColor: baseSkinColor,
+    isLight,
+    isModalOpen: modalBackdropCount > 0,
+    isImmersive: isImmersiveActive
+  });
+
+  const color = lastHarmonyResult.harmonizedColor;
 
   let meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) {
@@ -78,6 +90,7 @@ export function syncMetaThemeColor(skinId?: SkinId) {
   }
   meta.setAttribute('content', color);
   document.documentElement.style.setProperty('--wco-titlebar-bg', color);
+  document.documentElement.style.setProperty('--cinema-corner-bg', buildCinemaCornerGradient({ color }));
 }
 
 function loadInitialSkin(): SkinId {
@@ -153,6 +166,8 @@ export class SkinStore {
   /** 测试辅助：清空缓存与重置状态 */
   _reset() {
     isImmersiveActive = false;
+    modalBackdropCount = 0;
+    lastHarmonyResult = null;
     this.current = 'vinyl';
     syncRootSkinAttribute('vinyl');
     syncMetaThemeColor('vinyl');

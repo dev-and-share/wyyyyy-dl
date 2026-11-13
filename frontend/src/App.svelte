@@ -40,6 +40,7 @@
   import { setupImmersiveDblClick } from './lib/player/immersiveDblClick';
   import SeasonParticleCanvas from './components/skins/effects/SeasonParticleCanvas.svelte';
   import RainParticleCanvas from './components/skins/effects/RainParticleCanvas.svelte';
+  import CinemaCornerStage from './components/CinemaCornerStage.svelte';
 
   // ---------- 全局状态 ----------
   let repeat = $state(false);
@@ -178,6 +179,9 @@
     <RainParticleCanvas {playing} bottomOffset={particleBottomOffset} />
   </div>
 {/if}
+
+<!-- 🎬 2D Cinema Corner 顶栏电影级柔焦晕染层 (消灭桌面独立窗口顶角断层与色块切割) -->
+<CinemaCornerStage />
 
 <!-- 🏝️ PC 桌面端专属：Window Controls Overlay (WCO) 顶栏沉浸灵动岛 -->
 {#if layoutState.isDesktop && layoutState.wco.visible}

@@ -80,19 +80,25 @@ describe('skinStore', () => {
   });
 
   it('supports modal backdrop synchronization to prevent topbar light gaps', () => {
-    // 1. 白天浅色模式下：打开 Modal 保持白天皮肤底色，杜绝死黑方块补丁
+    // 1. 白天浅色模式下：打开 Modal 计算物理混色 (#999890)，杜绝死黑方块与大门牙割裂
     document.documentElement.setAttribute('data-theme', 'light');
     skin.set('autumn');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
     expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
+    expect(document.documentElement.style.getPropertyValue('--cinema-corner-bg')).toContain('radial-gradient');
     expect(getModalBackdropCount()).toBe(0);
 
     const releaseLight = pushModalBackdrop();
     expect(getModalBackdropCount()).toBe(1);
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
-    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
+    // 混色后绝非原浅色 #fffdf0，而是与全屏遮罩对齐的深邃同色系暗场 #363941，杜绝浅色大门牙
+    const lightModalColor = document.querySelector('meta[name="theme-color"]')?.getAttribute('content');
+    expect(lightModalColor).not.toBe('#fffdf0');
+    expect(lightModalColor).toBe('#363941');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#363941');
+    expect(document.documentElement.style.getPropertyValue('--cinema-corner-bg')).toContain('54, 57, 65');
     releaseLight();
     expect(getModalBackdropCount()).toBe(0);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
 
     // 2. 深色模式下：打开 Modal 同步压暗至深色 (#121212)，关闭后恢复深色皮肤底色
     document.documentElement.removeAttribute('data-theme');
