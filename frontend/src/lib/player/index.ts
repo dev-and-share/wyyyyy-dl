@@ -12,7 +12,22 @@ export * from './sleepTimer.svelte';
 export * from './lyricParser';
 export * from './iosF3KeepAlive';
 export * from './peq';
-export * from './playbackResilience';
+export {
+  ONLINE_URL_TTL_MS,
+  INTERRUPTION_PROBE_DELAYS_MS,
+  formatFallbackStreamUrl,
+  withResolveTimeout,
+  canRetryTrackStream,
+  markTrackStreamRetried,
+  clearTrackStreamRetry,
+  startStreamWatchdog,
+  clearStreamWatchdog,
+  classifyPlayRejection,
+  bindAndPlayWithWatchdog,
+  InterruptionRecoveryController,
+  type InterruptedState,
+  type BindAndPlayOptions
+} from 'pwa-audio-player';
 export {
   MIN_VALID_AUDIO_BYTES,
   MIN_FULL_TRACK_BYTES,

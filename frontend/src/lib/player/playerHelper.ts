@@ -13,11 +13,25 @@ import { playlistService } from '../playlistService';
 import { resolveFallbackFromBuiltins } from '../musicfree/plugins';
 import { jumpToMusicFreeSearch } from '../router.svelte';
 import {
+  ONLINE_URL_TTL_MS,
   formatFallbackStreamUrl,
-  isTrackUrlExpired,
-  markTrackUrlResolved,
-  withResolveTimeout
-} from './playbackResilience';
+  withResolveTimeout,
+  markTrackUrlResolved as coreMarkTrackUrlResolved,
+  isTrackUrlExpired as coreIsTrackUrlExpired,
+  InterruptionRecoveryController
+} from 'pwa-audio-player';
+
+export function markTrackUrlResolved(track: Track | null | undefined, now = Date.now()): void {
+  coreMarkTrackUrlResolved(track, now, isLocalStreamUrl);
+}
+
+export function isTrackUrlExpired(track: Track | null | undefined, now = Date.now()): boolean {
+  return coreIsTrackUrlExpired(track, now, ONLINE_URL_TTL_MS, isLocalStreamUrl);
+}
+
+export const interruptionController = new InterruptionRecoveryController({
+  isLocalUrl: isLocalStreamUrl
+});
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request

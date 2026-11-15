@@ -2,16 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import GlobalAudioPlayer from '../../components/GlobalAudioPlayer.svelte';
 import { playerStore } from './playerStore.svelte';
-import { resolveTrackUrl, preloadSurroundingTracks } from './playerHelper';
+import {
+  resolveTrackUrl,
+  preloadSurroundingTracks,
+  interruptionController,
+  isTrackUrlExpired,
+  markTrackUrlResolved
+} from './playerHelper';
 import {
   INTERRUPTION_PROBE_DELAYS_MS,
   ONLINE_URL_TTL_MS,
   clearStreamWatchdog,
-  clearTrackStreamRetry,
-  interruptionController,
-  isTrackUrlExpired,
-  markTrackUrlResolved
-} from './playbackResilience';
+  clearTrackStreamRetry
+} from 'pwa-audio-player';
 import {
   clearPreloadedTrackBlob,
   getPreloadedTrackBlobUrl

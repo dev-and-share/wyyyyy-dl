@@ -3,7 +3,11 @@
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import { markSongDownloaded } from '../lib/trackStatus.svelte';
-  import { resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks, computeNextTrackOnSkip, handleRestrictedAudioCheck, prepareTrackInUI, fetchMissingLyric } from '../lib/playerHelper';
+  import {
+    resolveTrackUrl, preloadSurroundingTracks, isSameAudioSource, applySeekToAudio, parseFolderTracks,
+    computeNextTrackOnSkip, handleRestrictedAudioCheck, prepareTrackInUI, fetchMissingLyric,
+    isTrackUrlExpired, interruptionController
+  } from '../lib/playerHelper';
   import { setupMediaSession, updateMediaSessionMetadata, updateMediaSessionPlaybackState, updateMediaSessionPosition, clearMediaSessionPosition, getLastPositionSyncedKey, getCurrentTrackKey } from '../lib/mediaSession';
   import { parseLrc, getActiveLyric } from '../lib/lyricParser';
   import { playerStore, type SetQueueOptions } from '../lib/playerStore.svelte';
@@ -18,9 +22,9 @@
   import { checkAndTriggerAutoArchive } from '../lib/player/autoArchive';
   import { handleTrackEndedScrobble } from '../lib/player/scrobble';
   import {
-    isTrackUrlExpired, canRetryTrackStream, markTrackStreamRetried, clearTrackStreamRetry,
-    clearStreamWatchdog, classifyPlayRejection, bindAndPlayWithWatchdog, interruptionController
-  } from '../lib/player/playbackResilience';
+    canRetryTrackStream, markTrackStreamRetried, clearTrackStreamRetry,
+    clearStreamWatchdog, classifyPlayRejection, bindAndPlayWithWatchdog
+  } from 'pwa-audio-player';
   import { getPreloadedTrackBlobUrl, isPreloadedBlobUrlForTrack, clearPreloadedTrackBlob } from '../lib/player/nextTrackPrecache';
   import { createSpacebarShortcutHandler } from '../lib/player/keyboardShortcuts';
 
@@ -390,7 +394,7 @@
     const wasPlaying = playerStore.playing;
     playerStore.playing = false;
     interruptionController.dispatchPauseEvent({
-      audioEl, wasPlaying, curTime: playerStore.curTime, trackId: playerStore.activeTrack?.id,
+      audioEl, wasPlaying, curTime: playerStore.curTime, duration: playerStore.duration, trackId: playerStore.activeTrack?.id,
       onSyncPaused: () => { updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); },
       onRecovered: () => { isPlaybackDesired = true; playerStore.playing = true; updateMediaSessionPlaybackState(true); updateMediaSessionPosition(audioEl); },
       onGiveUp: () => { isPlaybackDesired = false; playerStore.playing = false; updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); needsReloadOnResume = true; }

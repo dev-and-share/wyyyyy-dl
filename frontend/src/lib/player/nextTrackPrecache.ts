@@ -2,219 +2,59 @@ import type { Track } from '../types';
 import { t } from '../i18n';
 import { playerStore } from './playerStore.svelte';
 import { PWA_CACHE_NAME } from '../library/pwaCache.svelte';
-import { isTrackUrlExpired } from './playbackResilience';
-import { resolveTrackUrl } from './playerHelper';
+import { isTrackUrlExpired, resolveTrackUrl } from './playerHelper';
+import {
+  MIN_VALID_AUDIO_BYTES,
+  MIN_FULL_TRACK_BYTES,
+  getTrackPreloadKey,
+  NextTrackPrecacheController
+} from 'pwa-audio-player';
 
-/** 有效完整音频流最低字节阈值（200 KB），过滤防盗链 11s 语音提示与损坏空响应 */
-export const MIN_VALID_AUDIO_BYTES = 200 * 1024;
-/** 试听片段判定阈值（1.25 MB），与 pwaCache.svelte.ts 保持一致 */
-export const MIN_FULL_TRACK_BYTES = 1_250_000;
-/** 读取本地离线 Cache 时的最小有效字节门槛 */
-const MIN_CACHED_BLOB_BYTES = 250_000;
+export { MIN_VALID_AUDIO_BYTES, MIN_FULL_TRACK_BYTES, getTrackPreloadKey };
 
-interface PreloadedBlobEntry {
-  key: string;
-  sourceUrl: string;
-  blobUrl: string;
-}
-
-let preloadedBlobEntry: PreloadedBlobEntry | null = null;
-let retiredPlayingBlobUrl: string | null = null;
-let precacheAbortController: AbortController | null = null;
-
-function isBlobUrlStillBoundToAudio(blobUrl: string): boolean {
-  if (!blobUrl || typeof document === 'undefined') return false;
-  try {
-    const audios = document.querySelectorAll('audio');
-    for (const a of audios) {
-      if (a.src === blobUrl || a.currentSrc === blobUrl) return true;
-    }
-  } catch {}
-  return false;
-}
-
-function revokeBlobUrlSafely(blobUrl: string | null | undefined): void {
-  if (!blobUrl) return;
-  if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-    try {
-      URL.revokeObjectURL(blobUrl);
-    } catch {}
-  }
-}
-
-function stagePreloadedBlobEntry(key: string, sourceUrl: string, blob: Blob): boolean {
-  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return false;
-  const newBlobUrl = URL.createObjectURL(blob);
-  const oldEntry = preloadedBlobEntry;
-  if (oldEntry && oldEntry.blobUrl !== newBlobUrl) {
-    if (isBlobUrlStillBoundToAudio(oldEntry.blobUrl)) {
-      if (retiredPlayingBlobUrl && retiredPlayingBlobUrl !== oldEntry.blobUrl && !isBlobUrlStillBoundToAudio(retiredPlayingBlobUrl)) {
-        revokeBlobUrlSafely(retiredPlayingBlobUrl);
-      }
-      retiredPlayingBlobUrl = oldEntry.blobUrl;
-    } else {
-      revokeBlobUrlSafely(oldEntry.blobUrl);
-    }
-  }
-  preloadedBlobEntry = { key, sourceUrl, blobUrl: newBlobUrl };
-  return true;
-}
-
-export function getTrackPreloadKey(track: Track | null | undefined): string {
-  if (!track) return '';
-  if (track.id !== undefined && track.id !== null && track.id !== '') {
-    return `id:${String(track.id)}`;
-  }
-  if (track.filePath) {
-    return `path:${track.filePath}`;
-  }
-  return `meta:${track.name || ''}-${track.artist || ''}`;
-}
+const corePrecacheController = new NextTrackPrecacheController({
+  cacheName: PWA_CACHE_NAME,
+  eventName: 'wyy:browser-cache-updated',
+  minValidBytes: MIN_VALID_AUDIO_BYTES,
+  minFullTrackBytes: MIN_FULL_TRACK_BYTES,
+  minCachedBlobBytes: 250_000,
+  isLocalUrl: (url) => url.startsWith('/v3/stream') && !url.includes('/v3/stream/online'),
+  buildProxyUrl: (rawUrl) => `/v3/stream/online?url=${encodeURIComponent(rawUrl)}`,
+  cacheKeyForTrack: (candidate, targetUrl) =>
+    candidate.id != null && candidate.id !== '' ? `/v3/stream?id=${String(candidate.id)}` : targetUrl
+});
 
 export function getPreloadedTrackBlobUrl(track: Track | null | undefined): string | null {
-  if (!track || !preloadedBlobEntry) return null;
-  if (preloadedBlobEntry.key !== getTrackPreloadKey(track)) return null;
-  const canonicalUrl = track.id != null && track.id !== '' ? `/v3/stream?id=${String(track.id)}` : '';
-  if (track.url && preloadedBlobEntry.sourceUrl !== track.url && track.url !== canonicalUrl) return null;
-  return preloadedBlobEntry.blobUrl;
+  return corePrecacheController.getPreloadedBlobUrl(track);
 }
 
 export function isPreloadedBlobUrlForTrack(audioSrc: string, track: Track | null | undefined): boolean {
-  if (!audioSrc || !audioSrc.startsWith('blob:') || !preloadedBlobEntry) return false;
-  return preloadedBlobEntry.blobUrl === audioSrc && preloadedBlobEntry.key === getTrackPreloadKey(track);
+  return corePrecacheController.isPreloadedBlobUrlForTrack(audioSrc, track);
 }
 
 export function clearPreloadedTrackBlob(): void {
-  if (precacheAbortController) {
-    try {
-      precacheAbortController.abort();
-    } catch {}
-    precacheAbortController = null;
-  }
-  if (preloadedBlobEntry) {
-    revokeBlobUrlSafely(preloadedBlobEntry.blobUrl);
-    preloadedBlobEntry = null;
-  }
-  if (retiredPlayingBlobUrl) {
-    revokeBlobUrlSafely(retiredPlayingBlobUrl);
-    retiredPlayingBlobUrl = null;
-  }
-}
-
-async function tryStageFromCacheStorage(candidate: Track, key: string, targetUrl: string): Promise<boolean> {
-  try {
-    const cache = await caches.open(PWA_CACHE_NAME);
-    const idKey = candidate.id != null && candidate.id !== '' ? `/v3/stream?id=${String(candidate.id)}` : null;
-    const match = (idKey ? await cache.match(idKey) : undefined) || (await cache.match(targetUrl));
-    if (!match) return false;
-    const blob = await match.blob();
-    if (blob && blob.size >= MIN_CACHED_BLOB_BYTES) {
-      return stagePreloadedBlobEntry(key, targetUrl, blob);
-    }
-  } catch {}
-  return false;
+  corePrecacheController.clear();
 }
 
 /**
  * 趁当前曲目播放期间静默预拉取下一首音频真实字节并检验体积、写入 CacheStorage，
- * 并在内存准备零网络延迟的 blob: URL；若真实流失效或实测仅试听短音频则回调继续链式顺延
+ * 并在内存准备零网络延迟的 blob: URL；若真实流失效或实测仅试听短音频则回调继续链式顺延。
+ * 核心双槽位防撤销与字节验证逻辑已下沉至 pwa-audio-player NextTrackPrecacheController。
  */
 export async function precacheCandidateAudio(
   candidate: Track,
   onInvalidOrFailed: (reason: 'trial' | 'unplayable') => void
 ): Promise<boolean> {
-  if (!candidate || !candidate.url) return false;
-  if (typeof window === 'undefined' || !('caches' in window) || typeof fetch !== 'function') {
-    return true;
-  }
-  if (candidate.url.startsWith('blob:')) return true;
-  if (getPreloadedTrackBlobUrl(candidate)) return true;
-
-  const key = getTrackPreloadKey(candidate);
-  const targetUrl = candidate.url;
-
-  if (await tryStageFromCacheStorage(candidate, key, targetUrl)) {
-    return true;
-  }
-
-  if (precacheAbortController) {
-    try {
-      precacheAbortController.abort();
-    } catch {}
-  }
-  const controller = new AbortController();
-  precacheAbortController = controller;
-
-  try {
-    let resp: Response;
-    try {
-      resp = await fetch(targetUrl, { signal: controller.signal });
-      if (!resp.ok && !targetUrl.startsWith('/v3/stream')) {
-        throw new Error(`HTTP ${resp.status}`);
+  return corePrecacheController.precacheCandidateAudio(
+    candidate,
+    (reason) => {
+      if (reason === 'unplayable' && candidate && !candidate.isLocal) {
+        candidate.unplayableReason = t('player.audioStreamFailed');
       }
-    } catch (directErr: any) {
-      if (directErr?.name === 'AbortError' || controller.signal.aborted) return false;
-      if (targetUrl.startsWith('/v3/stream')) {
-        if (!candidate.isLocal) {
-          candidate.unplayable = true;
-          candidate.unplayableReason = t('player.audioStreamFailed');
-          onInvalidOrFailed('unplayable');
-        }
-        return false;
-      }
-      resp = await fetch(`/v3/stream/online?url=${encodeURIComponent(targetUrl)}`, { signal: controller.signal });
-    }
-
-    if (controller.signal.aborted) return false;
-    if (!resp.ok) {
-      candidate.unplayable = true;
-      candidate.unplayableReason = t('player.audioStreamFailed');
-      onInvalidOrFailed('unplayable');
-      return false;
-    }
-
-    const blob = await resp.blob();
-    if (controller.signal.aborted) return false;
-
-    if (blob.size === 0 || (!candidate.isLocal && blob.size < MIN_VALID_AUDIO_BYTES)) {
-      candidate.unplayable = true;
-      candidate.unplayableReason = t('player.audioStreamFailed');
-      onInvalidOrFailed('unplayable');
-      return false;
-    }
-
-    if (!candidate.isLocal && playerStore.autoSkipTrial && !candidate.allowTrial && blob.size < MIN_FULL_TRACK_BYTES) {
-      candidate.freeTrial = true;
-      onInvalidOrFailed('trial');
-      return false;
-    }
-
-    try {
-      const cache = await caches.open(PWA_CACHE_NAME);
-      const cacheKey = candidate.id != null && candidate.id !== '' ? `/v3/stream?id=${String(candidate.id)}` : targetUrl;
-      const headers = typeof Headers !== 'undefined' ? new Headers(resp.headers || undefined) : undefined;
-      if (headers && !headers.get('Content-Type')) headers.set('Content-Type', blob.type || 'audio/mpeg');
-      await cache.put(cacheKey, new Response(blob, { status: 200, ...(headers ? { headers } : {}) }));
-      if (candidate.id != null && candidate.id !== '') {
-        window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated', { detail: { id: String(candidate.id) } }));
-      }
-    } catch {}
-
-    stagePreloadedBlobEntry(key, targetUrl, blob);
-    return true;
-  } catch (err: any) {
-    if (err?.name === 'AbortError' || controller.signal.aborted) return false;
-    if (!candidate.isLocal) {
-      candidate.unplayable = true;
-      candidate.unplayableReason = t('player.audioStreamFailed');
-      onInvalidOrFailed('unplayable');
-    }
-    return false;
-  } finally {
-    if (precacheAbortController === controller) {
-      precacheAbortController = null;
-    }
-  }
+      onInvalidOrFailed(reason);
+    },
+    { skipTrial: playerStore.autoSkipTrial }
+  );
 }
 
 export function isCandidateTrackPlayable(track: Track | null | undefined): boolean {
