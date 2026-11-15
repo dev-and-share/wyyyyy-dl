@@ -3,6 +3,7 @@
   import SeasonParticleCanvas from './effects/SeasonParticleCanvas.svelte';
   import CustomBackgroundStage from './CustomBackgroundStage.svelte';
   import { customBgStore } from '../../lib/customBgStore.svelte';
+  import { buildCinemaCornerGradient } from '../../lib/cinemaCorner';
 
   let {
     skinId,
@@ -127,15 +128,11 @@
   <SeasonParticleCanvas {skinId} {playing} bottomOffset={110} />
 {/if}
 
-<!-- 🎬 全屏沉浸模式专属：顶角电影聚焦暗角 (Top Corner Focus，以 2D 径向平滑晕染入中央舞台；有自定义背景时适当降低不透明度) -->
+<!-- 🎬 全屏沉浸模式专属：顶角电影聚焦暗角 (Top Corner Focus，以 2D 径向平滑晕染入中央舞台；边界核始终 100% 实心衔接 WCO) -->
 <div
   data-testid="immersive-titlebar-bg"
-  class="absolute inset-0 z-20 pointer-events-none transition-all duration-500 {hasCustomBg ? 'opacity-30' : 'opacity-100'}"
-  style="
-    background:
-      radial-gradient(ellipse 420px 320px at 0% 0%, var(--wco-titlebar-bg) 0%, var(--wco-titlebar-bg) 65px, color-mix(in srgb, var(--wco-titlebar-bg) 82%, transparent) 130px, color-mix(in srgb, var(--wco-titlebar-bg) 48%, transparent) 210px, color-mix(in srgb, var(--wco-titlebar-bg) 18%, transparent) 290px, transparent 100%),
-      radial-gradient(ellipse 420px 320px at 100% 0%, var(--wco-titlebar-bg) 0%, var(--wco-titlebar-bg) 65px, color-mix(in srgb, var(--wco-titlebar-bg) 82%, transparent) 130px, color-mix(in srgb, var(--wco-titlebar-bg) 48%, transparent) 210px, color-mix(in srgb, var(--wco-titlebar-bg) 18%, transparent) 290px, transparent 100%);
-  "
+  class="absolute inset-0 z-20 pointer-events-none transition-all duration-500 opacity-100"
+  style="background: {buildCinemaCornerGradient()};"
   aria-hidden="true"
 ></div>
 

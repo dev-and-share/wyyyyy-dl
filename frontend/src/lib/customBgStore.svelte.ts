@@ -1,3 +1,7 @@
+import { blendColors, sampleTopColorFromPixels, sampleElementTopColor } from './cinemaCorner';
+
+export { sampleTopColorFromPixels, sampleElementTopColor };
+
 export type CustomBgType = 'image' | 'video';
 export type CustomBgFit = 'cover' | 'contain' | 'fill';
 
@@ -11,6 +15,7 @@ export interface CustomBgConfig {
   positionX: number;
   positionY: number;
   fit: CustomBgFit;
+  topColor?: string | null;
 }
 
 export interface CustomBgRecord {
@@ -35,7 +40,8 @@ const DEFAULT_CONFIG: CustomBgConfig = {
   scale: 1,
   positionX: 50,
   positionY: 50,
-  fit: 'cover'
+  fit: 'cover',
+  topColor: null
 };
 
 function safeCreateObjectURL(blob: Blob): string {
@@ -195,13 +201,66 @@ export class CustomBgStore {
   positionY = $state<number>(50);
   fit = $state<CustomBgFit>('cover');
   enabled = $state<boolean>(true);
+  topColor = $state<string | null>(null);
   isLoaded = $state<boolean>(false);
+
+  private changeListeners = new Set<() => void>();
 
   constructor() {
     this.loadFromStorage();
-    if (typeof window !== 'undefined') {
-      this.loadFromDb();
+    if (typeof window !== 'undefined') this.loadFromDb();
+  }
+
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => { this.changeListeners.delete(listener); };
+  }
+
+  private notifyChange() {
+    for (const listener of this.changeListeners) {
+      try { listener(); } catch {}
     }
+  }
+
+  /** 计算结合 dimOpacity 暗场叠加后的顶部实际视觉颜色，供 WCO 顶栏无缝衔接 */
+  getEffectiveTopColor(): string | null {
+    if (!this.enabled || !this.url || !this.topColor) return null;
+    return blendColors(this.topColor, '#000000', this.dimOpacity);
+  }
+
+  setTopColor(color: string | null) {
+    this.topColor = color;
+    this.saveConfig();
+    this.notifyChange();
+  }
+
+  sampleFromElement(el: HTMLImageElement | HTMLVideoElement | null): string | null {
+    if (!el) return null;
+    const sampled = sampleElementTopColor(el);
+    if (sampled) this.setTopColor(sampled);
+    return sampled;
+  }
+
+  private probeTopColorFromUrl(url: string, type: CustomBgType) {
+    if (typeof document === 'undefined') return;
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') return;
+
+    try {
+      if (type === 'image') {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => { if (this.url === url) this.sampleFromElement(img); };
+        img.src = url;
+      } else {
+        const video = document.createElement('video');
+        video.crossOrigin = 'anonymous';
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.onloadeddata = () => { if (this.url === url) this.sampleFromElement(video); };
+        video.src = url;
+      }
+    } catch {}
   }
 
   private loadFromStorage() {
@@ -219,6 +278,11 @@ export class CustomBgStore {
         if (typeof parsed.positionX === 'number') this.positionX = parsed.positionX;
         if (typeof parsed.positionY === 'number') this.positionY = parsed.positionY;
         if (parsed.fit === 'cover' || parsed.fit === 'contain' || parsed.fit === 'fill') this.fit = parsed.fit;
+        if (typeof parsed.topColor === 'string' && parsed.topColor.trim()) {
+          this.topColor = parsed.topColor;
+        } else if (parsed.topColor === null) {
+          this.topColor = null;
+        }
       }
       const cachedData = localStorage.getItem('wyy_custom_bg_data');
       if (cachedData && this.type === 'image') {
@@ -239,7 +303,8 @@ export class CustomBgStore {
         scale: this.scale,
         positionX: this.positionX,
         positionY: this.positionY,
-        fit: this.fit
+        fit: this.fit,
+        topColor: this.topColor
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     } catch {}
@@ -253,6 +318,8 @@ export class CustomBgStore {
         this.url = safeCreateObjectURL(record.blob);
         this.type = record.type;
         if (record.name) this.name = record.name;
+        this.probeTopColorFromUrl(this.url, this.type);
+        this.notifyChange();
       }
     } catch {
       // Graceful fallback
@@ -272,7 +339,10 @@ export class CustomBgStore {
     this.type = determinedType;
     this.name = fileName;
     this.enabled = true;
+    this.topColor = null;
     this.saveConfig();
+    this.probeTopColorFromUrl(this.url, determinedType);
+    this.notifyChange();
 
     // 对于轻量图片 (≤ 2.5MB)，同步缓存 DataURL 到 localStorage 实现 0 毫秒首屏直出
     if (determinedType === 'image' && file.size < 2.5 * 1024 * 1024 && typeof FileReader !== 'undefined') {
@@ -303,7 +373,9 @@ export class CustomBgStore {
     this.url = null;
     this.type = null;
     this.name = '';
+    this.topColor = null;
     this.saveConfig();
+    this.notifyChange();
     if (typeof localStorage !== 'undefined') {
       try {
         localStorage.removeItem('wyy_custom_bg_data');
@@ -315,6 +387,7 @@ export class CustomBgStore {
   setDimOpacity(opacity: number) {
     this.dimOpacity = Math.max(0, Math.min(0.9, opacity));
     this.saveConfig();
+    this.notifyChange();
   }
 
   setBlur(blur: number) {
@@ -359,6 +432,7 @@ export class CustomBgStore {
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
     this.saveConfig();
+    this.notifyChange();
   }
 
   _reset() {
@@ -373,6 +447,7 @@ export class CustomBgStore {
     this.positionY = 50;
     this.fit = 'cover';
     this.enabled = true;
+    this.topColor = null;
     this.isLoaded = false;
     memoryRecord = null;
     dbInstance = null;
@@ -382,6 +457,7 @@ export class CustomBgStore {
         localStorage.removeItem('wyy_custom_bg_data');
       } catch {}
     }
+    this.notifyChange();
   }
 }
 

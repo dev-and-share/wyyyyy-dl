@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { skin, SkinStore, setImmersiveThemeColor, getIsImmersiveActive, pushModalBackdrop, getModalBackdropCount } from './skinStore.svelte';
+import { customBgStore } from './customBgStore.svelte';
 import { DEFAULT_PALETTE } from '../components/skins/skinTypes';
 import * as colorExt from './colorExtractor';
 
 describe('skinStore', () => {
   beforeEach(() => {
     localStorage.clear();
+    customBgStore._reset();
     skin._reset();
     vi.restoreAllMocks();
   });
@@ -159,6 +161,40 @@ describe('skinStore', () => {
     expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#f0fdf4');
 
     document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('syncs meta theme-color and --wco-titlebar-bg with customBgStore topColor in immersive mode', async () => {
+    skin.set('vinyl');
+    const mockBlob = new Blob(['img'], { type: 'image/jpeg' });
+    await customBgStore.setMedia(mockBlob, 'image', 'warm-wood.jpg');
+    customBgStore.setDimOpacity(0.5);
+    customBgStore.setTopColor('#c8aa8c');
+
+    // Non-immersive mode still uses skin color
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+
+    // Enter immersive mode: theme-color & --wco-titlebar-bg adopt dimmed customBg top color (#645546)
+    setImmersiveThemeColor(true);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#645546');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#645546');
+
+    // Changing dimOpacity dynamically updates titlebar color
+    customBgStore.setDimOpacity(0);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#c8aa8c');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#c8aa8c');
+
+    // Disabling customBg reverts to skin immersive anchor
+    customBgStore.setEnabled(false);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#0a0e1a');
+
+    // Re-enable then clear also reverts to skin immersive anchor
+    customBgStore.setEnabled(true);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#c8aa8c');
+    await customBgStore.clear();
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+
+    setImmersiveThemeColor(false);
   });
 
   it('ignores invalid skin in set()', () => {

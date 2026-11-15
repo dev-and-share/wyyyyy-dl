@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import CustomBackgroundStage from './CustomBackgroundStage.svelte';
+import ImmersiveBackgroundStage from './ImmersiveBackgroundStage.svelte';
 import { customBgStore } from '../../lib/customBgStore.svelte';
 
 describe('CustomBackgroundStage', () => {
@@ -75,5 +76,22 @@ describe('CustomBackgroundStage', () => {
     expect(video).toHaveAttribute('webkit-playsinline');
     expect(video).toHaveAttribute('autoplay');
     expect(video).toHaveAttribute('loop');
+  });
+
+  it('keeps immersive-titlebar-bg at opacity-100 with WCO-aligned gradient even when custom background is enabled', () => {
+    customBgStore.url = 'blob:test-photo';
+    customBgStore.type = 'image';
+    customBgStore.enabled = true;
+
+    const { getByTestId } = render(ImmersiveBackgroundStage, { skinId: 'vinyl', playing: true });
+    const titlebarBg = getByTestId('immersive-titlebar-bg');
+    expect(titlebarBg.className).toContain('opacity-100');
+    expect(titlebarBg.className).not.toContain('opacity-30');
+
+    const styleAttr = titlebarBg.getAttribute('style') || '';
+    expect(styleAttr).toContain('at 24px 14px');
+    expect(styleAttr).toContain('at calc(100% - 56px) 14px');
+    expect(styleAttr).toContain('72px');
+    expect(styleAttr).toContain('96px');
   });
 });

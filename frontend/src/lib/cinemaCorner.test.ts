@@ -95,21 +95,53 @@ describe('cinemaCorner engine', () => {
       expect(res.harmonizedColor).toBe('#3b137a');
       expect(res.isDisharmonious).toBe(false);
     });
+
+    it('preserves customBgColor directly in immersive mode for both dark and light themes', () => {
+      const warmTopColor = '#8c7258';
+      const darkRes = detectTitlebarHarmony({
+        skinColor: '#0a0e1a',
+        isLight: false,
+        isModalOpen: false,
+        isImmersive: true,
+        customBgColor: warmTopColor
+      });
+      expect(darkRes.harmonizedColor).toBe(warmTopColor);
+      expect(darkRes.isDisharmonious).toBe(false);
+
+      const lightRes = detectTitlebarHarmony({
+        skinColor: '#1e293b',
+        isLight: true,
+        isModalOpen: true,
+        isImmersive: true,
+        customBgColor: warmTopColor
+      });
+      expect(lightRes.harmonizedColor).toBe(warmTopColor);
+      expect(lightRes.isDisharmonious).toBe(false);
+    });
   });
 
   describe('2D Cinema Corner gradient generation', () => {
-    it('builds dual-corner radial gradient CSS with color-mix steps for CSS vars', () => {
+    it('builds dual-corner radial gradient CSS aligned to WCO bounds with color-mix steps for CSS vars', () => {
       const css = buildCinemaCornerGradient({ color: 'var(--wco-titlebar-bg)', radiusX: 360, radiusY: 120 });
-      expect(css).toContain('at 0% 0%');
-      expect(css).toContain('at 100% 0%');
+      expect(css).toContain('at 24px 14px');
+      expect(css).toContain('at calc(100% - 56px) 14px');
+      expect(css).toContain('72px');
+      expect(css).toContain('96px');
       expect(css).toContain('ellipse 360px 120px');
       expect(css).toContain('color-mix(in srgb');
+
+      const defaultCss = buildCinemaCornerGradient();
+      expect(defaultCss).toContain('ellipse 380px 180px at 24px 14px');
+      expect(defaultCss).toContain('ellipse 460px 190px at calc(100% - 56px) 14px');
     });
 
     it('builds pure rgba radial gradient CSS when concrete hex color is provided', () => {
       const css = buildCinemaCornerGradient({ color: '#fffdf0', radiusX: 360, radiusY: 120 });
-      expect(css).toContain('rgba(255, 253, 240, 0.82)');
-      expect(css).toContain('rgba(255, 253, 240, 0.48)');
+      expect(css).toContain('rgba(255, 253, 240, 1) 72px');
+      expect(css).toContain('rgba(255, 253, 240, 1) 96px');
+      expect(css).toContain('rgba(255, 253, 240, 0.85)');
+      expect(css).toContain('rgba(255, 253, 240, 0.45)');
+      expect(css).toContain('rgba(255, 253, 240, 0.15)');
     });
 
     it('resolves style string with custom opacity', () => {

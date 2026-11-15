@@ -4,6 +4,13 @@
   let { playing = false } = $props<{ playing?: boolean }>();
 
   let videoEl = $state<HTMLVideoElement | null>(null);
+  let imgEl = $state<HTMLImageElement | null>(null);
+
+  $effect(() => {
+    if (customBgStore.type === 'image' && imgEl && imgEl.complete && imgEl.naturalWidth > 0 && !customBgStore.topColor) {
+      customBgStore.sampleFromElement(imgEl);
+    }
+  });
 
   // 严格确保视频背景 100% 静音无声播放，杜绝干扰音频流
   $effect(() => {
@@ -31,9 +38,11 @@
   >
     {#if customBgStore.type === 'image'}
       <img
+        bind:this={imgEl}
         src={customBgStore.url}
         alt="Custom Player Background"
         data-testid="custom-bg-image"
+        onload={(e) => customBgStore.sampleFromElement(e.currentTarget as HTMLImageElement)}
         class="absolute inset-0 w-full h-full transition-[filter,transform,object-position] duration-300 ease-out"
         style="
           filter: blur({customBgStore.blur}px);
@@ -49,6 +58,7 @@
         bind:this={videoEl}
         src={customBgStore.url}
         data-testid="custom-bg-video"
+        onloadeddata={(e) => customBgStore.sampleFromElement(e.currentTarget as HTMLVideoElement)}
         autoplay
         loop
         muted

@@ -21,6 +21,7 @@ export interface TitlebarHarmonyParams {
   isLight: boolean;
   isModalOpen: boolean;
   isImmersive?: boolean;
+  customBgColor?: string | null;
 }
 
 export interface TitlebarHarmonyResult {
@@ -94,9 +95,16 @@ export function blendColors(baseHex: string, overlayHex: string, alpha: number):
  * 针对当前深浅色主题、皮肤底色与活动浮层，计算出与视口最和谐的系统顶栏色
  */
 export function detectTitlebarHarmony(params: TitlebarHarmonyParams): TitlebarHarmonyResult {
-  const { skinColor, isLight, isModalOpen, isImmersive = false } = params;
+  const { skinColor, isLight, isModalOpen, isImmersive = false, customBgColor } = params;
 
   if (isImmersive) {
+    if (typeof customBgColor === 'string' && customBgColor.trim().length > 0) {
+      return {
+        harmonizedColor: customBgColor,
+        isDisharmonious: false,
+        contrastDelta: 0
+      };
+    }
     // 全屏沉浸模式由各自沉浸锚点掌管
     return {
       harmonizedColor: isLight ? skinColor : (blendColors(skinColor, '#0a0e1a', 0.7) || '#0a0e1a'),
@@ -141,30 +149,32 @@ export function detectTitlebarHarmony(params: TitlebarHarmonyParams): TitlebarHa
 
 /**
  * 🎬 生成 2D Cinema Corner 双顶角电影级柔焦径向渐变背景 CSS
- * 左上角 (0% 0%) 交通灯与右上角 (100% 0%) 控件向内、向下平滑漫反射扩散，彻底消灭物理矩形硬切边
+ * 左上角交通灯 (80×38px) 与右上角控件 (138×38px) 实心核完全覆盖物理非客户区边界，再向外平滑漫反射衰减，彻底消灭硬切边
  */
 export function buildCinemaCornerGradient(options?: CinemaCornerOptions): string {
   const color = options?.color || 'var(--wco-titlebar-bg)';
-  const rx = options?.radiusX ?? 480;
-  const ry = options?.radiusY ?? 280;
+  const rxLeft = options?.radiusX ?? 380;
+  const ryLeft = options?.radiusY ?? 180;
+  const rxRight = options?.radiusX ?? 460;
+  const ryRight = options?.radiusY ?? 190;
 
   if (color.startsWith('#')) {
     const { r, g, b } = parseHex(color);
     const stop100 = `rgba(${r}, ${g}, ${b}, 1)`;
-    const stop82 = `rgba(${r}, ${g}, ${b}, 0.82)`;
-    const stop48 = `rgba(${r}, ${g}, ${b}, 0.48)`;
-    const stop18 = `rgba(${r}, ${g}, ${b}, 0.18)`;
+    const stop85 = `rgba(${r}, ${g}, ${b}, 0.85)`;
+    const stop45 = `rgba(${r}, ${g}, ${b}, 0.45)`;
+    const stop15 = `rgba(${r}, ${g}, ${b}, 0.15)`;
     const stop0 = `rgba(${r}, ${g}, ${b}, 0)`;
 
     return [
-      `radial-gradient(ellipse ${rx}px ${ry}px at 0% 0%, ${stop100} 0%, ${stop100} 55px, ${stop82} 110px, ${stop48} 190px, ${stop18} 280px, ${stop0} 100%)`,
-      `radial-gradient(ellipse ${rx}px ${ry}px at 100% 0%, ${stop100} 0%, ${stop100} 55px, ${stop82} 110px, ${stop48} 190px, ${stop18} 280px, ${stop0} 100%)`
+      `radial-gradient(ellipse ${rxLeft}px ${ryLeft}px at 24px 14px, ${stop100} 0%, ${stop100} 72px, ${stop85} 115px, ${stop45} 190px, ${stop15} 270px, ${stop0} 100%)`,
+      `radial-gradient(ellipse ${rxRight}px ${ryRight}px at calc(100% - 56px) 14px, ${stop100} 0%, ${stop100} 96px, ${stop85} 145px, ${stop45} 230px, ${stop15} 320px, ${stop0} 100%)`
     ].join(', ');
   }
 
   return [
-    `radial-gradient(ellipse ${rx}px ${ry}px at 0% 0%, ${color} 0%, ${color} 55px, color-mix(in srgb, ${color} 82%, transparent) 110px, color-mix(in srgb, ${color} 48%, transparent) 190px, color-mix(in srgb, ${color} 18%, transparent) 280px, transparent 100%)`,
-    `radial-gradient(ellipse ${rx}px ${ry}px at 100% 0%, ${color} 0%, ${color} 55px, color-mix(in srgb, ${color} 82%, transparent) 110px, color-mix(in srgb, ${color} 48%, transparent) 190px, color-mix(in srgb, ${color} 18%, transparent) 280px, transparent 100%)`
+    `radial-gradient(ellipse ${rxLeft}px ${ryLeft}px at 24px 14px, ${color} 0%, ${color} 72px, color-mix(in srgb, ${color} 85%, transparent) 115px, color-mix(in srgb, ${color} 45%, transparent) 190px, color-mix(in srgb, ${color} 15%, transparent) 270px, transparent 100%)`,
+    `radial-gradient(ellipse ${rxRight}px ${ryRight}px at calc(100% - 56px) 14px, ${color} 0%, ${color} 96px, color-mix(in srgb, ${color} 85%, transparent) 145px, color-mix(in srgb, ${color} 45%, transparent) 230px, color-mix(in srgb, ${color} 15%, transparent) 320px, transparent 100%)`
   ].join(', ');
 }
 
@@ -185,5 +195,55 @@ export function applyCinemaCornerCssVars(color: string, root?: HTMLElement): voi
   const target = root || document.documentElement;
   target.style.setProperty('--wco-titlebar-bg', color);
   target.style.setProperty('--cinema-corner-bg', buildCinemaCornerGradient({ color }));
+}
+
+/**
+ * 从顶部像素条带中加权采样主色调（左右顶角区域权重 ×2，中央顶部权重 ×1）
+ */
+export function sampleTopColorFromPixels(
+  data: Uint8ClampedArray | number[],
+  width: number,
+  height: number
+): string | null {
+  if (!data || width <= 0 || height <= 0) return null;
+  const maxRows = Math.max(1, Math.min(height, Math.round(height * 0.2)));
+  let rSum = 0;
+  let gSum = 0;
+  let bSum = 0;
+  let totalWeight = 0;
+
+  for (let y = 0; y < maxRows; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      if (idx + 3 >= data.length || data[idx + 3] < 16) continue;
+      const weight = x < width * 0.3 || x >= width * 0.7 ? 2 : 1;
+      rSum += data[idx] * weight;
+      gSum += data[idx + 1] * weight;
+      bSum += data[idx + 2] * weight;
+      totalWeight += weight;
+    }
+  }
+
+  if (totalWeight === 0) return null;
+  return toHex(rSum / totalWeight, gSum / totalWeight, bSum / totalWeight);
+}
+
+/**
+ * 利用离屏 Canvas 从已加载的图片或视频首帧采样顶部边缘平均色
+ */
+export function sampleElementTopColor(el: HTMLImageElement | HTMLVideoElement): string | null {
+  if (typeof document === 'undefined' || !el) return null;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(el, 0, 0, 64, 32);
+    const imageData = ctx.getImageData(0, 0, 64, 8);
+    return sampleTopColorFromPixels(imageData.data, 64, 8);
+  } catch {
+    return null;
+  }
 }
 

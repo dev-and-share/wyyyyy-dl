@@ -1,6 +1,7 @@
 import { DEFAULT_PALETTE, type CoverPalette, type SkinId, SKINS, SKIN_THEME_COLORS, SKIN_IMMERSIVE_ANCHORS } from '../components/skins/skinTypes';
 import { extractCoverPalette } from './colorExtractor';
 import { detectTitlebarHarmony, buildCinemaCornerGradient, type TitlebarHarmonyResult } from './cinemaCorner';
+import { customBgStore } from './customBgStore.svelte';
 
 const STORAGE_KEY = 'player_skin';
 
@@ -77,11 +78,14 @@ export function syncMetaThemeColor(skinId?: SkinId) {
         ? (SKIN_THEME_COLORS[currentSkin]?.light || '#ffffff')
         : (SKIN_THEME_COLORS[currentSkin]?.dark || '#0a0e1a'));
 
+  const customBgColor = isImmersiveActive ? customBgStore.getEffectiveTopColor() : null;
+
   lastHarmonyResult = detectTitlebarHarmony({
-    skinColor: baseSkinColor,
+    skinColor: customBgColor || baseSkinColor,
     isLight,
     isModalOpen: modalBackdropCount > 0,
-    isImmersive: isImmersiveActive
+    isImmersive: isImmersiveActive,
+    customBgColor
   });
 
   const color = lastHarmonyResult.harmonizedColor;
@@ -182,3 +186,7 @@ export class SkinStore {
 }
 
 export const skin = new SkinStore();
+
+customBgStore.onChange(() => {
+  syncMetaThemeColor();
+});
