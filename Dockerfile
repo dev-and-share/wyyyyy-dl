@@ -4,7 +4,8 @@
 FROM node:22-alpine AS frontend-builder
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json* ./frontend/
-RUN cd frontend && npm ci --ignore-scripts
+COPY frontend/vendor ./frontend/vendor
+RUN --mount=type=cache,target=/root/.npm cd frontend && npm ci --ignore-scripts
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run check && npm run build
 
@@ -21,7 +22,7 @@ COPY settings.gradle build.gradle gradle.properties ./
 COPY src ./src/
 # 注入已编译的 Svelte 产物
 COPY --from=frontend-builder /build/src/main/resources/static/svelte ./src/main/resources/static/svelte
-RUN ./gradlew bootJar -x test --no-daemon
+RUN --mount=type=cache,target=/root/.gradle ./gradlew bootJar -x test --no-daemon
 
 # ==============================================================================
 # Stage 3: Runtime

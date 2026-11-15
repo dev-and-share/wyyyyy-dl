@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.wyy'
-version = '5.5.53'
+version = '5.5.58'
 sourceCompatibility = '21'
 targetCompatibility = '21'
 
@@ -16,10 +16,9 @@ tasks.withType(JavaCompile) {
     options.compilerArgs << "-Xlint:deprecation"
 }
 repositories {
-    //mavenLocal()
-    maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
-    maven { url 'https://repo.spring.io/milestone' }
     mavenCentral()
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    maven { url 'https://repo.spring.io/milestone' }
 }
 
 configurations.all {

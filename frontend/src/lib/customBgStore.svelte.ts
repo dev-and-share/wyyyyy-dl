@@ -284,10 +284,6 @@ export class CustomBgStore {
           this.topColor = null;
         }
       }
-      const cachedData = localStorage.getItem('wyy_custom_bg_data');
-      if (cachedData && this.type === 'image') {
-        this.url = cachedData;
-      }
     } catch {}
   }
 
@@ -344,20 +340,7 @@ export class CustomBgStore {
     this.probeTopColorFromUrl(this.url, determinedType);
     this.notifyChange();
 
-    // 对于轻量图片 (≤ 2.5MB)，同步缓存 DataURL 到 localStorage 实现 0 毫秒首屏直出
-    if (determinedType === 'image' && file.size < 2.5 * 1024 * 1024 && typeof FileReader !== 'undefined') {
-      try {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === 'string') {
-            try {
-              localStorage.setItem('wyy_custom_bg_data', reader.result);
-            } catch {}
-          }
-        };
-        reader.readAsDataURL(file);
-      } catch {}
-    }
+    // 仅由 IndexedDB 持久化自定义背景文件本体（避免同步写入 localStorage 挤占配额）
 
     await idbSaveBackground({
       id: 'current',
@@ -376,11 +359,6 @@ export class CustomBgStore {
     this.topColor = null;
     this.saveConfig();
     this.notifyChange();
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.removeItem('wyy_custom_bg_data');
-      } catch {}
-    }
     await idbDeleteBackground('current');
   }
 

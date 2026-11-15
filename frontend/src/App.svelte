@@ -13,6 +13,7 @@
   import { executeReveal, type RevealResult } from './lib/revealHelper';
   import { playPlaylistTracks } from './lib/playerHelper';
   import { playerStore, type SetQueueOptions } from './lib/playerStore.svelte';
+  import { playbackTelemetry } from './lib/player/playbackTelemetry.svelte';
   import type { Track } from './lib/types';
   import { t } from './lib/i18n';
 
@@ -27,6 +28,7 @@
   import SearchTab from './components/SearchTab.svelte';
   import DownloadMgrTab from './components/DownloadMgrTab.svelte';
   import GlobalAudioPlayer from './components/GlobalAudioPlayer.svelte';
+  import PlayerDiagnosticsHud from './components/PlayerDiagnosticsHud.svelte';
   import RevealModal from './components/RevealModal.svelte';
   import SongDetailModal from './components/SongDetailModal.svelte';
   import PullToRefresh from './components/sp/PullToRefresh.svelte';
@@ -132,6 +134,18 @@
     };
     window.addEventListener('wyy:reveal', onGlobalReveal);
 
+    // 🩺 初始化播放诊断遥测与 Shift + D 快捷键开关
+    playbackTelemetry.init().catch(() => {});
+    const onDiagHotkey = (e: KeyboardEvent) => {
+      if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || (e.key !== 'D' && e.key !== 'd')) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
+      e.preventDefault();
+      playbackTelemetry.toggleHud();
+    };
+    window.addEventListener('keydown', onDiagHotkey);
+
     // 🌌 注册空白区域快速双击切换沉浸模式（PC 端关闭双击避免与窗口/选词冲突，SP 移动端保留双触切换）
     const cleanupImmersiveDblClick = setupImmersiveDblClick();
 
@@ -147,6 +161,7 @@
       stopRouter();
       stopLayout();
       cleanupImmersiveDblClick();
+      window.removeEventListener('keydown', onDiagHotkey);
       window.removeEventListener('wyy:download-submitted', onDownloadSubmit);
       window.removeEventListener('wyy:reveal', onGlobalReveal);
     };
@@ -418,6 +433,11 @@
 
 <!-- 🔔 全局 Toast 浮动提示容器 -->
 <ToastContainer />
+
+<!-- 🩺 播放器实时诊断悬浮 HUD -->
+{#if playbackTelemetry.hudVisible}
+  <PlayerDiagnosticsHud {showToast} />
+{/if}
 
 <!-- 🌐 Global Bottom Sheet -->
 <BottomSheet />

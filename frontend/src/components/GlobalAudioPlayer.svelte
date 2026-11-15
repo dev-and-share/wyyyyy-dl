@@ -16,6 +16,7 @@
   import { t } from '../lib/i18n';
   import { platform } from '../lib/platform';
   import { isIosF3Holding, handleIosF3Pause, handleIosF3Resume, resetIosF3State, updateIosF3SavedTime, holdTransitionKeepAlive } from '../lib/iosF3KeepAlive';
+  import { playbackTelemetry } from '../lib/player/playbackTelemetry.svelte';
   import { sleepTimer } from '../lib/sleepTimer.svelte';
   import { audioVisualizer } from '../lib/player/audioVisualizer.svelte';
   import { skin } from '../lib/skinStore.svelte';
@@ -84,7 +85,7 @@
 
   function handleStreamFailure(track: Track, session: number, reason = t('player.audioStreamFailed')) {
     if (session !== playSessionId) return;
-    clearStreamWatchdog();
+    clearStreamWatchdog(); playbackTelemetry.recordStreamFailure(track, reason);
     if (audioEl?.src && isPreloadedBlobUrlForTrack(audioEl.src, track)) clearPreloadedTrackBlob();
     if (!track.isLocal && canRetryTrackStream(track)) {
       markTrackStreamRetried(track); track.url = ''; track.unplayable = false; ensurePlay(true); return;
@@ -96,6 +97,7 @@
   function handlePlayRejection(err: any, onStreamError: () => void) {
     const kind = classifyPlayRejection(err);
     if (kind === 'abort') return;
+    playbackTelemetry.recordPlayRejection(kind, err, playerStore.activeTrack);
     if (kind === 'not_allowed') { isPlaybackDesired = false; playerStore.playing = false; updateMediaSessionPlaybackState(false); return; }
     onStreamError();
   }
@@ -121,7 +123,7 @@
       audioEl, track, url: effectiveUrl, session, getCurrentSession: () => playSessionId, resetTime,
       onMetadataSync: () => updateMediaSessionMetadata(track),
       onResetTimeApplied: () => { playerStore.curTime = 0; },
-      onWatchdogTimeout: () => handleStreamFailure(track, session, t('player.networkFailed')),
+      onWatchdogTimeout: () => { playbackTelemetry.recordWatchdogTimeout(track); handleStreamFailure(track, session, t('player.networkFailed')); },
       onPlaySuccess: () => {
         consecutiveSkipCount = 0; playerStore.playing = true;
         if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} playerStore.curTime = 0; } else { applyPendingSeek(); }
@@ -318,7 +320,7 @@
     const tryForegroundResume = () => interruptionController.executeForegroundResume({
       audioEl, track: playerStore.queue[playerStore.qIndex] || playerStore.activeTrack, curTime: playerStore.curTime, needsReload: needsReloadOnResume,
       onPendingSeek: (t) => { pendingSeekTime = t; }, onClearedReload: () => { needsReloadOnResume = false; },
-      onRecovered: () => { isPlaybackDesired = true; playerStore.playing = true; applyPendingSeek(); updateMediaSessionPlaybackState(true); updateMediaSessionPosition(audioEl); },
+      onRecovered: () => { playbackTelemetry.recordInterruptionRecovery('recovered'); isPlaybackDesired = true; playerStore.playing = true; applyPendingSeek(); updateMediaSessionPlaybackState(true); updateMediaSessionPosition(audioEl); },
       onFallbackPlay: () => ensurePlay(false)
     });
     const handleVisibilityChange = () => {
@@ -360,9 +362,10 @@
       ['wyy:toggle-play', onTogglePlayEvent as EventListener], ['visibilitychange', handleVisibilityChange as EventListener, document]
     ];
     listeners.forEach(([ev, fn, target]) => (target || window).addEventListener(ev, fn));
+    const detachTelemetry = playbackTelemetry.attachAudioElement({ getAudioEl: () => audioEl, getDesired: () => isPlaybackDesired, isUrlExpired: isTrackUrlExpired });
 
     return () => {
-      spaceShortcut.cleanup();
+      spaceShortcut.cleanup(); detachTelemetry();
       listeners.forEach(([ev, fn, target]) => (target || window).removeEventListener(ev, fn));
     };
   });
@@ -396,8 +399,8 @@
     interruptionController.dispatchPauseEvent({
       audioEl, wasPlaying, curTime: playerStore.curTime, duration: playerStore.duration, trackId: playerStore.activeTrack?.id,
       onSyncPaused: () => { updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); },
-      onRecovered: () => { isPlaybackDesired = true; playerStore.playing = true; updateMediaSessionPlaybackState(true); updateMediaSessionPosition(audioEl); },
-      onGiveUp: () => { isPlaybackDesired = false; playerStore.playing = false; updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); needsReloadOnResume = true; }
+      onRecovered: () => { playbackTelemetry.recordInterruptionRecovery('recovered'); isPlaybackDesired = true; playerStore.playing = true; updateMediaSessionPlaybackState(true); updateMediaSessionPosition(audioEl); },
+      onGiveUp: () => { playbackTelemetry.recordInterruptionRecovery('give_up'); isPlaybackDesired = false; playerStore.playing = false; updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); needsReloadOnResume = true; }
     });
   }
 

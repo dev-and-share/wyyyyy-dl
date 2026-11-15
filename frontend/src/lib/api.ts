@@ -138,5 +138,14 @@ export const api = {
   getGeoProxyConfig: () => get('/v3/geo-proxy/config'),
   updateGeoProxyConfig: (config: any) => postJson('/v3/geo-proxy/config', config),
   testGeoProxy: (proxyUrl?: string) => postJson('/v3/geo-proxy/test', { proxyUrl }),
-  refreshGeoProxyPool: () => postJson('/v3/geo-proxy/refresh', {})
+  refreshGeoProxyPool: () => postJson('/v3/geo-proxy/refresh', {}),
+
+  // 🩺 播放器运行诊断上报与查询
+  submitPlaybackDebugReport: (report: any) => postJson('/v3/debug/playback', report),
+  listPlaybackDebugReports: (limit = 50) => get(`/v3/debug/playback?limit=${encodeURIComponent(String(limit))}`),
+  clearPlaybackDebugReports: async () => {
+    const res = await fetch('/v3/debug/playback', { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
 };

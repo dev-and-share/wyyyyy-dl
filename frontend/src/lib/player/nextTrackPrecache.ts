@@ -1,6 +1,7 @@
 import type { Track } from '../types';
 import { t } from '../i18n';
 import { playerStore } from './playerStore.svelte';
+import { playbackTelemetry } from './playbackTelemetry.svelte';
 import { PWA_CACHE_NAME } from '../library/pwaCache.svelte';
 import { isTrackUrlExpired, resolveTrackUrl } from './playerHelper';
 import {
@@ -25,7 +26,11 @@ const corePrecacheController = new NextTrackPrecacheController({
 });
 
 export function getPreloadedTrackBlobUrl(track: Track | null | undefined): string | null {
-  return corePrecacheController.getPreloadedBlobUrl(track);
+  const blobUrl = corePrecacheController.getPreloadedBlobUrl(track);
+  if (blobUrl) {
+    playbackTelemetry.recordPrecache('hit', track, 'blob_cache_hit');
+  }
+  return blobUrl;
 }
 
 export function isPreloadedBlobUrlForTrack(audioSrc: string, track: Track | null | undefined): boolean {
@@ -45,16 +50,21 @@ export async function precacheCandidateAudio(
   candidate: Track,
   onInvalidOrFailed: (reason: 'trial' | 'unplayable') => void
 ): Promise<boolean> {
-  return corePrecacheController.precacheCandidateAudio(
+  const ok = await corePrecacheController.precacheCandidateAudio(
     candidate,
     (reason) => {
       if (reason === 'unplayable' && candidate && !candidate.isLocal) {
         candidate.unplayableReason = t('player.audioStreamFailed');
       }
+      playbackTelemetry.recordPrecache(reason, candidate);
       onInvalidOrFailed(reason);
     },
     { skipTrial: playerStore.autoSkipTrial }
   );
+  if (ok) {
+    playbackTelemetry.recordPrecache('ok', candidate);
+  }
+  return ok;
 }
 
 export function isCandidateTrackPlayable(track: Track | null | undefined): boolean {

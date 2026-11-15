@@ -211,6 +211,7 @@ describe('customBgStore', () => {
 
       const mockBlob = new Blob(['mock-image-data'], { type: 'image/png' });
       await store.setMedia(mockBlob, 'image', 'warm.png');
+      expect(localStorage.getItem('wyy_custom_bg_data')).toBeNull();
       expect(store.topColor).toBeNull();
 
       store.setTopColor('#c8aa8c'); // (200, 170, 140)

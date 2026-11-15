@@ -169,8 +169,8 @@
       </label>
     </div>
 
-    <!-- 底部操作按钮 -->
-    <div class="flex justify-end items-center gap-2 pt-1 border-t border-black/5 dark:border-white/10">
+    <!-- 底部操作按钮 (使用 Modal 标准 footer snippet，固定于底部且自适应屏幕底边安全区) -->
+    {#snippet footer()}
       <button
         type="button"
         class="btn-secondary px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
@@ -194,6 +194,6 @@
           <span>{t('playlist.removeConfirmBtn')}</span>
         {/if}
       </button>
-    </div>
+    {/snippet}
   </Modal>
 {/if}

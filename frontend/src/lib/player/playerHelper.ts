@@ -5,6 +5,7 @@ import { markSongDownloaded } from './trackStatus.svelte';
 import { taskState } from '../taskStore.svelte';
 import { recordPlaylistPlay } from '../playlist.svelte';
 import { playerStore, type SetQueueOptions } from './playerStore.svelte';
+import { playbackTelemetry } from './playbackTelemetry.svelte';
 import { platformAdapter, musicFreeAdapter } from '../adapters';
 import { showToast } from '../toast.svelte';
 import { t } from '../i18n';
@@ -139,6 +140,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
           track.freeTrial = false;
           track.freeTrialDuration = undefined;
           markTrackUrlResolved(track);
+          playbackTelemetry.recordResolve('fallback', track, fallback.quality || 'builtin');
           return track.url;
         }
       }
@@ -158,14 +160,18 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
         markTrackUrlResolved(track);
       }
       track.freeTrialDuration = resolved.freeTrialDuration;
+      playbackTelemetry.recordResolve('ok', track, resolved.isLocal ? 'local' : 'online');
       return track.url;
     } else {
       track.unplayable = true;
       track.unplayableReason = resolved.unplayableReason || t('player.getInfoFailed');
+      playbackTelemetry.recordResolve('failed', track, track.unplayableReason);
     }
-  } catch {
+  } catch (err: any) {
     track.unplayable = true;
     track.unplayableReason = t('player.networkFailed');
+    const msg = String(err?.message || err || '');
+    playbackTelemetry.recordResolve(msg.toLowerCase().includes('timeout') ? 'timeout' : 'failed', track, msg || 'network_exception');
   }
   return track.url || '';
 }
@@ -287,6 +293,7 @@ export function computeNextTrackOnSkip(
   isTrial = false
 ): SkipTrackDecision {
   const nextCount = currentSkipCount + 1;
+  playbackTelemetry.recordAutoSkip(failedTrack, reason, isTrial, nextCount);
   const MAX_CONSECUTIVE_SKIPS = 15;
   const ONLINE_FAIL_FALLBACK_THRESHOLD = 3;
 
@@ -360,6 +367,7 @@ export async function handleRestrictedAudioCheck(
   }
 
   console.warn(`[Player] 发现受限防盗链短音频 (${Math.round(audioDuration)}s):`, activeTrack.name);
+  playbackTelemetry.recordEvent('restricted_short_audio', 'warn', `dur=${Math.round(audioDuration)}s`, activeTrack);
   try {
     const fallback = await resolveFallbackFromBuiltins(activeTrack);
     const fallbackUrl = fallback?.url ? formatFallbackStreamUrl(fallback) : '';

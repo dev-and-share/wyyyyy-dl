@@ -12,6 +12,8 @@ export * from './sleepTimer.svelte';
 export * from './lyricParser';
 export * from './iosF3KeepAlive';
 export * from './peq';
+export * from './telemetryStorage';
+export * from './playbackTelemetry.svelte';
 export {
   ONLINE_URL_TTL_MS,
   INTERRUPTION_PROBE_DELAYS_MS,

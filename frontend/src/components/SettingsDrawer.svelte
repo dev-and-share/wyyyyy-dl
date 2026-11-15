@@ -12,6 +12,7 @@
   import SettingsGeoProxySection from './settings/SettingsGeoProxySection.svelte';
   import SettingsUserProfileSection from './settings/SettingsUserProfileSection.svelte';
   import SettingsCustomBgSection from './settings/SettingsCustomBgSection.svelte';
+  import SettingsDiagnosticsSection from './settings/SettingsDiagnosticsSection.svelte';
   import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
   import {
     hasPendingPwaUpdate,
@@ -329,6 +330,9 @@
 
     <!-- Section 6: Maintenance -->
     <SettingsMaintenanceSection {showToast} />
+
+    <!-- 🩺 播放运行诊断与自动上报 -->
+    <SettingsDiagnosticsSection {showToast} onOpenHud={handleClose} />
 
     <!-- 🌄 自定义播放器背景 -->
     <SettingsCustomBgSection {showToast} />
