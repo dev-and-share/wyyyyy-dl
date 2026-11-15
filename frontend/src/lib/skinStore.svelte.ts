@@ -1,6 +1,7 @@
 import { DEFAULT_PALETTE, type CoverPalette, type SkinId, SKINS, SKIN_THEME_COLORS, SKIN_IMMERSIVE_ANCHORS } from '../components/skins/skinTypes';
 import { extractCoverPalette } from './colorExtractor';
 import { detectTitlebarHarmony, buildCinemaCornerGradient, type TitlebarHarmonyResult } from './cinemaCorner';
+import { layoutState } from './layout.svelte';
 import { customBgStore } from './customBgStore.svelte';
 
 const STORAGE_KEY = 'player_skin';
@@ -98,7 +99,10 @@ export function syncMetaThemeColor(skinId?: SkinId) {
   }
   meta.setAttribute('content', color);
   document.documentElement.style.setProperty('--wco-titlebar-bg', color);
-  document.documentElement.style.setProperty('--cinema-corner-bg', buildCinemaCornerGradient({ color }));
+  const wcoBounds = layoutState.wco.visible
+    ? { left: layoutState.wco.left, right: layoutState.wco.right, height: layoutState.wco.height }
+    : {};
+  document.documentElement.style.setProperty('--cinema-corner-bg', buildCinemaCornerGradient({ color, ...wcoBounds }));
 }
 
 function loadInitialSkin(): SkinId {

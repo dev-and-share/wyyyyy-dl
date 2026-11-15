@@ -90,8 +90,8 @@ describe('CustomBackgroundStage', () => {
 
     const styleAttr = titlebarBg.getAttribute('style') || '';
     expect(styleAttr).toContain('at 24px 14px');
-    expect(styleAttr).toContain('at calc(100% - 56px) 14px');
-    expect(styleAttr).toContain('72px');
-    expect(styleAttr).toContain('96px');
+    expect(styleAttr).toContain('at calc(100% - 57px) 14px');
+    expect(styleAttr).toContain('84px');
+    expect(styleAttr).toContain('109px');
   });
 });

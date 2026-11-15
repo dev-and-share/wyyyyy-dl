@@ -1,14 +1,25 @@
 <script lang="ts">
   import { customBgStore } from '../../lib/customBgStore.svelte';
+  import { isWcoActive } from '../../lib/cinemaCorner';
+  import { layoutState } from '../../lib/layout.svelte';
 
   let { playing = false } = $props<{ playing?: boolean }>();
 
   let videoEl = $state<HTMLVideoElement | null>(null);
   let imgEl = $state<HTMLImageElement | null>(null);
 
+  function sampleTopColorIfWco(el: HTMLImageElement | HTMLVideoElement): void {
+    // 非 WCO 模式下跳过离屏 Canvas 采样，确保零性能损耗
+    if (!layoutState.wco.visible && !isWcoActive()) return;
+    customBgStore.sampleFromElement(el);
+  }
+
   $effect(() => {
+    if (!layoutState.wco.visible && !isWcoActive()) return;
     if (customBgStore.type === 'image' && imgEl && imgEl.complete && imgEl.naturalWidth > 0 && !customBgStore.topColor) {
       customBgStore.sampleFromElement(imgEl);
+    } else if (customBgStore.type === 'video' && videoEl && videoEl.readyState >= 2 && !customBgStore.topColor) {
+      customBgStore.sampleFromElement(videoEl);
     }
   });
 
@@ -42,7 +53,7 @@
         src={customBgStore.url}
         alt="Custom Player Background"
         data-testid="custom-bg-image"
-        onload={(e) => customBgStore.sampleFromElement(e.currentTarget as HTMLImageElement)}
+        onload={(e) => sampleTopColorIfWco(e.currentTarget as HTMLImageElement)}
         class="absolute inset-0 w-full h-full transition-[filter,transform,object-position] duration-300 ease-out"
         style="
           filter: blur({customBgStore.blur}px);
@@ -58,7 +69,7 @@
         bind:this={videoEl}
         src={customBgStore.url}
         data-testid="custom-bg-video"
-        onloadeddata={(e) => customBgStore.sampleFromElement(e.currentTarget as HTMLVideoElement)}
+        onloadeddata={(e) => sampleTopColorIfWco(e.currentTarget as HTMLVideoElement)}
         autoplay
         loop
         muted

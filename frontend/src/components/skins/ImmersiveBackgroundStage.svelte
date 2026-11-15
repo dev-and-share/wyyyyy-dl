@@ -4,6 +4,7 @@
   import CustomBackgroundStage from './CustomBackgroundStage.svelte';
   import { customBgStore } from '../../lib/customBgStore.svelte';
   import { buildCinemaCornerGradient } from '../../lib/cinemaCorner';
+  import { layoutState } from '../../lib/layout.svelte';
 
   let {
     skinId,
@@ -132,7 +133,11 @@
 <div
   data-testid="immersive-titlebar-bg"
   class="absolute inset-0 z-20 pointer-events-none transition-all duration-500 opacity-100"
-  style="background: {buildCinemaCornerGradient()};"
+  style="background: {buildCinemaCornerGradient(
+    layoutState.wco.visible
+      ? { left: layoutState.wco.left, right: layoutState.wco.right, height: layoutState.wco.height }
+      : undefined
+  )};"
   aria-hidden="true"
 ></div>
 

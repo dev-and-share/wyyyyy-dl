@@ -4,6 +4,8 @@
  * 🪟 原生级 Window Controls Overlay (WCO) 与 PWA 独立沉浸窗口适配
  */
 
+import { getWcoGeometry, syncWcoGeometryCssVars } from 'pwa-audio-player';
+
 function checkIsDesktop(): boolean {
   if (typeof window === 'undefined') return false;
   return window.innerWidth >= 1024;
@@ -39,49 +41,13 @@ export function syncWcoCssVariables(): void {
 
   layoutState.isStandalone = isStandalone;
 
-  const wco = (navigator as any)?.windowControlsOverlay;
-  const isWcoMatchMedia = window.matchMedia('(display-mode: window-controls-overlay)').matches;
-  const isWcoOverlayMode = (wco?.visible === true) || isWcoMatchMedia;
-  layoutState.wco.visible = isWcoOverlayMode;
-
-  const isMac = /Macintosh|Mac OS X/i.test(navigator.userAgent) || (navigator.platform && navigator.platform.includes('Mac'));
-
-  if (isWcoOverlayMode && typeof wco?.getTitlebarAreaRect === 'function') {
-    const rect = wco.getTitlebarAreaRect();
-    const height = Math.round(rect.height);
-    const left = Math.round(rect.x);
-    const right = Math.max(0, Math.round(window.innerWidth - (rect.x + rect.width)));
-
-    layoutState.wco.height = height;
-    layoutState.wco.left = left;
-    layoutState.wco.right = right;
-
-    document.documentElement.style.setProperty('--wco-height', `${height}px`);
-    document.documentElement.style.setProperty('--wco-left', `${left}px`);
-    document.documentElement.style.setProperty('--wco-right', `${right}px`);
-  } else if (isWcoOverlayMode) {
-    // 处于 window-controls-overlay 沉浸模式但缺少 getTitlebarAreaRect 时的兜底保护
-    const height = 38;
-    const left = isMac ? 80 : 0;
-    const right = isMac ? 112 : 138;
-
-    layoutState.wco.height = height;
-    layoutState.wco.left = left;
-    layoutState.wco.right = right;
-
-    document.documentElement.style.setProperty('--wco-height', `${height}px`);
-    document.documentElement.style.setProperty('--wco-left', `${left}px`);
-    document.documentElement.style.setProperty('--wco-right', `${right}px`);
-  } else {
-    // 普通浏览器标签页访问，或未收起系统标题栏的普通 standalone PWA（系统自带完整独立标题栏），零多余占位与边距
-    layoutState.wco.height = 0;
-    layoutState.wco.left = 0;
-    layoutState.wco.right = 0;
-
-    document.documentElement.style.setProperty('--wco-height', '0px');
-    document.documentElement.style.setProperty('--wco-left', '0px');
-    document.documentElement.style.setProperty('--wco-right', '0px');
-  }
+  // 委托 pwa-audio-player 统一计算 WCO 矩形区域与 CSS 安全区变量
+  const geometry = getWcoGeometry();
+  layoutState.wco.visible = geometry.visible;
+  layoutState.wco.height = geometry.height;
+  layoutState.wco.left = geometry.left;
+  layoutState.wco.right = geometry.right;
+  syncWcoGeometryCssVars(geometry);
 }
 
 export function initLayoutWatcher(): () => void {

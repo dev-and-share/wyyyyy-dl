@@ -124,21 +124,25 @@ describe('cinemaCorner engine', () => {
     it('builds dual-corner radial gradient CSS aligned to WCO bounds with color-mix steps for CSS vars', () => {
       const css = buildCinemaCornerGradient({ color: 'var(--wco-titlebar-bg)', radiusX: 360, radiusY: 120 });
       expect(css).toContain('at 24px 14px');
-      expect(css).toContain('at calc(100% - 56px) 14px');
-      expect(css).toContain('72px');
-      expect(css).toContain('96px');
+      expect(css).toContain('at calc(100% - 57px) 14px');
       expect(css).toContain('ellipse 360px 120px');
       expect(css).toContain('color-mix(in srgb');
 
       const defaultCss = buildCinemaCornerGradient();
-      expect(defaultCss).toContain('ellipse 380px 180px at 24px 14px');
-      expect(defaultCss).toContain('ellipse 460px 190px at calc(100% - 56px) 14px');
+      expect(defaultCss).toContain('ellipse 380px 181px at 24px 14px');
+      expect(defaultCss).toContain('var(--wco-titlebar-bg) 84px');
+      expect(defaultCss).toContain('ellipse 460px 190px at calc(100% - 57px) 14px');
+      expect(defaultCss).toContain('var(--wco-titlebar-bg) 109px');
+
+      const expandedCss = buildCinemaCornerGradient({ left: 96, right: 200, height: 42 });
+      expect(expandedCss).not.toContain('var(--wco-titlebar-bg) 109px');
+      expect(expandedCss).toContain('at calc(100% - 82px) 16px');
     });
 
     it('builds pure rgba radial gradient CSS when concrete hex color is provided', () => {
       const css = buildCinemaCornerGradient({ color: '#fffdf0', radiusX: 360, radiusY: 120 });
-      expect(css).toContain('rgba(255, 253, 240, 1) 72px');
-      expect(css).toContain('rgba(255, 253, 240, 1) 96px');
+      expect(css).toContain('rgba(255, 253, 240, 1) 104px');
+      expect(css).toContain('rgba(255, 253, 240, 1) 120px');
       expect(css).toContain('rgba(255, 253, 240, 0.85)');
       expect(css).toContain('rgba(255, 253, 240, 0.45)');
       expect(css).toContain('rgba(255, 253, 240, 0.15)');

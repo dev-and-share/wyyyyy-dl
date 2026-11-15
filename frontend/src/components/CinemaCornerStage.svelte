@@ -1,6 +1,7 @@
 <script lang="ts">
   import { layoutState } from '../lib/layout.svelte';
   import { buildCinemaCornerGradient } from '../lib/cinemaCorner';
+  import { syncMetaThemeColor } from '../lib/skinStore.svelte';
   import { isModalBackdropActive } from '../lib/skinStore.svelte';
 
   let {
@@ -35,9 +36,24 @@
 
   const customGradient = $derived.by(() => {
     if (color || radiusX !== undefined || radiusY !== undefined) {
-      return buildCinemaCornerGradient({ color, radiusX, radiusY });
+      return buildCinemaCornerGradient({
+        color,
+        radiusX,
+        radiusY,
+        ...(layoutState.wco.visible
+          ? { left: layoutState.wco.left, right: layoutState.wco.right, height: layoutState.wco.height }
+          : {})
+      });
     }
     return '';
+  });
+
+  $effect(() => {
+    const { visible, left, right, height } = layoutState.wco;
+    if (visible && !color && radiusX === undefined && radiusY === undefined) {
+      void (left + right + height);
+      syncMetaThemeColor();
+    }
   });
 </script>
 
