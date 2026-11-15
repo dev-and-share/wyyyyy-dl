@@ -159,8 +159,8 @@ describe('SettingsCustomBgSection', () => {
 
     const { getByTestId, queryByTestId } = render(SettingsCustomBgSection);
 
-    const toggle = getByTestId('toggle-custom-bg') as HTMLInputElement;
-    expect(toggle.checked).toBe(true);
+    const toggle = getByTestId('toggle-custom-bg');
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
     expect(queryByTestId('preview-custom-bg-image')).toBeInTheDocument();
     expect(queryByTestId('btn-change-custom-bg')).toBeInTheDocument();
     expect(queryByTestId('range-custom-bg-scale')).toBeInTheDocument();

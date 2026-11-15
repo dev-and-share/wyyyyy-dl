@@ -330,7 +330,10 @@
     <!-- Section 6: Maintenance -->
     <SettingsMaintenanceSection {showToast} />
 
-    <!-- Section 7: Download Preferences (低频使用项，放置于底部) -->
+    <!-- 🌄 自定义播放器背景 -->
+    <SettingsCustomBgSection {showToast} />
+
+    <!-- Section 7: Download Preferences (低频使用项，放置于最底部) -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
         <HardDriveDownload size={14} />
@@ -356,9 +359,6 @@
         </button>
       </div>
     </section>
-
-    <!-- 🌄 自定义播放器背景 (移至菜单最底部) -->
-    <SettingsCustomBgSection {showToast} />
 
     <!-- 品牌极客彩蛋: 抽屉底部版本信息与 Hover 展开微交互 -->
     <div class="pt-4 pb-2 flex flex-col items-center justify-center gap-1 border-t border-[var(--border-color)]/40 mt-2 select-none">

@@ -115,16 +115,28 @@
       <span>{t('settings.customBgTitle')}</span>
     </div>
     {#if customBgStore.url}
-      <label class="flex items-center gap-1.5 cursor-pointer text-xs select-none">
-        <input
-          type="checkbox"
+      <div class="flex items-center gap-2 select-none">
+        <span
+          class="text-[11px] text-[var(--text-secondary)] cursor-pointer"
+          onclick={handleToggleEnabled}
+          role="presentation"
+        >
+          {t('settings.customBgEnableToggle')}
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={customBgStore.enabled}
+          aria-label={t('settings.customBgEnableToggle')}
           data-testid="toggle-custom-bg"
-          checked={customBgStore.enabled}
-          onchange={handleToggleEnabled}
-          class="accent-[var(--primary-color)] w-3.5 h-3.5 cursor-pointer"
-        />
-        <span class="text-[11px] text-[var(--text-secondary)]">{t('settings.customBgEnableToggle')}</span>
-      </label>
+          class="relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {customBgStore.enabled ? 'bg-[var(--primary-color)]' : 'bg-slate-300 dark:bg-slate-700'}"
+          onclick={handleToggleEnabled}
+        >
+          <span
+            class="block w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform duration-200 {customBgStore.enabled ? 'translate-x-5' : 'translate-x-0'}"
+          ></span>
+        </button>
+      </div>
     {/if}
   </div>
 
