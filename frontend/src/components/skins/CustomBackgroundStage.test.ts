@@ -28,12 +28,16 @@ describe('CustomBackgroundStage', () => {
     expect(queryByTestId('custom-background-stage')).toBeNull();
   });
 
-  it('renders custom photo background with blur and dim overlay', () => {
+  it('renders custom photo background with blur, dim overlay, custom scale, and position', () => {
     customBgStore.url = 'blob:test-photo';
     customBgStore.type = 'image';
     customBgStore.enabled = true;
     customBgStore.blur = 6;
     customBgStore.dimOpacity = 0.45;
+    customBgStore.scale = 1.2;
+    customBgStore.positionX = 30;
+    customBgStore.positionY = 80;
+    customBgStore.fit = 'contain';
 
     const { getByTestId } = render(CustomBackgroundStage, { playing: false });
     const stage = getByTestId('custom-background-stage');
@@ -43,6 +47,9 @@ describe('CustomBackgroundStage', () => {
     expect(img).toBeInTheDocument();
     expect(img.getAttribute('src')).toBe('blob:test-photo');
     expect(img.style.filter).toContain('blur(6px)');
+    expect(img.style.objectFit).toBe('contain');
+    expect(img.style.objectPosition).toBe('30% 80%');
+    expect(img.style.transform).toContain('scale(1.2)');
 
     const dim = getByTestId('custom-bg-dim-overlay');
     expect(dim).toBeInTheDocument();

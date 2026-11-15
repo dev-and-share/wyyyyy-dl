@@ -1,7 +1,7 @@
 <script lang="ts">
   import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n';
-  import { Image, Film, Camera } from '@lucide/svelte';
+  import { Image, Film, Camera, Move, RotateCcw } from '@lucide/svelte';
 
   let {
     showToast = () => {}
@@ -43,8 +43,67 @@
     customBgStore.setBlur(val);
   }
 
+  function handleScaleChange(e: Event) {
+    const val = parseFloat((e.target as HTMLInputElement).value);
+    customBgStore.setScale(val);
+  }
+
+  function handlePosXChange(e: Event) {
+    const val = parseInt((e.target as HTMLInputElement).value, 10);
+    customBgStore.setPositionX(val);
+  }
+
+  function handlePosYChange(e: Event) {
+    const val = parseInt((e.target as HTMLInputElement).value, 10);
+    customBgStore.setPositionY(val);
+  }
+
   function handleToggleEnabled() {
     customBgStore.setEnabled(!customBgStore.enabled);
+  }
+
+  let isDragging = $state(false);
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let initialPosX = 50;
+  let initialPosY = 50;
+
+  function handlePointerDown(e: PointerEvent) {
+    if (e.button !== 0) return;
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    initialPosX = customBgStore.positionX;
+    initialPosY = customBgStore.positionY;
+  }
+
+  function handlePointerMove(e: PointerEvent) {
+    if (!isDragging) return;
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    // 拖动画面：向右拖拽查看左侧内容（positionX 减小），向左拖拽查看右侧内容（positionX 增大）
+    const deltaX = e.clientX - dragStartX;
+    const deltaY = e.clientY - dragStartY;
+
+    const deltaPercentX = (deltaX / rect.width) * 100;
+    const deltaPercentY = (deltaY / rect.height) * 100;
+
+    const newX = Math.round(initialPosX - deltaPercentX);
+    const newY = Math.round(initialPosY - deltaPercentY);
+
+    customBgStore.setPosition(newX, newY);
+  }
+
+  function handlePointerUp(e: PointerEvent) {
+    if (!isDragging) return;
+    isDragging = false;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
   }
 </script>
 
@@ -81,15 +140,29 @@
     />
 
     {#if customBgStore.url}
-      <!-- 已设置背景预览卡片 -->
-      <div class="relative w-full h-36 rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/40 flex items-center justify-center select-none group">
+      <!-- 已设置背景预览卡片 (未打勾启用时仅紧凑展示小图，打勾启用后支持鼠标 / 触控拖拽自由微调位置) -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        data-testid="preview-custom-bg-card"
+        class="relative w-full {customBgStore.enabled ? 'h-40' : 'h-32'} rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/40 flex items-center justify-center select-none group touch-none transition-all duration-200 {customBgStore.enabled ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'opacity-85'}"
+        onpointerdown={customBgStore.enabled ? handlePointerDown : undefined}
+        onpointermove={customBgStore.enabled ? handlePointerMove : undefined}
+        onpointerup={customBgStore.enabled ? handlePointerUp : undefined}
+        onpointercancel={customBgStore.enabled ? handlePointerUp : undefined}
+      >
         {#if customBgStore.type === 'image'}
           <img
             src={customBgStore.url}
             alt="Custom Background Preview"
             data-testid="preview-custom-bg-image"
-            class="absolute inset-0 w-full h-full object-cover object-center transition-[filter] duration-200"
-            style="filter: blur({customBgStore.blur}px);"
+            class="absolute inset-0 w-full h-full pointer-events-none {isDragging ? 'transition-none' : 'transition-[filter,transform,object-position] duration-200 ease-out'}"
+            style="
+              filter: blur({customBgStore.blur}px);
+              object-fit: {customBgStore.fit};
+              object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+              transform: scale({customBgStore.scale});
+              transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+            "
           />
         {:else if customBgStore.type === 'video'}
           <!-- svelte-ignore a11y_media_has_caption -->
@@ -100,8 +173,14 @@
             loop
             muted
             playsinline
-            class="absolute inset-0 w-full h-full object-cover object-center transition-[filter] duration-200"
-            style="filter: blur({customBgStore.blur}px);"
+            class="absolute inset-0 w-full h-full pointer-events-none {isDragging ? 'transition-none' : 'transition-[filter,transform,object-position] duration-200 ease-out'}"
+            style="
+              filter: blur({customBgStore.blur}px);
+              object-fit: {customBgStore.fit};
+              object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+              transform: scale({customBgStore.scale});
+              transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+            "
           ></video>
         {/if}
 
@@ -111,8 +190,8 @@
           style="background: rgba(0, 0, 0, {customBgStore.dimOpacity});"
         ></div>
 
-        <!-- 浮空类型徽标 -->
-        <div class="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-white backdrop-blur-md border border-white/10 flex items-center gap-1">
+        <!-- 浮空类型与尺寸徽标 -->
+        <div class="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-white backdrop-blur-md border border-white/10 flex items-center gap-1 pointer-events-none">
           {#if customBgStore.type === 'video'}
             <Film size={12} />
           {:else}
@@ -121,76 +200,212 @@
           <span>{customBgStore.type === 'video' ? t('settings.customBgVideoType') : t('settings.customBgImageType')}</span>
         </div>
 
+        <!-- 右上角拖拽操作提示徽标 (仅在启用时展示) -->
+        {#if customBgStore.enabled}
+          <div class="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-md text-[10px] bg-black/60 text-white/90 backdrop-blur-md border border-white/10 flex items-center gap-1 pointer-events-none shadow-xs transition-opacity {isDragging ? 'opacity-100 bg-[var(--primary-color)] text-white' : 'opacity-80 group-hover:opacity-100'}">
+            <Move size={11} />
+            <span>{t('settings.customBgDragHint')}</span>
+          </div>
+        {/if}
+
         {#if customBgStore.name}
-          <div class="absolute bottom-2 left-2 right-2 z-10 px-2 py-1 rounded-md text-[11px] bg-black/60 text-white/90 backdrop-blur-md truncate border border-white/10">
+          <div class="absolute bottom-2 left-2 right-2 z-10 px-2 py-1 rounded-md text-[11px] bg-black/60 text-white/90 backdrop-blur-md truncate border border-white/10 pointer-events-none">
             {customBgStore.name}
           </div>
         {/if}
       </div>
 
-      <!-- 操作按钮条 -->
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          data-testid="btn-change-custom-bg"
-          class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--primary-color)] hover:opacity-90 active:scale-97 text-white text-xs font-semibold cursor-pointer border-none transition-all text-center"
-          onclick={() => fileInputEl?.click()}
-        >
-          {t('settings.customBgChange')}
-        </button>
-        <button
-          type="button"
-          data-testid="btn-clear-custom-bg"
-          class="py-1.5 px-3 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-red-500/10 hover:text-red-500 active:scale-97 text-[var(--text-secondary)] text-xs font-medium cursor-pointer border-none transition-all text-center"
-          onclick={handleClear}
-        >
-          {t('settings.customBgClear')}
-        </button>
-      </div>
+      {#if customBgStore.enabled}
+        <!-- 操作按钮条 -->
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="btn-change-custom-bg"
+            class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--primary-color)] hover:opacity-90 active:scale-97 text-white text-xs font-semibold cursor-pointer border-none transition-all text-center"
+            onclick={() => fileInputEl?.click()}
+          >
+            {t('settings.customBgChange')}
+          </button>
+          <button
+            type="button"
+            data-testid="btn-clear-custom-bg"
+            class="py-1.5 px-3 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-red-500/10 hover:text-red-500 active:scale-97 text-[var(--text-secondary)] text-xs font-medium cursor-pointer border-none transition-all text-center"
+            onclick={handleClear}
+          >
+            {t('settings.customBgClear')}
+          </button>
+        </div>
 
-      <!-- 调节滑块：暗度与虚化 -->
-      <div class="flex flex-col gap-2 pt-1 border-t border-[var(--border-color)]">
-        <!-- 暗化遮罩调节 -->
-        <div class="flex flex-col gap-1">
-          <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
-            <span>{t('settings.customBgDim')}</span>
-            <span class="font-mono text-[11px] text-[var(--text-muted)]">{Math.round(customBgStore.dimOpacity * 100)}%</span>
+        <!-- 🌄 显示范围与位置调节模块 -->
+        <div class="flex flex-col gap-2.5 pt-2 border-t border-[var(--border-color)]">
+          <div class="flex items-center justify-between text-xs font-bold text-[var(--text-main)]">
+            <div class="flex items-center gap-1.5">
+              <Move size={13} class="text-[var(--primary-color)]" />
+              <span>{t('settings.customBgScale')} / {t('settings.customBgFitMode')}</span>
+            </div>
+            <button
+              type="button"
+              data-testid="btn-custom-bg-reset-pos"
+              class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary-color)] flex items-center gap-1 cursor-pointer border-none bg-transparent transition-colors p-0"
+              onclick={() => customBgStore.resetPositionAndScale()}
+              title={t('settings.customBgResetPosition')}
+            >
+              <RotateCcw size={11} />
+              <span>{t('settings.customBgResetPosition')}</span>
+            </button>
           </div>
-          <input
-            type="range"
-            data-testid="range-custom-bg-dim"
-            min="0"
-            max="0.8"
-            step="0.05"
-            value={customBgStore.dimOpacity}
-            oninput={handleDimChange}
-            class="w-full accent-[var(--primary-color)] cursor-pointer"
-          />
-        </div>
 
-        <!-- 虚化程度调节 -->
-        <div class="flex flex-col gap-1">
-          <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
-            <span>{t('settings.customBgBlur')}</span>
-            <span class="font-mono text-[11px] text-[var(--text-muted)]">{customBgStore.blur}px</span>
+          <!-- 填充模式分段切换 -->
+          <div class="grid grid-cols-2 gap-1.5 p-0.5 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border-color)] text-xs">
+            <button
+              type="button"
+              data-testid="select-custom-bg-fit-cover"
+              class="py-1 rounded-lg text-center font-medium transition-all border-none cursor-pointer {customBgStore.fit === 'cover'
+                ? 'bg-[var(--primary-color)] text-white shadow-xs font-semibold'
+                : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+              onclick={() => customBgStore.setFit('cover')}
+            >
+              {t('settings.customBgFitCover')}
+            </button>
+            <button
+              type="button"
+              data-testid="select-custom-bg-fit-contain"
+              class="py-1 rounded-lg text-center font-medium transition-all border-none cursor-pointer {customBgStore.fit === 'contain'
+                ? 'bg-[var(--primary-color)] text-white shadow-xs font-semibold'
+                : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
+              onclick={() => customBgStore.setFit('contain')}
+            >
+              {t('settings.customBgFitContain')}
+            </button>
           </div>
-          <input
-            type="range"
-            data-testid="range-custom-bg-blur"
-            min="0"
-            max="20"
-            step="1"
-            value={customBgStore.blur}
-            oninput={handleBlurChange}
-            class="w-full accent-[var(--primary-color)] cursor-pointer"
-          />
-        </div>
-      </div>
 
-      {#if customBgStore.type === 'video'}
-        <div class="text-[11px] text-amber-500/90 dark:text-amber-400/90 bg-amber-500/10 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
-          <span>{t('settings.customBgVideoMutedHint')}</span>
+          <!-- 缩放范围 (Scale) -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+              <span>{t('settings.customBgScale')}</span>
+              <span class="font-mono text-[11px] text-[var(--text-muted)]">{Math.round(customBgStore.scale * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              data-testid="range-custom-bg-scale"
+              min="0.5"
+              max="2.0"
+              step="0.05"
+              value={customBgStore.scale}
+              oninput={handleScaleChange}
+              class="w-full accent-[var(--primary-color)] cursor-pointer"
+            />
+          </div>
+
+          <!-- 水平显示位置 (X) -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+              <span>{t('settings.customBgPositionX')}</span>
+              <span class="font-mono text-[11px] text-[var(--text-muted)]">{customBgStore.positionX}%</span>
+            </div>
+            <input
+              type="range"
+              data-testid="range-custom-bg-pos-x"
+              min="0"
+              max="100"
+              step="1"
+              value={customBgStore.positionX}
+              oninput={handlePosXChange}
+              class="w-full accent-[var(--primary-color)] cursor-pointer"
+            />
+          </div>
+
+          <!-- 垂直显示位置 (Y) -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+              <span>{t('settings.customBgPositionY')}</span>
+              <span class="font-mono text-[11px] text-[var(--text-muted)]">{customBgStore.positionY}%</span>
+            </div>
+            <input
+              type="range"
+              data-testid="range-custom-bg-pos-y"
+              min="0"
+              max="100"
+              step="1"
+              value={customBgStore.positionY}
+              oninput={handlePosYChange}
+              class="w-full accent-[var(--primary-color)] cursor-pointer"
+            />
+          </div>
+
+          <!-- 快捷位置按钮 -->
+          <div class="flex items-center gap-1.5 pt-0.5">
+            <button
+              type="button"
+              data-testid="btn-custom-bg-pos-top"
+              class="flex-1 py-1 px-1.5 rounded-lg text-[11px] bg-black/5 dark:bg-white/10 hover:bg-[var(--primary-color)] hover:text-white text-[var(--text-secondary)] font-medium border-none cursor-pointer transition-colors"
+              onclick={() => customBgStore.setPosition(50, 10)}
+            >
+              {t('settings.customBgPosTop')}
+            </button>
+            <button
+              type="button"
+              data-testid="btn-custom-bg-pos-center"
+              class="flex-1 py-1 px-1.5 rounded-lg text-[11px] bg-black/5 dark:bg-white/10 hover:bg-[var(--primary-color)] hover:text-white text-[var(--text-secondary)] font-medium border-none cursor-pointer transition-colors"
+              onclick={() => customBgStore.setPosition(50, 50)}
+            >
+              {t('settings.customBgPosCenter')}
+            </button>
+            <button
+              type="button"
+              data-testid="btn-custom-bg-pos-bottom"
+              class="flex-1 py-1 px-1.5 rounded-lg text-[11px] bg-black/5 dark:bg-white/10 hover:bg-[var(--primary-color)] hover:text-white text-[var(--text-secondary)] font-medium border-none cursor-pointer transition-colors"
+              onclick={() => customBgStore.setPosition(50, 90)}
+            >
+              {t('settings.customBgPosBottom')}
+            </button>
+          </div>
         </div>
+
+        <!-- 调节滑块：暗度与虚化 -->
+        <div class="flex flex-col gap-2 pt-2 border-t border-[var(--border-color)]">
+          <!-- 暗化遮罩调节 -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+              <span>{t('settings.customBgDim')}</span>
+              <span class="font-mono text-[11px] text-[var(--text-muted)]">{Math.round(customBgStore.dimOpacity * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              data-testid="range-custom-bg-dim"
+              min="0"
+              max="0.8"
+              step="0.05"
+              value={customBgStore.dimOpacity}
+              oninput={handleDimChange}
+              class="w-full accent-[var(--primary-color)] cursor-pointer"
+            />
+          </div>
+
+          <!-- 虚化程度调节 -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+              <span>{t('settings.customBgBlur')}</span>
+              <span class="font-mono text-[11px] text-[var(--text-muted)]">{customBgStore.blur}px</span>
+            </div>
+            <input
+              type="range"
+              data-testid="range-custom-bg-blur"
+              min="0"
+              max="20"
+              step="1"
+              value={customBgStore.blur}
+              oninput={handleBlurChange}
+              class="w-full accent-[var(--primary-color)] cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {#if customBgStore.type === 'video'}
+          <div class="text-[11px] text-amber-500/90 dark:text-amber-400/90 bg-amber-500/10 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+            <span>{t('settings.customBgVideoMutedHint')}</span>
+          </div>
+        {/if}
       {/if}
     {:else}
       <!-- 未设置状态：大点击选择框 -->

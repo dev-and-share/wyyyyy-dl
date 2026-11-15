@@ -1,4 +1,5 @@
 export type CustomBgType = 'image' | 'video';
+export type CustomBgFit = 'cover' | 'contain' | 'fill';
 
 export interface CustomBgConfig {
   enabled: boolean;
@@ -6,6 +7,10 @@ export interface CustomBgConfig {
   name: string;
   dimOpacity: number;
   blur: number;
+  scale: number;
+  positionX: number;
+  positionY: number;
+  fit: CustomBgFit;
 }
 
 export interface CustomBgRecord {
@@ -26,7 +31,11 @@ const DEFAULT_CONFIG: CustomBgConfig = {
   type: null,
   name: '',
   dimOpacity: 0.35,
-  blur: 0
+  blur: 0,
+  scale: 1,
+  positionX: 50,
+  positionY: 50,
+  fit: 'cover'
 };
 
 function safeCreateObjectURL(blob: Blob): string {
@@ -181,6 +190,10 @@ export class CustomBgStore {
   name = $state<string>('');
   dimOpacity = $state<number>(0.35);
   blur = $state<number>(0);
+  scale = $state<number>(1);
+  positionX = $state<number>(50);
+  positionY = $state<number>(50);
+  fit = $state<CustomBgFit>('cover');
   enabled = $state<boolean>(true);
   isLoaded = $state<boolean>(false);
 
@@ -202,6 +215,10 @@ export class CustomBgStore {
         if (typeof parsed.name === 'string') this.name = parsed.name;
         if (typeof parsed.dimOpacity === 'number') this.dimOpacity = parsed.dimOpacity;
         if (typeof parsed.blur === 'number') this.blur = parsed.blur;
+        if (typeof parsed.scale === 'number') this.scale = parsed.scale;
+        if (typeof parsed.positionX === 'number') this.positionX = parsed.positionX;
+        if (typeof parsed.positionY === 'number') this.positionY = parsed.positionY;
+        if (parsed.fit === 'cover' || parsed.fit === 'contain' || parsed.fit === 'fill') this.fit = parsed.fit;
       }
       const cachedData = localStorage.getItem('wyy_custom_bg_data');
       if (cachedData && this.type === 'image') {
@@ -218,7 +235,11 @@ export class CustomBgStore {
         type: this.type,
         name: this.name,
         dimOpacity: this.dimOpacity,
-        blur: this.blur
+        blur: this.blur,
+        scale: this.scale,
+        positionX: this.positionX,
+        positionY: this.positionY,
+        fit: this.fit
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     } catch {}
@@ -301,6 +322,40 @@ export class CustomBgStore {
     this.saveConfig();
   }
 
+  setScale(scale: number) {
+    this.scale = Math.max(0.5, Math.min(2.5, Number(scale.toFixed(2))));
+    this.saveConfig();
+  }
+
+  setPosition(x: number, y: number) {
+    this.positionX = Math.max(0, Math.min(100, Math.round(x)));
+    this.positionY = Math.max(0, Math.min(100, Math.round(y)));
+    this.saveConfig();
+  }
+
+  setPositionX(x: number) {
+    this.positionX = Math.max(0, Math.min(100, Math.round(x)));
+    this.saveConfig();
+  }
+
+  setPositionY(y: number) {
+    this.positionY = Math.max(0, Math.min(100, Math.round(y)));
+    this.saveConfig();
+  }
+
+  setFit(fit: CustomBgFit) {
+    this.fit = fit;
+    this.saveConfig();
+  }
+
+  resetPositionAndScale() {
+    this.scale = 1;
+    this.positionX = 50;
+    this.positionY = 50;
+    this.fit = 'cover';
+    this.saveConfig();
+  }
+
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
     this.saveConfig();
@@ -313,6 +368,10 @@ export class CustomBgStore {
     this.name = '';
     this.dimOpacity = 0.35;
     this.blur = 0;
+    this.scale = 1;
+    this.positionX = 50;
+    this.positionY = 50;
+    this.fit = 'cover';
     this.enabled = true;
     this.isLoaded = false;
     memoryRecord = null;

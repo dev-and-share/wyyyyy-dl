@@ -34,8 +34,14 @@
         src={customBgStore.url}
         alt="Custom Player Background"
         data-testid="custom-bg-image"
-        class="absolute inset-0 w-full h-full object-cover object-center transition-[filter] duration-300"
-        style="filter: blur({customBgStore.blur}px);"
+        class="absolute inset-0 w-full h-full transition-[filter,transform,object-position] duration-300 ease-out"
+        style="
+          filter: blur({customBgStore.blur}px);
+          object-fit: {customBgStore.fit};
+          object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+          transform: scale({customBgStore.scale});
+          transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+        "
       />
     {:else if customBgStore.type === 'video'}
       <!-- svelte-ignore a11y_media_has_caption -->
@@ -48,8 +54,14 @@
         muted
         playsinline
         disablepictureinpicture
-        class="absolute inset-0 w-full h-full object-cover object-center transition-[filter] duration-300"
-        style="filter: blur({customBgStore.blur}px);"
+        class="absolute inset-0 w-full h-full transition-[filter,transform,object-position] duration-300 ease-out"
+        style="
+          filter: blur({customBgStore.blur}px);
+          object-fit: {customBgStore.fit};
+          object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+          transform: scale({customBgStore.scale});
+          transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+        "
       ></video>
     {/if}
 

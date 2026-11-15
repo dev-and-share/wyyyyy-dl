@@ -82,8 +82,14 @@
         <img
           src={customBgStore.url}
           alt=""
-          class="w-full h-full object-cover object-center scale-110 transition-[filter] duration-300"
-          style="filter: blur({Math.max(customBgStore.blur, 10)}px);"
+          class="w-full h-full transition-[filter,transform,object-position] duration-300"
+          style="
+            filter: blur({Math.max(customBgStore.blur, 10)}px);
+            object-fit: {customBgStore.fit};
+            object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+            transform: scale({customBgStore.scale * 1.1});
+            transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+          "
         />
       {:else if customBgStore.type === 'video'}
         <!-- svelte-ignore a11y_media_has_caption -->
@@ -93,8 +99,14 @@
           loop
           muted
           playsinline
-          class="w-full h-full object-cover object-center scale-110 transition-[filter] duration-300"
-          style="filter: blur({Math.max(customBgStore.blur, 10)}px);"
+          class="w-full h-full transition-[filter,transform,object-position] duration-300"
+          style="
+            filter: blur({Math.max(customBgStore.blur, 10)}px);
+            object-fit: {customBgStore.fit};
+            object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+            transform: scale({customBgStore.scale * 1.1});
+            transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+          "
         ></video>
       {/if}
       <div

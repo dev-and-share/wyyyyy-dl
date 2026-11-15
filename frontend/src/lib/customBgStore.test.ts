@@ -40,6 +40,10 @@ describe('customBgStore', () => {
       expect(store.name).toBe('');
       expect(store.dimOpacity).toBe(0.35);
       expect(store.blur).toBe(0);
+      expect(store.scale).toBe(1);
+      expect(store.positionX).toBe(50);
+      expect(store.positionY).toBe(50);
+      expect(store.fit).toBe('cover');
       expect(store.enabled).toBe(true);
     });
 
@@ -104,6 +108,48 @@ describe('customBgStore', () => {
       expect(store.blur).toBe(30);
     });
 
+    it('clamps scale within [0.5, 2.5]', () => {
+      store.setScale(1.25);
+      expect(store.scale).toBe(1.25);
+
+      store.setScale(0.1);
+      expect(store.scale).toBe(0.5);
+
+      store.setScale(5.0);
+      expect(store.scale).toBe(2.5);
+    });
+
+    it('clamps positionX and positionY within [0, 100]', () => {
+      store.setPosition(30, 70);
+      expect(store.positionX).toBe(30);
+      expect(store.positionY).toBe(70);
+
+      store.setPositionX(-20);
+      expect(store.positionX).toBe(0);
+
+      store.setPositionY(150);
+      expect(store.positionY).toBe(100);
+    });
+
+    it('sets fit mode correctly', () => {
+      store.setFit('contain');
+      expect(store.fit).toBe('contain');
+      store.setFit('cover');
+      expect(store.fit).toBe('cover');
+    });
+
+    it('resets position and scale to defaults', () => {
+      store.setScale(1.8);
+      store.setPosition(10, 20);
+      store.setFit('contain');
+
+      store.resetPositionAndScale();
+      expect(store.scale).toBe(1);
+      expect(store.positionX).toBe(50);
+      expect(store.positionY).toBe(50);
+      expect(store.fit).toBe('cover');
+    });
+
     it('updates enabled state correctly', () => {
       store.setEnabled(false);
       expect(store.enabled).toBe(false);
@@ -119,7 +165,11 @@ describe('customBgStore', () => {
           type: 'video',
           name: 'saved_video.mp4',
           dimOpacity: 0.6,
-          blur: 8
+          blur: 8,
+          scale: 1.35,
+          positionX: 40,
+          positionY: 60,
+          fit: 'contain'
         })
       );
 
@@ -129,6 +179,10 @@ describe('customBgStore', () => {
       expect(newStore.name).toBe('saved_video.mp4');
       expect(newStore.dimOpacity).toBe(0.6);
       expect(newStore.blur).toBe(8);
+      expect(newStore.scale).toBe(1.35);
+      expect(newStore.positionX).toBe(40);
+      expect(newStore.positionY).toBe(60);
+      expect(newStore.fit).toBe('contain');
     });
   });
 });
