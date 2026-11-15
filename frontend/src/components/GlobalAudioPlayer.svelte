@@ -35,13 +35,13 @@
   let {
     curTrack = $bindable(null), playing = $bindable(false), setQueue = $bindable(),
     togglePlay = $bindable(() => {}), isOverlayOpen = $bindable(false), likedSet = new Set<number>(),
-    onToggleLike = () => {}, onReveal = () => {}, showPeq = $bindable(false), isPlayerMinimized = $bindable(false)
+    onToggleLike = () => {}, onReveal = () => {}, showPeq = $bindable(false), isPlayerMinimized = $bindable(false), onSong
   } = $props<{
     curTrack?: Track | null; playing?: boolean;
     setQueue?: (tracks: Track[], optionsOrIdx?: number | SetQueueOptions, maybePlaylistId?: string | number | null) => void;
     togglePlay?: () => void; isOverlayOpen?: boolean; likedSet?: Set<number>;
     onToggleLike?: (id: any, name?: string, artist?: string, extra?: any) => void; onReveal?: (item: any) => void;
-    showPeq?: boolean; isPlayerMinimized?: boolean;
+    showPeq?: boolean; isPlayerMinimized?: boolean; onSong?: (id: string) => void;
   }>();
 
   let showDrawer = $state(false), showLyric = $state(false), pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
@@ -487,6 +487,7 @@
   onToggleMode={handleToggleMode} onSeek={seek} onLyric={() => showLyric = !showLyric}
   onPeq={() => showPeq = !showPeq} onQueue={() => showDrawer = !showDrawer} onClearQueue={handleClearQueue}
   {likedSet} onToggleLike={() => onToggleLike(playerStore.activeTrack?.id, playerStore.activeTrack?.name || '', playerStore.activeTrack?.artist, playerStore.activeTrack)}
+  {onSong}
 />
 
 <!-- 📜 全局弹出层组件群 (播放列表抽屉 · 黑胶歌词大屏 · PEQ 均衡器) -->

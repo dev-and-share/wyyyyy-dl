@@ -337,6 +337,7 @@
         {curTrack}
         isLocal={playlist.isLocal}
         variant="primary"
+        dropdownMode="sheet"
         onDownloadAllToPc={() => downloadPlaylistById(String(playlist.id))}
       />
       <button

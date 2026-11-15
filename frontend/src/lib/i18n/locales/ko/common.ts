@@ -65,6 +65,7 @@ export default {
   'common.viewDetails': '👉 상세 보기',
   'common.moreActions': '더 많은 작업',
   'quality.standard': '표준 (128k)',
+  'quality.higher': '고음질 (192k)',
   'quality.exhigh': '최고 (320k)',
   'quality.lossless': '무손실 (FLAC)',
   'quality.hires': 'Hi-Res',

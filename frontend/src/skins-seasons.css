@@ -156,6 +156,7 @@
   --primary-hover: #eab308;
   --primary-glow: rgba(250, 204, 21, 0.5);
   --btn-primary-bg: linear-gradient(135deg, #facc15, #f59e0b);
+  --btn-primary-hover: #eab308;
   --nav-tabs-bg: rgba(250, 204, 21, 0.14);
   --nav-tab-active-bg: rgba(250, 204, 21, 0.28);
   --nav-tab-active-color: #fef08a;
@@ -178,6 +179,7 @@
   --primary-hover: #b45309;
   --primary-glow: rgba(217, 119, 6, 0.25);
   --btn-primary-bg: linear-gradient(135deg, #facc15, #f59e0b);
+  --btn-primary-hover: #b45309;
   --nav-tabs-bg: #fef9c3;
   --nav-tab-active-bg: #ffffff;
   --nav-tab-active-color: #b45309;

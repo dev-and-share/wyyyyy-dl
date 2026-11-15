@@ -109,7 +109,8 @@ describe('PlaylistDownloadDropdown Component', () => {
         subtitle: '《日推202611》',
         actions: expect.arrayContaining([
           expect.objectContaining({ label: expect.stringContaining('仅缓存电脑已有') }),
-          expect.objectContaining({ label: expect.stringContaining('先下到电脑并缓存全部') })
+          expect.objectContaining({ label: expect.stringContaining('先下到电脑并缓存全部') }),
+          expect.objectContaining({ label: expect.stringContaining('全部下载到电脑') })
         ])
       })
     );

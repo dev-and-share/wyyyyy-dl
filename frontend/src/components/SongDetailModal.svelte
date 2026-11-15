@@ -49,6 +49,9 @@
         return;
       }
       songInfo = j?.data || null;
+      if (songInfo?.level) {
+        songLevel = songInfo.level.toLowerCase();
+      }
       if (!songInfo) {
         showToast(t('song.notFoundData'), 'warning');
       }
@@ -228,16 +231,22 @@
             <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-black/5 dark:border-white/5">
               <div class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                 <span>{t('common.qualityColon')}</span>
-                <select
-                  value={songLevel}
-                  onchange={(e) => handleLevelChange((e.currentTarget as HTMLSelectElement).value)}
-                  class="text-xs py-1 px-2 rounded-lg bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15 text-[var(--text-main)] cursor-pointer outline-none font-medium"
-                >
-                  <option value="standard">{t('quality.standard')}</option>
-                  <option value="exhigh">{t('quality.exhigh')}</option>
-                  <option value="lossless">{t('quality.lossless')}</option>
-                  <option value="hires">{t('quality.hires')}</option>
-                </select>
+                {#if status.isLocal}
+                  <span class="text-xs py-0.5 px-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium">
+                    {songLevel === 'lossless' ? t('quality.lossless') : songLevel === 'hires' ? t('quality.hires') : songLevel === 'exhigh' ? `${t('quality.exhigh')} (320K)` : songLevel === 'higher' ? t('quality.higher') : t('quality.standard')}
+                  </span>
+                {:else}
+                  <select
+                    value={songLevel}
+                    onchange={(e) => handleLevelChange((e.currentTarget as HTMLSelectElement).value)}
+                    class="text-xs py-1 px-2 rounded-lg bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15 text-[var(--text-main)] cursor-pointer outline-none font-medium"
+                  >
+                    <option value="standard">{t('quality.standard')}</option>
+                    <option value="exhigh">{t('quality.exhigh')}</option>
+                    <option value="lossless">{t('quality.lossless')}</option>
+                    <option value="hires">{t('quality.hires')}</option>
+                  </select>
+                {/if}
               </div>
               <span class="text-xs text-[var(--text-muted)] font-mono">
                 {sizeText} · {levelText}

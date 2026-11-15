@@ -33,12 +33,12 @@
   let {
     playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
     downloadedSet = new Set<number>(), onBackToGallery, onToggleLike, onPlayQueue,
-    onAlbum, onReveal, showToast
+    onSong, onAlbum, onReveal, showToast
   } = $props<{
     playlistId: string; playlistTrigger?: number; curTrack?: any; playing?: boolean;
     likedSet: Set<number>; downloadedSet?: Set<number>; onBackToGallery: () => void;
     onToggleLike: (id: any, name?: string, artist?: string, extra?: any) => void; onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
-    onAlbum?: (albumId: string) => void; onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
+    onSong?: (id: string) => void; onAlbum?: (albumId: string) => void; onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
   let desktopCurPage = $state(1);
   let filteredTracks = $derived(getFilteredTracks());
@@ -294,6 +294,7 @@
               {allTracks}
               {curTrack}
               isLocal={playlist.isLocal}
+              dropdownMode="popover"
               onDownloadAllToPc={handleDownloadAll}
             />
           {/if}
@@ -360,20 +361,15 @@
                   </td>
                   <td class="py-2.5 px-3 min-w-0">
                     <div class="flex items-center gap-2 min-w-0">
-                      <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
+                      <button
+                        type="button"
+                        class="clickable-track-title cursor-pointer truncate font-semibold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors max-w-xs xl:max-w-md"
+                        title={t('playlist.viewSongDetails')}
+                        onclick={() => onSong ? onSong(String(trackItem.id)) : onPlayQueue([toPlayerTrack(trackItem, { isLocal: status.isLocal })])}
+                      >
                         {trackItem.name}
-                      </span>
-                      <TrackSourceBadge
-                        id={trackItem.id}
-                        name={trackItem.name}
-                        {artist}
-                        path={trackItem.filePath}
-                        item={trackItem}
-                        isServer={status.isServer}
-                        isPhone={status.isPhone}
-                        {curTrack}
-                        class="shrink-0"
-                      />
+                      </button>
+                      <TrackSourceBadge id={trackItem.id} name={trackItem.name} {artist} path={trackItem.filePath} item={trackItem} isServer={status.isServer} isPhone={status.isPhone} {curTrack} class="shrink-0" />
                       <TrackLikeBtn liked={isTrackLiked(trackItem.id, trackItem.name, artist)} onclick={() => onToggleLike(trackItem.id, trackItem.name, artist, trackItem)} />
                     </div>
                   </td>
@@ -382,11 +378,7 @@
                   </td>
                   <td class="py-2.5 px-3 text-[var(--text-muted)] truncate hidden md:table-cell">
                     {#if trackItem.al?.id && onAlbum}
-                      <button
-                        type="button"
-                        class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
-                        onclick={() => onAlbum?.(String(trackItem.al.id))}
-                      >
+                      <button type="button" class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]" onclick={() => onAlbum?.(String(trackItem.al.id))}>
                         {trackItem.al.name || t('search.tab.song')}
                       </button>
                     {:else}
@@ -395,10 +387,7 @@
                   </td>
                   <td class="py-2.5 pr-4 text-right whitespace-nowrap">
                     <div class="inline-flex items-center justify-end gap-1.5">
-                      <SlotBtn
-                        playing={isPlayingThis && playing}
-                        onclick={() => onPlayQueue([toPlayerTrack(trackItem, { isLocal: status.isLocal })])}
-                      >
+                      <SlotBtn playing={isPlayingThis && playing} onclick={() => onPlayQueue([toPlayerTrack(trackItem, { isLocal: status.isLocal })])}>
                         {getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'desktop' })}
                       </SlotBtn>
                       {#if status.isServer}
@@ -409,6 +398,7 @@
                       <SlotBtn onclick={() => handleCache(trackItem)}>
                         {status.isPhone ? t('search.cachedShort') : cachingTrackId === trackItem.id ? t('playlist.cachingBadge') : t('search.cacheShort')}
                       </SlotBtn>
+                      {#if onSong}<SlotBtn onclick={() => onSong(String(trackItem.id))}>{t('playlist.detailBtn')}</SlotBtn>{/if}
                       <SlotBtn onclick={() => addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist }}><Plus size={12} strokeWidth={2.5} /></SlotBtn>
                       {#if playlist && (playlist.isCreator || !playlist.subscribed)}
                         <SlotBtn onclick={() => removingTrack = { id: trackItem.id, name: trackItem.name, artist }}><Trash2 size={12} /></SlotBtn>

@@ -388,6 +388,7 @@
   likedSet={likeState.likedSet}
   onToggleLike={toggleLike}
   onReveal={handleReveal}
+  onSong={(sid) => { viewingSongId = sid; }}
 />
 
 <!-- 📂 文件定位弹窗 -->

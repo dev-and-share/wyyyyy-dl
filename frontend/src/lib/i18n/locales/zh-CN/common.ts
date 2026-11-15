@@ -65,6 +65,7 @@ export default {
   'common.viewDetails': '👉 查看详情',
   'common.moreActions': '更多操作',
   'quality.standard': '标准 (128k)',
+  'quality.higher': '较高 (192k)',
   'quality.exhigh': '极高 (320k)',
   'quality.lossless': '无损 (FLAC)',
   'quality.hires': 'Hi-Res',

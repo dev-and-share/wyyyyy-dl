@@ -7,6 +7,7 @@
   import { getTrackSourceStatus } from '../lib/player/trackStatus.svelte';
   import { isLocalPlaylist } from '../lib/localPlaylistStore.svelte';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { openSheet, closeSheet } from '../lib/ui.svelte';
 
   interface Props {
     playlistId: string | number;
@@ -16,6 +17,7 @@
     isLocal?: boolean;
     onDownloadAllToPc?: () => void;
     variant?: 'primary' | 'secondary';
+    dropdownMode?: 'popover' | 'sheet' | 'auto';
     class?: string;
   }
 
@@ -27,6 +29,7 @@
     isLocal = false,
     onDownloadAllToPc,
     variant = 'secondary',
+    dropdownMode = 'auto',
     class: className = ''
   }: Props = $props();
 
@@ -34,22 +37,13 @@
   let isBatchCaching = $state(false);
   let cacheProgress = $state({ current: 0, total: 0 });
   let dropdownEl = $state<HTMLElement | null>(null);
-  let menuPos = $state<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const btnClass = $derived(variant === 'primary' ? 'btn-primary' : 'btn-secondary');
 
-  function updateMenuPosition() {
-    if (!dropdownEl || typeof window === 'undefined') return;
-    const rect = dropdownEl.getBoundingClientRect();
-    const menuWidth = Math.min(288, window.innerWidth - 16);
-    let left = rect.left;
-    if (left + menuWidth > window.innerWidth - 8) {
-      left = Math.max(8, window.innerWidth - menuWidth - 8);
+  function handleWindowClick(e: MouseEvent) {
+    if (isOpen && dropdownEl && !dropdownEl.contains(e.target as Node)) {
+      isOpen = false;
     }
-    menuPos = {
-      top: rect.bottom + 6,
-      left: Math.max(8, left)
-    };
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
@@ -62,12 +56,50 @@
     e.stopPropagation();
     if (isBatchCaching) return;
 
-    if (!isOpen) {
-      updateMenuPosition();
-      isOpen = true;
-    } else {
-      isOpen = false;
+    const shouldUseSheet =
+      dropdownMode === 'sheet' ||
+      (dropdownMode === 'auto' && typeof window !== 'undefined' && window.innerWidth < 1024);
+
+    if (shouldUseSheet) {
+      openMobileSheet();
+      return;
     }
+
+    isOpen = !isOpen;
+  }
+
+  function openMobileSheet() {
+    isOpen = false;
+    openSheet({
+      title: t('playlist.moreDownloadOptions'),
+      subtitle: playlistName ? `《${playlistName}》` : undefined,
+      actions: [
+        {
+          label: `${t('playlist.cachePcOnlyTitle')} (${t('playlist.cachePcOnlyBadge')})`,
+          style: 'default',
+          onclick: () => {
+            closeSheet();
+            handleBatchCache('pc-only');
+          }
+        },
+        {
+          label: t('playlist.cacheAllViaPcTitle'),
+          style: 'default',
+          onclick: () => {
+            closeSheet();
+            handleBatchCache('all');
+          }
+        },
+        {
+          label: t('playlist.downloadAllToPc'),
+          style: 'default',
+          onclick: () => {
+            closeSheet();
+            handleMainDownload();
+          }
+        }
+      ]
+    });
   }
 
   async function handleMainDownload() {
@@ -158,21 +190,17 @@
   }
 </script>
 
-<svelte:window
-  onkeydown={handleWindowKeydown}
-  onresize={() => { if (isOpen) isOpen = false; }}
-  onscroll={() => { if (isOpen) isOpen = false; }}
-/>
+<svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
 
 <div
   bind:this={dropdownEl}
-  class="relative inline-flex items-stretch rounded-xl shadow-sm {className}"
+  class="relative inline-flex items-stretch rounded-xl shadow-sm {isOpen ? 'z-50' : 'z-auto'} {className}"
   data-testid="playlist-download-dropdown"
 >
   <button
     type="button"
     data-testid="btn-detail-download-all"
-    class="{btnClass} flex items-center gap-1.5 px-3.5 py-1.5 rounded-l-xl rounded-r-none text-xs font-semibold cursor-pointer border-r-0"
+    class="{btnClass} flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-l-xl rounded-r-none text-xs font-semibold cursor-pointer border-r-0 shrink-0"
     onclick={handleMainDownload}
     disabled={isBatchCaching}
     title={t('playlist.downloadAllToPc')}
@@ -181,15 +209,16 @@
       <Loader2 size={13} class="animate-spin text-red-500" />
       <span>{t('playlist.batchCachingInProgress', { current: cacheProgress.current, total: cacheProgress.total })}</span>
     {:else}
-      <HardDrive size={13} />
-      <span>{t('playlist.downloadAllToPc')}</span>
+      <HardDrive size={13} class="shrink-0" />
+      <span class="hidden sm:inline">{t('playlist.downloadAllToPc')}</span>
+      <span class="inline sm:hidden">{t('playlist.downloadAllToPcShort')}</span>
     {/if}
   </button>
 
   <button
     type="button"
     data-testid="btn-detail-download-menu-toggle"
-    class="{btnClass} px-2 py-1.5 rounded-r-xl rounded-l-none text-xs font-semibold cursor-pointer border-l border-[var(--border-subtle)] flex items-center justify-center transition-colors"
+    class="{btnClass} {variant === 'primary' ? 'split-primary-toggle' : ''} px-2 py-1.5 rounded-r-xl rounded-l-none text-xs font-semibold cursor-pointer border-l border-black/15 dark:border-white/20 flex items-center justify-center transition-all shrink-0"
     onclick={handleToggleDropdown}
     disabled={isBatchCaching}
     title={t('playlist.moreDownloadOptions')}
@@ -198,66 +227,69 @@
   >
     <ChevronDown size={13} class="transition-transform duration-200 {isOpen ? 'rotate-180' : ''}" />
   </button>
+
+  {#if isOpen}
+    <div
+      class="absolute left-0 top-full mt-1.5 w-68 sm:w-72 p-1.5 rounded-xl bg-[var(--card-bg-solid,#111827)] border border-[var(--border-color)] shadow-2xl ring-1 ring-black/10 dark:ring-white/10 z-50 flex flex-col gap-1 animate-fade-in"
+      role="menu"
+    >
+      <!-- 选项 1：仅电脑已有 (💻) -->
+      <button
+        type="button"
+        data-testid="btn-cache-pc-only"
+        class="w-full text-left p-2 rounded-lg hover:bg-[var(--card-header-hover)] transition-colors flex items-start gap-2.5 cursor-pointer text-xs group"
+        onclick={() => handleBatchCache('pc-only')}
+      >
+        <div class="mt-0.5 p-1 rounded-md bg-emerald-500/10 text-emerald-400 shrink-0">
+          <Laptop size={14} />
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-[var(--text-main)] flex items-center gap-1.5">
+            <span>{t('playlist.cachePcOnlyTitle')}</span>
+            <span class="text-[10px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-normal shrink-0">
+              {t('playlist.cachePcOnlyBadge')}
+            </span>
+          </div>
+          <div class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-snug">
+            {t('playlist.cachePcOnlyDesc')}
+          </div>
+        </div>
+      </button>
+
+      <!-- 选项 2：先下到电脑再缓存全部 -->
+      <button
+        type="button"
+        data-testid="btn-cache-all-via-pc"
+        class="w-full text-left p-2 rounded-lg hover:bg-[var(--card-header-hover)] transition-colors flex items-start gap-2.5 cursor-pointer text-xs group"
+        onclick={() => handleBatchCache('all')}
+      >
+        <div class="mt-0.5 p-1 rounded-md bg-blue-500/10 text-blue-400 shrink-0">
+          <Smartphone size={14} />
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-[var(--text-main)] flex items-center gap-1.5">
+            <span>{t('playlist.cacheAllViaPcTitle')}</span>
+          </div>
+          <div class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-snug">
+            {t('playlist.cacheAllViaPcDesc')}
+          </div>
+        </div>
+      </button>
+    </div>
+  {/if}
 </div>
 
-{#if isOpen}
-  <!-- 全局透明点击遮罩：点击任意处立刻收起菜单 -->
-  <div
-    class="fixed inset-0 z-[9990] bg-transparent cursor-default"
-    onclick={(e) => {
-      e.stopPropagation();
-      isOpen = false;
-    }}
-    aria-hidden="true"
-  ></div>
-
-  <!-- 浮层菜单：固定定位 (Fixed Popover)，跨越所有父容器 overflow/z-index 限制，SP 与 PC 统一样式 -->
-  <div
-    class="fixed z-[9995] w-68 sm:w-72 p-1.5 rounded-xl bg-[var(--card-bg-solid,#111827)] border border-[var(--border-color)] shadow-2xl ring-1 ring-black/10 dark:ring-white/10 flex flex-col gap-1 animate-fade-in"
-    style="top: {menuPos.top}px; left: {menuPos.left}px;"
-    role="menu"
-  >
-    <!-- 选项 1：仅电脑已有 (💻) -->
-    <button
-      type="button"
-      data-testid="btn-cache-pc-only"
-      class="w-full text-left p-2 rounded-lg hover:bg-[var(--card-header-hover)] transition-colors flex items-start gap-2.5 cursor-pointer text-xs group"
-      onclick={() => handleBatchCache('pc-only')}
-    >
-      <div class="mt-0.5 p-1 rounded-md bg-emerald-500/10 text-emerald-400 shrink-0">
-        <Laptop size={14} />
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="font-medium text-[var(--text-main)] flex items-center gap-1.5">
-          <span>{t('playlist.cachePcOnlyTitle')}</span>
-          <span class="text-[10px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-normal shrink-0">
-            {t('playlist.cachePcOnlyBadge')}
-          </span>
-        </div>
-        <div class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-snug">
-          {t('playlist.cachePcOnlyDesc')}
-        </div>
-      </div>
-    </button>
-
-    <!-- 选项 2：先下到电脑再缓存全部 -->
-    <button
-      type="button"
-      data-testid="btn-cache-all-via-pc"
-      class="w-full text-left p-2 rounded-lg hover:bg-[var(--card-header-hover)] transition-colors flex items-start gap-2.5 cursor-pointer text-xs group"
-      onclick={() => handleBatchCache('all')}
-    >
-      <div class="mt-0.5 p-1 rounded-md bg-blue-500/10 text-blue-400 shrink-0">
-        <Smartphone size={14} />
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="font-medium text-[var(--text-main)] flex items-center gap-1.5">
-          <span>{t('playlist.cacheAllViaPcTitle')}</span>
-        </div>
-        <div class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-snug">
-          {t('playlist.cacheAllViaPcDesc')}
-        </div>
-      </div>
-    </button>
-  </div>
-{/if}
+<style>
+  :global(.split-primary-toggle) {
+    background: var(--btn-primary-bg) !important;
+    color: var(--btn-primary-color) !important;
+  }
+  :global(.split-primary-toggle:hover) {
+    background: var(--btn-primary-bg) !important;
+    filter: brightness(1.08) !important;
+  }
+  :global(.split-primary-toggle:active) {
+    background: var(--btn-primary-bg) !important;
+    filter: brightness(0.92) !important;
+  }
+</style>

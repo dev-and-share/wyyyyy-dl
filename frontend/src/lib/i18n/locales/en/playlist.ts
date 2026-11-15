@@ -287,6 +287,7 @@ export default {
   'playlist.songCountTotal': '{count} tracks total',
   'playlist.diskStats': '(💻 Downloaded {downloaded} · 📥 Pending {pending})',
   'playlist.downloadAllToPc': 'Download All to PC',
+  'playlist.downloadAllToPcShort': 'Download to PC',
   'playlist.moreDownloadOptions': 'More download and cache options',
   'playlist.cachePcOnlyTitle': 'Cache PC Tracks Only (💻)',
   'playlist.cachePcOnlyDesc': 'Only cache tracks already downloaded to PC to browser offline storage (100% reliable)',

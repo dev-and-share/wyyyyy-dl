@@ -287,6 +287,7 @@ export default {
   'playlist.songCountTotal': '共 {count} 首歌曲',
   'playlist.diskStats': '(💻 已下 {downloaded} · 📥 待下 {pending})',
   'playlist.downloadAllToPc': '全部下载到电脑',
+  'playlist.downloadAllToPcShort': '下载到电脑',
   'playlist.moreDownloadOptions': '更多下载与缓存选项',
   'playlist.cachePcOnlyTitle': '仅缓存电脑已有 (💻)',
   'playlist.cachePcOnlyDesc': '仅将电脑已下载的歌曲保存至浏览器离线存储（100% 成功率）',

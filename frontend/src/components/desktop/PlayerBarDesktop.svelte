@@ -36,7 +36,8 @@
     onPeq,
     onQueue,
     onToggleLike = () => {},
-    onMinimize
+    onMinimize,
+    onSong
   } = $props<{
     curTrack: Track | null;
     queue: Track[];
@@ -59,6 +60,7 @@
     onQueue: () => void;
     onToggleLike?: () => void;
     onMinimize: () => void;
+    onSong?: (id: string) => void;
   }>();
 
   let isLiked = $derived(curTrack ? isTrackLiked(curTrack.id, curTrack.name, curTrack.artist) : false);
@@ -188,17 +190,23 @@
             {:else if skin.current === 'spring'}
               <span class="text-xs text-emerald-400">🌱</span>
             {/if}
-            <span
-              class="text-sm font-semibold truncate leading-tight {skin.current === 'winamp'
+            <button
+              type="button"
+              class="text-sm font-semibold truncate leading-tight bg-transparent border-none p-0 text-left cursor-pointer hover:underline hover:text-red-400 transition-colors {skin.current === 'winamp'
                 ? 'font-mono text-[#10b981] drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]'
                 : skin.current === 'cassette'
                   ? 'font-mono text-neutral-200'
                   : skin.current === 'spring'
                     ? 'text-emerald-400 font-semibold'
                     : 'text-[var(--text-main,#0f172a)]'}"
+              onclick={() => {
+                if (curTrack?.id && onSong) onSong(String(curTrack.id));
+                else if (onLyric) onLyric();
+              }}
+              title={curTrack?.id && onSong ? t('playlist.viewSongDetails') : (curTrack?.name || t('player.noTrackPlaying'))}
             >
               {curTrack?.name || t('player.noTrackPlaying')}
-            </span>
+            </button>
             {#if loading}
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->

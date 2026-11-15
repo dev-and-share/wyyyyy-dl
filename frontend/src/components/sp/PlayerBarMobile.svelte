@@ -34,7 +34,8 @@
     onPeq,
     onQueue,
     onToggleLike = () => {},
-    onMinimize
+    onMinimize,
+    onSong
   } = $props<{
     curTrack: Track | null;
     queue: Track[];
@@ -57,6 +58,7 @@
     onQueue: () => void;
     onToggleLike?: () => void;
     onMinimize: () => void;
+    onSong?: (id: string) => void;
   }>();
 
   let isLiked = $derived(curTrack ? isTrackLiked(curTrack.id, curTrack.name, curTrack.artist) : false);

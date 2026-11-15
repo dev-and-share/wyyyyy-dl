@@ -109,6 +109,7 @@
       onBackToGallery={handleBackToGallery}
       {onToggleLike}
       {onPlayQueue}
+      {onSong}
       {onAlbum}
       {onReveal}
       {showToast}

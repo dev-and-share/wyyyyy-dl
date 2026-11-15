@@ -287,6 +287,7 @@ export default {
   'playlist.songCountTotal': '총 {count}곡',
   'playlist.diskStats': '(💻 다운완료 {downloaded} · 📥 대기 {pending})',
   'playlist.downloadAllToPc': 'PC로 전체 다운로드',
+  'playlist.downloadAllToPcShort': 'PC로 다운로드',
   'playlist.moreDownloadOptions': '더 많은 다운로드 및 캐시 옵션',
   'playlist.cachePcOnlyTitle': 'PC 다운로드 곡만 캐시 (💻)',
   'playlist.cachePcOnlyDesc': 'PC에 저장된 곡만 브라우저 오프라인 저장소에 캐시 (100% 성공)',

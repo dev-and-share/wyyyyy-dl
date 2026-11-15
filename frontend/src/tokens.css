@@ -25,7 +25,7 @@
     --primary-glow: rgba(239, 68, 68, 0.35);
     --btn-primary-bg: linear-gradient(135deg, #ef4444, #dc2626);
     --btn-primary-color: #ffffff;
-    --btn-primary-hover: #b91c1c;
+    --btn-primary-hover: var(--primary-hover, #b91c1c);
 
     /* 4. 次主按钮 (Secondary Action Buttons) */
     --btn-secondary-bg: rgba(255, 255, 255, 0.08);
@@ -104,7 +104,7 @@
     --primary-glow: rgba(239, 68, 68, 0.2);
     --btn-primary-bg: linear-gradient(135deg, #ef4444, #dc2626);
     --btn-primary-color: #ffffff;
-    --btn-primary-hover: #b91c1c;
+    --btn-primary-hover: var(--primary-hover, #b91c1c);
 
     /* 4. 次主按钮 (Secondary Action Buttons - 素雅高级中性灰胶囊) */
     --btn-secondary-bg: #f1f5f9;

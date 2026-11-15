@@ -65,6 +65,7 @@ export default {
   'common.viewDetails': '👉 View Details',
   'common.moreActions': 'More Options',
   'quality.standard': 'Standard (128k)',
+  'quality.higher': 'Higher (192k)',
   'quality.exhigh': 'ExHigh (320k)',
   'quality.lossless': 'Lossless (FLAC)',
   'quality.hires': 'Hi-Res',

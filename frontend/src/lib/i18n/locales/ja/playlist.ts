@@ -287,6 +287,7 @@ export default {
   'playlist.songCountTotal': '全 {count} 曲',
   'playlist.diskStats': '(💻 ダウンロード済み {downloaded} · 📥 未ダウンロード {pending})',
   'playlist.downloadAllToPc': '全曲をPCにダウンロード',
+  'playlist.downloadAllToPcShort': 'PCにダウンロード',
   'playlist.moreDownloadOptions': 'その他のダウンロードとキャッシュ設定',
   'playlist.cachePcOnlyTitle': 'PC保存済みのみキャッシュ (💻)',
   'playlist.cachePcOnlyDesc': 'PC保存済みの曲のみをブラウザにキャッシュ（100% 確実）',
