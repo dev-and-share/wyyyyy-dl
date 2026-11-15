@@ -17,6 +17,12 @@
   import { skin } from '../lib/skinStore.svelte';
   import { checkAndTriggerAutoArchive } from '../lib/player/autoArchive';
   import { handleTrackEndedScrobble } from '../lib/player/scrobble';
+  import {
+    isTrackUrlExpired, canRetryTrackStream, markTrackStreamRetried, clearTrackStreamRetry,
+    clearStreamWatchdog, classifyPlayRejection, bindAndPlayWithWatchdog, interruptionController
+  } from '../lib/player/playbackResilience';
+  import { getPreloadedTrackBlobUrl, isPreloadedBlobUrlForTrack, clearPreloadedTrackBlob } from '../lib/player/nextTrackPrecache';
+  import { createSpacebarShortcutHandler } from '../lib/player/keyboardShortcuts';
 
   import PlayerBar from './PlayerBar.svelte';
   import PlayerOverlays from './PlayerOverlays.svelte';
@@ -34,7 +40,7 @@
   }>();
 
   let showDrawer = $state(false), showLyric = $state(false), pendingSeekTime = $state<number | null>(null), audioEl: HTMLAudioElement | null = $state(null);
-  let needsReloadOnResume = false, parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2), playSessionId = 0, consecutiveSkipCount = 0;
+  let needsReloadOnResume = false, isPlaybackDesired = false, parsedLyrics = $derived(parseLrc(playerStore.activeTrack?.lyric)), lastLyricIndex = $state(-2), playSessionId = 0, consecutiveSkipCount = 0;
 
   $effect(() => {
     curTrack = playerStore.activeTrack;
@@ -58,10 +64,36 @@
 
   function advanceToNextTrack(track: Track, reason: string, isTrial = false): boolean {
     resetIosF3State(audioEl);
-    if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
     const res = computeNextTrackOnSkip(track, reason, consecutiveSkipCount, isTrial);
     consecutiveSkipCount = res.nextCount;
+    if (!res.hasNext) {
+      isPlaybackDesired = false;
+      if (audioEl) {
+        interruptionController.markIntentionalPause();
+        interruptionController.cancelRecovery();
+        audioEl.pause();
+        updateMediaSessionPlaybackState(false);
+      }
+    }
     return res.hasNext;
+  }
+
+  function handleStreamFailure(track: Track, session: number, reason = t('player.audioStreamFailed')) {
+    if (session !== playSessionId) return;
+    clearStreamWatchdog();
+    if (audioEl?.src && isPreloadedBlobUrlForTrack(audioEl.src, track)) clearPreloadedTrackBlob();
+    if (!track.isLocal && canRetryTrackStream(track)) {
+      markTrackStreamRetried(track); track.url = ''; track.unplayable = false; ensurePlay(true); return;
+    }
+    track.unplayable = true; track.unplayableReason = reason;
+    if (advanceToNextTrack(track, reason, false)) ensurePlay(true);
+  }
+
+  function handlePlayRejection(err: any, onStreamError: () => void) {
+    const kind = classifyPlayRejection(err);
+    if (kind === 'abort') return;
+    if (kind === 'not_allowed') { isPlaybackDesired = false; playerStore.playing = false; updateMediaSessionPlaybackState(false); return; }
+    onStreamError();
   }
 
   async function checkRestrictedAudio(a: HTMLAudioElement) {
@@ -69,9 +101,7 @@
     if (!res.isRestricted) return;
     if (res.fallbackUrl && audioEl) {
       if (playerStore.activeTrack) playerStore.activeTrack.url = res.fallbackUrl;
-      audioEl.src = res.fallbackUrl;
-      ensurePlay(true);
-      return;
+      audioEl.src = res.fallbackUrl; ensurePlay(true); return;
     }
     if (res.shouldSkip && playerStore.activeTrack) {
       showToast(`「${playerStore.activeTrack.name}」为端内受限音频(11s提示)，已自动跳过`, 'info', 2000);
@@ -79,107 +109,73 @@
     }
   }
 
+  function bindAndStartAudio(track: Track, url: string, session: number, resetTime: boolean) {
+    if (!audioEl) return;
+    playerStore.loading = false;
+    const effectiveUrl = getPreloadedTrackBlobUrl(track) || url;
+    bindAndPlayWithWatchdog({
+      audioEl, track, url: effectiveUrl, session, getCurrentSession: () => playSessionId, resetTime,
+      onMetadataSync: () => updateMediaSessionMetadata(track),
+      onResetTimeApplied: () => { playerStore.curTime = 0; },
+      onWatchdogTimeout: () => handleStreamFailure(track, session, t('player.networkFailed')),
+      onPlaySuccess: () => {
+        consecutiveSkipCount = 0; playerStore.playing = true;
+        if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} playerStore.curTime = 0; } else { applyPendingSeek(); }
+        preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
+      },
+      onNotAllowed: () => { isPlaybackDesired = false; playerStore.playing = false; updateMediaSessionPlaybackState(false); },
+      onStreamError: () => handleStreamFailure(track, session, t('player.audioStreamFailed'))
+    });
+  }
+
   async function ensurePlay(resetTime = false) {
     const currentSession = ++playSessionId;
     if (!audioEl) return;
-    resetIosF3State(audioEl);
-    needsReloadOnResume = false;
+    resetIosF3State(audioEl); clearStreamWatchdog(); interruptionController.cancelRecovery(); interruptionController.clearIntentionalPause();
+    isPlaybackDesired = true; needsReloadOnResume = false;
     if (resetTime) { pendingSeekTime = null; clearMediaSessionPosition(); }
-
-    const startAudio = (session: number) => {
-      const p = audioEl?.play();
-      if (p !== undefined) {
-        p.then(() => {
-          if (session !== playSessionId) return;
-          consecutiveSkipCount = 0;
-          if (resetTime && audioEl) { try { audioEl.currentTime = 0; } catch {} playerStore.curTime = 0; } else { applyPendingSeek(); }
-          preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-        }).catch(() => {
-          if (session !== playSessionId) return;
-          playerStore.playing = false; updateMediaSessionPlaybackState(false);
-        });
-      }
-    };
 
     while (true) {
       if (currentSession !== playSessionId) return;
       const track = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
-      if (!track) return;
-
+      if (!track) { isPlaybackDesired = false; playerStore.playing = false; return; }
       const isTrial = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true && !track.allowTrial;
       if (isTrial || track.unplayable === true) {
         const reason = isTrial ? t('player.isTrialClip') : (track.unplayableReason || t('player.regionOrCopyrightRestricted'));
-        const hasNext = advanceToNextTrack(track, reason, isTrial);
-        if (!hasNext) return;
-        resetTime = true;
-        continue;
+        if (!advanceToNextTrack(track, reason, isTrial)) return;
+        resetTime = true; continue;
       }
+      if (track.url && !track.isLocal && isTrackUrlExpired(track) && !getPreloadedTrackBlobUrl(track)) track.url = '';
+      if (track.url) { playerStore.playing = true; bindAndStartAudio(track, track.url, currentSession, resetTime); return; }
 
-      const existingUrl = track.url;
-      if (existingUrl) {
-        playerStore.loading = false;
-        try { audioEl.loop = false; } catch {}
-        if (!isSameAudioSource(audioEl.src, existingUrl)) {
-          updateMediaSessionMetadata(track);
-          audioEl.src = existingUrl;
-          if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
-        }
-        if (resetTime) {
-          playerStore.curTime = 0;
-          const onMeta = () => { try { if (audioEl) audioEl.currentTime = 0; } catch {} audioEl?.removeEventListener('loadedmetadata', onMeta); };
-          audioEl.addEventListener('loadedmetadata', onMeta);
-        }
-        startAudio(currentSession);
-        return;
-      }
-
-      // 🌟 新曲目没有现成 URL，必须异步解析！
-      playerStore.loading = true;
+      // 🌟 新曲目没有现成 URL，必须异步解析
+      playerStore.playing = true; playerStore.loading = true;
       if (resetTime) playerStore.curTime = 0;
-
       holdTransitionKeepAlive(audioEl);
-
       try {
         const url = await resolveTrackUrl(track);
         if (currentSession !== playSessionId) return;
-
         const isTrialAfterResolve = playerStore.autoSkipTrial && !track.isLocal && track.freeTrial === true && !track.allowTrial;
         if (isTrialAfterResolve || !url || track.unplayable) {
-          track.unplayable = true;
-          playerStore.loading = false;
+          track.unplayable = true; playerStore.loading = false;
           const reason = isTrialAfterResolve ? t('player.isTrialClip') : (track.unplayableReason || t('player.regionOrCopyrightRestricted'));
-          const hasNext = advanceToNextTrack(track, reason, isTrialAfterResolve);
-          if (!hasNext) return;
-          resetTime = true;
-          continue;
+          if (!advanceToNextTrack(track, reason, isTrialAfterResolve)) return;
+          resetTime = true; continue;
         }
-
         const active = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
-        if (url && audioEl && active === track) {
-          playerStore.loading = false;
-          try { audioEl.loop = false; } catch {}
-          if (!isSameAudioSource(audioEl.src, url)) {
-            updateMediaSessionMetadata(track);
-            audioEl.src = url;
-            if (resetTime) { try { audioEl.currentTime = 0; } catch {} }
-          }
-          startAudio(currentSession);
-        }
+        if (url && audioEl && active === track) bindAndStartAudio(track, url, currentSession, resetTime);
         return;
       } finally {
-        if (currentSession === playSessionId) {
-          playerStore.loading = false;
-        }
+        if (currentSession === playSessionId) playerStore.loading = false;
       }
     }
   }
 
   function pauseAudio(isSleepTimer = false) {
     if (!audioEl) return;
+    isPlaybackDesired = false; clearStreamWatchdog(); interruptionController.markIntentionalPause(); interruptionController.cancelRecovery();
     if (audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
-    if (isSleepTimer) {
-      resetIosF3State(audioEl); playerStore.playing = false; updateMediaSessionPlaybackState(false); audioEl.pause(); return;
-    }
+    if (isSleepTimer) { resetIosF3State(audioEl); playerStore.playing = false; updateMediaSessionPlaybackState(false); audioEl.pause(); return; }
     if (platform.isIOS) {
       if (handleIosF3Pause(audioEl, playerStore.activeTrack, playerStore.curTime, playerStore.duration, audioEl.src, () => { playerStore.playing = true; })) {
         playerStore.playing = false; return;
@@ -189,48 +185,34 @@
     audioEl.pause();
   }
 
-  function handleSleepTimerTrigger() {
-    pauseAudio(true); showToast(t('settings.sleepTimerTriggered'), 'info', 4000);
-  }
+  function handleSleepTimerTrigger() { pauseAudio(true); showToast(t('settings.sleepTimerTriggered'), 'info', 4000); }
 
   function handleTogglePlay() {
     if (!audioEl) return;
     if (isIosF3Holding()) {
-      if (handleIosF3Resume(audioEl, () => {
-        playerStore.playing = true; preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
-      })) { playerStore.playing = true; return; }
+      interruptionController.cancelRecovery(); interruptionController.clearIntentionalPause(); isPlaybackDesired = true;
+      if (handleIosF3Resume(audioEl, () => { playerStore.playing = true; preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode); })) {
+        playerStore.playing = true; return;
+      }
     }
-    // 🛑 核心打断：正在异步加载/解析音频（如 MusicFree 音源检索）中，点击按钮立即中止会话并取消
     if (playerStore.loading) {
-      playSessionId++;
-      playerStore.loading = false;
-      playerStore.playing = false;
-      pauseAudio();
-      updateMediaSessionPlaybackState(false);
-      showToast(t('player.loadingCancelled'), 'info', 1500);
-      return;
+      playSessionId++; playerStore.loading = false; playerStore.playing = false;
+      pauseAudio(); updateMediaSessionPlaybackState(false); showToast(t('player.loadingCancelled'), 'info', 1500); return;
     }
-    if (audioEl.paused) {
-      const currentSrc = audioEl.src;
-      const cur = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
-      if (audioEl.error || !currentSrc || currentSrc === window.location.href || currentSrc.startsWith('blob:') || !cur?.url || !isSameAudioSource(currentSrc, cur.url)) {
-        ensurePlay(false);
-        return;
-      }
-      const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-      if (platform.isIOS && (needsReloadOnResume || isHidden || audioEl.readyState < 3)) {
-        needsReloadOnResume = false;
-        const resumeTime = audioEl.currentTime || playerStore.curTime || 0;
-        if (resumeTime > 0) pendingSeekTime = resumeTime;
-        audioEl.src = currentSrc;
-      }
-      const p = audioEl.play();
-      if (p !== undefined) {
-        p.then(() => { applyPendingSeek(); preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode); }).catch(() => { playerStore.playing = false; ensurePlay(false); });
-      }
-    } else {
-      pauseAudio();
+    if (!audioEl.paused) { pauseAudio(); return; }
+    interruptionController.cancelRecovery(); interruptionController.clearIntentionalPause(); isPlaybackDesired = true;
+    const currentSrc = audioEl.src, cur = playerStore.queue[playerStore.qIndex] || playerStore.activeTrack;
+    if (audioEl.error || !currentSrc || currentSrc === window.location.href || currentSrc.startsWith('blob:') || !cur?.url || !isSameAudioSource(currentSrc, cur.url) || (!cur.isLocal && isTrackUrlExpired(cur))) {
+      ensurePlay(false); return;
     }
+    const resumeTime = audioEl.currentTime || playerStore.curTime || 0;
+    if (platform.isIOS && (needsReloadOnResume || audioEl.readyState < 2)) {
+      needsReloadOnResume = false;
+      if (resumeTime > 0) pendingSeekTime = resumeTime;
+      audioEl.src = currentSrc;
+    }
+    audioEl.play()?.then(() => { playerStore.playing = true; applyPendingSeek(); preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode); })
+      .catch((err: any) => handlePlayRejection(err, () => { if (resumeTime > 0) pendingSeekTime = resumeTime; if (audioEl) audioEl.src = currentSrc; ensurePlay(false); }));
   }
 
   async function next() {
@@ -264,8 +246,8 @@
     applyTargetSeek(((e.clientX - rect.left) / rect.width) * playerStore.duration);
   }
   function handleClearQueue() {
-    resetIosF3State(audioEl);
-    playSessionId++;
+    resetIosF3State(audioEl); playSessionId++; isPlaybackDesired = false; clearPreloadedTrackBlob();
+    clearStreamWatchdog(); interruptionController.markIntentionalPause(); interruptionController.cancelRecovery(); clearTrackStreamRetry();
     playerStore.loading = false;
     if (audioEl) { audioEl.pause(); try { audioEl.currentTime = 0; } catch {} audioEl.removeAttribute('src'); audioEl.load(); }
     playerStore.clearQueue(); showToast(t('player.queueCleared'), 'info');
@@ -282,6 +264,7 @@
       return;
     }
 
+    clearTrackStreamRetry();
     playerStore.setQueue(tracks, optionsOrIdx, maybePlaylistId);
     preloadSurroundingTracks(playerStore.queue, playerStore.qIndex, playerStore.playMode);
     ensurePlay(true);
@@ -328,6 +311,12 @@
     // ⚠️ iOS 严禁调用 navigator.audioSession (会导致 Safari 系统级死锁崩溃循环刷新)
 
     const onBeforeUnload = () => playerStore.save();
+    const tryForegroundResume = () => interruptionController.executeForegroundResume({
+      audioEl, track: playerStore.queue[playerStore.qIndex] || playerStore.activeTrack, curTime: playerStore.curTime, needsReload: needsReloadOnResume,
+      onPendingSeek: (t) => { pendingSeekTime = t; }, onClearedReload: () => { needsReloadOnResume = false; },
+      onRecovered: () => { isPlaybackDesired = true; playerStore.playing = true; applyPendingSeek(); updateMediaSessionPlaybackState(true); updateMediaSessionPosition(audioEl); },
+      onFallbackPlay: () => ensurePlay(false)
+    });
     const handleVisibilityChange = () => {
       if (!audioEl || isIosF3Holding()) return;
       if (document.visibilityState === 'hidden') {
@@ -336,6 +325,7 @@
         if (platform.isIOS && audioEl.paused) needsReloadOnResume = true;
         return;
       }
+      if (interruptionController.isInterrupted()) { tryForegroundResume(); return; }
       if (!audioEl.paused && audioEl.currentTime > 0) playerStore.curTime = audioEl.currentTime;
     };
 
@@ -351,28 +341,16 @@
     const onToggleLyricModal = () => { if (playerStore.activeTrack) showLyric = !showLyric; };
     const onTogglePlayEvent = () => handleTogglePlay();
 
-    // ⌨️ 全局空格快捷键：单按延迟 250ms 切换播控；连按两次切换沉浸大屏且绝不暂停音乐
-    let spaceTimer: any = null;
-    let lastDoublePressTime = 0;
-    const onGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== 'Space' && e.key !== ' ') return;
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
-      e.preventDefault();
-      const now = Date.now();
-      if (now - lastDoublePressTime < 280) return;
-      if (spaceTimer) {
-        clearTimeout(spaceTimer); spaceTimer = null; lastDoublePressTime = now;
-        if (playerStore.activeTrack) { showLyric = !showLyric; }
-        else if (playerStore.queue.length > 0) { playerStore.qIndex = 0; showLyric = true; ensurePlay(true); }
-        return;
-      }
-      spaceTimer = setTimeout(() => { spaceTimer = null; handleTogglePlay(); }, 250);
-    };
+    const spaceShortcut = createSpacebarShortcutHandler({
+      hasActiveTrack: () => Boolean(playerStore.activeTrack),
+      hasQueue: () => playerStore.queue.length > 0,
+      onTogglePlay: handleTogglePlay,
+      onToggleLyric: () => { showLyric = !showLyric; },
+      onStartQueueLyric: () => { playerStore.qIndex = 0; showLyric = true; ensurePlay(true); }
+    });
 
     const listeners: [string, EventListener, EventTarget?][] = [
-      ['keydown', onGlobalKeyDown as EventListener], ['beforeunload', onBeforeUnload as EventListener],
+      ['keydown', spaceShortcut.handler as EventListener], ['beforeunload', onBeforeUnload as EventListener], ['focus', tryForegroundResume as EventListener],
       ['svelte:playFolder', onPlayFolder as EventListener], ['wyy:play-tracks', onPlayTracksEvent as EventListener],
       ['wyy:sleep-timer-trigger', handleSleepTimerTrigger as EventListener], ['wyy:toggle-lyric-modal', onToggleLyricModal as EventListener],
       ['wyy:toggle-play', onTogglePlayEvent as EventListener], ['visibilitychange', handleVisibilityChange as EventListener, document]
@@ -380,12 +358,16 @@
     listeners.forEach(([ev, fn, target]) => (target || window).addEventListener(ev, fn));
 
     return () => {
-      if (spaceTimer) { clearTimeout(spaceTimer); spaceTimer = null; }
+      spaceShortcut.cleanup();
       listeners.forEach(([ev, fn, target]) => (target || window).removeEventListener(ev, fn));
     };
   });
   function onAudioPlay() {
     if (isIosF3Holding()) return;
+    clearStreamWatchdog();
+    interruptionController.clearIntentionalPause();
+    interruptionController.consumePendingResumePosition(audioEl, playerStore.activeTrack?.id);
+    isPlaybackDesired = true;
     playerStore.playing = true;
     if (audioEl) {
       if (!platform.isIOS && platform.canUseAudioProcessing) audioVisualizer.attach(audioEl);
@@ -402,9 +384,26 @@
   }
 
   function onAudioPause() {
-    if (isIosF3Holding()) return;
-    playerStore.playing = false; audioVisualizer.stop();
-    updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl);
+    if (isIosF3Holding() || audioEl?.ended || playerStore.loading || !audioEl) return;
+    audioVisualizer.stop();
+    if (audioEl.currentTime > 0) { playerStore.curTime = audioEl.currentTime; playerStore.save(); }
+    const wasPlaying = playerStore.playing;
+    playerStore.playing = false;
+    interruptionController.dispatchPauseEvent({
+      audioEl, wasPlaying, curTime: playerStore.curTime, trackId: playerStore.activeTrack?.id,
+      onSyncPaused: () => { updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); },
+      onRecovered: () => { isPlaybackDesired = true; playerStore.playing = true; updateMediaSessionPlaybackState(true); updateMediaSessionPosition(audioEl); },
+      onGiveUp: () => { isPlaybackDesired = false; playerStore.playing = false; updateMediaSessionPlaybackState(false); updateMediaSessionPosition(audioEl); needsReloadOnResume = true; }
+    });
+  }
+
+  function syncLyricMetadata(curTime: number, force = false) {
+    if (parsedLyrics.length === 0 || !playerStore.activeTrack) return;
+    const active = getActiveLyric(parsedLyrics, curTime);
+    if (force || active.index !== lastLyricIndex) {
+      lastLyricIndex = active.index;
+      updateMediaSessionMetadata(playerStore.activeTrack, active);
+    }
   }
 
   function onAudioTimeUpdate(e: Event) {
@@ -417,42 +416,31 @@
     }
     if (playerStore.activeTrack && playerStore.duration > 0) checkAndTriggerAutoArchive(playerStore.activeTrack, a.currentTime, playerStore.duration);
     if (playerStore.curTime > 0) { try { localStorage.setItem('wyy_player_time', String(playerStore.curTime)); } catch {} }
-    if (parsedLyrics.length > 0 && playerStore.activeTrack) {
-      const active = getActiveLyric(parsedLyrics, a.currentTime);
-      if (active.index !== lastLyricIndex) {
-        lastLyricIndex = active.index;
-        updateMediaSessionMetadata(playerStore.activeTrack, active);
-      }
-    }
+    syncLyricMetadata(a.currentTime);
   }
 
   function onAudioLoadedMetadata(e: Event) {
     if (isIosF3Holding()) return;
     const a = e.currentTarget as HTMLAudioElement;
     if (a.duration && !isNaN(a.duration) && isFinite(a.duration)) playerStore.duration = a.duration;
-    bindMediaSessionHandlers();
-    updateMediaSessionPosition(a);
-    checkRestrictedAudio(a);
+    bindMediaSessionHandlers(); updateMediaSessionPosition(a); checkRestrictedAudio(a);
   }
 
   function onAudioSeeked(e: Event) {
     if (isIosF3Holding()) return;
     const a = e.currentTarget as HTMLAudioElement;
     bindMediaSessionHandlers(); updateMediaSessionPosition(a);
-    if (parsedLyrics.length > 0 && playerStore.activeTrack) {
-      const active = getActiveLyric(parsedLyrics, a.currentTime);
-      lastLyricIndex = active.index; updateMediaSessionMetadata(playerStore.activeTrack, active);
-    }
+    syncLyricMetadata(a.currentTime, true);
   }
 
   function onAudioError() {
     if (isIosF3Holding()) return;
     console.warn('[Player] Native audio stream load failed:', audioEl?.error);
     const cur = playerStore.activeTrack;
-    if (cur?.url && audioEl?.src && isSameAudioSource(audioEl.src, cur.url) && cur && playerStore.playing) {
-      cur.unplayable = true;
-      cur.unplayableReason = t('player.audioStreamFailed');
-      if (advanceToNextTrack(cur, t('player.audioStreamFailed'), false)) ensurePlay(true);
+    const isBlobMatch = Boolean(audioEl?.src && cur && isPreloadedBlobUrlForTrack(audioEl.src, cur));
+    if (cur?.url && audioEl?.src && (isSameAudioSource(audioEl.src, cur.url) || isBlobMatch) && (playerStore.playing || isPlaybackDesired)) {
+      if (isBlobMatch) clearPreloadedTrackBlob();
+      handleStreamFailure(cur, playSessionId, t('player.audioStreamFailed'));
     } else if (!cur || !playerStore.playing) {
       playerStore.playing = false;
     }
@@ -460,16 +448,19 @@
 
   function onAudioEnded(e: Event) {
     if (isIosF3Holding()) return;
+    interruptionController.cancelRecovery(); clearStreamWatchdog();
     if (sleepTimer.isEndOfTrack()) { sleepTimer.cancelTimer(); handleSleepTimerTrigger(); return; }
     resetTrackPlayback();
     const a = e.currentTarget as HTMLAudioElement;
+    const onPlayErr = (err: any) => handlePlayRejection(err, () => { if (playerStore.activeTrack) handleStreamFailure(playerStore.activeTrack, playSessionId, t('player.audioStreamFailed')); });
     if (a.currentTime < 3 && a.duration > 10) {
       console.warn('[Player] Audio stream interrupted prematurely, attempting reconnect');
-      try { a.load(); a.play().catch(() => {}); return; } catch {}
+      try { a.load(); a.play().catch(onPlayErr); return; } catch {}
     }
     handleTrackEndedScrobble(playerStore.activeTrack, a.duration, playerStore.playlistId);
     if (playerStore.playMode === 'single') {
-      playerStore.curTime = 0; if (audioEl) { try { audioEl.currentTime = 0; } catch {} audioEl.play().catch(() => {}); }
+      playerStore.curTime = 0; playerStore.playing = true; isPlaybackDesired = true;
+      if (audioEl) { try { audioEl.currentTime = 0; } catch {} audioEl.play().catch(onPlayErr); }
     } else { next(); }
   }
 </script>

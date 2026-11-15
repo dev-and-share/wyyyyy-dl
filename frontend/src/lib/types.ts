@@ -28,6 +28,7 @@ export interface Track {
   unplayableReason?: string;
   isVip?: boolean;
   vip?: boolean;
+  _resolvedAt?: number;
   raw?: any;
 }
 

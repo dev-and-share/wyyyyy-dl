@@ -12,3 +12,14 @@ export * from './sleepTimer.svelte';
 export * from './lyricParser';
 export * from './iosF3KeepAlive';
 export * from './peq';
+export * from './playbackResilience';
+export {
+  MIN_VALID_AUDIO_BYTES,
+  MIN_FULL_TRACK_BYTES,
+  getTrackPreloadKey,
+  getPreloadedTrackBlobUrl,
+  isPreloadedBlobUrlForTrack,
+  clearPreloadedTrackBlob,
+  precacheCandidateAudio,
+  isCandidateTrackPlayable
+} from './nextTrackPrecache';
