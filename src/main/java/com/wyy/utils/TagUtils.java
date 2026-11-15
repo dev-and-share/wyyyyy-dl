@@ -44,10 +44,24 @@ public class TagUtils {
     @lombok.Data
     @lombok.AllArgsConstructor
     @lombok.NoArgsConstructor
+    @lombok.Builder
     public static class TagInfo {
         private String title;
         private String artist;
         private String album;
+        private String quality;
+        private Integer bitrate;
+        private Integer sampleRate;
+        private String format;
+        private Boolean isLossless;
+        private Integer duration;
+
+        public TagInfo(String title, String artist, String album) {
+            this.title = title;
+            this.artist = artist;
+            this.album = album;
+            this.quality = "standard";
+        }
     }
 
     public static TagInfo readTags(File file) {
@@ -59,11 +73,13 @@ public class TagUtils {
         if (defaultTitle.contains(" - ")) {
             String[] parts = defaultTitle.split(" - ", 2);
             defaultArtist = parts[0].trim();
-            defaultTitle = parts[1].trim();
+            defaultTitle = cleanTrackTitle(parts[1]);
         } else if (defaultTitle.contains("-")) {
             String[] parts = defaultTitle.split("-", 2);
             defaultArtist = parts[0].trim();
-            defaultTitle = parts[1].trim();
+            defaultTitle = cleanTrackTitle(parts[1]);
+        } else {
+            defaultTitle = cleanTrackTitle(defaultTitle);
         }
 
         File parent = file.getParentFile();
@@ -79,6 +95,16 @@ public class TagUtils {
             }
         }
 
+        String finalTitle = defaultTitle;
+        String finalArtist = defaultArtist.isEmpty() ? "未知歌手" : defaultArtist;
+        String finalAlbum = defaultAlbum;
+        String quality = null;
+        Integer bitrate = null;
+        Integer sampleRate = null;
+        String format = null;
+        Boolean isLossless = null;
+        Integer duration = null;
+
         try {
             AudioFile audioFile = AudioFileIO.read(file);
             Tag tag = audioFile.getTag();
@@ -87,15 +113,99 @@ public class TagUtils {
                 String a = tag.getFirst(FieldKey.ARTIST);
                 String al = tag.getFirst(FieldKey.ALBUM);
 
-                return new TagInfo(
-                        (t != null && !t.trim().isEmpty()) ? t.trim() : defaultTitle,
-                        (a != null && !a.trim().isEmpty()) ? a.trim() : (defaultArtist.isEmpty() ? "未知歌手" : defaultArtist),
-                        (al != null && !al.trim().isEmpty()) ? al.trim() : defaultAlbum
-                );
+                if (t != null && !t.trim().isEmpty()) {
+                    finalTitle = cleanTrackTitle(t);
+                }
+                if (a != null && !a.trim().isEmpty()) {
+                    finalArtist = a.trim();
+                }
+                if (al != null && !al.trim().isEmpty()) {
+                    finalAlbum = al.trim();
+                }
             }
-        } catch (Exception ignored) {}
 
-        return new TagInfo(defaultTitle, defaultArtist.isEmpty() ? "未知歌手" : defaultArtist, defaultAlbum);
+            org.jaudiotagger.audio.AudioHeader header = audioFile.getAudioHeader();
+            if (header != null) {
+                format = header.getFormat();
+                bitrate = (int) header.getBitRateAsNumber();
+                sampleRate = header.getSampleRateAsNumber();
+                isLossless = header.isLossless();
+                duration = header.getTrackLength();
+                quality = calcQuality(header, file);
+            }
+        } catch (Exception e) {
+            log.debug("读取音频文件标签异常: {}, 将使用智能文件名兜底", file.getName());
+        }
+
+        if (quality == null) {
+            quality = calcQuality(null, file);
+        }
+
+        return TagInfo.builder()
+                .title(finalTitle)
+                .artist(finalArtist)
+                .album(finalAlbum)
+                .quality(quality)
+                .bitrate(bitrate)
+                .sampleRate(sampleRate)
+                .format(format)
+                .isLossless(isLossless)
+                .duration(duration)
+                .build();
+    }
+
+    /**
+     * 🎶 真实物理音频参数计算音质分级：
+     * - hires: 采样率 > 48000Hz 或位深 > 16bit 的高解析无损 (FLAC/WAV/DSF)
+     * - lossless: CD 级真无损 (FLAC/WAV/APE/ALAC, isLossless = true)
+     * - exhigh: 极高音质 MP3/AAC (比特率 ≥ 300kbps)
+     * - higher: 高音质 MP3/AAC (比特率 190kbps ~ 299kbps)
+     * - standard: 标准音质 (比特率 < 190kbps，如 128kbps)
+     */
+    public static String calcQuality(org.jaudiotagger.audio.AudioHeader header, File file) {
+        String ext = "";
+        if (file != null) {
+            String name = file.getName();
+            int dot = name.lastIndexOf('.');
+            if (dot >= 0) ext = name.substring(dot + 1).toLowerCase();
+        }
+
+        boolean losslessExt = ext.equals("flac") || ext.equals("wav") || ext.equals("ape") || 
+                              ext.equals("alac") || ext.equals("dsf") || ext.equals("dff");
+        boolean isLossless = (header != null && header.isLossless()) || losslessExt;
+        int sampleRate = header != null ? header.getSampleRateAsNumber() : 0;
+        int bits = header != null ? header.getBitsPerSample() : 0;
+        long bitrate = header != null ? header.getBitRateAsNumber() : 0;
+
+        if (isLossless) {
+            if (sampleRate > 48000 || bits > 16) {
+                return "hires";
+            }
+            return "lossless";
+        }
+
+        // 有损编码格式 (MP3, AAC, M4A, OGG)
+        if (bitrate >= 300) {
+            return "exhigh";
+        } else if (bitrate >= 190) {
+            return "higher";
+        } else if (bitrate > 0) {
+            return "standard";
+        }
+
+        if (losslessExt) {
+            return "lossless";
+        }
+        return "standard";
+    }
+
+    private static String cleanTrackTitle(String title) {
+        if (title == null) return "";
+        String s = title.trim();
+        // 清除前导的点、句号、下划线及序号，例如 ".说好的幸福呢" -> "说好的幸福呢", "01. 说好的幸福呢" -> "说好的幸福呢"
+        s = s.replaceAll("^[0-9]{1,3}[.\\-\\s_]+", "");
+        s = s.replaceAll("^[.、。_\\-\\s]+", "");
+        return s.trim();
     }
 
     private static boolean isGenericDir(String name) {

@@ -99,8 +99,17 @@ export class NeteaseAdapter implements MusicPlatformAdapter {
         (song.status === 404 ? t('player.regionOrCopyrightRestricted') : t('player.noPlayableSource'))
       : undefined;
 
+    const resolvedArtist =
+      song.ar_name ||
+      (song.rawData && formatArtist(song.rawData)) ||
+      (song.ar && formatArtist(song.ar));
+    const resolvedAlbum = song.al_name || song.al?.name;
+
     return {
       url: song.url || '',
+      name: song.name,
+      artist: resolvedArtist,
+      album: resolvedAlbum,
       cover: song.pic || song.picUrl || song.al?.picUrl || song.cover,
       lyric: song.lyric,
       isLocal: isServerLocal,

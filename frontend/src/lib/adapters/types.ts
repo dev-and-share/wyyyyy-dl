@@ -9,6 +9,9 @@ export interface ResolveTrackOptions {
 
 export interface ResolvedTrackData {
   url?: string;
+  name?: string;
+  artist?: string;
+  album?: string;
   cover?: string;
   lyric?: string;
   isLocal?: boolean;

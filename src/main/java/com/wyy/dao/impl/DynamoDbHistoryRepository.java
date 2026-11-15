@@ -413,6 +413,13 @@ public class DynamoDbHistoryRepository implements IHistoryStorageRepository {
                 DownloadHistoryItem item = findLocalFileBySongId(track.getId());
                 if (item != null && Boolean.TRUE.equals(item.getFileExists())) {
                     track.setIsLocal(true);
+                    if ((track.getArtists() == null || track.getArtists().trim().isEmpty() || "未知歌手".equals(track.getArtists().trim()))
+                            && item.getArtist() != null && !item.getArtist().trim().isEmpty() && !"未知歌手".equals(item.getArtist().trim())) {
+                        track.setArtists(item.getArtist().trim());
+                    }
+                    if ((track.getAlbum() == null || track.getAlbum().trim().isEmpty()) && item.getAlbum() != null && !item.getAlbum().trim().isEmpty()) {
+                        track.setAlbum(item.getAlbum().trim());
+                    }
                 }
             }
         }

@@ -358,5 +358,62 @@ public class DownloadHistoryDAOTest {
         assertEquals("musicfree", item2.getSource());
         assertTrue(item2.isMusicFree());
     }
+
+    @Test
+    @DisplayName("测试多版本本地文件竞争择优匹配 (优先选择最高音质 FLAC 无损版本)")
+    public void testBestQualityRankingForMultipleVersions() throws Exception {
+        // 模拟本地存在周杰伦《星晴》的两个版本：一个低码率 MP3 (128k)，一个高品质 FLAC (无损)
+        File mp3File = new File(tempDir.toFile(), "周杰伦 - 星晴.mp3");
+        try (FileWriter w = new FileWriter(mp3File)) { w.write("small mp3 file 3MB"); }
+        dao.addRecord(101L, "星晴", "周杰伦", "Jay", mp3File.getAbsolutePath(), 3 * 1024 * 1024L, "standard", "SUCCESS");
+
+        File flacFile = new File(tempDir.toFile(), "周杰伦 - 星晴 (无损珍藏).flac");
+        try (FileWriter w = new FileWriter(flacFile)) { w.write("high-res flac lossless audio 30MB"); }
+        dao.addRecord(101L, "星晴", "周杰伦", "Jay 同名专辑", flacFile.getAbsolutePath(), 30 * 1024 * 1024L, "lossless", "SUCCESS");
+
+        // 1. 通过 songId 查询，必须择优命中 flacFile
+        DownloadHistoryItem bestById = dao.findLocalFileBySongId(101L);
+        assertNotNull(bestById);
+        assertEquals(flacFile.getAbsolutePath(), bestById.getFilePath(), "同 songId 存在多个版本时，应优先命中最高音质的 FLAC 文件");
+        assertEquals("lossless", bestById.getQuality());
+
+        // 2. 通过跨专辑歌名+歌手比对，必须择优命中 flacFile
+        DownloadHistoryItem bestByName = dao.findLocalFileBySongOrName(999999L, "星晴", "周杰伦");
+        assertNotNull(bestByName);
+        assertEquals(flacFile.getAbsolutePath(), bestByName.getFilePath(), "跨专辑比对存在多个版本时，应优先命中最高音质的 FLAC 文件");
+    }
+
+    @Test
+    @DisplayName("测试批量标记本地状态时自动补全云端缺失的歌手与专辑 (未知歌手自动修复)")
+    public void testBatchMarkLocalFillsMissingArtistAndAlbum() throws Exception {
+        File audio = new File(tempDir.toFile(), "周杰伦 - 说好的幸福呢.mp3");
+        try (FileWriter w = new FileWriter(audio)) { w.write("audio payload"); }
+        dao.addRecord(407327564L, "说好的幸福呢", "周杰伦", "魔杰座", audio.getAbsolutePath(), audio.length(), "exhigh", "SUCCESS");
+
+        // 云端歌单拉取出的云盘歌曲：歌手缺失或为未知歌手
+        com.wyy.models.dtos.TrackDTO track = new com.wyy.models.dtos.TrackDTO();
+        track.setId(407327564L);
+        track.setName("说好的幸福呢");
+        track.setArtists(null); // 缺失
+        track.setAlbum(null);
+
+        dao.markLocalStatusBatch(java.util.Collections.singletonList(track));
+
+        assertTrue(track.getIsLocal(), "应被标记为本地音轨");
+        assertEquals("周杰伦", track.getArtists(), "本地数据库中存在真实歌手时，应自动补齐歌手信息");
+        assertEquals("魔杰座", track.getAlbum(), "本地数据库中存在真实专辑时，应自动补齐专辑信息");
+    }
+
+    @Test
+    @DisplayName("测试文件名带前导点号/特殊符号时智能清洗")
+    public void testCleanTrackTitleLeadingDot() throws Exception {
+        File fileWithDot = new File(tempDir.toFile(), "周杰伦 - .说好的幸福呢.mp3");
+        try (FileWriter w = new FileWriter(fileWithDot)) { w.write("fake mp3 header"); }
+        com.wyy.utils.TagUtils.TagInfo tag = com.wyy.utils.TagUtils.readTags(fileWithDot);
+
+        assertNotNull(tag);
+        assertEquals("说好的幸福呢", tag.getTitle(), "歌曲名前导点号应被自动清除");
+        assertEquals("周杰伦", tag.getArtist(), "歌手应被正确解析为周杰伦");
+    }
 }
 

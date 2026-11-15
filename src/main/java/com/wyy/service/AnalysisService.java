@@ -236,7 +236,15 @@ public class AnalysisService {
         String artists = arArray.stream()
             .map(ar -> {
                 if (ar instanceof JSONObject) {
-                    return ((JSONObject) ar).getString("name");
+                    JSONObject obj = (JSONObject) ar;
+                    String name = obj.getString("name");
+                    if (StringUtils.isBlank(name) || "null".equalsIgnoreCase(name.trim())) {
+                        JSONArray alias = obj.getJSONArray("alias");
+                        if (alias != null && !alias.isEmpty()) {
+                            name = alias.getString(0);
+                        }
+                    }
+                    return name;
                 } else if (ar instanceof String) {
                     return (String) ar;
                 }
@@ -245,6 +253,74 @@ public class AnalysisService {
             .filter(name -> name != null && !name.trim().isEmpty() && !"null".equalsIgnoreCase(name.trim()) && !"undefined".equalsIgnoreCase(name.trim()))
             .collect(Collectors.joining("/"));
         return (artists != null && !artists.trim().isEmpty()) ? artists.trim() : null;
+    }
+
+    /**
+     * 🎵 多源智能解析曲目歌手信息（兼容网易云云盘私有对象 pc.ar / privateCloud.artist / alias 兜底）
+     */
+    private String parseTrackArtists(JSONObject track) {
+        if (track == null) return null;
+        // 1. 标准 ar / artists 数组
+        String artists = parseArtists(track.getJSONArray("ar"));
+        if (StringUtils.isNotBlank(artists) && !"未知歌手".equals(artists)) {
+            return artists.trim();
+        }
+        artists = parseArtists(track.getJSONArray("artists"));
+        if (StringUtils.isNotBlank(artists) && !"未知歌手".equals(artists)) {
+            return artists.trim();
+        }
+        // 2. 网易云私人云盘 pc 对象
+        JSONObject pc = track.getJSONObject("pc");
+        if (pc != null) {
+            String pcAr = pc.getString("ar");
+            if (StringUtils.isNotBlank(pcAr) && !"null".equalsIgnoreCase(pcAr.trim())) {
+                String deduped = java.util.Arrays.stream(pcAr.split("[;；/]"))
+                        .map(String::trim)
+                        .filter(StringUtils::isNotBlank)
+                        .distinct()
+                        .collect(Collectors.joining("/"));
+                return StringUtils.isNotBlank(deduped) ? deduped : pcAr.trim();
+            }
+            JSONObject privateCloud = pc.getJSONObject("privateCloud");
+            if (privateCloud != null) {
+                String cloudArtist = privateCloud.getString("artist");
+                if (StringUtils.isNotBlank(cloudArtist) && !"null".equalsIgnoreCase(cloudArtist.trim())) {
+                    return cloudArtist.trim();
+                }
+            }
+        }
+        // 3. 单值 artist / ar_name
+        String single = track.getString("artist");
+        if (StringUtils.isBlank(single)) single = track.getString("ar_name");
+        if (StringUtils.isNotBlank(single) && !"null".equalsIgnoreCase(single.trim())) {
+            return single.trim();
+        }
+        return null;
+    }
+
+    /**
+     * 💿 多源智能解析专辑名称（兼容 al / album / pc.alb / privateCloud.album）
+     */
+    private String parseTrackAlbum(JSONObject track) {
+        if (track == null) return null;
+        JSONObject al = track.getJSONObject("al");
+        if (al != null && StringUtils.isNotBlank(al.getString("name"))) {
+            return al.getString("name").trim();
+        }
+        JSONObject album = track.getJSONObject("album");
+        if (album != null && StringUtils.isNotBlank(album.getString("name"))) {
+            return album.getString("name").trim();
+        }
+        JSONObject pc = track.getJSONObject("pc");
+        if (pc != null) {
+            String alb = pc.getString("alb");
+            if (StringUtils.isNotBlank(alb)) return alb.trim();
+            JSONObject privateCloud = pc.getJSONObject("privateCloud");
+            if (privateCloud != null && StringUtils.isNotBlank(privateCloud.getString("album"))) {
+                return privateCloud.getString("album").trim();
+            }
+        }
+        return null;
     }
 
     public List<?> searchMusic(String keywords, int limit, int offset, int type) {
@@ -264,9 +340,9 @@ public class AnalysisService {
                     dto.setName(song.getString("name"));
                     if (song.getJSONObject("al") != null) {
                         dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
-                        dto.setAlbum(song.getJSONObject("al").getString("name"));
                     }
-                    dto.setArtists(parseArtists(song.getJSONArray("ar")));
+                    dto.setAlbum(parseTrackAlbum(song));
+                    dto.setArtists(parseTrackArtists(song));
                     trackList.add(dto);
                 }
                 return trackList;
@@ -367,9 +443,9 @@ public class AnalysisService {
                     dto.setName(track.getString("name"));
                     if (track.getJSONObject("al") != null) {
                         dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
-                        dto.setAlbum(track.getJSONObject("al").getString("name"));
                     }
-                    dto.setArtists(parseArtists(track.getJSONArray("ar")));
+                    dto.setAlbum(parseTrackAlbum(track));
+                    dto.setArtists(parseTrackArtists(track));
                     trackList.add(dto);
                 }
             }
@@ -403,9 +479,9 @@ public class AnalysisService {
                                     dto.setName(song.getString("name"));
                                     if (song.getJSONObject("al") != null) {
                                         dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
-                                        dto.setAlbum(song.getJSONObject("al").getString("name"));
                                     }
-                                    dto.setArtists(parseArtists(song.getJSONArray("ar")));
+                                    dto.setAlbum(parseTrackAlbum(song));
+                                    dto.setArtists(parseTrackArtists(song));
                                     chunkTracks.add(dto);
                                 }
                             }
@@ -511,9 +587,9 @@ public class AnalysisService {
                     dto.setName(track.getString("name"));
                     if (track.containsKey("al") && track.getJSONObject("al") != null) {
                         dto.setPicUrl(track.getJSONObject("al").getString("picUrl"));
-                        dto.setAlbum(track.getJSONObject("al").getString("name"));
                     }
-                    dto.setArtists(parseArtists(track.getJSONArray("ar")));
+                    dto.setAlbum(parseTrackAlbum(track));
+                    dto.setArtists(parseTrackArtists(track));
                     trackList.add(dto);
                 }
             }
@@ -648,6 +724,20 @@ public class AnalysisService {
                 songInfo.setBr(128000);
             }
         }
+
+        // 🚀 若云端曲目歌手/专辑缺失或为未知歌手，从本地已核验的元数据中智能补齐
+        if ((songInfo.getAr_name() == null || songInfo.getAr_name().trim().isEmpty() || "未知歌手".equals(songInfo.getAr_name().trim()))
+                && localItem.getArtist() != null && !localItem.getArtist().trim().isEmpty() && !"未知歌手".equals(localItem.getArtist().trim())) {
+            songInfo.setAr_name(localItem.getArtist().trim());
+        }
+        if ((songInfo.getAl_name() == null || songInfo.getAl_name().trim().isEmpty())
+                && localItem.getAlbum() != null && !localItem.getAlbum().trim().isEmpty() && !"外部导入曲库".equals(localItem.getAlbum().trim())) {
+            songInfo.setAl_name(localItem.getAlbum().trim());
+        }
+        if ((songInfo.getName() == null || songInfo.getName().trim().isEmpty())
+                && localItem.getSongName() != null && !localItem.getSongName().trim().isEmpty()) {
+            songInfo.setName(localItem.getSongName().trim());
+        }
     }
     
     /**
@@ -709,9 +799,9 @@ public class AnalysisService {
                 dto.setName(song.getString("name"));
                 if (song.getJSONObject("al") != null) {
                     dto.setPicUrl(song.getJSONObject("al").getString("picUrl"));
-                    dto.setAlbum(song.getJSONObject("al").getString("name"));
                 }
-                dto.setArtists(parseArtists(song.getJSONArray("ar")));
+                dto.setAlbum(parseTrackAlbum(song));
+                dto.setArtists(parseTrackArtists(song));
                 String reason = song.getString("reason");
                 if (reason == null || reason.trim().isEmpty()) {
                     Object recReasonObj = song.get("recommendReason");

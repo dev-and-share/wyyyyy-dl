@@ -27,6 +27,7 @@
   import { toPlayerTrack } from '../../lib/playerHelper';
   import { t } from '../../lib/i18n';
   import DesktopHeaderActions from './DesktopHeaderActions.svelte';
+  import PlaylistDownloadDropdown from '../PlaylistDownloadDropdown.svelte';
   import { Play, HardDrive, Package, HeartCrack, Star, Search, Plus, Trash2, Loader2, Sparkles, TriangleAlert } from '@lucide/svelte';
 
   let {
@@ -243,7 +244,7 @@
 
   {#if isCurrentPlaylistLoaded}
     <!-- 2. 精致紧凑 Hero 横幅区 -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
+    <div class="relative z-30 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
       <img
         src={formatCoverUrl(playlist.coverImgUrl, 300)}
         alt={playlist.name}
@@ -287,14 +288,14 @@
             <span>{t('playlist.playAll')}</span>
           </button>
           {#if !playlist.isLocal}
-            <button
-              type="button"
-              data-testid="btn-detail-download-all"
-              class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-              onclick={handleDownloadAll}
-            >
-              <HardDrive size={13} /> <span>{t('playlist.downloadAllToPc')}</span>
-            </button>
+            <PlaylistDownloadDropdown
+              playlistId={playlist.id}
+              playlistName={playlist.name}
+              {allTracks}
+              {curTrack}
+              isLocal={playlist.isLocal}
+              onDownloadAllToPc={handleDownloadAll}
+            />
           {/if}
           {#if playlist && !playlist.isLocal && !playlist.isCreator}
             <button

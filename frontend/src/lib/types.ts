@@ -14,6 +14,7 @@ export interface Track {
   quality?: string;
   size?: string;
   br?: number;
+  album?: string;
   al?: {
     picUrl?: string;
     name?: string;

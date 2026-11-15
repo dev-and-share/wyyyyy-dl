@@ -26,7 +26,13 @@ export function formatArtist(trackOrArtist: any): string {
   }
   if (Array.isArray(trackOrArtist)) {
     return trackOrArtist
-      .map((a: any) => (typeof a === 'string' ? a.trim() : (a?.name ? String(a.name).trim() : '')))
+      .map((a: any) => {
+        if (typeof a === 'string') return a.trim();
+        const n = a?.name ? String(a.name).trim() : '';
+        if (n && n.toLowerCase() !== 'null' && n.toLowerCase() !== 'undefined') return n;
+        if (Array.isArray(a?.alias) && a.alias[0]) return String(a.alias[0]).trim();
+        return '';
+      })
       .filter((n: string) => n && n.toLowerCase() !== 'null' && n.toLowerCase() !== 'undefined')
       .join('/');
   }
@@ -46,6 +52,20 @@ export function formatArtist(trackOrArtist: any): string {
     } else if (typeof single === 'object' && single?.name) {
       const formatted = formatArtist(single.name);
       if (formatted) return formatted;
+    }
+    // 兼容网易云私有云盘 pc.ar 与 privateCloud.artist
+    const pc = trackOrArtist.pc || trackOrArtist.raw?.pc;
+    if (pc) {
+      const pcAr = pc.ar || pc.privateCloud?.artist;
+      if (typeof pcAr === 'string' && pcAr.trim()) {
+        const deduped = pcAr
+          .split(/[;；/]/)
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+          .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
+          .join('/');
+        return deduped || pcAr.trim();
+      }
     }
   }
   return '';

@@ -122,6 +122,14 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     if (resolved.br) track.br = resolved.br;
     if (resolved.size) track.size = resolved.size;
     if (resolved.level) track.level = resolved.level;
+    if (resolved.artist && (!track.artist || track.artist === t('common.unknownArtist') || track.artist === '未知歌手')) {
+      track.artist = resolved.artist;
+    }
+    if (resolved.album) {
+      track.album = resolved.album;
+      if (!track.al) track.al = {};
+      if (!track.al.name) track.al.name = resolved.album;
+    }
 
     // 🛡️ 网易云无版权或试听截断曲目自动尝试内置官方跨源直链兜底
     const needsBuiltinFallback =

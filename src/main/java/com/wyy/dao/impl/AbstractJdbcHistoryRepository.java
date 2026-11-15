@@ -569,17 +569,70 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
     // ==========================================
     // 4. 音轨匹配与查重
     // ==========================================
+    /**
+     * 🎧 综合音质评级打分体系（多版本本地文件竞争择优）：
+     * - Hi-Res 无损母带 (24bit/96kHz 等) > CD 级真无损 (FLAC/APE/WAV) > 320k 极高 > 192~256k 高 > 128k 标准
+     * - 附加真实物理文件格式与大小加权，严防假无损，确保自动定位到最佳版本
+     */
+    public int calculateTrackQualityScore(DownloadHistoryItem item) {
+        if (item == null) return -1;
+        int score = 0;
+        String q = item.getQuality() != null ? item.getQuality().toLowerCase() : "";
+        String path = item.getFilePath() != null ? item.getFilePath().toLowerCase() : "";
+
+        // 1. 音质档位基础分
+        if (q.contains("hires") || q.contains("hr")) {
+            score += 500000;
+        } else if (q.contains("lossless") || q.contains("flac") || q.contains("sq")) {
+            score += 400000;
+        } else if (q.contains("exhigh") || q.contains("320") || q.contains("hq")) {
+            score += 300000;
+        } else if (q.contains("higher") || q.contains("192") || q.contains("256")) {
+            score += 200000;
+        } else if (q.contains("standard") || q.contains("128")) {
+            score += 100000;
+        }
+
+        // 2. 真实无损文件扩展名加权（防止被标记为 lossless 的 MP3 伪冒）
+        if (path.endsWith(".flac") || path.endsWith(".wav") || path.endsWith(".ape") || path.endsWith(".alac") || path.endsWith(".dsf")) {
+            score += 250000;
+        } else if (path.endsWith(".m4a") || path.endsWith(".aac")) {
+            score += 50000; // AAC 在相同码率下音质通常优于 MP3
+        }
+
+        // 3. 文件物理大小加权（每 100KB 加 1 分，上限 50000 分，优先选用体积更完整、码率更高的大文件）
+        if (item.getFileSize() != null && item.getFileSize() > 0) {
+            score += Math.min(50000, (int) (item.getFileSize() / (100 * 1024)));
+        }
+
+        return score;
+    }
+
     @Override
     public DownloadHistoryItem findLocalFileBySongId(Long songId) {
         if (songId == null || songId <= 0) return null;
-        String sql = "SELECT * FROM download_history WHERE song_id = ? ORDER BY id DESC LIMIT 1";
+        String sql = "SELECT * FROM download_history WHERE song_id = ? ORDER BY id DESC";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setLong(1, songId);
+            List<DownloadHistoryItem> candidates = new ArrayList<>();
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapItemFromRs(rs);
+                while (rs.next()) {
+                    DownloadHistoryItem item = mapItemFromRs(rs);
+                    if (Boolean.TRUE.equals(item.getFileExists())) {
+                        candidates.add(item);
+                    }
                 }
+            }
+            if (!candidates.isEmpty()) {
+                candidates.sort(Comparator.comparingInt(this::calculateTrackQualityScore).reversed());
+                DownloadHistoryItem best = candidates.get(0);
+                if (candidates.size() > 1) {
+                    log.info("🎯 多版本音质择优: songId={} 找到 {} 个本地版本，最优版本质量={}, 大小={}MB, 路径={}",
+                            songId, candidates.size(), best.getQuality(),
+                            best.getFileSize() != null ? best.getFileSize() / (1024 * 1024) : 0, best.getFilePath());
+                }
+                return best;
             }
         } catch (Exception e) {
             log.error("根据 song_id 查询记录异常: songId={}", songId, e);
@@ -589,18 +642,19 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
 
     @Override
     public DownloadHistoryItem findLocalFileBySongOrName(Long songId, String name, String artist) {
-        // 1. 优先根据 song_id 精确匹配
+        List<DownloadHistoryItem> matchedCandidates = new ArrayList<>();
+
+        // 1. 优先根据 song_id 精确查找候选
         if (songId != null && songId > 0) {
-            String sql = "SELECT * FROM download_history WHERE song_id = ? ORDER BY id DESC LIMIT 1";
+            String sql = "SELECT * FROM download_history WHERE song_id = ? ORDER BY id DESC";
             try (Connection conn = getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setLong(1, songId);
                 try (ResultSet rs = pstmt.executeQuery()) {
-                    if (rs.next()) {
+                    while (rs.next()) {
                         DownloadHistoryItem item = mapItemFromRs(rs);
                         if (Boolean.TRUE.equals(item.getFileExists())) {
-                            log.info("🎯 按 songId 成功匹配本地文件: {}, path: {}", songId, item.getFilePath());
-                            return item;
+                            matchedCandidates.add(item);
                         }
                     }
                 }
@@ -609,15 +663,14 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
             }
         }
 
-        // 2. 智能跨专辑比对：核心歌名完全匹配 + 歌手严格匹配（绝不使用模糊子串 contains 匹配，防止不同歌曲误伤）
+        // 2. 智能跨专辑/跨文件名比对：核心歌名完全匹配 + 歌手严格匹配
         if (name != null && !name.trim().isEmpty()) {
             String targetCleanName = name.trim();
             String targetNormName = normalizeTrackName(targetCleanName);
             String targetArtist = (artist != null) ? artist.trim() : "";
 
             if (!targetNormName.isEmpty()) {
-                // 🌟 性能核心优化：使用 SQL 条件缩小候选集至最多 20 条，绝不无脑全表磁盘 stat 扫描
-                String sql = "SELECT * FROM download_history WHERE song_name = ? OR song_name LIKE ? ORDER BY id DESC LIMIT 20";
+                String sql = "SELECT * FROM download_history WHERE song_name = ? OR song_name LIKE ? ORDER BY id DESC LIMIT 50";
                 try (Connection conn = getConnection();
                      PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setString(1, targetCleanName);
@@ -629,24 +682,18 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                                 String localName = item.getSongName() != null ? item.getSongName().trim() : "";
                                 String localNormName = normalizeTrackName(localName);
 
-                                // 核心歌名（去除括号版本后缀后）必须完全相等
                                 if (targetNormName.equals(localNormName)) {
                                     String localArtist = item.getArtist() != null ? item.getArtist().trim() : "";
 
                                     // Case A: 双方都有歌手信息，必须歌手匹配
                                     if (isArtistMatch(targetArtist, localArtist)) {
-                                        log.info("🎯 跨专辑/版本精准命中本地音轨: 《{}》({}) -> 《{}》({}), path: {}",
-                                                targetCleanName, targetArtist, localName, localArtist, item.getFilePath());
-                                        autoBindSongIdIfMissing(conn, songId, item);
-                                        return item;
+                                        matchedCandidates.add(item);
                                     }
                                     // Case B: 未剥离括号的完整歌名严格全字相等，且一方缺少歌手，且歌名长度 >= 4 字符
                                     else if ((targetArtist.isEmpty() || localArtist.isEmpty()) 
                                             && targetCleanName.equalsIgnoreCase(localName) 
                                             && targetNormName.length() >= 4) {
-                                        log.info("🎯 歌名全字精确命中无歌手音轨: 《{}》 -> 《{}》, path: {}", targetCleanName, localName, item.getFilePath());
-                                        autoBindSongIdIfMissing(conn, songId, item);
-                                        return item;
+                                        matchedCandidates.add(item);
                                     }
                                 }
                             }
@@ -656,6 +703,32 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                     log.error("按歌名歌手匹配本地文件失败: name={}, artist={}", name, artist, e);
                 }
             }
+        }
+
+        if (!matchedCandidates.isEmpty()) {
+            // 去重并按最高音质打分降序择优
+            Map<String, DownloadHistoryItem> uniqueByPath = new LinkedHashMap<>();
+            for (DownloadHistoryItem cand : matchedCandidates) {
+                if (cand.getFilePath() != null) {
+                    uniqueByPath.putIfAbsent(cand.getFilePath(), cand);
+                }
+            }
+            List<DownloadHistoryItem> sorted = new ArrayList<>(uniqueByPath.values());
+            sorted.sort(Comparator.comparingInt(this::calculateTrackQualityScore).reversed());
+            DownloadHistoryItem best = sorted.get(0);
+
+            try (Connection conn = getConnection()) {
+                autoBindSongIdIfMissing(conn, songId, best);
+            } catch (Exception ignored) {}
+
+            if (sorted.size() > 1) {
+                log.info("🎯 多版本音质择优成功: 《{}》({}) 共命中 {} 个本地版本，已自动选用最高音质版本 [{}], 大小={}MB, 路径={}",
+                        name, artist, sorted.size(), best.getQuality(),
+                        best.getFileSize() != null ? best.getFileSize() / (1024 * 1024) : 0, best.getFilePath());
+            } else {
+                log.info("🎯 本地精准命中唯一音轨: 《{}》({}) -> 路径: {}", name, artist, best.getFilePath());
+            }
+            return best;
         }
 
         log.warn("⚠️ 未找到本地可用的匹配文件: songId={}, name={}, artist={}", songId, name, artist);
@@ -731,6 +804,14 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
             DownloadHistoryItem item = hitMap.get(track.getId());
             if (item != null) {
                 track.setIsLocal(true);
+                // 🚀 若云端曲目缺少歌手，使用本地曲库的真实歌手补齐！
+                if ((track.getArtists() == null || track.getArtists().trim().isEmpty() || "未知歌手".equals(track.getArtists().trim()))
+                        && item.getArtist() != null && !item.getArtist().trim().isEmpty() && !"未知歌手".equals(item.getArtist().trim())) {
+                    track.setArtists(item.getArtist().trim());
+                }
+                if ((track.getAlbum() == null || track.getAlbum().trim().isEmpty()) && item.getAlbum() != null && !item.getAlbum().trim().isEmpty()) {
+                    track.setAlbum(item.getAlbum().trim());
+                }
             } else if (track.getName() != null && !track.getName().trim().isEmpty()) {
                 unmatched.add(track);
             }
@@ -776,6 +857,14 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                                     if (isArtistMatch(tArtist, candArtist)
                                             || ((tArtist.isEmpty() || candArtist.isEmpty()) && tName.equalsIgnoreCase(candName) && tNormName.length() >= 4)) {
                                         t.setIsLocal(true);
+                                        // 补齐真实歌手与专辑
+                                        if ((t.getArtists() == null || t.getArtists().trim().isEmpty() || "未知歌手".equals(t.getArtists().trim()))
+                                                && cand.getArtist() != null && !cand.getArtist().trim().isEmpty() && !"未知歌手".equals(cand.getArtist().trim())) {
+                                            t.setArtists(cand.getArtist().trim());
+                                        }
+                                        if ((t.getAlbum() == null || t.getAlbum().trim().isEmpty()) && cand.getAlbum() != null && !cand.getAlbum().trim().isEmpty()) {
+                                            t.setAlbum(cand.getAlbum().trim());
+                                        }
                                         break;
                                     }
                                 }
@@ -1051,8 +1140,13 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                 if (!isIgnoredDirectory(f)) {
                     collectMp3Files(f, list, true);
                 }
-            } else if (f.isFile() && f.getName().toLowerCase().endsWith(".mp3")) {
-                list.add(f);
+            } else if (f.isFile()) {
+                String n = f.getName().toLowerCase();
+                if (n.endsWith(".mp3") || n.endsWith(".flac") || n.endsWith(".wav") ||
+                    n.endsWith(".m4a") || n.endsWith(".aac") || n.endsWith(".ape") ||
+                    n.endsWith(".ogg") || n.endsWith(".dsf") || n.endsWith(".dff")) {
+                    list.add(f);
+                }
             }
         }
     }
@@ -1099,15 +1193,16 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                 String songName = (info.getTitle() != null && !info.getTitle().isEmpty()) ? info.getTitle() : file.getName();
                 String artist = (info.getArtist() != null && !info.getArtist().isEmpty()) ? info.getArtist() : "未知歌手";
                 String album = (info.getAlbum() != null && !info.getAlbum().isEmpty()) ? info.getAlbum() : "外部导入曲库";
+                String quality = (info.getQuality() != null && !info.getQuality().isEmpty()) ? info.getQuality() : "standard";
 
                 if (!isFilePathExistsInDb(absPath)) {
-                    long newId = addRecord(null, songName, artist, album, absPath, file.length(), "lossless", "SUCCESS");
+                    long newId = addRecord(null, songName, artist, album, absPath, file.length(), quality, "SUCCESS");
                     if (newId > 0) {
                         addedCount++;
                     }
                 } else {
-                    // 若已存在但在早期导入时未能识别歌手/专辑，自动修复补全！
-                    updateMissingMetadataIfPresent(absPath, songName, artist, album);
+                    // 若已存在但在早期导入时未能识别歌手/专辑，或存在假无损，自动修复补全与音质纠偏！
+                    updateMissingMetadataIfPresent(absPath, songName, artist, album, quality);
                 }
             }
         }
@@ -1131,8 +1226,10 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
                 }
             } else if (f.isFile()) {
                 String name = f.getName().toLowerCase();
-                // 仅扫描并入库 .mp3 格式音频
-                if (name.endsWith(".mp3")) {
+                // 扫描主流音频格式 (.mp3, .flac, .wav, .m4a, .aac, .ape, .ogg, .dsf, .dff)
+                if (name.endsWith(".mp3") || name.endsWith(".flac") || name.endsWith(".wav") ||
+                    name.endsWith(".m4a") || name.endsWith(".aac") || name.endsWith(".ape") ||
+                    name.endsWith(".ogg") || name.endsWith(".dsf") || name.endsWith(".dff")) {
                     list.add(f);
                 }
             }
@@ -1159,24 +1256,27 @@ public abstract class AbstractJdbcHistoryRepository implements IHistoryStorageRe
         return false;
     }
 
-    protected void updateMissingMetadataIfPresent(String filePath, String songName, String artist, String album) {
-        if ("未知歌手".equals(artist) || artist == null || artist.trim().isEmpty()) {
-            return;
-        }
+    protected void updateMissingMetadataIfPresent(String filePath, String songName, String artist, String album, String quality) {
         String relPath = toRelativePath(filePath);
-        String sql = "UPDATE download_history SET song_name = ?, artist = ?, album = ? " +
-                     "WHERE (artist = '未知歌手' OR artist = '' OR artist IS NULL OR album = '外部导入曲库' OR album = '' OR album IS NULL) " +
-                     "AND (file_path = ? OR file_path = ?)";
+        // 自动纠偏：更新歌手（若原为未知）、更新专辑（若原为外部导入曲库）、更新真实物理音质（若原为假无损或空）
+        String sql = "UPDATE download_history SET song_name = ?, " +
+                     "artist = CASE WHEN (artist = '未知歌手' OR artist = '' OR artist IS NULL) AND ? != '未知歌手' THEN ? ELSE artist END, " +
+                     "album = CASE WHEN (album = '外部导入曲库' OR album = '' OR album IS NULL) AND ? != '外部导入曲库' THEN ? ELSE album END, " +
+                     "quality = ? " +
+                     "WHERE (file_path = ? OR file_path = ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, songName);
             pstmt.setString(2, artist);
-            pstmt.setString(3, album);
-            pstmt.setString(4, filePath);
-            pstmt.setString(5, relPath);
+            pstmt.setString(3, artist);
+            pstmt.setString(4, album);
+            pstmt.setString(5, album);
+            pstmt.setString(6, quality);
+            pstmt.setString(7, filePath);
+            pstmt.setString(8, relPath);
             pstmt.executeUpdate();
         } catch (Exception e) {
-            log.warn("更新历史元数据失败: filePath={}", filePath, e);
+            log.warn("更新历史元数据与音质失败: filePath={}", filePath, e);
         }
     }
 
