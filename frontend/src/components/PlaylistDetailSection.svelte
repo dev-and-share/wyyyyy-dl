@@ -17,6 +17,7 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import RemoveFromPlaylistModal from './RemoveFromPlaylistModal.svelte';
+  import PlaylistDownloadDropdown from './PlaylistDownloadDropdown.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
@@ -49,11 +50,9 @@
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let removingTrack = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let cachingTrackId = $state<string | number | null>(null);
-
   let listContainerEl = $state<HTMLElement | null>(null);
   let sentinelEl = $state<HTMLElement | null>(null);
   let isLoadingNext = $state(false);
-
   let pullDistance = $state(0);
   let isPullingAtTop = $state(false);
   let touchStartY = 0;
@@ -116,15 +115,9 @@
   }
 
   onMount(() => {
-    const handleScrollListTop = () => {
-      if (listContainerEl) {
-        listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    };
+    const handleScrollListTop = () => listContainerEl?.scrollTo({ top: 0, behavior: 'smooth' });
     window.addEventListener('wyy:scroll-list-top', handleScrollListTop);
-    return () => {
-      window.removeEventListener('wyy:scroll-list-top', handleScrollListTop);
-    };
+    return () => window.removeEventListener('wyy:scroll-list-top', handleScrollListTop);
   });
 
   $effect(() => {
@@ -337,9 +330,15 @@
     </div>
   {:else if playlist}
     <DetailHeaderCard cover={playlist.coverImgUrl || '/favicon.png'} title={playlist.name} subtitle={`${playlist.creator || t('common.unknown')} | ${t('playlist.trackCount', { count: allTracks.length })}`}>
-      <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))} title={t('playlist.downloadToPcTooltip')}>
-        <HardDrive size={13} /><span>{t('playlist.downloadToPc')}</span>
-      </button>
+      <PlaylistDownloadDropdown
+        playlistId={playlist.id}
+        playlistName={playlist.name}
+        {allTracks}
+        {curTrack}
+        isLocal={playlist.isLocal}
+        variant="primary"
+        onDownloadAllToPc={() => downloadPlaylistById(String(playlist.id))}
+      />
       <button
         class="btn-secondary"
         onclick={() => {
@@ -484,14 +483,11 @@
 {#if addToPlaylistSong}
   <AddToPlaylistModal song={addToPlaylistSong} onClose={() => addToPlaylistSong = null} {showToast} />
 {/if}
-
 {#if showForkModal && playlist}
   <ForkPlaylistModal
     playlistName={playlist.name} trackCount={allTracks.length} trackIds={allTracks.map((t: any) => t.id)}
-    onClose={() => showForkModal = false} onSuccess={(newId) => { if (newId) onViewPlaylist(newId); }} {showToast}
-  />
+    onClose={() => showForkModal = false} onSuccess={(newId) => { if (newId) onViewPlaylist(newId); }} {showToast} />
 {/if}
-
 {#if removingTrack && playlist}
   <RemoveFromPlaylistModal song={removingTrack} playlistId={playlist.id} playlistName={playlist.name} onClose={() => removingTrack = null} {showToast} />
 {/if}

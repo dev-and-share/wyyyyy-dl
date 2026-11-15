@@ -361,7 +361,7 @@
               </div>
               <ul class="text-[11px] text-[var(--text-secondary)] pl-4 max-h-24 overflow-y-auto">
                 {#each (diskResult.untrackedFiles || []).slice(0, 5) as uf}
-                  <li class="truncate">{uf}</li>
+                  <li class="truncate font-mono" title={uf}>{uf}</li>
                 {/each}
                 {#if (diskResult.untrackedFiles || []).length > 5}
                   <li>{t('download.andMoreItems', { count: diskResult.untrackedFiles.length })}</li>

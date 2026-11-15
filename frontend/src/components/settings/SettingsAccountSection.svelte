@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
   import { authStore } from '../../lib/authStore.svelte';
@@ -16,6 +16,14 @@
   let cookieText = $state('');
   let isSavingCookie = $state(false);
   let scrobbleEnabled = $state(isScrobbleEnabled());
+  let cookieTextareaEl = $state<HTMLTextAreaElement | null>(null);
+
+  function toggleCookieInput() {
+    showCookieInput = !showCookieInput;
+    if (showCookieInput) {
+      tick().then(() => cookieTextareaEl?.focus());
+    }
+  }
 
   function toggleScrobble() {
     scrobbleEnabled = !scrobbleEnabled;
@@ -108,7 +116,7 @@
         <button
           type="button"
           class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all"
-          onclick={() => showCookieInput = !showCookieInput}
+          onclick={toggleCookieInput}
         >
           {showCookieInput ? t('settings.collapseCookieInput') : t('settings.configCookieBtn')}
         </button>
@@ -126,6 +134,7 @@
     {#if showCookieInput}
       <div class="pt-2 flex flex-col gap-2">
         <textarea
+          bind:this={cookieTextareaEl}
           bind:value={cookieText}
           rows="3"
           placeholder={t('settings.cookiePlaceholder')}

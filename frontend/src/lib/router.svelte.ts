@@ -185,6 +185,9 @@ export function scrollToPageTop(): void {
 export function switchTab(n: ActiveTab): void {
   if (routerState.tab === n) {
     scrollToPageTop();
+    if (n === 'search' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wyy:focus-search'));
+    }
     return;
   }
   routerState.tab = n;

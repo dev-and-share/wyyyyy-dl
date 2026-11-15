@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
     localPlaylistState,
     loadLocalPlaylists,
@@ -28,6 +28,17 @@
   let showCreateInput = $state(false);
   let newName = $state('');
   let deletingId = $state<string | null>(null);
+  let searchInputEl = $state<HTMLInputElement | null>(null);
+  let createInputEl = $state<HTMLInputElement | null>(null);
+
+  function toggleCreateInput() {
+    showCreateInput = !showCreateInput;
+    if (showCreateInput) {
+      tick().then(() => {
+        createInputEl?.focus();
+      });
+    }
+  }
 
   onMount(() => {
     loadLocalPlaylists().catch(() => {});
@@ -89,7 +100,7 @@
       <button
         type="button"
         class="sm:hidden px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors flex items-center gap-1 shrink-0 active:scale-95"
-        onclick={() => showCreateInput = !showCreateInput}
+        onclick={toggleCreateInput}
       >
         <Plus size={13} strokeWidth={2.5} />
         <span>{t('localPlaylist.createBtn')}</span>
@@ -99,21 +110,28 @@
     <div class="flex items-center gap-2 w-full sm:w-auto">
       <div class="relative flex-1 sm:w-48">
         <input
+          bind:this={searchInputEl}
           type="search"
           enterkeyhint="search"
           placeholder={t('localPlaylist.searchPlaceholder')}
           class="w-full pl-6 pr-2 py-1 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-emerald-500 transition-colors"
           bind:value={searchKw}
         />
-        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] opacity-40 pointer-events-none flex items-center justify-center">
+        <button
+          type="button"
+          tabindex="-1"
+          class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] opacity-40 hover:opacity-100 cursor-pointer p-0 bg-transparent border-none flex items-center justify-center transition-opacity"
+          onclick={() => searchInputEl?.focus()}
+          title={t('common.search')}
+        >
           <Search size={11} />
-        </span>
+        </button>
       </div>
 
       <button
         type="button"
         class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors items-center gap-1 shrink-0 active:scale-95"
-        onclick={() => showCreateInput = !showCreateInput}
+        onclick={toggleCreateInput}
       >
         <Plus size={13} strokeWidth={2.5} />
         <span>{t('localPlaylist.createBtn')}</span>
@@ -126,6 +144,7 @@
     <div class="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 animate-fade-in">
       <Folder size={14} class="text-emerald-400" />
       <input
+        bind:this={createInputEl}
         type="text"
         placeholder={t('localPlaylist.inputPlaceholder')}
         class="flex-1 px-3 py-1.5 text-xs rounded-lg bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-main)] focus:outline-none focus:border-emerald-500"

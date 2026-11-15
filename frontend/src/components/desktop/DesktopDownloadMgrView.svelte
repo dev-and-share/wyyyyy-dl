@@ -1,17 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import FolderExplorer from '../FolderExplorer.svelte';
-  import LocalSearchBox from '../LocalSearchBox.svelte';
   import BrowserCacheSection from '../BrowserCacheSection.svelte';
   import LocalPlaylistsSection from '../LocalPlaylistsSection.svelte';
   import DesktopTaskQueueWorkbench from './DesktopTaskQueueWorkbench.svelte';
+  import DesktopHistorySection from './DesktopHistorySection.svelte';
   import DesktopViewHeader from './DesktopViewHeader.svelte';
-  import SlotBtn from '../SlotBtn.svelte';
-  import { Folder, Download, FolderArchive, Smartphone, Zap, AlertTriangle, Save, RefreshCw, Trash2, Play, Pause } from '@lucide/svelte';
+  import DownloadAuditModal from '../DownloadAuditModal.svelte';
+  import { Folder, Download, FolderArchive, Smartphone, Zap, AlertTriangle, Save } from '@lucide/svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
-  import { formatBytes, formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
-  import { isSameTrack } from '../../lib/trackStatus.svelte';
+  import { formatBytes, getApiCache, setApiCache } from '../../lib/utils';
   import { taskState, getActiveDownloadingCount } from '../../lib/taskStore.svelte';
   import { localPlaylistState } from '../../lib/localPlaylistStore.svelte';
   import { routerState } from '../../lib/router.svelte';
@@ -153,6 +152,68 @@
       scanLoading = false;
     }
   }
+
+  let modalType = $state<'missing' | 'nonMp3' | null>(null);
+  let modalList = $state<any[]>([]);
+  let modalLoading = $state(false);
+
+  async function openMissingModal() {
+    modalType = 'missing';
+    modalLoading = true;
+    modalList = [];
+    try {
+      const j = await api.historyMissing();
+      modalList = j?.data || [];
+    } catch (e: any) {
+      showToast(t('download.loadMissingListFailed', { error: e?.message || e }), 'error');
+    } finally {
+      modalLoading = false;
+    }
+  }
+
+  async function openNonMp3Modal() {
+    modalType = 'nonMp3';
+    modalLoading = true;
+    modalList = [];
+    try {
+      const j = await api.historyNonMp3();
+      modalList = j?.data || [];
+    } catch (e: any) {
+      showToast(t('download.loadNonMp3ListFailed', { error: e?.message || e }), 'error');
+    } finally {
+      modalLoading = false;
+    }
+  }
+
+  async function cleanMissingRecords() {
+    try {
+      const j = await api.historyCleanMissing();
+      if (j?.code === '000000') {
+        showToast(t('download.cleanMissingSuccess', { count: j.data }), 'success');
+        if (modalType === 'missing') modalType = null;
+        loadHistory(1);
+      } else {
+        showToast(j?.msg || t('download.cleanFailed'), 'warning');
+      }
+    } catch (e: any) {
+      showToast(t('download.cleanException', { error: e?.message || e }), 'error');
+    }
+  }
+
+  async function cleanNonMp3Records() {
+    try {
+      const j = await api.historyCleanNonMp3();
+      if (j?.code === '000000') {
+        showToast(t('download.cleanNonMp3Success', { count: j.data }), 'success');
+        if (modalType === 'nonMp3') modalType = null;
+        loadHistory(1);
+      } else {
+        showToast(j?.msg || t('download.cleanFailed'), 'warning');
+      }
+    } catch (e: any) {
+      showToast(t('download.cleanException', { error: e?.message || e }), 'error');
+    }
+  }
 </script>
 
 <!-- PC Desktop: Local Management Workbench -->
@@ -227,16 +288,33 @@
   <!-- 2. 状态与维护工具条 -->
   <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm text-xs">
     <div class="flex items-center gap-3 flex-wrap">
+      <span class="text-[var(--text-secondary)] inline-flex items-center gap-1.5">
+        <Save size={13} class="text-emerald-500" />
+        <span>{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
+      </span>
       {#if (histStats?.missingCount ?? 0) > 0}
-        <span class="text-amber-400 font-medium bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20 inline-flex items-center gap-1.5">
-          <AlertTriangle size={13} />
+        <button
+          type="button"
+          class="bg-transparent border-none p-0 cursor-pointer text-red-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-xs"
+          onclick={openMissingModal}
+          title={t('download.modalTitleMissing')}
+        >
+          <AlertTriangle size={12} />
           <span>{t('download.missingCount', { count: histStats.missingCount })}</span>
-        </span>
-      {:else}
-        <span class="text-[var(--text-secondary)] inline-flex items-center gap-1.5">
-          <Save size={13} class="text-emerald-500" />
-          <span>{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
-        </span>
+          <span class="text-[10px] border border-red-500/30 px-1 py-0.5 rounded-md">{t('download.viewArrow')}</span>
+        </button>
+      {/if}
+      {#if (histStats?.nonMp3Count ?? 0) > 0}
+        <button
+          type="button"
+          data-testid="btn-nonmp3-modal"
+          class="bg-transparent border-none p-0 cursor-pointer text-amber-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-xs"
+          onclick={openNonMp3Modal}
+          title={t('download.modalTitleNonMp3')}
+        >
+          <span>{t('download.nonMp3Format', { count: histStats.nonMp3Count })}</span>
+          <span class="text-[10px] border border-amber-500/30 px-1 py-0.5 rounded-md">{t('download.viewArrow')}</span>
+        </button>
       {/if}
     </div>
 
@@ -269,166 +347,21 @@
         <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
       </div>
     {:else if subTab === 'history'}
-      <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] overflow-hidden shadow-sm flex flex-col">
-        <!-- Search & Refresh Bar -->
-        <div class="p-3 border-b border-[var(--border-color)] flex items-center justify-between gap-2.5">
-          <div class="flex items-center gap-2 flex-1 max-w-md">
-            <LocalSearchBox
-              bind:value={histKw}
-              placeholder={t('download.searchHistoryPlaceholder')}
-              historyKey="wyy_history_search_history"
-              onSearch={() => loadHistory(1)}
-              onClear={() => loadHistory(1)}
-            />
-            <button
-              type="button"
-              class="btn-primary px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer shrink-0"
-              onclick={() => loadHistory(1)}
-            >
-              {t('common.search')}
-            </button>
-          </div>
-          <button
-            type="button"
-            class="p-2 rounded-xl text-xs bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--btn-secondary-border)] transition-colors cursor-pointer flex items-center justify-center"
-            onclick={() => loadHistory(histPage)}
-            title={t('download.refreshHistoryTooltip')}
-          >
-            <RefreshCw size={13} class={loadingHistory ? 'animate-spin' : ''} />
-          </button>
-        </div>
-
-        <!-- History Table -->
-        <div class="overflow-x-auto max-h-[560px] overflow-y-auto custom-scroll">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead class="sticky top-0 z-10 bg-[var(--card-header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] text-[var(--text-muted)]">
-              <tr>
-                <th class="w-12 py-3 pl-4 font-semibold">#</th>
-                <th class="py-3 px-3 font-semibold">{t('search.tableTitle')}</th>
-                <th class="py-3 px-3 font-semibold w-28">{t('download.sizeAndFormat')}</th>
-                <th class="py-3 px-3 font-semibold hidden md:table-cell">{t('download.filePath')}</th>
-                <th class="py-3 pr-4 text-right font-semibold w-40">{t('search.tableActions')}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[var(--border-subtle)]">
-              {#if loadingHistory && histList.length === 0}
-                <tr>
-                  <td colspan="5" class="py-12 text-center text-[var(--text-muted)]">
-                    {t('download.readingHistory')}
-                  </td>
-                </tr>
-              {:else if histList.length === 0}
-                <tr>
-                  <td colspan="5" class="py-12 text-center text-[var(--text-muted)]">
-                    {t('download.noHistoryFound')}
-                  </td>
-                </tr>
-              {:else}
-                {#each histList as item, i (item.id || i)}
-                  {@const idx = (histPage - 1) * 10 + i + 1}
-                  {@const songTitle = item.songName || item.name || item.title || t('common.unknownSong')}
-                  {@const artist = item.artist || item.artists || ''}
-                  {@const isPlayingThis = isSameTrack(curTrack, item)}
-                  {@const displayPath = item.hostFilePath || item.filePath || item.relativePath || item.path || t('download.defaultMusicDir')}
-                  <tr class="hover:bg-[var(--card-header-hover)] transition-colors group {isPlayingThis ? 'bg-red-500/10' : ''}">
-                    <td class="py-2.5 pl-4 text-[var(--text-muted)] font-mono text-[11px]">
-                      {#if isPlayingThis && playing}
-                        <span class="text-red-500 animate-pulse">▶</span>
-                      {:else}
-                        {idx}
-                      {/if}
-                    </td>
-                    <td class="py-2.5 px-3 min-w-0">
-                      <div class="flex flex-col gap-0.5">
-                        <div class="flex items-center gap-1.5 min-w-0">
-                          <span class="font-semibold text-[var(--text-main)] truncate max-w-xs group-hover:text-red-400 transition-colors" title={songTitle}>
-                            {songTitle}
-                          </span>
-                          {#if item.source && item.source !== 'netease'}
-                            <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-500/15 text-purple-400 border border-purple-500/25 shrink-0 select-none" title={`来源: ${item.source}`}>
-                              {item.source.replace('musicfree-', '')}
-                            </span>
-                          {/if}
-                        </div>
-                        {#if artist}
-                          <span class="text-[11px] text-[var(--text-muted)] truncate" title={artist}>{artist}</span>
-                        {/if}
-                      </div>
-                    </td>
-                    <td class="py-2.5 px-3 text-[var(--text-secondary)] whitespace-nowrap">
-                      <span>{item.fileSize ? formatBytes(item.fileSize) : '-'}</span>
-                      {#if item.format}
-                        <span class="ml-1 text-[10px] text-red-400/80 font-mono uppercase">.{item.format}</span>
-                      {/if}
-                    </td>
-                    <td class="py-2.5 px-3 text-[var(--text-muted)] font-mono text-[11px] truncate max-w-[200px] hidden md:table-cell" title={displayPath}>
-                      {displayPath}
-                    </td>
-                    <td class="py-2.5 pr-4 text-right whitespace-nowrap">
-                      <div class="inline-flex items-center justify-end gap-1.5">
-                        <SlotBtn
-                          playing={isPlayingThis && playing}
-                          onclick={() => onPlayQueue([{
-                            id: item.songId && item.songId > 0 ? item.songId : (item.id || `local_${Date.now()}`),
-                            name: songTitle,
-                            artist: artist || t('common.unknownArtist'),
-                            album: item.album || t('download.localLibrary'),
-                            cover: item.cover || DEFAULT_VINYL_COVER,
-                            url: `/v3/stream?${item.songId && item.songId > 0 ? `id=${item.songId}&` : ''}${item.id ? `historyId=${item.id}&` : ''}path=${encodeURIComponent(item.relativePath || item.filePath || '')}`,
-                            isLocal: true
-                          }])}
-                        >
-                          {#if isPlayingThis && playing}
-                            <Pause size={11} fill="currentColor" />
-                            <span>{t('player.pause')}</span>
-                          {:else}
-                            <Play size={11} fill="currentColor" />
-                            <span>{t('common.local')}</span>
-                          {/if}
-                        </SlotBtn>
-                        <SlotBtn onclick={() => onReveal({ id: item.songId || item.id, name: songTitle, artist, path: displayPath })}>
-                          {t('common.reveal')}
-                        </SlotBtn>
-                        <button
-                          type="button"
-                          class="p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 cursor-pointer border-none bg-transparent transition-colors flex items-center justify-center"
-                          onclick={() => handleDeleteHistory(item)}
-                          title={t('download.removeFromHistoryTooltip')}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
-              {/if}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination Controls -->
-        <div class="flex items-center justify-between px-4 py-3 border-t border-[var(--border-color)] bg-[var(--card-bg)]">
-          <button
-            type="button"
-            class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
-            disabled={histPage <= 1}
-            onclick={() => loadHistory(histPage - 1)}
-          >
-            {t('download.prevPage')}
-          </button>
-          <span class="text-xs text-[var(--text-secondary)]">
-            {t('download.pageStats', { page: histPage, total: histTotalPages, count: histTotal })}
-          </span>
-          <button
-            type="button"
-            class="btn-secondary px-3 py-1 text-xs rounded-lg cursor-pointer"
-            disabled={histPage >= histTotalPages}
-            onclick={() => loadHistory(histPage + 1)}
-          >
-            {t('download.nextPage')}
-          </button>
-        </div>
-      </div>
+      <DesktopHistorySection
+        {curTrack}
+        {playing}
+        {histList}
+        {loadingHistory}
+        {histPage}
+        {histTotalPages}
+        {histTotal}
+        bind:histKw
+        onSearch={() => loadHistory(1)}
+        onPageChange={(p) => loadHistory(p)}
+        onDeleteHistory={handleDeleteHistory}
+        {onPlayQueue}
+        {onReveal}
+      />
     {:else if subTab === 'folder'}
       <div class="rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] p-4 shadow-sm flex flex-col gap-3">
         <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
@@ -451,6 +384,15 @@
       <DesktopTaskQueueWorkbench {onReveal} {showToast} />
     {/if}
 </div>
+
+<DownloadAuditModal
+  {modalType}
+  {modalList}
+  {modalLoading}
+  onClose={() => (modalType = null)}
+  onCleanMissing={cleanMissingRecords}
+  onCleanNonMp3={cleanNonMp3Records}
+/>
 
 <style>
   .custom-scroll::-webkit-scrollbar {

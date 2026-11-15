@@ -403,7 +403,7 @@
               <td class="py-2.5 px-3 whitespace-nowrap">
                 <TaskStatusBadge status={item.status} />
               </td>
-              <td class="py-2.5 px-3 text-[var(--text-muted)] font-mono text-[11px] truncate max-w-[220px] hidden md:table-cell" title={item.filePath || formattedError || '-'}>
+              <td class="py-2.5 px-3 text-[var(--text-muted)] font-mono text-[11px] truncate max-w-[240px] lg:max-w-[320px] xl:max-w-[420px] 2xl:max-w-[560px] hidden md:table-cell cursor-pointer hover:text-[var(--text-main)] transition-colors" title={`路径/备注：${item.filePath || formattedError || '-'}\n（点击复制）`} onclick={() => { if (item.filePath) navigator.clipboard?.writeText(item.filePath); }}>
                 {item.filePath || formattedError || '-'}
               </td>
               <td class="py-2.5 pr-4 text-right whitespace-nowrap">

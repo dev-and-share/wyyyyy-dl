@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api } from '../lib/api';
   import { myPlaylists, loadMyPlaylists, setLastBackupPlaylist, updatePlaylistTrackCount } from '../lib/playlist.svelte';
   import {
@@ -32,6 +32,14 @@
   let showCreateNetease = $state(false);
   let showCreateLocal = $state(false);
   let newLocalName = $state('');
+  let newLocalInputEl = $state<HTMLInputElement | null>(null);
+
+  function toggleCreateLocal() {
+    showCreateLocal = !showCreateLocal;
+    if (showCreateLocal) {
+      tick().then(() => newLocalInputEl?.focus());
+    }
+  }
 
   // 判定是否为外部音源插件歌曲
   const isExternal = $derived(
@@ -200,7 +208,7 @@
         <button
           type="button"
           class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-transparent border-none cursor-pointer flex items-center gap-1"
-          onclick={() => showCreateLocal = !showCreateLocal}
+          onclick={toggleCreateLocal}
         >
           <Plus size={13} />
           <span>{t('playlist.createLocalBtn')}</span>
@@ -212,6 +220,7 @@
     {#if showCreateLocal && activeTab === 'local'}
       <div class="flex items-center gap-2 mb-3 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
         <input
+          bind:this={newLocalInputEl}
           type="text"
           placeholder={t('localPlaylist.inputPlaceholder')}
           bind:value={newLocalName}

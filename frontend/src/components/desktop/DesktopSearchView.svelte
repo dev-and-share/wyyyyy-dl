@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api } from '../../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
   import type { Track } from '../../lib/types';
@@ -58,6 +58,7 @@
   let addToPlaylistSong = $state<any>(null);
   let searchHistory = $state<string[]>([]);
   let activeArtistId = $state('');
+  let searchInputEl = $state<HTMLInputElement | null>(null);
 
   let lastHandledAlbumTrigger = 0;
   $effect(() => {
@@ -103,6 +104,22 @@
     if (kw.trim()) {
       executeSearch(kw.trim(), false).catch(() => {});
     }
+    tick().then(() => {
+      searchInputEl?.focus();
+    });
+
+    const onFocusSearch = () => {
+      searchInputEl?.focus();
+      searchInputEl?.select();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('wyy:focus-search', onFocusSearch);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('wyy:focus-search', onFocusSearch);
+      }
+    };
   });
 
   function saveHistory(term: string) {
@@ -321,6 +338,7 @@
       <div class="flex items-center gap-2.5">
         <div class="relative flex-1">
           <input
+            bind:this={searchInputEl}
             type="search"
             data-testid="desktop-search-input"
             placeholder={searchSource === 'musicfree' ? t('search.placeholderMusicFree') : t('search.desktopInputPlaceholder')}
@@ -328,9 +346,16 @@
             bind:value={kw}
             onkeydown={(e) => e.key === 'Enter' && executeSearch()}
           />
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50 flex items-center justify-center pointer-events-none">
+          <button
+            type="button"
+            tabindex="-1"
+            class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer p-0 bg-transparent border-none transition-opacity"
+            onclick={() => searchInputEl?.focus()}
+            title={t('common.search')}
+            aria-label={t('common.search')}
+          >
             <Search size={14} />
-          </span>
+          </button>
           {#if kw}
             <button
               type="button"

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { myPlaylists, getPlaylistFilter, loadMyPlaylists, sortPlaylistsByPlayCount, isFavoritePlaylist, getPlaylistPlayCount } from '../lib/playlist.svelte';
   import { localPlaylistState, loadLocalPlaylists, isLocalPlaylist, cleanPlaylistDisplayName } from '../lib/localPlaylistStore.svelte';
   import { playlistService } from '../lib/playlistService';
@@ -34,7 +34,27 @@
 
   let playlistSearchKw = $state('');
   let showSearch = $state(false);
+  let searchBoxRef = $state<any>(null);
   let showCreateModal = $state(false);
+
+  function toggleSearch() {
+    if (!showSearch) {
+      showSearch = true;
+      tick().then(() => {
+        searchBoxRef?.focus();
+      });
+    } else {
+      const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+      const inputEl = searchBoxRef?.getInputElement?.();
+      if (inputEl && activeEl !== inputEl) {
+        searchBoxRef?.focus();
+        searchBoxRef?.select?.();
+      } else {
+        showSearch = false;
+        playlistSearchKw = '';
+      }
+    }
+  }
   let confirmAction = $state<{
     type: 'delete' | 'unsubscribe';
     playlistId: string;
@@ -190,7 +210,7 @@
       <button
         type="button"
         class="btn-secondary rounded-lg px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-color)] bg-black/5 dark:bg-white/5 transition-all active:scale-95 flex items-center justify-center {showSearch || playlistSearchKw ? '!text-blue-500 !border-blue-500/40 !bg-blue-500/10 font-bold' : ''}"
-        onclick={() => { showSearch = !showSearch; if (!showSearch) playlistSearchKw = ''; }}
+        onclick={toggleSearch}
         title={t('common.search')}
       >
         <Search size={13} />
@@ -206,10 +226,12 @@
     </div>
   </div>
 
-  <!-- 🔍 歌单客户端搜索 / 过滤栏 (点击🔍时才展开) -->
+  <!-- 🔍 歌单客户端搜索 / 过滤栏 (点击🔍时才展开，展开默认自动聚焦) -->
   {#if showSearch || playlistSearchKw}
     <div class="mb-2.5">
       <LocalSearchBox
+        bind:this={searchBoxRef}
+        autofocus={true}
         bind:value={playlistSearchKw}
         placeholder={t('myPlaylists.searchPlaceholder')}
         historyKey="wyy_playlist_search_history"

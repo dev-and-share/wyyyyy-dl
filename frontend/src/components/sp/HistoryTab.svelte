@@ -12,6 +12,7 @@
   let histList: any[] = $state([]);
   let histStats: any = $state(null);
   let histTotal = $state(0);
+  let searchBoxRef = $state<any>(null);
 
   let histTotalPages = $derived(Math.max(1, Math.ceil(histTotal / 10)));
 
@@ -57,11 +58,8 @@
         type="button"
         class="btn-secondary px-3 py-1 text-xs inline-flex items-center gap-1.5"
         onclick={() => {
-          const v = prompt(t('download.searchHistoryPrompt'));
-          if (v !== null) {
-            histKw = v;
-            loadHistory(1);
-          }
+          searchBoxRef?.focus();
+          searchBoxRef?.select?.();
         }}
       >
         <Search size={12} />
@@ -74,6 +72,7 @@
   <div class="flex gap-2 mb-2.5">
     <div class="flex-1 min-w-0">
       <LocalSearchBox
+        bind:this={searchBoxRef}
         bind:value={histKw}
         placeholder={t('download.searchHistoryPlaceholder')}
         historyKey="wyy_history_search_history"

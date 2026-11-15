@@ -64,4 +64,31 @@ describe('MyPlaylistsSection (SP) Tab Ordering Contracts', () => {
     expect(getByText('热门自建10次')).toBeDefined();
     expect(getByText('普通自建歌单')).toBeDefined();
   });
+
+  it('clicking search icon expands search box and automatically focuses the input', async () => {
+    const { getByTitle, queryByPlaceholderText } = render(MyPlaylistsSection, {
+      props: {
+        open: true,
+        flat: false,
+        onViewPlaylist: vi.fn(),
+        onPlayPlaylist: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    // 默认未展开搜索框
+    expect(queryByPlaceholderText(/搜索歌单名称/)).toBeNull();
+
+    // 点击 🔍 按钮
+    const searchBtn = getByTitle('搜索');
+    await fireEvent.click(searchBtn);
+
+    // 搜索框出现
+    const searchInput = queryByPlaceholderText(/搜索歌单名称/) as HTMLInputElement;
+    expect(searchInput).not.toBeNull();
+
+    // 验证搜索框获得焦点
+    await new Promise((r) => setTimeout(r, 60));
+    expect(document.activeElement).toBe(searchInput);
+  });
 });

@@ -31,32 +31,27 @@
     onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
 
-  const STORAGE_KEY_SEARCH_KW = 'wyy_search_kw';
-  const STORAGE_KEY_SEARCH_TYPE = 'wyy_search_type';
-  const STORAGE_KEY_SEARCH_SOURCE = 'wyy_search_source';
-  const STORAGE_KEY_ALBUM_ID = 'wyy_search_album_id';
-  const STORAGE_KEY_SUBTAB = 'wyy_search_subtab';
-  const STORAGE_KEY_ACC_SEARCH = 'wyy_search_acc_search';
-  const STORAGE_KEY_ACC_ALBUM = 'wyy_search_acc_album';
+  const SK_KW = 'wyy_search_kw', SK_TYPE = 'wyy_search_type', SK_SRC = 'wyy_search_source';
+  const SK_ALBUM = 'wyy_search_album_id', SK_TAB = 'wyy_search_subtab';
+  const SK_ACC_S = 'wyy_search_acc_search', SK_ACC_A = 'wyy_search_acc_album';
 
   function getStored(key: string, def: string) {
-    if (typeof localStorage === 'undefined') return def;
-    const v = localStorage.getItem(key);
-    return v !== null ? v : def;
+    return (typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null) ?? def;
   }
 
-  let kw = $state(getStored(STORAGE_KEY_SEARCH_KW, ''));
-  let sType = $state(getStored(STORAGE_KEY_SEARCH_TYPE, '1'));
-  let searchSource = $state<'netease' | 'musicfree'>((getStored(STORAGE_KEY_SEARCH_SOURCE, 'netease') as any) || 'netease');
+  let kw = $state(getStored(SK_KW, ''));
+  let sType = $state(getStored(SK_TYPE, '1'));
+  let searchSource = $state<'netease' | 'musicfree'>((getStored(SK_SRC, 'netease') as any) || 'netease');
   let sLimit = $state(20);
   let sResults: any[] = $state([]);
   let mfResults: any[] = $state([]);
   let searchLoading = $state(false);
   let hasSearched = $state(false);
   let addToPlaylistTrack = $state<any>(null);
+  let searchInputEl = $state<HTMLInputElement | null>(null);
 
   function initSubtab() {
-    return albumId ? 'album' : ((getStored(STORAGE_KEY_SUBTAB, 'search') as any) || 'search');
+    return albumId ? 'album' : ((getStored(SK_TAB, 'search') as any) || 'search');
   }
   let activeSubtab: 'search' | 'album' | 'artist' = $state(initSubtab());
   const SUBTABS: ('search' | 'album' | 'artist')[] = ['search', 'album', 'artist'];
@@ -64,12 +59,11 @@
 
   function setSubtab(id: 'search' | 'album' | 'artist') {
     activeSubtab = id;
-    try { localStorage.setItem(STORAGE_KEY_SUBTAB, id); } catch {}
+    try { localStorage.setItem(SK_TAB, id); } catch {}
   }
 
   function handleSwipeIndexChange(newIndex: number) {
-    const nextTab = SUBTABS[newIndex] || 'search';
-    setSubtab(nextTab);
+    setSubtab(SUBTABS[newIndex] || 'search');
   }
   let accSearch = $state(true);
   let accAlbum = $state(true);
@@ -79,30 +73,25 @@
   async function handleViewArtist(id: string) {
     currentArtistId = id;
     activeSubtab = 'artist';
-    try { localStorage.setItem(STORAGE_KEY_SUBTAB, 'artist'); } catch {}
+    try { localStorage.setItem(SK_TAB, 'artist'); } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
     await tick();
     setTimeout(() => {
       const el = document.getElementById('section-artist-detail');
-      if (el) {
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
-      }
+      if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 8), behavior: 'smooth' });
     }, 280);
   }
 
   $effect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY_ACC_SEARCH, String(accSearch));
-      localStorage.setItem(STORAGE_KEY_ACC_ALBUM, String(accAlbum));
+      localStorage.setItem(SK_ACC_S, String(accSearch));
+      localStorage.setItem(SK_ACC_A, String(accAlbum));
     } catch {}
   });
 
   function initAlbumId() {
-    return albumId || getStored(STORAGE_KEY_ALBUM_ID, '');
+    return albumId || getStored(SK_ALBUM, '');
   }
-
-  // 专辑相关状态
   let currentAlbumId = $state(initAlbumId());
   let album: any = $state(null);
   let albumLoading = $state(false);
@@ -111,15 +100,12 @@
     if (!id) return;
     currentAlbumId = id;
     activeSubtab = 'album';
-    try { localStorage.setItem(STORAGE_KEY_SUBTAB, 'album'); } catch {}
+    try { localStorage.setItem(SK_TAB, 'album'); } catch {}
     loadAlbum(id);
     await tick();
     setTimeout(() => {
       const el = document.getElementById('section-album-detail');
-      if (el) {
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
-      }
+      if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 8), behavior: 'smooth' });
     }, 280);
   }
 
@@ -153,9 +139,25 @@
   });
 
   onMount(() => {
+    tick().then(() => {
+      if (activeSubtab === 'search') {
+        searchInputEl?.focus();
+      }
+    });
+
+    const onFocusSearch = () => {
+      activeSubtab = 'search';
+      tick().then(() => {
+        searchInputEl?.focus();
+        searchInputEl?.select();
+      });
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('wyy:focus-search', onFocusSearch);
+    }
     if (currentAlbumId) {
       if (!/^\d+$/.test(currentAlbumId.trim())) {
-        try { localStorage.removeItem(STORAGE_KEY_ALBUM_ID); } catch {}
+        try { localStorage.removeItem(SK_ALBUM); } catch {}
         currentAlbumId = '';
       } else {
         const cached = getApiCache('album_' + currentAlbumId);
@@ -174,6 +176,12 @@
         if (sResults.length > 0) hasSearched = true;
       }
     }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('wyy:focus-search', onFocusSearch);
+      }
+    };
   });
 
   function setType(t: string) {
@@ -188,9 +196,9 @@
     }
     hasSearched = true;
     try {
-      localStorage.setItem(STORAGE_KEY_SEARCH_KW, kw);
-      localStorage.setItem(STORAGE_KEY_SEARCH_TYPE, sType);
-      localStorage.setItem(STORAGE_KEY_SEARCH_SOURCE, searchSource);
+      localStorage.setItem(SK_KW, kw);
+      localStorage.setItem(SK_TYPE, sType);
+      localStorage.setItem(SK_SRC, searchSource);
     } catch {}
 
     // 1. MusicFree 跨源检索
@@ -261,7 +269,7 @@
       return;
     }
     if (!/^\d+$/.test(targetId)) {
-      try { localStorage.removeItem(STORAGE_KEY_ALBUM_ID); } catch {}
+      try { localStorage.removeItem(SK_ALBUM); } catch {}
       currentAlbumId = '';
       return;
     }
@@ -279,7 +287,7 @@
       albumLoading = true;
     }
     try {
-      localStorage.setItem(STORAGE_KEY_ALBUM_ID, targetId);
+      localStorage.setItem(SK_ALBUM, targetId);
     } catch {}
     try {
       const j = await api.album(targetId);
@@ -336,15 +344,13 @@
       const task = res?.data;
       if (task && typeof task === 'object') {
         const songName = task.name || name || t('common.unknownSong');
-        if (task.status === 'SKIP') {
-          showToast(t('download.skippedWithName', { name: songName, reason: task.errorMsg || t('download.skipReasonPreviewOrExist') }), 'warning', 4000);
-        } else if (task.status === 'FAILED') {
-          showToast(t('download.failedWithName', { name: songName, reason: task.errorMsg || t('download.failReasonExecuteError') }), 'error', 4000);
-        } else if (task.status === 'SUCCESS') {
-          showToast(t('download.downloadSuccessWithName', { name: songName }), 'success', 2500);
-        } else {
-          showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
-        }
+        const statusMap: Record<string, { msg: string; type: any; dur: number }> = {
+          SKIP: { msg: t('download.skippedWithName', { name: songName, reason: task.errorMsg || t('download.skipReasonPreviewOrExist') }), type: 'warning', dur: 4000 },
+          FAILED: { msg: t('download.failedWithName', { name: songName, reason: task.errorMsg || t('download.failReasonExecuteError') }), type: 'error', dur: 4000 },
+          SUCCESS: { msg: t('download.downloadSuccessWithName', { name: songName }), type: 'success', dur: 2500 }
+        };
+        const s = statusMap[task.status] || { msg: t('download.submitSuccessWithName', { name: songName }), type: 'info', dur: 2000 };
+        showToast(s.msg, s.type, s.dur);
       } else {
         showToast(t('download.submittedTask'), 'info', 1500);
       }
@@ -406,6 +412,7 @@
 
       <div class="flex items-center gap-1.5 md:gap-2.5 my-2.5 w-full">
         <input
+          bind:this={searchInputEl}
           type="search"
           enterkeyhint="search"
           placeholder={searchSource === 'musicfree' ? t('search.placeholderMusicFree') : t('search.inputPlaceholderWithShortcut')}
@@ -464,16 +471,10 @@
   <!-- Section 2: 专辑解析与整辑下载 (已拆分组件) -->
   <div id="section-album-detail" class="w-full flex-1 flex flex-col">
     <AlbumDetailCard
-      flat
-      open={true}
-      {album}
-      {albumLoading}
-      bind:currentAlbumId
+      flat open={true} {album} {albumLoading} bind:currentAlbumId
       {curTrack} {playing} {likedSet} {downloadedSet}
-      onLoadAlbum={loadAlbum}
-      onDownloadFullAlbum={downloadFullAlbum}
-      onPlayFullAlbum={playFullAlbum}
-      onDownloadSingleTrack={downloadSingleTrack}
+      onLoadAlbum={loadAlbum} onDownloadFullAlbum={downloadFullAlbum}
+      onPlayFullAlbum={playFullAlbum} onDownloadSingleTrack={downloadSingleTrack}
       {onToggleLike} {onPlayQueue} {onReveal} {onSong}
     />
   </div>
@@ -481,9 +482,7 @@
   <!-- Section 3: 歌手热门曲目与收藏 -->
   <div id="section-artist-detail" class="w-full flex-1 flex flex-col">
     <ArtistDetailCard
-      flat
-      open={true}
-      bind:currentArtistId
+      flat open={true} bind:currentArtistId
       {curTrack} {playing} {likedSet} {downloadedSet}
       {onToggleLike} {onPlayQueue} {onReveal} {onSong} {showToast}
     />

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { Search, X, History } from '@lucide/svelte';
   import { t } from '../lib/i18n/index.svelte';
 
@@ -13,6 +13,7 @@
     debounceMs = 0,
     disabled = false,
     hideIcon = false,
+    autofocus = false,
     className = '',
     inputClassName = '',
     onSearch,
@@ -28,6 +29,7 @@
     debounceMs?: number;
     disabled?: boolean;
     hideIcon?: boolean;
+    autofocus?: boolean;
     className?: string;
     inputClassName?: string;
     onSearch?: (kw: string) => void;
@@ -35,9 +37,22 @@
     onInput?: (kw: string) => void;
   }>();
 
+  let inputEl = $state<HTMLInputElement | null>(null);
   let historyList = $state<string[]>([]);
   let debounceTimer: any = null;
   let cleanPlaceholder = $derived(placeholder.replace(/^🔍\s*/, ''));
+
+  export function focus() {
+    inputEl?.focus();
+  }
+
+  export function select() {
+    inputEl?.select();
+  }
+
+  export function getInputElement(): HTMLInputElement | null {
+    return inputEl;
+  }
 
   function loadHistory() {
     if (!historyKey || typeof localStorage === 'undefined') return;
@@ -80,6 +95,19 @@
 
   onMount(() => {
     loadHistory();
+    if (autofocus) {
+      tick().then(() => {
+        inputEl?.focus();
+      });
+    }
+  });
+
+  $effect(() => {
+    if (autofocus && inputEl) {
+      tick().then(() => {
+        inputEl?.focus();
+      });
+    }
   });
 
   function handleInputChange(val: string) {
@@ -113,11 +141,19 @@
   <!-- 输入框容器 (使用 type="text" 彻底根除 WebKit 浏览器双重 ✕ 问题) -->
   <div class="relative w-full flex items-center">
     {#if !hideIcon}
-      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-50 pointer-events-none select-none flex items-center justify-center">
+      <button
+        type="button"
+        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100 cursor-pointer p-0 bg-transparent border-none flex items-center justify-center transition-opacity z-10"
+        tabindex="-1"
+        onclick={() => inputEl?.focus()}
+        title={t('common.search')}
+        aria-label={t('common.search')}
+      >
         <Search size={14} />
-      </span>
+      </button>
     {/if}
     <input
+      bind:this={inputEl}
       {type}
       enterkeyhint="search"
       placeholder={cleanPlaceholder || (t('common.search') + '...')}

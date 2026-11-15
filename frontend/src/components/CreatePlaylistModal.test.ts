@@ -9,9 +9,13 @@ vi.mock('../lib/api', () => ({
 describe('CreatePlaylistModal', () => {
   it('renders input and checkbox', async () => {
     const { getByPlaceholderText, getByText } = render(CreatePlaylistModal, { props: { onClose: vi.fn(), onSuccess: vi.fn() } });
-    expect(getByPlaceholderText('输入歌单名称')).toBeInTheDocument();
+    const input = getByPlaceholderText('输入歌单名称');
+    expect(input).toBeInTheDocument();
     expect(getByText('设置为隐私歌单（仅自己可见）')).toBeInTheDocument();
     expect(getByText('立即创建')).toBeDisabled(); // empty name
+
+    await new Promise((r) => setTimeout(r, 60));
+    expect(document.activeElement).toBe(input);
   });
   it('enables create when name filled', async () => {
     const { getByPlaceholderText, getByText } = render(CreatePlaylistModal, { props: { onClose: vi.fn(), onSuccess: vi.fn() } });

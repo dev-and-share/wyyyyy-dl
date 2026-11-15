@@ -125,7 +125,7 @@
         {@const isFailed = taskItem.status === 'FAILED' || taskItem.status === 'ERROR' || (taskItem.status === 'SKIP' && taskItem.errorMsg?.includes('阻止落盘'))}
         <div class="flex justify-between items-center px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/[0.02] border border-black/5 dark:border-white/5 gap-2 {isFailed ? 'border-rose-500/20 bg-rose-500/[0.02]' : ''}">
           <div class="flex-1 min-w-0">
-            <span class="truncate block text-xs {isFailed ? 'text-rose-500 dark:text-rose-400 font-semibold' : 'text-[var(--text-main)] font-medium'}">
+            <span class="truncate block text-xs {isFailed ? 'text-rose-500 dark:text-rose-400 font-semibold' : 'text-[var(--text-main)] font-medium'}" title={taskItem.name || taskItem.id}>
               {taskItem.name || taskItem.id}
             </span>
             {#if taskItem.errorMsg}
