@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "5.5.61",
+  "version": "5.5.62",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -45,6 +45,6 @@
     "dayjs": "^1.11.23",
     "he": "^2.0.0",
     "pinyin-match": "^1.2.10",
-    "pwa-audio-player": "file:vendor/pwa-audio-player-1.2.0.tgz"
+    "pwa-audio-player": "^1.2.1"
   }
 }
