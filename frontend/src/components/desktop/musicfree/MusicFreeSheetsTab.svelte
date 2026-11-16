@@ -9,13 +9,13 @@
   import TrackSourceBadge from '../../TrackSourceBadge.svelte';
   import TrackLikeBtn from '../../TrackLikeBtn.svelte';
   import { isTrackLiked, toggleLike } from '../../../lib/likeStore.svelte';
-  import { filterAndSortSheetPlugins, normalizeTags, buildSheetTrack, extractSheets, extractSheetTracks } from '../../../lib/musicfree/sheetHelpers';
+  import { filterAndSortSheetPlugins, normalizeTags, buildSheetTrack, extractSheets, extractSheetTracks, openMusicFreeTrackSheet } from '../../../lib/musicfree/sheetHelpers';
   import { downloadExternalTrack } from '../../../lib/musicfree/downloadHelper';
   import SlotBtn from '../../SlotBtn.svelte';
   import { t } from '../../../lib/i18n';
   import { getPluginDisplayName } from '../../../lib/musicfree/pluginI18n';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
-  import { Puzzle, Plus, Radio } from '@lucide/svelte';
+  import { Puzzle, Plus, Radio, Pause } from '@lucide/svelte';
 
   let { curTrack = null, playing = false, onPlayQueue, showToast } = $props<{
     curTrack?: any;
@@ -211,6 +211,21 @@
   async function handleDownload(t: any) {
     await downloadExternalTrack(buildTrack(t), t, selectedPluginId);
   }
+
+  function openTrackSheet(trackItem: any, trackObj: any, status: any, isCur: boolean) {
+    openMusicFreeTrackSheet({
+      title: trackItem.title || trackItem.name,
+      artist: trackItem.artist || t('musicfree.unknownArtist'),
+      trackObj,
+      status,
+      isCur,
+      playing,
+      onPlay: () => handlePlaySingle(trackItem),
+      onDownload: () => handleDownload(trackItem),
+      onCache: () => handleCache(trackItem),
+      onAddToPlaylist: () => addToPlaylistSong = trackObj
+    });
+  }
 </script>
 
 <div class="space-y-4">
@@ -230,7 +245,7 @@
           src={selectedSheet.coverImg || selectedSheet.artwork || DEFAULT_VINYL_COVER}
           alt={selectedSheet.title || selectedSheet.name}
           referrerpolicy="no-referrer"
-          class="w-20 h-20 rounded-xl object-cover shadow-md"
+          class="w-20 h-20 rounded-xl object-cover shadow-md shrink-0"
           onerror={(e) => {
             const el = e.currentTarget as HTMLImageElement;
             if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
@@ -241,7 +256,7 @@
             <h2 class="text-base font-bold text-[var(--text-main)] truncate">
               {selectedSheet.title || selectedSheet.name}
             </h2>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium">
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium shrink-0">
               {t('musicfree.pluginSheetBadge')}
             </span>
           </div>
@@ -279,63 +294,62 @@
             {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, trackItem)}
             {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, trackItem.title || trackItem.name, trackItem.artist)}
             {@const isLiked = isTrackLiked(trackObj.id, trackItem.title || trackItem.name, trackItem.artist)}
+            {@const title = trackItem.title || trackItem.name}
+            {@const artist = trackItem.artist || t('musicfree.unknownArtist')}
             <div
-              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group"
+              class="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
             >
-              <span class="w-6 text-center text-xs text-[var(--text-muted)] font-mono">{idx + 1}</span>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold truncate {isCur ? 'text-purple-400' : 'text-[var(--text-main)]'}">
-                    {trackItem.title || trackItem.name}
-                  </span>
-                  <TrackSourceBadge
-                    id={trackObj.id}
-                    name={trackItem.title || trackItem.name}
-                    artist={trackItem.artist}
-                    item={trackObj}
-                    isServer={status.isServer}
-                    isPhone={status.isPhone}
-                    curTrack={curTrack}
-                    class="shrink-0"
-                  />
-                  <TrackLikeBtn
-                    liked={isLiked}
-                    onclick={() => toggleLike(trackObj.id, trackItem.title || trackItem.name, trackItem.artist, trackObj)}
-                  />
+              <span class="w-6 text-center text-xs font-mono shrink-0 {idx < 3 ? 'text-purple-400 font-bold' : 'text-[var(--text-muted)]'}">{idx + 1}</span>
+
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="flex-1 min-w-0 cursor-pointer overflow-hidden py-0.5"
+                onclick={() => handlePlaySingle(trackItem)}
+              >
+                <div class="text-xs sm:text-sm font-semibold truncate min-w-0 mb-0.5 flex items-center gap-1.5 {isCur ? 'text-purple-400 font-bold' : 'text-[var(--text-main)]'}" title={title}>
+                  <span class="truncate">{title}</span>
                 </div>
-                <div class="text-[11px] text-[var(--text-secondary)] truncate">
-                  {trackItem.artist || t('musicfree.unknownArtist')}
+                <div class="text-[11px] text-[var(--text-secondary)] truncate flex items-center gap-1.5 min-w-0">
+                  <TrackSourceBadge id={trackObj.id} name={title} {artist} item={trackObj} isServer={status.isServer} isPhone={status.isPhone} {curTrack} class="shrink-0" />
+                  <TrackLikeBtn liked={isLiked} onclick={() => toggleLike(trackObj.id, title, artist, trackObj)} />
+                  <span class="truncate">{artist}</span>
+                  {#if trackItem.album}
+                    <span class="opacity-40 shrink-0">•</span>
+                    <span class="truncate opacity-80">{trackItem.album}</span>
+                  {/if}
                 </div>
               </div>
 
-              <div class="inline-flex items-center justify-end gap-1.5 shrink-0">
-                <SlotBtn
-                  playing={isCur && playing}
-                  onclick={() => handlePlaySingle(trackItem)}
-                >
+              <!-- 💻 桌面端快捷操作 (>= sm，平排按钮) -->
+              <div class="hidden sm:inline-flex items-center justify-end gap-1.5 shrink-0">
+                <SlotBtn playing={isCur && playing} onclick={() => handlePlaySingle(trackItem)}>
                   {getTrackPlayActionLabel({ isPlaying: isCur && playing, isLocal: status.isLocal, variant: 'desktop' })}
                 </SlotBtn>
-                <SlotBtn
-                  onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
-                  title={t('musicfree.mfSearchTooltip')}
-                >
+                <SlotBtn onclick={() => jumpToMusicFreeSearch(`${title} ${artist}`)} title={t('musicfree.mfSearchTooltip')}>
                   <span class="inline-flex items-center gap-1"><Puzzle size={11} /> {t('musicfree.mfSearchShort')}</span>
                 </SlotBtn>
                 {#if status.isServer}
-                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
-                    {t('common.reveal')}
-                  </SlotBtn>
+                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: title, artist } }))}>{t('common.reveal')}</SlotBtn>
                 {:else}
-                  <SlotBtn onclick={() => handleDownload(trackItem)}>
-                    {t('download.downloadSingle')}
-                  </SlotBtn>
+                  <SlotBtn onclick={() => handleDownload(trackItem)}>{t('download.downloadSingle')}</SlotBtn>
                 {/if}
-                <SlotBtn onclick={() => handleCache(trackItem)}>
-                  {status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}
+                <SlotBtn onclick={() => handleCache(trackItem)}>{status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}</SlotBtn>
+                <SlotBtn onclick={() => addToPlaylistSong = trackObj}><Plus size={12} strokeWidth={2.5} /></SlotBtn>
+              </div>
+
+              <!-- 📱 移动端 SP 精简操作 (试听按钮 + ··· 抽屉) -->
+              <div class="inline-flex sm:hidden items-center justify-end gap-1.5 shrink-0">
+                <SlotBtn playing={isCur && playing} onclick={() => handlePlaySingle(trackItem)}>
+                  {#if isCur && playing}<Pause size={12} fill="currentColor" />{:else}{t('search.play')}{/if}
                 </SlotBtn>
-                <SlotBtn onclick={() => addToPlaylistSong = buildTrack(trackItem)}>
-                  <Plus size={12} strokeWidth={2.5} />
-                </SlotBtn>
+                <button
+                  type="button"
+                  class="w-7 h-7 rounded-lg flex items-center justify-center bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-xs cursor-pointer active:scale-95"
+                  onclick={() => openTrackSheet(trackItem, trackObj, status, isCur)}
+                  title={t('common.moreActions')}
+                  aria-label={t('common.moreActions')}
+                >···</button>
               </div>
             </div>
           {/each}
@@ -395,22 +409,14 @@
             <div class="flex items-center gap-1.5">
               <div class="flex-1 min-w-0 overflow-x-auto flex items-center gap-1.5 no-scrollbar py-0.5">
                 {#each tags as tg}
-                  <button
-                    type="button"
-                    class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors shrink-0 {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-                    onclick={() => loadSheets(tg)}
-                  >
+                  <button type="button" class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors shrink-0 {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => loadSheets(tg)}>
                     {tg.title === '全部' || tg.name === '全部' || tg.id === 'all' ? t('common.all') : (tg.title || tg.name || tg)}
                   </button>
                 {/each}
               </div>
 
               {#if tags.length > 6}
-                <button
-                  type="button"
-                  class="px-2 py-0.5 rounded-lg text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] bg-[var(--btn-secondary-bg)] border-none shrink-0 cursor-pointer"
-                  onclick={() => showAllTags = !showAllTags}
-                >
+                <button type="button" class="px-2 py-0.5 rounded-lg text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)] bg-[var(--btn-secondary-bg)] border-none shrink-0 cursor-pointer" onclick={() => showAllTags = !showAllTags}>
                   {showAllTags ? t('musicfree.collapseTags') : t('musicfree.categoriesWithCount', { count: tags.length })}
                 </button>
               {/if}
@@ -420,14 +426,7 @@
             {#if showAllTags}
               <div class="flex items-center gap-1.5 flex-wrap p-2.5 rounded-xl bg-black/10 dark:bg-white/5 border border-[var(--border-subtle)] max-h-48 overflow-y-auto">
                 {#each tags as tg}
-                  <button
-                    type="button"
-                    class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
-                    onclick={() => {
-                      loadSheets(tg);
-                      showAllTags = false;
-                    }}
-                  >
+                  <button type="button" class="px-2.5 py-0.5 rounded-lg text-xs cursor-pointer border-none transition-colors {selectedTag === tg ? 'bg-purple-500/20 text-purple-400 font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}" onclick={() => { loadSheets(tg); showAllTags = false; }}>
                     {tg.title === '全部' || tg.name === '全部' || tg.id === 'all' ? t('common.all') : (tg.title || tg.name || tg)}
                   </button>
                 {/each}
