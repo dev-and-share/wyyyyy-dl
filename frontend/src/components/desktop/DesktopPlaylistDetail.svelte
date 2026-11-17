@@ -8,7 +8,9 @@
     getPlaylist,
     getPlaylistSearchKeyword,
     loadPlaylistDetail,
-    recordPlaylistPlay
+    recordPlaylistPlay,
+    getPlaylistPlayCount,
+    clearPlaylistPlayCount
   } from '../../lib/playlist.svelte';
   import { api } from '../../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
@@ -46,6 +48,7 @@
   let hasMore = $derived(desktopCurPage < totalPages);
   let paged = $derived(filteredTracks.slice(0, desktopCurPage * pageSize));
   let playlist = $derived(getPlaylist());
+  let playCount = $derived(playlist?.id ? getPlaylistPlayCount(playlist.id) : 0);
 
   let sentinelEl = $state<HTMLElement | null>(null);
   let isLoadingNext = $state(false);
@@ -83,32 +86,20 @@
   });
 
   $effect(() => {
-    if (desktopCurPage > totalPages) {
-      desktopCurPage = Math.max(1, totalPages);
-    }
+    if (desktopCurPage > totalPages) desktopCurPage = Math.max(1, totalPages);
   });
 
   $effect(() => {
     if (!sentinelEl || typeof IntersectionObserver === 'undefined') return;
-
     const observer = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry && entry.isIntersecting) {
-        loadNextPage();
-      }
-    }, {
-      rootMargin: '200px'
-    });
-
+      if (entries[0]?.isIntersecting) loadNextPage();
+    }, { rootMargin: '200px' });
     observer.observe(sentinelEl);
-
     const scrollParent = sentinelEl.closest('.app-main-container') || window;
     const onScroll = () => checkSentinel();
     scrollParent.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
-
     checkSentinel();
-
     return () => {
       observer.disconnect();
       scrollParent.removeEventListener('scroll', onScroll);
@@ -116,14 +107,9 @@
     };
   });
 
-  let downloadedCount = $derived(
-    allTracks.filter((t: any) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length
-  );
+  let downloadedCount = $derived(allTracks.filter((t: any) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length);
   let pendingCount = $derived(Math.max(0, allTracks.length - downloadedCount));
-
-  let isCurrentPlaylistLoaded = $derived(
-    !!playlist && String(playlist.id) === String(playlistId)
-  );
+  let isCurrentPlaylistLoaded = $derived(!!playlist && String(playlist.id) === String(playlistId));
 
   let loadError = $state('');
   let showForkModal = $state(false);
@@ -158,12 +144,7 @@
   async function handlePlayAll() {
     if (!allTracks.length) return;
     if (playlist?.id) recordPlaylistPlay(playlist.id);
-    const queue = allTracks.map((item: any) => {
-      const status = getTrackSourceStatus(item.id, item.isLocal, curTrack);
-      return toPlayerTrack(item, {
-        isLocal: status.isLocal
-      });
-    });
+    const queue = allTracks.map((item: any) => toPlayerTrack(item, { isLocal: getTrackSourceStatus(item.id, item.isLocal, curTrack).isLocal }));
     onPlayQueue(queue, { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false });
     showToast(t('playlist.playingPlaylistToast', { name: playlist?.name || t('playlist.title'), count: queue.length }), 'success', 2000);
   }
@@ -183,11 +164,8 @@
     cachingTrackId = item.id;
     try {
       const res = await cacheTrackToBrowser({
-        id: item.id,
-        name: item.name,
-        artist: formatArtist(item),
-        cover: item.al?.picUrl || DEFAULT_VINYL_COVER,
-        album: item.al?.name || item.album
+        id: item.id, name: item.name, artist: formatArtist(item),
+        cover: item.al?.picUrl || DEFAULT_VINYL_COVER, album: item.al?.name || item.album
       });
       showToast(res.msg || (res.success ? t('search.cachedToBrowser') : t('common.failed')), res.success ? 'success' : 'error');
     } catch (e: any) {
@@ -203,20 +181,26 @@
     try {
       const res = await api.playlistSubscribe(String(playlist.id), nextSub);
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || (nextSub ? t('playlist.subscribeFailedRiskPrompt') : t('playlist.unsubscribeFailed')), 'warning', 5000);
-        return;
+        return showToast(res.msg || (nextSub ? t('playlist.subscribeFailedRiskPrompt') : t('playlist.unsubscribeFailed')), 'warning', 5000);
       }
       playlist.subscribed = nextSub;
       showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
       window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
-    } catch (e: any) {
+    } catch {
       showToast(t('playlist.operateExceptionPrompt'), 'warning', 4000);
     }
   }
 
   function handleForkSuccess(newId: string) {
-    if (newId) {
-      loadData(newId);
+    if (newId) loadData(newId);
+  }
+
+  function handleClearPlayCount() {
+    if (!playlist?.id) return;
+    if (playCount <= 0) return showToast(t('playlist.playCountAlreadyZero'), 'info');
+    if (window.confirm(t('playlist.confirmClearPlayCount', { name: cleanPlaylistDisplayName(playlist) }))) {
+      clearPlaylistPlayCount(playlist.id);
+      showToast(t('playlist.playCountClearedSuccess'), 'success');
     }
   }
 </script>
@@ -274,6 +258,15 @@
               <span>{t('playlist.diskStats', { downloaded: downloadedCount, pending: pendingCount })}</span>
             </span>
           {/if}
+          <button
+            type="button"
+            data-testid="detail-playcount-badge"
+            class="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0 inline-flex items-center gap-1 cursor-pointer transition-all border select-none {playCount > 0 ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border-amber-500/30 active:scale-95' : 'bg-white/5 text-[var(--text-muted)] hover:bg-white/10 border-[var(--border-subtle)] active:scale-95'}"
+            title={playCount > 0 ? `${t('myPlaylists.historyPlayTooltip', { count: playCount })} (${t('playlist.doubleClickToClear')})` : t('playlist.doubleClickToClear')}
+            ondblclick={handleClearPlayCount}
+          >
+            {t('myPlaylists.historyPlayCount', { count: playCount })}
+          </button>
         </p>
 
         <!-- 快捷操作按钮组 -->

@@ -324,6 +324,15 @@ export function recordPlaylistPlay(playlistId: string | number) {
   } catch {}
 }
 
+export function clearPlaylistPlayCount(playlistId: string | number) {
+  if (!playlistId) return;
+  const idStr = String(playlistId);
+  delete playlistPlayCounts[idStr];
+  try {
+    localStorage.setItem(STORAGE_KEY_PLAYLIST_PLAY_COUNTS, JSON.stringify($state.snapshot(playlistPlayCounts)));
+  } catch {}
+}
+
 export function getPlaylistPlayCount(playlistId: string | number): number {
   return playlistPlayCounts[String(playlistId)] || 0;
 }

@@ -3,7 +3,7 @@
   import {
     allTracks, getFilteredTracks, getTotalPages, getPlaylist, getCurPage,
     getPlaylistSearchKeyword, isPlaylistLoading, incPage, recordPlaylistPlay,
-    loadPlaylistDetail, getPaged
+    loadPlaylistDetail, getPaged, getPlaylistPlayCount, clearPlaylistPlayCount
   } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
@@ -28,6 +28,7 @@
   let totalPages = $derived(getTotalPages());
   let playlist = $derived(getPlaylist());
   let curPage = $derived(getCurPage());
+  let playCount = $derived(playlist?.id ? getPlaylistPlayCount(playlist.id) : 0);
   let filteredTracks = $derived(getFilteredTracks());
   let hasMore = $derived(curPage < totalPages);
 
@@ -93,9 +94,7 @@
   }
 
   function handleTouchEnd() {
-    if (isPullingAtTop && pullDistance >= PULL_THRESHOLD) {
-      triggerScrollToTop();
-    }
+    if (isPullingAtTop && pullDistance >= PULL_THRESHOLD) triggerScrollToTop();
     isPullingAtTop = false;
     pullDistance = 0;
   }
@@ -120,9 +119,7 @@
     return () => window.removeEventListener('wyy:scroll-list-top', handleScrollListTop);
   });
 
-  $effect(() => {
-    pidInput = pid;
-  });
+  $effect(() => { pidInput = pid; });
 
   let lastLoadTime = 0;
   const NEXT_PAGE_COOLDOWN_MS = 250;
@@ -131,19 +128,13 @@
 
   function loadNextPage(isInitialAutoFill = false) {
     const now = Date.now();
-    if (!hasMore || isLoadingNext) return;
-    if (now - lastLoadTime < NEXT_PAGE_COOLDOWN_MS) return;
-
+    if (!hasMore || isLoadingNext || now - lastLoadTime < NEXT_PAGE_COOLDOWN_MS) return;
     isLoadingNext = true;
     lastLoadTime = now;
     incPage(1);
-
     setTimeout(() => {
       isLoadingNext = false;
-      // 🛡️ 仅在视口初次尚未填满且未达到安全上限 (3页/60首) 时受控补满，绝不无限制自激翻页
-      if (isInitialAutoFill && curPage < MAX_AUTO_FILL_PAGES) {
-        checkSentinel(true);
-      }
+      if (isInitialAutoFill && curPage < MAX_AUTO_FILL_PAGES) checkSentinel(true);
     }, NEXT_PAGE_COOLDOWN_MS);
   }
 
@@ -176,9 +167,7 @@
     });
   }
 
-  function handleListScroll() {
-    throttledCheckSentinel();
-  }
+  function handleListScroll() { throttledCheckSentinel(); }
 
   $effect(() => {
     if (!sentinelEl || typeof IntersectionObserver === 'undefined') return;
@@ -212,13 +201,12 @@
     try {
       const res = await api.playlistSubscribe(String(playlist.id), nextSub);
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || (nextSub ? t('playlist.subscribeRiskWarning') : t('playlist.unsubscribeFailed')), 'warning', 5000);
-        return;
+        return showToast(res.msg || (nextSub ? t('playlist.subscribeRiskWarning') : t('playlist.unsubscribeFailed')), 'warning', 5000);
       }
       playlist.subscribed = nextSub;
       showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
       window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
-    } catch (e: any) {
+    } catch {
       showToast(t('playlist.riskTip'), 'warning', 4000);
     }
   }
@@ -274,6 +262,15 @@
       ]
     });
   }
+
+  function handleClearPlayCount() {
+    if (!playlist?.id) return;
+    if (playCount <= 0) return showToast(t('playlist.playCountAlreadyZero'), 'info');
+    if (window.confirm(t('playlist.confirmClearPlayCount', { name: playlist.name || '' }))) {
+      clearPlaylistPlayCount(playlist.id);
+      showToast(t('playlist.playCountClearedSuccess'), 'success');
+    }
+  }
 </script>
 
 <AccordionCard title={t('playlist.sectionDetail')} bind:open flat accent="blue" {onToggle}>
@@ -287,11 +284,7 @@
         class="w-full pl-3 pr-2 !py-1.5 text-xs rounded-lg"
         bind:value={pidInput}
         disabled={isPlaylistLoading()}
-        onkeydown={(e) => {
-          if (e.key === 'Enter' && !isPlaylistLoading()) {
-            onViewPlaylist(pidInput);
-          }
-        }}
+        onkeydown={(e) => { if (e.key === 'Enter' && !isPlaylistLoading()) onViewPlaylist(pidInput); }}
       />
     </div>
     <button
@@ -319,9 +312,7 @@
     <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm min-h-[220px]">
       <Loader2 size={36} class="animate-spin text-red-500" />
       <div class="text-sm font-semibold text-[var(--text-main)]">{t('playlist.fetchingData', { id: pid })}</div>
-      <p class="text-xs text-[var(--text-muted)] text-center max-w-sm m-0 leading-relaxed">
-        {t('playlist.fetchingDataHint')}
-      </p>
+      <p class="text-xs text-[var(--text-muted)] text-center max-w-sm m-0 leading-relaxed">{t('playlist.fetchingDataHint')}</p>
       <div class="w-full max-w-sm flex flex-col gap-2 mt-2">
         <div class="h-12 rounded-xl bg-white/5 animate-pulse w-full"></div>
         <div class="h-6 rounded-lg bg-white/5 animate-pulse w-4/5"></div>
@@ -349,6 +340,15 @@
         title={t('playlist.playAllTooltip')}
       >
         <Play size={13} fill="currentColor" /><span>{t('playlist.playAll')}</span>
+      </button>
+      <button
+        type="button"
+        data-testid="sp-detail-playcount-badge"
+        class="btn-secondary !text-amber-400 !border-amber-500/30"
+        ondblclick={handleClearPlayCount}
+        title={playCount > 0 ? `${t('myPlaylists.historyPlayTooltip', { count: playCount })} (${t('playlist.doubleClickToClear')})` : t('playlist.doubleClickToClear')}
+      >
+        <span>{t('myPlaylists.historyPlayCount', { count: playCount })}</span>
       </button>
       <button
         type="button"

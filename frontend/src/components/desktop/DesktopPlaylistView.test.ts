@@ -1,7 +1,8 @@
 import { render, fireEvent } from '@testing-library/svelte';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import DesktopPlaylistView from './DesktopPlaylistView.svelte';
 import { routerState } from '../../lib/router.svelte';
+import { recordPlaylistPlay, clearPlaylistPlayCount, playlistPlayCounts } from '../../lib/playlist.svelte';
 
 vi.mock('../../lib/api', () => ({
   api: {
@@ -99,5 +100,50 @@ describe('DesktopPlaylistView', () => {
     });
 
     expect(queryByText('未找到歌单信息')).toBeNull();
+  });
+
+  it('renders 🔥 play count badge in playlist detail, and prompts confirm on double click to clear', async () => {
+    // 预设播放 5 次
+    for (const k of Object.keys(playlistPlayCounts)) delete playlistPlayCounts[k];
+    recordPlaylistPlay('101');
+    recordPlaylistPlay('101');
+    recordPlaylistPlay('101');
+    recordPlaylistPlay('101');
+    recordPlaylistPlay('101');
+
+    const showToastMock = vi.fn();
+    const { getByTestId, findByTestId } = render(DesktopPlaylistView, {
+      props: {
+        playlistId: '101',
+        likedSet: new Set<number>(),
+        onToggleLike: vi.fn(),
+        onPlayQueue: vi.fn(),
+        showToast: showToastMock
+      }
+    });
+
+    const badge = await findByTestId('detail-playcount-badge');
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toContain('🔥 5次');
+
+    // 1. 双击时用户点击“取消”
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await fireEvent.dblClick(badge);
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('周杰伦经典'));
+    expect(badge.textContent).toContain('🔥 5次');
+
+    // 2. 双击时用户点击“确定”
+    confirmSpy.mockReturnValue(true);
+    await fireEvent.dblClick(badge);
+    expect(badge.textContent).toContain('🔥 0次');
+    expect(showToastMock).toHaveBeenCalledWith('已清空歌单播放次数', 'success');
+
+    // 3. 再次双击已为 0 的徽标
+    confirmSpy.mockClear();
+    await fireEvent.dblClick(badge);
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(showToastMock).toHaveBeenCalledWith('播放次数已经是 0 了', 'info');
+
+    confirmSpy.mockRestore();
   });
 });
