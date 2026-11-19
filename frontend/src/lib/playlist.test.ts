@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   recordPlaylistPlay,
+  clearPlaylistPlayCount,
   getPlaylistPlayCount,
   isFavoritePlaylist,
   sortPlaylistsByPlayCount,
@@ -25,9 +26,25 @@ describe('Playlist Play Count & Sorting Contract', () => {
     expect(getPlaylistPlayCount('1001')).toBe(2);
 
     // Verify localStorage persistence
-    const raw = localStorage.getItem('wyyyy_playlist_play_counts');
+    const raw = localStorage.getItem('wyy_playlist_play_counts');
     expect(raw).toBeTruthy();
     expect(JSON.parse(raw!)).toEqual({ '1001': 2 });
+  });
+
+  it('clears play count and syncs to localStorage', () => {
+    recordPlaylistPlay('2001');
+    recordPlaylistPlay('2001');
+    recordPlaylistPlay('2002');
+    expect(getPlaylistPlayCount('2001')).toBe(2);
+    expect(getPlaylistPlayCount('2002')).toBe(1);
+
+    clearPlaylistPlayCount('2001');
+    expect(getPlaylistPlayCount('2001')).toBe(0);
+    expect(getPlaylistPlayCount('2002')).toBe(1);
+
+    const raw = localStorage.getItem('wyy_playlist_play_counts');
+    expect(raw).toBeTruthy();
+    expect(JSON.parse(raw!)).toEqual({ '2002': 1 });
   });
 
   it('correctly identifies ONLY the single undeletable system favorite playlist', () => {

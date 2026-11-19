@@ -4,9 +4,10 @@
   import SlotBtn from './SlotBtn.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
   import { formatBytes, DEFAULT_VINYL_COVER } from '../lib/utils';
-  import { autoCacheState, setAutoCacheEnabled } from '../lib/pwaCache.svelte';
+  import { autoCacheState, setAutoCacheEnabled, getSongPlayCount } from '../lib/pwaCache.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { playerStore } from '../lib/playerStore.svelte';
+  import { RefreshCw, Trash2, Play, Pause, MoreHorizontal, Loader2 } from '@lucide/svelte';
   import { t } from '../lib/i18n';
   import {
     type BrowserCacheItem,
@@ -156,7 +157,7 @@
     });
   }
 
-  let wasOpen = false;
+  let wasOpen = open;
   $effect(() => {
     if (accBrowserCache && !wasOpen) {
       loadList();
@@ -165,20 +166,25 @@
   });
 
   onMount(() => {
-    loadList();
+    if (accBrowserCache) {
+      loadList();
+    }
     const reload = () => { loadList(); };
-    window.addEventListener('wyyyy:browser-cache-updated', reload);
-    window.addEventListener('wyyyy:song-play-updated', reload);
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible' && accBrowserCache) loadList();
+    const onPlayUpdated = () => {
+      if (browserCacheList.length === 0) return;
+      browserCacheList = browserCacheList
+        .map((item) => ({
+          ...item,
+          playCount: item.id ? Math.max(item.playCount, getSongPlayCount(item.id)) : item.playCount
+        }))
+        .sort((a, b) => (b.playCount !== a.playCount ? b.playCount - a.playCount : b.time - a.time));
     };
-    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('wyy:browser-cache-updated', reload);
+    window.addEventListener('wyy:song-play-updated', onPlayUpdated);
 
     return () => {
-      window.removeEventListener('wyyyy:browser-cache-updated', reload);
-      window.removeEventListener('wyyyy:song-play-updated', reload);
-      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('wyy:browser-cache-updated', reload);
+      window.removeEventListener('wyy:song-play-updated', onPlayUpdated);
     };
   });
 </script>
@@ -189,12 +195,13 @@
     <div class="stat-top-row">
       <button
         type="button"
-        class="btn-secondary cache-action-btn"
+        class="btn-secondary cache-action-btn flex items-center gap-1.5"
         onclick={loadList}
         disabled={browserCacheLoading}
         title={t('cache.rescanTooltip')}
       >
-        {browserCacheLoading ? t('cache.scanning') : '🔄 ' + t('common.refresh')}
+        <RefreshCw size={12} class={browserCacheLoading ? 'animate-spin' : ''} />
+        <span>{browserCacheLoading ? t('cache.scanning') : t('common.refresh')}</span>
       </button>
 
       <!-- Auto Cache Checkbox -->
@@ -214,12 +221,13 @@
       <!-- 🗑️ 清空按钮紧凑同行右侧或并列展示 -->
       <button
         type="button"
-        class="btn-secondary cache-action-btn btn-danger"
+        class="btn-secondary cache-action-btn btn-danger flex items-center gap-1.5"
         onclick={handleClearAll}
         disabled={browserCacheLoading || browserCacheList.length === 0}
         title={t('cache.clearAllTooltip')}
       >
-        🗑️ {t('common.clear')}
+        <Trash2 size={12} />
+        <span>{t('common.clear')}</span>
       </button>
     </div>
 
@@ -337,9 +345,18 @@
             playing={isPlayingThis}
             onclick={() => onPlayQueue([toBrowserTrack(item)])}
           >
-            {isPlayingThis ? '⏸ ' + t('player.playing') : '▶️ ' + t('player.play')}
+            {#if isPlayingThis}
+              <Pause size={11} fill="currentColor" />
+              <span>{t('player.playing')}</span>
+            {:else}
+              <Play size={11} fill="currentColor" />
+              <span>{t('player.play')}</span>
+            {/if}
           </SlotBtn>
-          <SlotBtn onclick={() => handleDeleteItem(item)}>🗑️ {t('common.delete')}</SlotBtn>
+          <SlotBtn onclick={() => handleDeleteItem(item)}>
+            <Trash2 size={11} />
+            <span>{t('common.delete')}</span>
+          </SlotBtn>
         </div>
 
         <!-- SP Mobile Actions -->
@@ -348,16 +365,21 @@
             playing={isPlayingThis}
             onclick={() => onPlayQueue([toBrowserTrack(item)])}
           >
-            {isPlayingThis ? '⏸' : '▶️ ' + t('player.play')}
+            {#if isPlayingThis}
+              <Pause size={11} fill="currentColor" />
+            {:else}
+              <Play size={11} fill="currentColor" />
+              <span>{t('player.play')}</span>
+            {/if}
           </SlotBtn>
           <button
             type="button"
-            class="btn-more-actions"
+            class="btn-more-actions flex items-center justify-center"
             onclick={() => openTrackSheet(item)}
             title={t('common.moreActions')}
             aria-label={t('common.moreActions')}
           >
-            ···
+            <MoreHorizontal size={13} />
           </button>
         </div>
       </li>

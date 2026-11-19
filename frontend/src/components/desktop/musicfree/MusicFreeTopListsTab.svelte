@@ -3,7 +3,7 @@
   import { musicFreeStore } from '../../../lib/musicfree/musicFreeStore.svelte';
   import { musicFreeAdapter } from '../../../lib/adapters/musicFreeAdapter';
   import { DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../../lib/utils';
-  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, isVipOrPaidTrack } from '../../../lib/player/trackStatus.svelte';
+  import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack } from '../../../lib/player/trackStatus.svelte';
   import { jumpToMusicFreeSearch } from '../../../lib/router.svelte';
   import { cacheTrackToBrowser } from '../../../lib/pwaCache.svelte';
   import TrackSourceBadge from '../../TrackSourceBadge.svelte';
@@ -13,8 +13,11 @@
   import { api } from '../../../lib/api';
   import { startTaskPolling } from '../../../lib/taskStore.svelte';
   import { t } from '../../../lib/i18n';
+  import { getPluginDisplayName, getTopListGroupTitle, getTopListDisplayInfo } from '../../../lib/musicfree/pluginI18n';
   import SlotBtn from '../../SlotBtn.svelte';
   import AddToPlaylistModal from '../../AddToPlaylistModal.svelte';
+  import { openMusicFreeTrackSheet } from '../../../lib/musicfree/sheetHelpers';
+  import { Puzzle, Plus, Trophy, Pause } from '@lucide/svelte';
 
   let {
     curTrack = null,
@@ -43,7 +46,16 @@
     }>;
   }>>([]);
   let activePluginId = $state<string>('');
-  const currentGroup = $derived(topListGroups.find((g) => g.pluginId === activePluginId) || topListGroups[0]);
+  const effectivePluginId = $derived.by(() => {
+    if (!topListGroups || topListGroups.length === 0) return '';
+    if (activePluginId && topListGroups.some((g) => g.pluginId === activePluginId)) {
+      return activePluginId;
+    }
+    return topListGroups[0]?.pluginId ?? '';
+  });
+  const currentGroup = $derived(
+    topListGroups.find((g) => g.pluginId === effectivePluginId) || topListGroups[0]
+  );
 
   let selectedTopList = $state<any>(null);
   let detailLoading = $state(false);
@@ -59,7 +71,7 @@
     const cached = getApiCache('mf_toplists_groups');
     if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
       topListGroups = cached.data;
-      if (!activePluginId && topListGroups.length > 0) {
+      if (!activePluginId || !topListGroups.some((g) => g.pluginId === activePluginId)) {
         activePluginId = topListGroups[0].pluginId;
       }
       loading = false;
@@ -79,8 +91,10 @@
       const priorityWeights: Record<string, number> = {
         '小枸音乐': 1000,
         '酷狗音乐': 999,
+        '酷狗音乐 (官方)': 999,
         '小秋音乐': 100,
         'QQ音乐': 99,
+        'QQ音乐 (官方)': 99,
         '小蜗音乐': 95,
         '酷我音乐': 94,
         '网易音乐': 85,
@@ -95,7 +109,7 @@
       if (sorted.length > 0) {
         topListGroups = sorted;
         setApiCache('mf_toplists_groups', sorted);
-        if (!activePluginId) {
+        if (!activePluginId || !sorted.some((g) => g.pluginId === activePluginId)) {
           activePluginId = sorted[0].pluginId;
         }
       }
@@ -109,7 +123,7 @@
 
   async function handleSelectChart(pluginId: string, chart: any, force = false) {
     if (!chart || (chart.id == null && !chart.topId)) {
-      showToast('该榜单缺少有效 ID', 'warning');
+      showToast(t('musicfree.missingChartId'), 'warning');
       return;
     }
     const chartId = chart.id ?? chart.topId;
@@ -135,13 +149,13 @@
         chartTracks = list;
         setApiCache(cacheKey, list);
       } else if (!chartTracks.length) {
-        showToast('该榜单暂无有效曲目', 'info');
+        showToast(t('musicfree.emptyChart'), 'info');
       }
     } catch (e: any) {
       console.warn('获取榜单曲目失败:', e);
       if (!chartTracks.length) {
         chartTracks = [];
-        showToast('该榜单曲目解析暂不可用', 'warning');
+        showToast(t('musicfree.chartParseError'), 'warning');
       }
     } finally {
       detailLoading = false;
@@ -173,7 +187,7 @@
   function handlePlayAll() {
     if (!chartTracks.length || !onPlayQueue || !selectedTopList) return;
     onPlayQueue(chartTracks.map(buildChartTrack), { startIndex: 0, isExplicitTrack: true });
-    showToast(`开始播放「${selectedTopList.title || selectedTopList.name}」`, 'info');
+    showToast(t('musicfree.startPlayingChart', { name: selectedTopList.title || selectedTopList.name }), 'info');
   }
 
   function handlePlaySingle(t: any) {
@@ -190,10 +204,26 @@
   async function handleDownload(t: any) {
     await downloadExternalTrack(buildChartTrack(t), t, selectedTopList?._pluginId);
   }
+
+  function openTrackSheet(trackItem: any, trackObj: any, status: any, isCur: boolean) {
+    openMusicFreeTrackSheet({
+      title: trackItem.title || trackItem.name,
+      artist: trackItem.artist || t('musicfree.unknownArtist'),
+      trackObj,
+      status,
+      isCur,
+      playing,
+      onPlay: () => handlePlaySingle(trackItem),
+      onDownload: () => handleDownload(trackItem),
+      onCache: () => handleCache(trackItem),
+      onAddToPlaylist: () => addToPlaylistSong = trackObj
+    });
+  }
 </script>
 
 <div class="space-y-4">
   {#if selectedTopList}
+    {@const detailInfo = getTopListDisplayInfo(selectedTopList)}
     <!-- 排行榜详情视图 -->
     <div class="space-y-4">
       <button
@@ -201,15 +231,15 @@
         class="text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] flex items-center gap-1.5 cursor-pointer bg-transparent border-none p-0"
         onclick={() => selectedTopList = null}
       >
-        <span>←</span> <span>返回排行榜列表</span>
+        <span>←</span> <span>{t('musicfree.backToCharts')}</span>
       </button>
 
       <div class="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
         <img
           src={selectedTopList.coverImg || selectedTopList.artwork || DEFAULT_VINYL_COVER}
-          alt={selectedTopList.title || selectedTopList.name}
+          alt={detailInfo.title}
           referrerpolicy="no-referrer"
-          class="w-20 h-20 rounded-xl object-cover shadow-md"
+          class="w-20 h-20 rounded-xl object-cover shadow-md shrink-0"
           onerror={(e) => {
             const el = e.currentTarget as HTMLImageElement;
             if (el.src !== DEFAULT_VINYL_COVER) el.src = DEFAULT_VINYL_COVER;
@@ -218,14 +248,14 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1">
             <h2 class="text-base font-bold text-[var(--text-main)] truncate">
-              {selectedTopList.title || selectedTopList.name}
+              {detailInfo.title}
             </h2>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium">
-              官方榜单
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium shrink-0">
+              {t('musicfree.officialChartBadge')}
             </span>
           </div>
           <p class="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2">
-            {selectedTopList.description || '该榜单由音源插件提供'}
+            {detailInfo.description || t('musicfree.chartProvidedByPlugin')}
           </p>
           <div class="flex items-center gap-2">
             <button
@@ -234,9 +264,9 @@
               class="btn-primary text-xs px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 !bg-purple-600 hover:!bg-purple-500"
               onclick={handlePlayAll}
             >
-              <span>▶ 播放全部</span>
+              <span>▶ {t('musicfree.playAll')}</span>
             </button>
-            <span class="text-xs text-[var(--text-muted)]">共 {chartTracks.length} 首歌曲</span>
+            <span class="text-xs text-[var(--text-muted)]">{t('musicfree.chartSongCount', { count: chartTracks.length })}</span>
           </div>
         </div>
       </div>
@@ -245,78 +275,71 @@
       {#if detailLoading}
         <div class="py-16 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-2">
           <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <span>正在获取榜单曲目...</span>
+          <span>{t('musicfree.fetchingChartTracks')}</span>
         </div>
       {:else}
         <div class="flex flex-col gap-1.5">
           {#each chartTracks as trackItem, idx (trackItem.id || idx)}
             {@const trackObj = buildChartTrack(trackItem)}
             {@const isCur = isSameTrack(curTrack, trackObj) || isSameTrack(curTrack, trackItem)}
-            {@const isVip = isVipOrPaidTrack(trackItem) || isVipOrPaidTrack(trackObj)}
             {@const status = getTrackSourceStatus(trackObj.id, false, curTrack, true, trackItem.title || trackItem.name, trackItem.artist)}
             {@const isLiked = isTrackLiked(trackObj.id, trackItem.title || trackItem.name, trackItem.artist)}
+            {@const title = trackItem.title || trackItem.name}
+            {@const artist = trackItem.artist || t('musicfree.unknownArtist')}
             <div
-              class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 transition-all group {isVip ? 'opacity-90' : ''}"
+              class="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border-subtle)] hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all group select-none {isCur ? 'border-purple-500/50 bg-purple-500/[0.05]' : ''}"
             >
-              <span class="w-6 text-center text-xs text-[var(--text-muted)] font-mono">{idx + 1}</span>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold truncate {isCur ? 'text-purple-400' : isVip ? 'text-[var(--text-secondary)] opacity-80' : 'text-[var(--text-main)]'}">
-                    {trackItem.title || trackItem.name}
-                  </span>
-                  {#if isVip}
-                    <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase shrink-0 shadow-2xs select-none" title="版权付费歌曲，可点击右侧「聚合搜」跨源播放">
-                      VIP
-                    </span>
-                  {/if}
-                  <TrackSourceBadge
-                    id={trackObj.id}
-                    name={trackItem.title || trackItem.name}
-                    artist={trackItem.artist}
-                    item={trackObj}
-                    isServer={status.isServer}
-                    isPhone={status.isPhone}
-                    curTrack={curTrack}
-                    class="shrink-0"
-                  />
-                  <TrackLikeBtn
-                    liked={isLiked}
-                    onclick={() => toggleLike(trackObj.id, trackItem.title || trackItem.name, trackItem.artist, trackObj)}
-                  />
+              <span class="w-6 text-center text-xs font-mono shrink-0 {idx < 3 ? 'text-purple-400 font-bold' : 'text-[var(--text-muted)]'}">{idx + 1}</span>
+
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="flex-1 min-w-0 cursor-pointer overflow-hidden py-0.5"
+                onclick={() => handlePlaySingle(trackItem)}
+              >
+                <div class="text-xs sm:text-sm font-semibold truncate min-w-0 mb-0.5 flex items-center gap-1.5 {isCur ? 'text-purple-400 font-bold' : 'text-[var(--text-main)]'}" title={title}>
+                  <span class="truncate">{title}</span>
                 </div>
-                <div class="text-[11px] text-[var(--text-secondary)] truncate">
-                  {trackItem.artist || '未知歌手'}
+                <div class="text-[11px] text-[var(--text-secondary)] truncate flex items-center gap-1.5 min-w-0">
+                  <TrackSourceBadge id={trackObj.id} name={title} {artist} item={trackObj} isServer={status.isServer} isPhone={status.isPhone} {curTrack} class="shrink-0" />
+                  <TrackLikeBtn liked={isLiked} onclick={() => toggleLike(trackObj.id, title, artist, trackObj)} />
+                  <span class="truncate">{artist}</span>
+                  {#if trackItem.album}
+                    <span class="opacity-40 shrink-0">•</span>
+                    <span class="truncate opacity-80">{trackItem.album}</span>
+                  {/if}
                 </div>
               </div>
 
-              <div class="inline-flex items-center justify-end gap-1.5 shrink-0">
-                <SlotBtn
-                  playing={isCur && playing}
-                  onclick={() => handlePlaySingle(trackItem)}
-                >
+              <!-- 💻 桌面端快捷操作 (>= sm，平排按钮) -->
+              <div class="hidden sm:inline-flex items-center justify-end gap-1.5 shrink-0">
+                <SlotBtn playing={isCur && playing} onclick={() => handlePlaySingle(trackItem)}>
                   {getTrackPlayActionLabel({ isPlaying: isCur && playing, isLocal: status.isLocal, variant: 'desktop' })}
                 </SlotBtn>
-                <SlotBtn
-                  onclick={() => jumpToMusicFreeSearch(`${trackItem.title || trackItem.name} ${trackItem.artist || ''}`)}
-                  title="跳转至「MusicFree 聚合」跨多音源检索可用版本"
-                >
-                  🧩 聚合搜
+                <SlotBtn onclick={() => jumpToMusicFreeSearch(`${title} ${artist}`)} title={t('musicfree.mfSearchTooltip')}>
+                  <span class="inline-flex items-center gap-1"><Puzzle size={11} /> {t('musicfree.mfSearchShort')}</span>
                 </SlotBtn>
                 {#if status.isServer}
-                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: { id: trackObj.id, name: trackItem.title || trackItem.name, artist: trackItem.artist } }))}>
-                    {t('common.reveal')}
-                  </SlotBtn>
+                  <SlotBtn onclick={() => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: title, artist } }))}>{t('common.reveal')}</SlotBtn>
                 {:else}
-                  <SlotBtn onclick={() => handleDownload(trackItem)}>
-                    {t('download.downloadSingle')}
-                  </SlotBtn>
+                  <SlotBtn onclick={() => handleDownload(trackItem)}>{t('download.downloadSingle')}</SlotBtn>
                 {/if}
-                <SlotBtn onclick={() => handleCache(trackItem)}>
-                  {status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}
+                <SlotBtn onclick={() => handleCache(trackItem)}>{status.isPhone ? t('search.cachedShort') : t('search.cacheShort')}</SlotBtn>
+                <SlotBtn onclick={() => addToPlaylistSong = trackObj}><Plus size={12} strokeWidth={2.5} /></SlotBtn>
+              </div>
+
+              <!-- 📱 移动端 SP 精简操作 (试听按钮 + ··· 抽屉) -->
+              <div class="inline-flex sm:hidden items-center justify-end gap-1.5 shrink-0">
+                <SlotBtn playing={isCur && playing} onclick={() => handlePlaySingle(trackItem)}>
+                  {#if isCur && playing}<Pause size={12} fill="currentColor" />{:else}{t('search.play')}{/if}
                 </SlotBtn>
-                <SlotBtn onclick={() => addToPlaylistSong = buildChartTrack(trackItem)}>
-                  ➕
-                </SlotBtn>
+                <button
+                  type="button"
+                  class="w-7 h-7 rounded-lg flex items-center justify-center bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-xs cursor-pointer active:scale-95"
+                  onclick={() => openTrackSheet(trackItem, trackObj, status, isCur)}
+                  title={t('common.moreActions')}
+                  aria-label={t('common.moreActions')}
+                >···</button>
               </div>
             </div>
           {/each}
@@ -328,27 +351,30 @@
     {#if loading}
       <div class="py-20 text-center text-xs text-[var(--text-muted)] flex flex-col items-center gap-3">
         <div class="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin"></div>
-        <span>正在加载各音源排行榜...</span>
+        <span>{t('musicfree.loadingCharts')}</span>
       </div>
     {:else if topListGroups.length === 0}
       <div class="py-20 text-center text-xs text-[var(--text-muted)] p-8 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-        当前已启用的音源插件暂未提供官方排行榜接口。可在「插件管理」中导入包含榜单功能的音源插件。
+        {t('musicfree.noChartsAvailable')}
       </div>
     {:else}
       <!-- 🏆 音源下拉选择器 (默认酷狗 Kugou 官方榜单) -->
       <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] shadow-xs">
-        <div class="flex items-center gap-1.5">
-          <span class="text-sm">🏆</span>
-          <span class="text-xs font-semibold text-[var(--text-main)]">选择官方榜单音源：</span>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <Trophy size={14} class="text-amber-400" />
+          <span class="text-xs font-semibold text-[var(--text-main)]">{t('musicfree.selectChartSource')}</span>
         </div>
-        <div class="relative">
+        <div class="relative min-w-0 max-w-[60%]">
           <select
-            bind:value={activePluginId}
-            class="appearance-none pl-3 pr-8 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] text-purple-400 border border-purple-500/30 outline-none cursor-pointer hover:border-purple-500 transition-colors"
+            value={effectivePluginId}
+            onchange={(e) => {
+              activePluginId = (e.currentTarget as HTMLSelectElement).value;
+            }}
+            class="appearance-none w-full pl-3 pr-8 py-1.5 rounded-xl text-xs font-semibold bg-[var(--btn-secondary-bg)] text-purple-400 border border-purple-500/30 outline-none cursor-pointer hover:border-purple-500 transition-colors truncate"
           >
             {#each topListGroups as grp}
-              <option value={grp.pluginId}>
-                {grp.pluginName} ({grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0)} 个榜单)
+              <option value={grp.pluginId} class="bg-[var(--card-bg-solid,#111827)] text-[var(--text-main)] py-1">
+                {t('musicfree.chartCountOption', { name: getPluginDisplayName(grp), count: grp.subGroups.reduce((acc, sg) => acc + sg.charts.length, 0) })}
               </option>
             {/each}
           </select>
@@ -366,10 +392,11 @@
             <div class="space-y-2">
               <div class="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5 pl-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                <span>{subGroup.groupTitle}</span>
+                <span>{getTopListGroupTitle(subGroup.groupTitle)}</span>
               </div>
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {#each subGroup.charts as chart}
+                  {@const chartInfo = getTopListDisplayInfo(chart)}
                   <!-- svelte-ignore a11y_click_events_have_key_events -->
                   <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <div
@@ -379,7 +406,7 @@
                     <div class="relative aspect-square rounded-xl overflow-hidden mb-2 bg-black/10">
                       <img
                         src={chart.coverImg || chart.artwork || DEFAULT_VINYL_COVER}
-                        alt={chart.title || chart.name}
+                        alt={chartInfo.title}
                         referrerpolicy="no-referrer"
                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
@@ -390,11 +417,11 @@
                       />
                     </div>
                     <div class="text-xs font-semibold text-[var(--text-main)] truncate group-hover:text-purple-400">
-                      {chart.title || chart.name}
+                      {chartInfo.title}
                     </div>
-                    {#if chart.description}
+                    {#if chartInfo.description}
                       <div class="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                        {chart.description}
+                        {chartInfo.description}
                       </div>
                     {/if}
                   </div>

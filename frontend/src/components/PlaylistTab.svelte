@@ -10,7 +10,18 @@
   import SegmentedTabs from './sp/SegmentedTabs.svelte';
   import SwipeableTabsView from './sp/SwipeableTabsView.svelte';
   import { layoutState } from '../lib/layout.svelte';
-  import { scrollToPageTop } from '../lib/router.svelte';
+  import {
+    AppRoute,
+    PlaylistSubTab,
+    type PlaylistSubTabType,
+    SpecialRouteId,
+    RouteUrl,
+    isDailyRecommendRoute,
+    parseRouteFromHash,
+    STORAGE_KEYS,
+    scrollToPageTop,
+    routerState
+  } from '../lib/router.svelte';
   import { t } from '../lib/i18n';
 
   let {
@@ -23,50 +34,88 @@
     onReveal?: (item: any) => void; onSong?: (id: string) => void; showToast: (m: string, t?: string) => void;
   }>();
 
-  const STORAGE_KEY_PLAYLIST_ID = 'wyyyy_last_playlist_id';
-  const STORAGE_KEY_SUBTAB = 'wyyyy_pl_subtab';
-  const getStored = (k: string, def: string) => typeof localStorage !== 'undefined' ? (localStorage.getItem(k) ?? def) : def;
-  const initPlaylistId = () => playlistId || (typeof window !== 'undefined' ? location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] || '' : '');
+  function parseInitialState(): { subtab: PlaylistSubTabType; pid: string } {
+    const hash = typeof window !== 'undefined' ? location.hash : '';
+    const { playlistId: hashPid, subTab } = parseRouteFromHash(hash);
+    const targetId = playlistId || hashPid || '';
 
-  let pid = $state(initPlaylistId());
-  let lastSeenPlaylistId = $state('');
-  let lastSeenTrigger = $state(-1);
-
-  function initSubtab(): 'my' | 'detail' | 'recommend' {
-    const hashId = typeof window !== 'undefined' ? location.hash.match(/id=([0-9a-zA-Z_-]+)/)?.[1] : '';
-    if (playlistId || hashId) return 'detail';
-    return 'my';
+    if (isDailyRecommendRoute(targetId)) {
+      return { subtab: PlaylistSubTab.RECOMMEND, pid: '' };
+    }
+    if (targetId) {
+      return { subtab: PlaylistSubTab.DETAIL, pid: targetId };
+    }
+    if (subTab === PlaylistSubTab.RECOMMEND) {
+      return { subtab: PlaylistSubTab.RECOMMEND, pid: '' };
+    }
+    if (subTab === PlaylistSubTab.DETAIL) {
+      return { subtab: PlaylistSubTab.DETAIL, pid: '' };
+    }
+    return { subtab: PlaylistSubTab.MY, pid: '' };
   }
 
-  let activeSubtab: 'my' | 'detail' | 'recommend' = $state(initSubtab());
-  const SUBTABS: ('my' | 'detail' | 'recommend')[] = ['my', 'detail', 'recommend'];
+  const initState = parseInitialState();
+  let pid = $state(initState.pid);
+  let lastSeenPlaylistId = $state<string | null>(null);
+  let lastSeenTrigger = $state<number | null>(null);
+  let activeSubtab: PlaylistSubTabType = $state(initState.subtab);
+  const SUBTABS: PlaylistSubTabType[] = [PlaylistSubTab.MY, PlaylistSubTab.DETAIL, PlaylistSubTab.RECOMMEND];
 
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(activeSubtab)));
   let accMy = $state(true), accDetail = $state(true), accRecommend = $state(true);
 
   function saveAccState() {
-    try { localStorage.setItem(STORAGE_KEY_SUBTAB, activeSubtab); } catch {}
+    try { localStorage.setItem(STORAGE_KEYS.PLAYLIST_SUBTAB, activeSubtab); } catch {}
   }
 
-  function setSubtab(id: 'my' | 'detail' | 'recommend') {
+  function setSubtab(id: PlaylistSubTabType, syncUrl = true) {
     if (activeSubtab === id) {
       scrollToPageTop();
       return;
     }
     activeSubtab = id;
     saveAccState();
+
+    if (syncUrl) {
+      const url = RouteUrl.playlistSubTab(id, pid);
+      if (id === PlaylistSubTab.MY) {
+        routerState.playlistId = '';
+        history.pushState(null, '', url);
+        try {
+          localStorage.removeItem(STORAGE_KEYS.LAST_PLAYLIST_ID);
+        } catch {}
+      } else if (id === PlaylistSubTab.RECOMMEND) {
+        routerState.playlistId = SpecialRouteId.DAILY_RECOMMEND;
+        history.pushState(null, '', url);
+        try {
+          localStorage.setItem(STORAGE_KEYS.LAST_PLAYLIST_ID, SpecialRouteId.DAILY_RECOMMEND);
+        } catch {}
+      } else if (id === PlaylistSubTab.DETAIL) {
+        if (pid && !isDailyRecommendRoute(pid)) {
+          routerState.playlistId = pid;
+          history.pushState(null, '', url);
+          try {
+            localStorage.setItem(STORAGE_KEYS.LAST_PLAYLIST_ID, pid);
+          } catch {}
+        } else {
+          routerState.playlistId = '';
+          history.pushState(null, '', url);
+        }
+      }
+    }
   }
 
   function handleSwipeIndexChange(newIndex: number) {
-    const nextTab = SUBTABS[newIndex] || 'my';
-    activeSubtab = nextTab;
-    saveAccState();
+    const nextTab = SUBTABS[newIndex] || PlaylistSubTab.MY;
+    setSubtab(nextTab, true);
   }
 
   function scrollToDetail() {
     tick().then(() => {
       const el = document.getElementById('section-playlist-detail');
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
   }
 
@@ -74,11 +123,9 @@
   onMount(() => {
     const isDesktopMode = layoutState.isDesktop;
     const targetPid = playlistId || (!isDesktopMode ? pid : '');
-    if (targetPid && targetPid !== 'daily-recommend') {
+    if (targetPid && !isDailyRecommendRoute(targetPid)) {
       pid = targetPid;
       loadPlaylistDetail(targetPid).catch(() => {});
-    } else if (targetPid === 'daily-recommend') {
-      pid = 'daily-recommend';
     }
     loadMyPlaylists().catch(() => {});
   });
@@ -87,15 +134,36 @@
   $effect(() => {
     const curId = playlistId;
     const curTrig = playlistTrigger;
-    if (curId && (curId !== lastSeenPlaylistId || curTrig !== lastSeenTrigger)) {
+    if (lastSeenPlaylistId === null) {
       lastSeenPlaylistId = curId;
       lastSeenTrigger = curTrig;
-      pid = curId;
-      setSubtab('detail');
-      accDetail = true;
-      scrollToDetail();
-      if (curId !== 'daily-recommend') {
+      return;
+    }
+    if (curId !== lastSeenPlaylistId || curTrig !== lastSeenTrigger) {
+      lastSeenPlaylistId = curId;
+      lastSeenTrigger = curTrig;
+      if (isDailyRecommendRoute(curId)) {
+        activeSubtab = PlaylistSubTab.RECOMMEND;
+        accRecommend = true;
+        saveAccState();
+      } else if (curId) {
+        pid = curId;
+        activeSubtab = PlaylistSubTab.DETAIL;
+        accDetail = true;
+        scrollToDetail();
         loadPlaylistDetail(curId, false).catch(() => {});
+        saveAccState();
+      } else {
+        const hash = typeof window !== 'undefined' ? location.hash : '';
+        const { playlistId: hashPid, subTab } = parseRouteFromHash(hash);
+        if (isDailyRecommendRoute(hashPid) || subTab === PlaylistSubTab.RECOMMEND) {
+          activeSubtab = PlaylistSubTab.RECOMMEND;
+        } else if (subTab === PlaylistSubTab.DETAIL) {
+          activeSubtab = PlaylistSubTab.DETAIL;
+        } else {
+          activeSubtab = PlaylistSubTab.MY;
+        }
+        saveAccState();
       }
     }
   });
@@ -106,13 +174,23 @@
       return;
     }
     const cleanId = targetId.trim();
+    if (isDailyRecommendRoute(cleanId)) {
+      setSubtab(PlaylistSubTab.RECOMMEND, true);
+      return;
+    }
     pid = cleanId;
-    setSubtab('detail');
+    setSubtab(PlaylistSubTab.DETAIL, false);
     accDetail = true;
+
+    // 同步更新 URL Hash 与历史记录，使用户刷新后依然停留在该歌单
+    routerState.playlistId = cleanId;
+    history.pushState(null, '', RouteUrl.playlist(cleanId));
+
     try {
-      localStorage.setItem(STORAGE_KEY_PLAYLIST_ID, cleanId);
-      localStorage.setItem(STORAGE_KEY_SUBTAB, 'detail');
+      localStorage.setItem(STORAGE_KEYS.LAST_PLAYLIST_ID, cleanId);
+      localStorage.setItem(STORAGE_KEYS.PLAYLIST_SUBTAB, PlaylistSubTab.DETAIL);
     } catch {}
+
     scrollToDetail();
     loadPlaylistDetail(cleanId, force).then(() => {
       if (force) showToast(t('playlist.refreshed'), 'success');
@@ -160,7 +238,7 @@
   onChange={handleSwipeIndexChange}
 >
   <!-- Section 1: 我的歌单 -->
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <MyPlaylistsSection
       flat bind:open={accMy} onToggle={saveAccState}
       onViewPlaylist={(id) => handleViewPlaylist(id)}
@@ -170,7 +248,7 @@
   </div>
 
   <!-- Section 2: 查看歌单详情 -->
-  <div id="section-playlist-detail" class="w-full">
+  <div id="section-playlist-detail" class="w-full flex-1 flex flex-col">
     <PlaylistDetailSection
       bind:open={accDetail}
       {pid}
@@ -190,7 +268,7 @@
   </div>
 
   <!-- Section 3: 每日专属推荐 -->
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <DailyRecommendSection
       flat bind:open={accRecommend} onToggle={saveAccState} {curTrack} {playing} {likedSet}
       {onToggleLike} {onPlayQueue} {onSong} {onAlbum} {onReveal} {showToast}

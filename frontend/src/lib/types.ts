@@ -11,7 +11,10 @@ export interface Track {
   relativePath?: string;
   streamUrl?: string;
   level?: string;
+  quality?: string;
   size?: string;
+  br?: number;
+  album?: string;
   al?: {
     picUrl?: string;
     name?: string;
@@ -21,10 +24,12 @@ export interface Track {
   }>;
   freeTrial?: boolean;
   freeTrialDuration?: number;
+  allowTrial?: boolean; // 🎧 试听模式：允许播放试听片段，不被全局自动跳过拦截
   unplayable?: boolean;
   unplayableReason?: string;
   isVip?: boolean;
   vip?: boolean;
+  _resolvedAt?: number;
   raw?: any;
 }
 
@@ -36,6 +41,38 @@ export interface DownloadTask {
   errorMsg?: string;
   filePath?: string;
   timestamp?: number;
+}
+
+/**
+ * 🏷️ 音频存储来源枚举 (Audio Source Type)
+ */
+export enum AudioSourceType {
+  NETEASE = 'netease',
+  MUSICFREE = 'musicfree',
+  MUSICFREE_QQ = 'musicfree-qq',
+  MUSICFREE_KUGOU = 'musicfree-kugou',
+  MUSICFREE_KUWO = 'musicfree-kuwo',
+  MUSICFREE_MIGU = 'musicfree-migu',
+  MUSICFREE_BILIBILI = 'musicfree-bilibili',
+  MUSICFREE_MAOERFM = 'musicfree-maoerfm',
+  MUSICFREE_CUSTOM = 'musicfree-custom'
+}
+
+export interface DownloadHistoryItem {
+  id: number;
+  songId?: number;
+  songName: string;
+  artist?: string;
+  album?: string;
+  filePath: string;
+  relativePath?: string;
+  hostFilePath?: string;
+  fileSize: number;
+  quality?: string;
+  status: string;
+  createdAt?: string;
+  fileExists?: boolean;
+  source?: AudioSourceType | string;
 }
 
 export interface PlaylistInfo {

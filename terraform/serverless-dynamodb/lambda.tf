@@ -101,11 +101,11 @@ resource "aws_s3_object" "lambda_package" {
   etag   = fileexists(var.lambda_zip_path) ? filemd5(var.lambda_zip_path) : null
 }
 
-# 3. Lambda 函数定义 (无 VPC 挂载，直接享受原生公网外呼网易云 API)
+# 3. Lambda 函数定义 (无 VPC 挂载，直接享受原生公网外呼云端 API)
 resource "aws_lambda_function" "spring_app" {
   function_name = "${var.project_name}-backend-ddb-${var.environment}"
   role          = aws_iam_role.lambda_exec_role.arn
-  handler       = "com.wyyyyydl.StreamLambdaHandler::handleRequest"
+  handler       = "com.wyy.StreamLambdaHandler::handleRequest"
   runtime       = "java21"
   memory_size   = var.lambda_memory_size
   timeout       = var.lambda_timeout

@@ -12,7 +12,7 @@ export default {
   'comment.totalCount': '{count} comments in total',
   'comment.loadingCloud': 'Loading cloud comments...',
   'comment.loadFailed': 'No comments or failed to fetch comments',
-  'comment.emptyHint': 'No comments yet. Leave the first comment on NetEase Cloud Music~',
+  'comment.emptyHint': 'No comments yet. Leave the first comment~',
   'comment.hotSection': '🔥 Top Comments',
   'comment.latestSection': '💬 Latest Comments',
   'comment.defaultUser': 'Music Listener',

@@ -59,14 +59,14 @@ WORKDIR /app
 RUN mkdir -p /app /media/music /media/external
 
 # 从 Stage 1 拷贝编译完成的原生二进制文件
-COPY --from=builder /build/build/native/nativeCompile/wyyyyy-dl-native /app/wyyyyy-dl
-RUN chmod +x /app/wyyyyy-dl
+COPY --from=builder /build/build/native/nativeCompile/wyy-native /app/wyy
+RUN chmod +x /app/wyy
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV TZ=Asia/Shanghai
-ENV AUTHER=wyyyyy-dl
+ENV AUTHER=wyy
 
 EXPOSE 8080
 
-ENTRYPOINT ["/app/wyyyyy-dl"]
+ENTRYPOINT ["/app/wyy"]

@@ -44,7 +44,7 @@ describe('SleepTimerStore', () => {
   it('fires trigger and dispatches custom event upon timer expiration via setInterval', () => {
     const callback = vi.fn();
     const eventHandler = vi.fn();
-    window.addEventListener('wyyyy:sleep-timer-trigger', eventHandler);
+    window.addEventListener('wyy:sleep-timer-trigger', eventHandler);
 
     timer.setTimer(15, callback);
     expect(timer.isActive).toBe(true);
@@ -57,7 +57,7 @@ describe('SleepTimerStore', () => {
     expect(timer.isActive).toBe(false);
     expect(timer.option).toBe(0);
 
-    window.removeEventListener('wyyyy:sleep-timer-trigger', eventHandler);
+    window.removeEventListener('wyy:sleep-timer-trigger', eventHandler);
   });
 
   it('calibrates accurately via checkTick (iOS lockscreen background defense)', () => {

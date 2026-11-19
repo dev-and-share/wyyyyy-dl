@@ -39,9 +39,9 @@ describe('playerStorage persistence contracts', () => {
   });
 
   it('handles invalid or corrupted storage data gracefully', () => {
-    localStorage.setItem('wyyyy_player_queue', 'invalid json format');
-    localStorage.setItem('wyyyy_player_index', '999'); // 越界
-    localStorage.setItem('wyyyy_player_time', 'NaN');
+    localStorage.setItem('wyy_player_queue', 'invalid json format');
+    localStorage.setItem('wyy_player_index', '999'); // 越界
+    localStorage.setItem('wyy_player_time', 'NaN');
 
     const state = loadPlayerStateFromStorage();
 
@@ -51,8 +51,8 @@ describe('playerStorage persistence contracts', () => {
 
   it('resets index to 0 if out of bounds', () => {
     const mockQueue: Track[] = [{ id: 1, name: '青花瓷', artist: '周杰伦' }];
-    localStorage.setItem('wyyyy_player_queue', JSON.stringify(mockQueue));
-    localStorage.setItem('wyyyy_player_index', '10'); // 超过队列长度
+    localStorage.setItem('wyy_player_queue', JSON.stringify(mockQueue));
+    localStorage.setItem('wyy_player_index', '10'); // 超过队列长度
 
     const state = loadPlayerStateFromStorage();
     expect(state.qIndex).toBe(0);

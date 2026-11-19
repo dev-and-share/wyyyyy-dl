@@ -16,7 +16,7 @@ vi.mock('../../lib/api', () => ({
     }),
     historyStats: vi.fn().mockResolvedValue({
       code: '000000',
-      data: { totalCount: 1, totalSize: 4096000, missingCount: 0 }
+      data: { totalCount: 1, totalSize: 4096000, missingCount: 2, nonMp3Count: 39 }
     }),
     folderRoots: vi.fn().mockResolvedValue({
       code: '000000',
@@ -28,7 +28,14 @@ vi.mock('../../lib/api', () => ({
     }),
     historyDelete: vi.fn().mockResolvedValue({ code: '000000' }),
     historyScanExternal: vi.fn().mockResolvedValue({ code: '000000' }),
-    historyScan: vi.fn().mockResolvedValue({ code: '000000' })
+    historyScan: vi.fn().mockResolvedValue({ code: '000000' }),
+    historyMissing: vi.fn().mockResolvedValue({ code: '000000', data: [] }),
+    historyNonMp3: vi.fn().mockResolvedValue({
+      code: '000000',
+      data: [{ id: 1, songId: 101, songName: '晴天', artist: '周杰伦', format: 'flac' }]
+    }),
+    historyCleanMissing: vi.fn().mockResolvedValue({ code: '000000', data: 0 }),
+    historyCleanNonMp3: vi.fn().mockResolvedValue({ code: '000000', data: 1 })
   }
 }));
 
@@ -108,5 +115,23 @@ describe('DesktopDownloadMgrView', () => {
     });
 
     expect(getByTestId('subtab-tasks')).toHaveClass('bg-red-500');
+  });
+
+  it('renders non-mp3 format badge and opens audit modal when clicked', async () => {
+    const { findByTestId, findByText } = render(DesktopDownloadMgrView, {
+      props: {
+        onPlayQueue: vi.fn(),
+        onReveal: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    const nonMp3Btn = await findByTestId('btn-nonmp3-modal');
+    expect(nonMp3Btn).toBeInTheDocument();
+    expect(nonMp3Btn).toHaveTextContent(/39/);
+
+    await fireEvent.click(nonMp3Btn);
+    const modalTitle = await findByText(/非 MP3 格式音频记录/i);
+    expect(modalTitle).toBeInTheDocument();
   });
 });

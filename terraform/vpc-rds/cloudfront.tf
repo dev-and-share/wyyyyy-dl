@@ -39,7 +39,7 @@ resource "aws_cloudfront_function" "basic_auth" {
   count   = var.auth_password != "" ? 1 : 0
   name    = "${var.project_name}-basic-auth-rds-${var.environment}"
   runtime = "cloudfront-js-2.0"
-  comment = "Edge HTTP Basic Auth for Wyyyyy-DL security"
+  comment = "Edge HTTP Basic Auth for WYY security"
   publish = true
   code    = <<-EOT
     function handler(event) {
@@ -56,7 +56,7 @@ resource "aws_cloudfront_function" "basic_auth" {
             statusCode: 401,
             statusDescription: "Unauthorized",
             headers: {
-                "www-authenticate": { value: 'Basic realm="Wyyyyy-DL Private Cloud", charset="UTF-8"' },
+                "www-authenticate": { value: 'Basic realm="WYY Private Cloud", charset="UTF-8"' },
                 "content-type": { value: "text/plain; charset=utf-8" }
             },
             body: "401 Unauthorized: Access Denied. Please provide valid credentials."

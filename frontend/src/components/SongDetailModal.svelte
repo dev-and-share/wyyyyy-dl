@@ -8,6 +8,7 @@
   import { t } from '../lib/i18n';
   import Modal from './Modal.svelte';
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
+  import { Play, Pause, Download, Loader2, Plus, Heart, FileText, Volume2 } from '@lucide/svelte';
 
   let {
     songId,
@@ -48,6 +49,9 @@
         return;
       }
       songInfo = j?.data || null;
+      if (songInfo?.level) {
+        songLevel = songInfo.level.toLowerCase();
+      }
       if (!songInfo) {
         showToast(t('song.notFoundData'), 'warning');
       }
@@ -180,7 +184,7 @@
             />
             {#if isPlaying}
               <div class="absolute inset-0 bg-black/40 backdrop-blur-xs rounded-xl flex items-center justify-center">
-                <span class="text-white text-xl animate-pulse">🔊</span>
+                <Volume2 size={24} class="text-white animate-pulse" />
               </div>
             {/if}
           </div>
@@ -227,16 +231,22 @@
             <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-black/5 dark:border-white/5">
               <div class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                 <span>{t('common.qualityColon')}</span>
-                <select
-                  value={songLevel}
-                  onchange={(e) => handleLevelChange((e.currentTarget as HTMLSelectElement).value)}
-                  class="text-xs py-1 px-2 rounded-lg bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15 text-[var(--text-main)] cursor-pointer outline-none font-medium"
-                >
-                  <option value="standard">{t('quality.standard')}</option>
-                  <option value="exhigh">{t('quality.exhigh')}</option>
-                  <option value="lossless">{t('quality.lossless')}</option>
-                  <option value="hires">{t('quality.hires')}</option>
-                </select>
+                {#if status.isLocal}
+                  <span class="text-xs py-0.5 px-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium">
+                    {songLevel === 'lossless' ? t('quality.lossless') : songLevel === 'hires' ? t('quality.hires') : songLevel === 'exhigh' ? `${t('quality.exhigh')} (320K)` : songLevel === 'higher' ? t('quality.higher') : t('quality.standard')}
+                  </span>
+                {:else}
+                  <select
+                    value={songLevel}
+                    onchange={(e) => handleLevelChange((e.currentTarget as HTMLSelectElement).value)}
+                    class="text-xs py-1 px-2 rounded-lg bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15 text-[var(--text-main)] cursor-pointer outline-none font-medium"
+                  >
+                    <option value="standard">{t('quality.standard')}</option>
+                    <option value="exhigh">{t('quality.exhigh')}</option>
+                    <option value="lossless">{t('quality.lossless')}</option>
+                    <option value="hires">{t('quality.hires')}</option>
+                  </select>
+                {/if}
               </div>
               <span class="text-xs text-[var(--text-muted)] font-mono">
                 {sizeText} · {levelText}
@@ -262,7 +272,11 @@
               }
             }}
           >
-            <span>{isPlaying ? '⏸️' : '▶️'}</span>
+            {#if isPlaying}
+              <Pause size={13} fill="currentColor" />
+            {:else}
+              <Play size={13} fill="currentColor" />
+            {/if}
             <span>{isPlaying ? t('player.pausePlay') : t('song.previewNow')}</span>
           </button>
 
@@ -273,7 +287,11 @@
             class="btn-secondary flex items-center justify-center gap-1.5 py-2.5 sm:py-2 px-3 rounded-xl text-xs font-medium cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
             onclick={() => handleDownloadSingle(String(targetId), songInfo.name)}
           >
-            <span>{downloading ? '🔄' : '📥'}</span>
+            {#if downloading}
+              <Loader2 size={13} class="animate-spin" />
+            {:else}
+              <Download size={13} />
+            {/if}
             <span>{downloading ? t('common.submitting') : t('download.downloadSingle')}</span>
           </button>
 
@@ -285,7 +303,7 @@
               addToPlaylistSong = { id: targetId, name: songInfo.name || songInfo.songName, artist: arText };
             }}
           >
-            <span>➕</span>
+            <Plus size={13} />
             <span>{t('playlist.collectTo')}</span>
           </button>
 
@@ -296,7 +314,7 @@
               class="btn-secondary flex items-center justify-center gap-1.5 py-2.5 sm:py-2 px-3 rounded-xl text-xs font-medium cursor-pointer active:scale-95 transition-all {isLiked ? 'text-red-400 border-red-500/30' : ''}"
               onclick={() => onToggleLike(Number(targetId), songInfo.name, arText)}
             >
-              <span>{isLiked ? '❤️' : '🤍'}</span>
+              <Heart size={13} fill={isLiked ? '#ef4444' : 'none'} color={isLiked ? '#ef4444' : 'currentColor'} />
               <span>{isLiked ? t('player.alreadyLiked') : t('player.myFavorite')}</span>
             </button>
           {/if}
@@ -304,8 +322,8 @@
 
         <!-- 歌词预览面板 -->
         <div class="mb-3">
-          <div class="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1">
-            <span>📜</span>
+          <div class="text-xs font-semibold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1.5">
+            <FileText size={13} />
             <span>{t('song.lyricsContent')}</span>
           </div>
           <div class="max-h-[140px] overflow-y-auto bg-black/5 dark:bg-black/20 p-3 rounded-xl border border-black/5 dark:border-white/5 text-xs text-[var(--text-secondary)] font-mono leading-relaxed select-text">

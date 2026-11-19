@@ -20,14 +20,14 @@ describe('TrackSourceBadge Component', () => {
 
     const badge = getByTitle(/已下载到本地服务器磁盘/);
     expect(badge).toBeDefined();
-    expect(badge.textContent?.trim()).toBe('🖥️');
+    expect(badge.querySelector('svg')).not.toBeNull();
   });
 
-  it('triggers onReveal and wyyyy:reveal event on PC double click', async () => {
+  it('triggers onReveal and wyy:reveal event on PC double click', async () => {
     markSongDownloaded(12345);
     const onReveal = vi.fn();
     const globalRevealListener = vi.fn();
-    window.addEventListener('wyyyy:reveal', globalRevealListener);
+    window.addEventListener('wyy:reveal', globalRevealListener);
 
     const { getByTitle } = render(TrackSourceBadge, {
       props: {
@@ -45,11 +45,13 @@ describe('TrackSourceBadge Component', () => {
       id: 12345,
       name: '晴天',
       artist: '周杰伦',
-      path: ''
+      path: '',
+      isServer: true,
+      isPhone: false
     });
     expect(globalRevealListener).toHaveBeenCalled();
 
-    window.removeEventListener('wyyyy:reveal', globalRevealListener);
+    window.removeEventListener('wyy:reveal', globalRevealListener);
   });
 
   it('triggers onReveal on mobile touch long press', async () => {
@@ -79,7 +81,9 @@ describe('TrackSourceBadge Component', () => {
       id: 88888,
       name: '七里香',
       artist: '',
-      path: ''
+      path: '',
+      isServer: true,
+      isPhone: false
     });
 
     vi.useRealTimers();
@@ -111,7 +115,79 @@ describe('TrackSourceBadge Component', () => {
       id: 99999,
       name: '夜曲',
       artist: '周杰伦',
-      path: ''
+      path: '',
+      isServer: true,
+      isPhone: false
     });
+  });
+
+  it('falls back to curTrack metadata when props name/artist/path are omitted', async () => {
+    const onReveal = vi.fn();
+    const curTrackMock = {
+      id: 108242,
+      name: '她说',
+      artist: '林俊杰',
+      filePath: '/media/external/下载音乐/80后经典流行歌曲.com/林俊杰 - 她说.mp3',
+      isLocal: true
+    };
+
+    const { getByTitle } = render(TrackSourceBadge, {
+      props: {
+        id: 108242,
+        isLocal: true,
+        curTrack: curTrackMock,
+        onReveal
+      }
+    });
+
+    const badge = getByTitle(/已下载到本地服务器磁盘/);
+    expect(badge).toBeDefined();
+
+    await fireEvent.dblClick(badge);
+
+    expect(onReveal).toHaveBeenCalledWith({
+      id: 108242,
+      name: '她说',
+      artist: '林俊杰',
+      path: '/media/external/下载音乐/80后经典流行歌曲.com/林俊杰 - 她说.mp3',
+      isServer: true,
+      isPhone: false
+    });
+  });
+
+  it('triggers onReveal when track is ONLY cached in phone/browser (📲 icon)', async () => {
+    const onReveal = vi.fn();
+    const globalRevealListener = vi.fn();
+    window.addEventListener('wyy:reveal', globalRevealListener);
+
+    const { getByTitle } = render(TrackSourceBadge, {
+      props: {
+        id: 77777,
+        name: '江南',
+        artist: '林俊杰',
+        isPhone: true,
+        isServer: false,
+        onReveal
+      }
+    });
+
+    const badge = getByTitle(/已离线缓存到当前手机/);
+    expect(badge).toBeDefined();
+    expect(badge.querySelector('svg')).not.toBeNull();
+
+    // 纯手机缓存状态下，点击 📲 即可触发定位 / 管理 Modal
+    await fireEvent.click(badge);
+
+    expect(onReveal).toHaveBeenCalledWith({
+      id: 77777,
+      name: '江南',
+      artist: '林俊杰',
+      path: '',
+      isServer: false,
+      isPhone: true
+    });
+    expect(globalRevealListener).toHaveBeenCalled();
+
+    window.removeEventListener('wyy:reveal', globalRevealListener);
   });
 });

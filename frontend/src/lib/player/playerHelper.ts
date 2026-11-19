@@ -5,6 +5,7 @@ import { markSongDownloaded } from './trackStatus.svelte';
 import { taskState } from '../taskStore.svelte';
 import { recordPlaylistPlay } from '../playlist.svelte';
 import { playerStore, type SetQueueOptions } from './playerStore.svelte';
+import { playbackTelemetry } from './playbackTelemetry.svelte';
 import { platformAdapter, musicFreeAdapter } from '../adapters';
 import { showToast } from '../toast.svelte';
 import { t } from '../i18n';
@@ -12,6 +13,26 @@ import { isLocalStreamUrl } from '../utils';
 import { playlistService } from '../playlistService';
 import { resolveFallbackFromBuiltins } from '../musicfree/plugins';
 import { jumpToMusicFreeSearch } from '../router.svelte';
+import {
+  ONLINE_URL_TTL_MS,
+  formatFallbackStreamUrl,
+  withResolveTimeout,
+  markTrackUrlResolved as coreMarkTrackUrlResolved,
+  isTrackUrlExpired as coreIsTrackUrlExpired,
+  InterruptionRecoveryController
+} from 'pwa-audio-player';
+
+export function markTrackUrlResolved(track: Track | null | undefined, now = Date.now()): void {
+  coreMarkTrackUrlResolved(track, now, isLocalStreamUrl);
+}
+
+export function isTrackUrlExpired(track: Track | null | undefined, now = Date.now()): boolean {
+  return coreIsTrackUrlExpired(track, now, ONLINE_URL_TTL_MS, isLocalStreamUrl);
+}
+
+export const interruptionController = new InterruptionRecoveryController({
+  isLocalUrl: isLocalStreamUrl
+});
 
 /**
  * Resolve high quality URL, cover, and lyric for a track in a single optimized request
@@ -22,6 +43,11 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
     track.url = track.id ? `/v3/stream?id=${track.id}` : '';
   }
 
+  // 0.1 若缓存的在线直链已超过保鲜期，主动清空强制重新解析
+  if (track.url && !isLocalStreamUrl(track.url) && isTrackUrlExpired(track)) {
+    track.url = '';
+  }
+
   // 1. 如果已有本地/历史流地址，保留原完整地址（含 historyId 等参数），仅在缺失封面/歌词时静默后台补齐
   if (track.url && isLocalStreamUrl(track.url)) {
     track.isLocal = true;
@@ -30,6 +56,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
         if (resolved.cover) track.cover = resolved.cover;
         if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+        if (resolved.br && !track.br) track.br = resolved.br;
+        if (resolved.size && !track.size) track.size = resolved.size;
+        if (resolved.level && !track.level) track.level = resolved.level;
         if (resolved.url && (resolved.url.includes('path=') || resolved.url.includes('historyId='))) {
           track.url = resolved.url;
         }
@@ -55,6 +84,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       platformAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist }).then((resolved) => {
         if (resolved.cover) track.cover = resolved.cover;
         if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+        if (resolved.br && !track.br) track.br = resolved.br;
+        if (resolved.size && !track.size) track.size = resolved.size;
+        if (resolved.level && !track.level) track.level = resolved.level;
         if (resolved.url && (resolved.url.includes('path=') || resolved.url.includes('historyId='))) {
           track.url = resolved.url;
         }
@@ -65,7 +97,7 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
 
   // 2. 断网离线状态下，若已在手机浏览器离线缓存中，直接使用标准离线流地址由 SW 拦截秒播
   const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-  if (isOffline && track.id && cachedSongIdSet.has(Number(track.id))) {
+  if (isOffline && track.id && (cachedSongIdSet.has(Number(track.id)) || cachedSongIdSet.has(String(track.id)))) {
     track.url = `/v3/stream?id=${track.id}`;
     track.isLocal = true;
     return track.url;
@@ -81,7 +113,47 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       Boolean((track as any)._pluginHash) ||
       Boolean(track.raw?._pluginId);
     const activeAdapter = isMf ? musicFreeAdapter : platformAdapter;
-    const resolved = await activeAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist, raw: track.raw });
+    const resolved = await withResolveTimeout(
+      activeAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist, raw: track.raw }),
+      10000
+    );
+    if (resolved.cover) track.cover = resolved.cover;
+    if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+    if (resolved.br) track.br = resolved.br;
+    if (resolved.size) track.size = resolved.size;
+    if (resolved.level) track.level = resolved.level;
+    if (resolved.artist && (!track.artist || track.artist === t('common.unknownArtist') || track.artist === '未知歌手')) {
+      track.artist = resolved.artist;
+    }
+    if (resolved.album) {
+      track.album = resolved.album;
+      if (!track.al) track.al = {};
+      if (!track.al.name) track.al.name = resolved.album;
+    }
+
+    // 🛡️ 网易云无版权或试听截断曲目自动尝试内置官方跨源直链兜底
+    const needsBuiltinFallback =
+      !isMf &&
+      !resolved.isLocal &&
+      (resolved.unplayable || !resolved.url || (resolved.freeTrial === true && playerStore.autoSkipTrial && !track.allowTrial));
+    if (needsBuiltinFallback) {
+      const fallback = await withResolveTimeout(resolveFallbackFromBuiltins(track), 6000).catch(() => null);
+      if (fallback?.url) {
+        const proxyUrl = formatFallbackStreamUrl(fallback);
+        if (proxyUrl) {
+          track.url = proxyUrl;
+          track.isLocal = false;
+          track.unplayable = false;
+          track.unplayableReason = undefined;
+          track.freeTrial = false;
+          track.freeTrialDuration = undefined;
+          markTrackUrlResolved(track);
+          playbackTelemetry.recordResolve('fallback', track, fallback.quality || 'builtin');
+          return track.url;
+        }
+      }
+    }
+
     if (!resolved.unplayable && resolved.url) {
       track.url = resolved.url;
       track.unplayable = false;
@@ -93,56 +165,26 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       } else {
         track.isLocal = false;
         track.freeTrial = resolved.freeTrial === true;
+        markTrackUrlResolved(track);
       }
       track.freeTrialDuration = resolved.freeTrialDuration;
-      if (resolved.cover) track.cover = resolved.cover;
-      if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
+      playbackTelemetry.recordResolve('ok', track, resolved.isLocal ? 'local' : 'online');
       return track.url;
     } else {
       track.unplayable = true;
       track.unplayableReason = resolved.unplayableReason || t('player.getInfoFailed');
+      playbackTelemetry.recordResolve('failed', track, track.unplayableReason);
     }
-  } catch {
+  } catch (err: any) {
     track.unplayable = true;
     track.unplayableReason = t('player.networkFailed');
+    const msg = String(err?.message || err || '');
+    playbackTelemetry.recordResolve(msg.toLowerCase().includes('timeout') ? 'timeout' : 'failed', track, msg || 'network_exception');
   }
   return track.url || '';
 }
 
-/**
- * 🚀 静默预解析周边曲目（下一首与上一首）的播放 URL
- * 保障 iOS 锁屏、后台与 AirPods 双击/三击切歌零延迟，避免手势上下文过期
- */
-export function preloadSurroundingTracks(queue: Track[], curIndex: number, playMode: string) {
-  if (!queue || queue.length <= 1) return;
-
-  // 1. 优先从 playerStore 获取经过模式与过滤校验的确定性下一首（WYSIWYG 100% 命中）
-  let nextTrack = playerStore.queue.length > 0 ? playerStore.getNextTrack() : null;
-  if (!nextTrack) {
-    const nextIdx = (curIndex + 1) % queue.length;
-    nextTrack = queue[nextIdx];
-  }
-  if (nextTrack && !nextTrack.url && !nextTrack.unplayable) {
-    resolveTrackUrl(nextTrack).catch(() => {});
-  }
-
-  // 2. 紧接着预解析确定性上一首（保障锁屏点击「上一首」/ AirPods 三击同样零延迟、手势不断链）
-  let prevTrack = playerStore.queue.length > 0 ? playerStore.getPrevTrack() : null;
-  if (!prevTrack) {
-    const prevIdx = (curIndex - 1 + queue.length) % queue.length;
-    prevTrack = queue[prevIdx];
-  }
-  if (prevTrack && prevTrack !== nextTrack && !prevTrack.url && !prevTrack.unplayable) {
-    resolveTrackUrl(prevTrack).catch(() => {});
-  }
-}
-
-/**
- * 🚀 静默预解析下一首曲目的播放 URL（兼容接口，自动升级为周边双向预热）
- */
-export function preloadNextTrack(queue: Track[], curIndex: number, playMode: string) {
-  preloadSurroundingTracks(queue, curIndex, playMode);
-}
+export { preloadSurroundingTracks, preloadNextTrack } from './nextTrackPrecache';
 
 /**
  * 🎵 解析歌单曲目并加入播放队列立即起播
@@ -259,6 +301,7 @@ export function computeNextTrackOnSkip(
   isTrial = false
 ): SkipTrackDecision {
   const nextCount = currentSkipCount + 1;
+  playbackTelemetry.recordAutoSkip(failedTrack, reason, isTrial, nextCount);
   const MAX_CONSECUTIVE_SKIPS = 15;
   const ONLINE_FAIL_FALLBACK_THRESHOLD = 3;
 
@@ -279,7 +322,7 @@ export function computeNextTrackOnSkip(
       showToast(
         isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }),
         isTrial ? 'info' : 'warning',
-        isVipReason ? 4000 : 2000,
+        isVipReason ? 7000 : 2500,
         toastAction
       );
       playerStore.qIndex = nextLocalIdx;
@@ -300,7 +343,7 @@ export function computeNextTrackOnSkip(
   showToast(
     isTrial ? t('player.skippedTrialTrack', { name: failedTrack.name }) : t('player.autoPlayNextReason', { name: failedTrack.name, reason }),
     isTrial ? 'info' : 'warning',
-    isVipReason ? 4000 : 2000,
+    isVipReason ? 7000 : 2500,
     toastAction
   );
   playerStore.qIndex = nextIdx;
@@ -332,10 +375,12 @@ export async function handleRestrictedAudioCheck(
   }
 
   console.warn(`[Player] 发现受限防盗链短音频 (${Math.round(audioDuration)}s):`, activeTrack.name);
+  playbackTelemetry.recordEvent('restricted_short_audio', 'warn', `dur=${Math.round(audioDuration)}s`, activeTrack);
   try {
     const fallback = await resolveFallbackFromBuiltins(activeTrack);
-    if (fallback?.url && !isSameAudioSource(currentAudioSrc, fallback.url)) {
-      return { isRestricted: true, fallbackUrl: fallback.url, shouldSkip: false };
+    const fallbackUrl = fallback?.url ? formatFallbackStreamUrl(fallback) : '';
+    if (fallbackUrl && !isSameAudioSource(currentAudioSrc, fallbackUrl)) {
+      return { isRestricted: true, fallbackUrl, shouldSkip: false };
     }
   } catch {}
 
@@ -343,6 +388,47 @@ export async function handleRestrictedAudioCheck(
   activeTrack.unplayable = true;
   activeTrack.unplayableReason = '受限音频(11s提示)';
   return { isRestricted: true, shouldSkip: true };
+}
+
+/**
+ * 预备曲目到 Audio 标签与本地已下载状态标记
+ */
+export async function prepareTrackInUI(track: Track, audioEl: HTMLAudioElement | null): Promise<void> {
+  if (track.filePath && track.id && !track.filePath.startsWith('/v3/stream/online')) markSongDownloaded(track.id);
+  if (track.url && track.url.startsWith('blob:')) track.url = track.id ? `/v3/stream?id=${track.id}` : '';
+  const url = track.url || (await resolveTrackUrl(track));
+  if (url && audioEl && (!audioEl.src || audioEl.src === window.location.href || audioEl.src.startsWith('blob:') || !isSameAudioSource(audioEl.src, url))) {
+    audioEl.src = url;
+  }
+}
+
+/**
+ * 补齐云端歌曲缺失歌词
+ */
+export function fetchMissingLyric(tr: Track | null): void {
+  const numId = Number(tr?.id);
+  if (tr?.id && (!tr.lyric || !tr.br) && !isNaN(numId) && numId > 0 && !String(tr.id).startsWith('mf_')) {
+    api.songV1(String(tr.id), 'lossless').then((j: any) => {
+      if (j?.data && playerStore.activeTrack?.id === tr.id) {
+        if (j.data.lyric) {
+          tr.lyric = j.data.lyric;
+          playerStore.activeTrack.lyric = j.data.lyric;
+        }
+        if (j.data.br && !tr.br) {
+          tr.br = j.data.br;
+          playerStore.activeTrack.br = j.data.br;
+        }
+        if (j.data.size && !tr.size) {
+          tr.size = j.data.size;
+          playerStore.activeTrack.size = j.data.size;
+        }
+        if (j.data.level && !tr.level) {
+          tr.level = j.data.level;
+          playerStore.activeTrack.level = j.data.level;
+        }
+      }
+    }).catch(() => {});
+  }
 }
 
 

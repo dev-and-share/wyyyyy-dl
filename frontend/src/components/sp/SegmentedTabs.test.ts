@@ -21,7 +21,7 @@ describe('SegmentedTabs Component', () => {
     expect(getByText('我的歌单')).toBeDefined();
     expect(getByText('歌单详情')).toBeDefined();
     expect(getByText('每日推荐')).toBeDefined();
-    expect(getByText('📋')).toBeDefined();
+    expect(getByText('我的歌单').closest('button')?.querySelector('svg')).toBeDefined();
   });
 
   it('calls onChange callback when clicking an inactive tab', async () => {

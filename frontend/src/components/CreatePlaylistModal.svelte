@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import { api } from '../lib/api';
   import { addNewPlaylist } from '../lib/playlist.svelte';
   import Modal from './Modal.svelte';
@@ -8,6 +9,13 @@
   let name = $state('');
   let isPrivate = $state(false);
   let loading = $state(false);
+  let inputEl = $state<HTMLInputElement | null>(null);
+
+  onMount(() => {
+    tick().then(() => {
+      inputEl?.focus();
+    });
+  });
 
   async function submit() {
     if (!name.trim()) return;
@@ -42,6 +50,7 @@
   <div class="mb-4">
     <div class="text-xs text-[var(--text-secondary,#94a3b8)] mb-1.5 font-medium">{t('playlist.nameLabel')}</div>
     <input
+      bind:this={inputEl}
       type="text"
       placeholder={t('playlist.namePlaceholder')}
       bind:value={name}

@@ -12,7 +12,7 @@ export default {
   'comment.totalCount': '共 {count} 条评论',
   'comment.loadingCloud': '正在读取云端评论与热评...',
   'comment.loadFailed': '暂无评论或获取评论失败',
-  'comment.emptyHint': '暂无评论，快去网易云音乐留下第一条吧~',
+  'comment.emptyHint': '暂无评论，快来留下第一条吧~',
   'comment.hotSection': '🔥 精彩热评',
   'comment.latestSection': '💬 最新评论',
   'comment.defaultUser': '云音乐听友',

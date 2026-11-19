@@ -11,12 +11,15 @@
   import { skin } from '../../lib/skinStore.svelte';
   import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
+  import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
+  import { X } from '@lucide/svelte';
 
   let {
     curTrack,
     queue = [],
     playing = false,
+    loading = false,
     curTime = 0,
     duration = 0,
     playMode = 'list',
@@ -33,11 +36,13 @@
     onPeq,
     onQueue,
     onToggleLike = () => {},
-    onMinimize
+    onMinimize,
+    onSong
   } = $props<{
     curTrack: Track | null;
     queue: Track[];
     playing: boolean;
+    loading?: boolean;
     curTime: number;
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
@@ -55,6 +60,7 @@
     onQueue: () => void;
     onToggleLike?: () => void;
     onMinimize: () => void;
+    onSong?: (id: string) => void;
   }>();
 
   let isLiked = $derived(curTrack ? isTrackLiked(curTrack.id, curTrack.name, curTrack.artist) : false);
@@ -62,7 +68,7 @@
 
 <div
   data-testid="player-bar-desktop"
-  class="fixed bottom-0 left-0 right-0 h-[76px] z-[9998] px-6 flex items-center transition-all duration-300 select-none {skin.current === 'winamp'
+  class="fixed bottom-0 left-0 right-0 h-[76px] z-[9998] px-6 flex items-center transition-all duration-300 select-none overflow-hidden {skin.current === 'winamp'
     ? 'bg-gradient-to-b from-[#303642] via-[#21252d] to-[#171920] border-t-2 border-l-2 border-white/20 border-b-2 border-r-2 border-black/90 shadow-2xl'
     : skin.current === 'cassette'
       ? 'bg-[#181a1f] border-t-2 border-[#2c3038] shadow-2xl'
@@ -73,7 +79,48 @@
           : 'bg-[var(--card-bg-solid,#0f172a)]/95 backdrop-blur-2xl border-t border-[var(--border-color,rgba(255,255,255,0.12))] shadow-[-12px_48px_rgba(0,0,0,0.45)]'}"
   style="{skin.cssVars}"
 >
-  <div class="w-full max-w-[1280px] mx-auto flex justify-between items-center gap-5">
+  {#if customBgStore.enabled && customBgStore.url}
+    <!-- 🌄 自定义背景半透明毛玻璃层 -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none" aria-hidden="true">
+      {#if customBgStore.type === 'image'}
+        <img
+          src={customBgStore.url}
+          alt=""
+          class="w-full h-full transition-[filter,transform,object-position] duration-300"
+          style="
+            filter: blur({Math.max(customBgStore.blur, 10)}px);
+            object-fit: {customBgStore.fit};
+            object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+            transform: scale({customBgStore.scale * 1.1});
+            transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+          "
+        />
+      {:else if customBgStore.type === 'video'}
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video
+          src={customBgStore.url}
+          autoplay
+          loop
+          muted
+          playsinline
+          class="w-full h-full transition-[filter,transform,object-position] duration-300"
+          style="
+            filter: blur({Math.max(customBgStore.blur, 10)}px);
+            object-fit: {customBgStore.fit};
+            object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+            transform: scale({customBgStore.scale * 1.1});
+            transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+          "
+        ></video>
+      {/if}
+      <div
+        class="absolute inset-0 pointer-events-none transition-colors duration-200"
+        style="background: rgba(10, 14, 26, {Math.max(customBgStore.dimOpacity, 0.45)});"
+      ></div>
+    </div>
+  {/if}
+
+  <div class="relative z-10 w-full max-w-[1280px] mx-auto flex justify-between items-center gap-5">
     <!-- 1. 左侧：根据皮肤渲染专属封面/状态槽 -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -143,19 +190,47 @@
             {:else if skin.current === 'spring'}
               <span class="text-xs text-emerald-400">🌱</span>
             {/if}
-            <span
-              class="text-sm font-semibold truncate leading-tight {skin.current === 'winamp'
+            <button
+              type="button"
+              class="text-sm font-semibold truncate leading-tight bg-transparent border-none p-0 text-left cursor-pointer hover:underline hover:text-red-400 transition-colors {skin.current === 'winamp'
                 ? 'font-mono text-[#10b981] drop-shadow-[0_0_4px_rgba(16,185,129,0.5)]'
                 : skin.current === 'cassette'
                   ? 'font-mono text-neutral-200'
                   : skin.current === 'spring'
                     ? 'text-emerald-400 font-semibold'
                     : 'text-[var(--text-main,#0f172a)]'}"
+              onclick={() => {
+                if (curTrack?.id && onSong) onSong(String(curTrack.id));
+                else if (onLyric) onLyric();
+              }}
+              title={curTrack?.id && onSong ? t('playlist.viewSongDetails') : (curTrack?.name || t('player.noTrackPlaying'))}
             >
               {curTrack?.name || t('player.noTrackPlaying')}
-            </span>
+            </button>
+            {#if loading}
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1 shrink-0 animate-pulse font-normal cursor-pointer hover:bg-purple-500/25 active:scale-95 transition-all"
+                onclick={(e) => { e.stopPropagation(); onTogglePlay(); }}
+                title={t('player.cancelLoading')}
+              >
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span>
+                <span>{t('player.loadingTrack')}</span>
+                <X size={10} strokeWidth={2.5} class="opacity-70 hover:opacity-100 ml-0.5" />
+              </span>
+            {/if}
             {#if curTrack}
-              <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1 shrink-0" />
+              <TrackSourceBadge
+                id={curTrack.id}
+                name={curTrack.name}
+                artist={curTrack.artist}
+                path={curTrack.filePath}
+                item={curTrack}
+                isLocal={curTrack.isLocal}
+                {curTrack}
+                class="ml-1 shrink-0"
+              />
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <span class="inline-flex items-center shrink-0 ml-0.5" onclick={(e) => e.stopPropagation()}>
@@ -182,6 +257,7 @@
     <div class="flex flex-col items-center justify-center flex-2 max-w-[580px] gap-1.5 w-full">
       <PlayerControls
         {playing}
+        {loading}
         {playMode}
         {onTogglePlay}
         {onPrev}

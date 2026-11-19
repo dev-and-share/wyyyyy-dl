@@ -40,14 +40,15 @@ describe('MyPlaylistsSection (SP) Tab Ordering Contracts', () => {
       }
     });
 
-    // 1. Check tab button order in DOM: All -> Created -> Subscribed
-    const tabContainer = container.querySelector('.flex.gap-1\\.5.items-center.flex-wrap');
+    // 1. Check tab button order in DOM: All -> Created -> Subscribed -> Local
+    const tabContainer = container.querySelector('[data-testid="my-playlists-filter-tabs"]') || container.querySelector('.flex.items-center button')?.parentElement;
     expect(tabContainer).not.toBeNull();
     const buttons = tabContainer?.querySelectorAll('button') || [];
-    expect(buttons.length).toBe(3);
+    expect(buttons.length).toBe(4);
     expect(buttons[0].textContent).toContain('全部');
     expect(buttons[1].textContent).toContain('创建');
     expect(buttons[2].textContent).toContain('收藏');
+    expect(buttons[3].textContent).toContain('本地');
 
     // Default tab is "All" (全部) with ring-2 active class
     expect(buttons[0].className).toContain('ring-2');
@@ -62,5 +63,32 @@ describe('MyPlaylistsSection (SP) Tab Ordering Contracts', () => {
     expect(getByText('我喜欢的音乐')).toBeDefined();
     expect(getByText('热门自建10次')).toBeDefined();
     expect(getByText('普通自建歌单')).toBeDefined();
+  });
+
+  it('clicking search icon expands search box and automatically focuses the input', async () => {
+    const { getByTitle, queryByPlaceholderText } = render(MyPlaylistsSection, {
+      props: {
+        open: true,
+        flat: false,
+        onViewPlaylist: vi.fn(),
+        onPlayPlaylist: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    // 默认未展开搜索框
+    expect(queryByPlaceholderText(/搜索歌单名称/)).toBeNull();
+
+    // 点击 🔍 按钮
+    const searchBtn = getByTitle('搜索');
+    await fireEvent.click(searchBtn);
+
+    // 搜索框出现
+    const searchInput = queryByPlaceholderText(/搜索歌单名称/) as HTMLInputElement;
+    expect(searchInput).not.toBeNull();
+
+    // 验证搜索框获得焦点
+    await new Promise((r) => setTimeout(r, 60));
+    expect(document.activeElement).toBe(searchInput);
   });
 });

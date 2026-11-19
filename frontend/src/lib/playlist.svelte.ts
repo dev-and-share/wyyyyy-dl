@@ -3,6 +3,8 @@ import { getApiCache, setApiCache, matchesKeyword } from './utils';
 import { api } from './api';
 import { t } from './i18n';
 import { playlistService } from './playlistService';
+import { isDailyRecommendRoute } from './router.svelte';
+import { loadLocalPlaylists } from './localPlaylistStore.svelte';
 
 export const myPlaylists = $state<any[]>([]);
 export const allTracks = $state<any[]>([]);
@@ -59,6 +61,7 @@ export function hasMoreTracks(): boolean {
 
 export async function loadMyPlaylists(f: any = playlistState.filter) {
   playlistState.filter = f;
+  loadLocalPlaylists().catch(() => {});
   const cached = getApiCache('my_playlists');
   if (cached?.data?.playlists) {
     myPlaylists.length = 0;
@@ -196,7 +199,7 @@ export function resetActiveTargetPlaylist(): void {
 export async function loadPlaylistDetail(playlistId: string, force = false){
   if(!playlistId) throw new Error(t('playlist.enterPlaylistId'));
   const pidStr = String(playlistId).trim();
-  if (pidStr === 'daily-recommend') {
+  if (isDailyRecommendRoute(pidStr)) {
     return null;
   }
 
@@ -296,7 +299,7 @@ export async function loadPlaylistDetail(playlistId: string, force = false){
   }
 }
 
-const STORAGE_KEY_PLAYLIST_PLAY_COUNTS = 'wyyyy_playlist_play_counts';
+const STORAGE_KEY_PLAYLIST_PLAY_COUNTS = 'wyy_playlist_play_counts';
 
 function loadPlayCounts(): Record<string, number> {
   if (typeof localStorage === 'undefined') return {};
@@ -316,6 +319,15 @@ export function recordPlaylistPlay(playlistId: string | number) {
   const current = playlistPlayCounts[idStr] || 0;
   const next = current + 1;
   playlistPlayCounts[idStr] = next;
+  try {
+    localStorage.setItem(STORAGE_KEY_PLAYLIST_PLAY_COUNTS, JSON.stringify($state.snapshot(playlistPlayCounts)));
+  } catch {}
+}
+
+export function clearPlaylistPlayCount(playlistId: string | number) {
+  if (!playlistId) return;
+  const idStr = String(playlistId);
+  delete playlistPlayCounts[idStr];
   try {
     localStorage.setItem(STORAGE_KEY_PLAYLIST_PLAY_COUNTS, JSON.stringify($state.snapshot(playlistPlayCounts)));
   } catch {}
@@ -366,7 +378,7 @@ export function sortPlaylistsByPlayCount(list: any[]): any[] {
     .map(wrapper => wrapper.item);
 }
 
-const STORAGE_KEY_LAST_BACKUP_PLAYLIST = 'wyyyy_last_backup_playlist';
+const STORAGE_KEY_LAST_BACKUP_PLAYLIST = 'wyy_last_backup_playlist';
 
 export function getLastBackupPlaylist(): { id: string; name: string } | null {
   if (typeof localStorage === 'undefined') return null;

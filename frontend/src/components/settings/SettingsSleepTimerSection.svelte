@@ -1,6 +1,7 @@
 <script lang="ts">
   import { sleepTimer, type SleepTimerOption } from '../../lib/sleepTimer.svelte';
   import { t } from '../../lib/i18n';
+  import { Timer, Music, Hourglass } from '@lucide/svelte';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -33,7 +34,7 @@
 <section class="flex flex-col gap-2.5" data-testid="settings-sleep-timer-section">
   <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
     <div class="flex items-center gap-1.5">
-      <span>⏱️</span>
+      <Timer size={14} />
       <span>{t('settings.sleepTimerTitle')}</span>
     </div>
     {#if sleepTimer.isActive}
@@ -57,10 +58,10 @@
       {#if sleepTimer.isActive}
         <div class="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-mono font-bold animate-pulse">
           {#if sleepTimer.option === 'endOfTrack'}
-            <span>🎵</span>
+            <Music size={12} />
             <span class="text-[11px] font-sans">{t('settings.sleepTimerStatusEndOfTrack')}</span>
           {:else}
-            <span>⏳</span>
+            <Hourglass size={12} />
             <span>{sleepTimer.formattedRemaining}</span>
           {/if}
         </div>

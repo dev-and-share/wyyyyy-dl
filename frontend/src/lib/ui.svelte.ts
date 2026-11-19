@@ -34,10 +34,30 @@ export function closeSheet(): void {
 export const globalUiState = $state<{
   showSettings: boolean;
   themeMode: ThemeMode;
+  hasPwaUpdate: boolean;
+  pwaUpdateVersion: string | null;
 }>({
   showSettings: false,
-  themeMode: getInitialTheme()
+  themeMode: getInitialTheme(),
+  hasPwaUpdate: false,
+  pwaUpdateVersion: null
 });
+
+export function setPwaUpdateAvailable(version?: string | null): void {
+  globalUiState.hasPwaUpdate = true;
+  if (version) {
+    globalUiState.pwaUpdateVersion = version;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('wyy:pwa-update-available', (e: any) => {
+    globalUiState.hasPwaUpdate = true;
+    if (e?.detail?.version) {
+      globalUiState.pwaUpdateVersion = e.detail.version;
+    }
+  });
+}
 
 export function openSettings(): void {
   globalUiState.showSettings = true;

@@ -26,7 +26,13 @@ export function formatArtist(trackOrArtist: any): string {
   }
   if (Array.isArray(trackOrArtist)) {
     return trackOrArtist
-      .map((a: any) => (typeof a === 'string' ? a.trim() : (a?.name ? String(a.name).trim() : '')))
+      .map((a: any) => {
+        if (typeof a === 'string') return a.trim();
+        const n = a?.name ? String(a.name).trim() : '';
+        if (n && n.toLowerCase() !== 'null' && n.toLowerCase() !== 'undefined') return n;
+        if (Array.isArray(a?.alias) && a.alias[0]) return String(a.alias[0]).trim();
+        return '';
+      })
       .filter((n: string) => n && n.toLowerCase() !== 'null' && n.toLowerCase() !== 'undefined')
       .join('/');
   }
@@ -47,6 +53,20 @@ export function formatArtist(trackOrArtist: any): string {
       const formatted = formatArtist(single.name);
       if (formatted) return formatted;
     }
+    // 兼容网易云私有云盘 pc.ar 与 privateCloud.artist
+    const pc = trackOrArtist.pc || trackOrArtist.raw?.pc;
+    if (pc) {
+      const pcAr = pc.ar || pc.privateCloud?.artist;
+      if (typeof pcAr === 'string' && pcAr.trim()) {
+        const deduped = pcAr
+          .split(/[;；/]/)
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+          .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
+          .join('/');
+        return deduped || pcAr.trim();
+      }
+    }
   }
   return '';
 }
@@ -65,9 +85,9 @@ export const DEFAULT_VINYL_COVER = `data:image/svg+xml;utf8,${encodeURIComponent
 `)}`;
 
 /**
- * 规范化封面图片地址并自动添加网易云 CDN 缩略裁剪参数：
+ * 规范化封面图片地址并自动添加 CDN 缩略裁剪参数：
  * 1. 自动将 http:// 升级为 https:// 避免 Mixed Content 阻塞与不安全警告
- * 2. 对网易云 CDN 图片追加 ?param={size}y{size}，将数 MB 原始大图压缩为 10~30KB 缩略图
+ * 2. 对在线 CDN 图片追加 ?param={size}y{size}，将数 MB 原始大图压缩为 10~30KB 缩略图
  * 3. 兜底默认黑胶唱片矢量封面
  */
 export function formatCoverUrl(url: string | null | undefined, size = 300): string {

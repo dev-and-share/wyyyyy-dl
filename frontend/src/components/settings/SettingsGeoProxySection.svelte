@@ -3,12 +3,13 @@
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
   import { updateGeoProxyState } from '../../lib/geoProxyStore.svelte';
+  import { Globe } from '@lucide/svelte';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
   }>();
 
-  const DEFAULT_SUB_URL = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&country=cn';
+  const DEFAULT_SUB_URL = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&country=cn&protocol=http&anonymity=elite&ssl=yes';
   const MONOSANS_SUB_URL = 'https://fastly.jsdelivr.net/gh/monosans/proxy-list@main/proxies/http.txt';
 
   let enabled = $state(false);
@@ -147,7 +148,7 @@
 <section class="flex flex-col gap-2.5" data-testid="settings-geo-proxy-section">
   <!-- 标题栏：简洁中性，无敏感词与长说明 -->
   <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-    <span>🌐</span>
+    <Globe size={14} />
     <span>{t('settings.geoProxy.sectionTitle')}</span>
   </div>
 

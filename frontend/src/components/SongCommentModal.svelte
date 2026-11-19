@@ -3,6 +3,7 @@
   import { api } from '../lib/api';
   import { t } from '../lib/i18n';
   import Modal from './Modal.svelte';
+  import { Loader2 } from '@lucide/svelte';
 
   let {
     songId,
@@ -110,7 +111,7 @@
   <!-- 评论内容主区域 -->
   {#if loading}
     <div class="py-16 flex flex-col items-center justify-center gap-2.5 text-xs text-[var(--text-muted)]">
-      <span class="text-2xl animate-spin">⏳</span>
+      <Loader2 size={28} class="animate-spin text-red-500" />
       <span>{t('comment.loadingCloud')}</span>
     </div>
   {:else if errorMsg && comments.length === 0 && hotComments.length === 0}
@@ -216,7 +217,7 @@
             onclick={() => loadComments(true)}
           >
             {#if loadingMore}
-              <span class="inline-block animate-spin text-xs">⏳</span>
+              <Loader2 size={13} class="animate-spin text-red-500" />
               <span>{t('comment.loadingMore')}</span>
             {:else}
               <span>{t('comment.loadMore')}</span>

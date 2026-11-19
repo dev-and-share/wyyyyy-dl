@@ -15,6 +15,7 @@
   import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
   import { routerState } from '../lib/router.svelte';
+  import { RefreshCw } from '@lucide/svelte';
   import { t } from '../lib/i18n';
   import type { Track } from '../lib/types';
 
@@ -39,13 +40,9 @@
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(mobileTab)));
 
   $effect(() => {
-    if (routerState.downloadSubTab === 'local-playlists') {
-      mobileTab = 'playlists';
-    } else if (routerState.downloadSubTab === 'history') {
-      mobileTab = 'history';
-    } else if (routerState.downloadSubTab === 'browser-cache') {
-      mobileTab = 'cache';
-    }
+    if (routerState.downloadSubTab === 'local-playlists') mobileTab = 'playlists';
+    else if (routerState.downloadSubTab === 'history') mobileTab = 'history';
+    else if (routerState.downloadSubTab === 'browser-cache') mobileTab = 'cache';
   });
 
   function setMobileTab(id: 'playlists' | 'folder' | 'history' | 'cache') {
@@ -275,7 +272,7 @@
   }
 
   const mobileTabs: SegmentItem[] = $derived([
-    { id: 'playlists', label: '歌单', icon: '📁', accent: 'emerald' },
+    { id: 'playlists', label: t('download.tabLocalPlaylists'), icon: '📁', accent: 'emerald' },
     { id: 'folder', label: t('download.tabLocal'), icon: '📂', accent: 'red' },
     { id: 'history', label: t('download.tabHistory'), icon: '📥', accent: 'blue' },
     { id: 'cache', label: t('download.tabCache'), icon: '📲', accent: 'emerald' }
@@ -295,17 +292,17 @@
     count={4}
     onChange={handleSwipeIndexChange}
   >
-    <div class="w-full">
+    <div class="w-full flex-1 flex flex-col">
       <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />
     </div>
 
-    <div class="w-full">
+    <div class="w-full flex-1 flex flex-col">
       <AccordionCard title={t('download.accordionLocalTree')} flat open={true} accent="red">
         <FolderExplorer {onPlayQueue} {onReveal} {showToast} />
       </AccordionCard>
     </div>
 
-    <div class="w-full">
+    <div class="w-full flex-1 flex flex-col">
       <AccordionCard title={t('download.accordionHistoryShort')} flat open={true} accent="blue">
       <div class="flex flex-wrap gap-2.5 bg-[var(--stat-bar-bg)] border border-[var(--border-subtle)] p-2.5 px-3.5 rounded-xl mb-2.5 items-center text-xs">
         <span class="text-[var(--text-secondary)]">{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
@@ -324,7 +321,10 @@
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanExternalLibraries}>{t('download.btnExternal')}</button>
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanDiskFiles}>{t('download.btnAlignDisk')}</button>
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={cleanMissingRecords}>{t('download.btnCleanMissing')}</button>
-          <button class="btn-secondary px-2.5 py-1 text-xs" onclick={() => loadHistory(1)}>🔄 {t('common.refresh')}</button>
+          <button class="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1.5" onclick={() => loadHistory(1)}>
+            <RefreshCw size={12} />
+            <span>{t('common.refresh')}</span>
+          </button>
         </div>
       </div>
 
@@ -361,7 +361,7 @@
               </div>
               <ul class="text-[11px] text-[var(--text-secondary)] pl-4 max-h-24 overflow-y-auto">
                 {#each (diskResult.untrackedFiles || []).slice(0, 5) as uf}
-                  <li class="truncate">{uf}</li>
+                  <li class="truncate font-mono" title={uf}>{uf}</li>
                 {/each}
                 {#if (diskResult.untrackedFiles || []).length > 5}
                   <li>{t('download.andMoreItems', { count: diskResult.untrackedFiles.length })}</li>
@@ -380,7 +380,7 @@
           <LocalSearchBox
             bind:value={histKw}
             placeholder={t('download.searchHistoryAdvancedPlaceholder')}
-            historyKey="wyyyy_history_search_history"
+            historyKey="wyy_history_search_history"
             onSearch={() => loadHistory(1)}
             onClear={() => loadHistory(1)}
           />
@@ -482,7 +482,7 @@
     </AccordionCard>
   </div>
 
-  <div class="w-full">
+  <div class="w-full flex-1 flex flex-col">
     <BrowserCacheSection flat open={true} {onPlayQueue} {showToast} />
   </div>
 </SwipeableTabsView>

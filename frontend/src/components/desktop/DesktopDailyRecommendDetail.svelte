@@ -19,6 +19,7 @@
   import Modal from '../Modal.svelte';
   import CreatePlaylistModal from '../CreatePlaylistModal.svelte';
   import DesktopHeaderActions from './DesktopHeaderActions.svelte';
+  import { Calendar, RefreshCw, Play, Download, Loader2, Package, Settings, AlertTriangle, Plus, Folder } from '@lucide/svelte';
 
   let {
     curTrack = null,
@@ -60,11 +61,7 @@
     const d = new Date();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    return {
-      monthText: t('recommend.monthText', { month: m }),
-      dayNum: day,
-      fullText: t('recommend.fullText', { month: m, day })
-    };
+    return { monthText: t('recommend.monthText', { month: m }), dayNum: day, fullText: t('recommend.fullText', { month: m, day }) };
   });
 
   async function loadRecommend(force = false) {
@@ -73,11 +70,8 @@
     errorMsg = '';
     try {
       const res = await api.recommendSongs();
-      if (res?.code === '000000' && Array.isArray(res.data)) {
-        recommendTracks = res.data;
-      } else {
-        errorMsg = res?.msg || t('recommend.failedCookie');
-      }
+      if (res?.code === '000000' && Array.isArray(res.data)) recommendTracks = res.data;
+      else errorMsg = res?.msg || t('recommend.failedCookie');
     } catch (e: any) {
       errorMsg = e?.message || t('recommend.failedNetwork');
     } finally {
@@ -85,9 +79,7 @@
     }
   }
 
-  onMount(() => {
-    loadRecommend();
-  });
+  onMount(() => { loadRecommend(); });
 
   function handlePlayAll() {
     if (!recommendTracks.length || !onPlayQueue) return;
@@ -212,8 +204,8 @@
 
     <div class="flex-1 min-w-0 flex flex-col gap-2">
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
-          <span>📅</span>
+        <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+          <Calendar size={13} />
           <span>{dateInfo.fullText}</span>
         </span>
         <span class="text-xs text-[var(--text-muted)] font-medium">
@@ -243,7 +235,7 @@
           class="btn-primary flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer shadow-sm disabled:opacity-50"
           onclick={handlePlayAll}
         >
-          <span>▶️</span>
+          <Play size={13} fill="currentColor" />
           <span>{t('playlist.playAll')}</span>
         </button>
 
@@ -254,7 +246,11 @@
           class="btn-secondary flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
           onclick={handleDownloadAll}
         >
-          <span>{isDownloadingAll ? '🔄' : '📥'}</span>
+          {#if isDownloadingAll}
+            <Loader2 size={13} class="animate-spin" />
+          {:else}
+            <Download size={13} />
+          {/if}
           <span>{isDownloadingAll ? t('download.status.downloading') : t('playlist.downloadAll')}</span>
         </button>
 
@@ -267,17 +263,21 @@
               onclick={handleBackupUpdate}
               title={t('recommend.updateBackupTitle', { name: lastBackup.name })}
             >
-              <span>{isBackingUp ? '🔄' : '📦'}</span>
+              {#if isBackingUp}
+                <Loader2 size={13} class="animate-spin" />
+              {:else}
+                <Package size={13} />
+              {/if}
               <span>{t('recommend.backupToWithName', { name: lastBackup.name })}</span>
             </button>
             <button
               type="button"
               disabled={isBackingUp}
-              class="px-2 py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-l border-emerald-500/20 cursor-pointer bg-transparent"
+              class="px-2 py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-l border-emerald-500/20 cursor-pointer bg-transparent flex items-center"
               onclick={() => showSelectModal = true}
               title={t('recommend.backupChangeTooltip')}
             >
-              ⚙️
+              <Settings size={13} />
             </button>
           </div>
         {:else}
@@ -287,7 +287,7 @@
             class="btn-secondary flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50 text-emerald-600 dark:text-emerald-400"
             onclick={() => showSelectModal = true}
           >
-            <span>📦</span>
+            <Package size={13} />
             <span>{t('recommend.backupBtn')}</span>
           </button>
         {/if}
@@ -299,7 +299,7 @@
           onclick={() => loadRecommend(true)}
           title={t('recommend.refreshTooltip')}
         >
-          <span>🔄</span>
+          <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
           <span>{t('common.refresh')}</span>
         </button>
       </div>
@@ -315,7 +315,7 @@
       </div>
     {:else if errorMsg}
       <div class="p-8 text-center flex flex-col items-center gap-3">
-        <div class="text-3xl">⚠️</div>
+        <AlertTriangle size={32} class="text-amber-500" />
         <div class="text-sm font-semibold text-red-500">{errorMsg}</div>
         <button
           type="button"
@@ -363,7 +363,16 @@
                     <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
                       {trackItem.name}
                     </span>
-                    <TrackSourceBadge id={trackItem.id} isLocal={trackItem.isLocal} {curTrack} class="shrink-0" />
+                    <TrackSourceBadge
+                      id={trackItem.id}
+                      name={trackItem.name}
+                      artist={artist}
+                      path={trackItem.filePath}
+                      item={trackItem}
+                      isLocal={trackItem.isLocal}
+                      {curTrack}
+                      class="shrink-0"
+                    />
                     {#if onToggleLike}
                       <TrackLikeBtn liked={likedSet.has(Number(trackItem.id))} onclick={() => onToggleLike?.(Number(trackItem.id), trackItem.name, artist)} />
                     {/if}
@@ -450,7 +459,7 @@
         class="w-full py-2 px-3 rounded-xl border border-dashed border-red-500/40 text-red-500 hover:bg-red-500/10 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
         onclick={() => { showSelectModal = false; showCreateModal = true; }}
       >
-        <span>➕</span>
+        <Plus size={14} />
         <span>{t('recommend.createBackupPlaylist')}</span>
       </button>
 

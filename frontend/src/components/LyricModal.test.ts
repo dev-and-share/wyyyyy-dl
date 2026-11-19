@@ -134,14 +134,24 @@ describe('LyricModal Component', () => {
       expect(queryByTestId('skin-stage-cassette')).toBeNull();
     });
 
-    // 点击春日青绿
-    const springCard = getByText('春日青绿');
-    await fireEvent.click(springCard);
-    expect(skin.current).toBe('spring');
+    // 点击赛博霓虹 (替换原有春日青绿)
+    const cyberCard = getByText('赛博霓虹');
+    await fireEvent.click(cyberCard);
+    expect(skin.current).toBe('cyber');
 
     await waitFor(() => {
-      expect(getByTestId('skin-stage-spring')).toBeInTheDocument();
+      expect(getByTestId('skin-stage-cyber')).toBeInTheDocument();
       expect(queryByTestId('skin-stage-winamp')).toBeNull();
+    });
+
+    // 点击复古胆机 (tube)
+    const tubeCard = getByText('复古胆机');
+    await fireEvent.click(tubeCard);
+    expect(skin.current).toBe('tube');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-tube')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-cyber')).toBeNull();
     });
 
     // 点击春樱初绽 (sakura)
@@ -151,7 +161,7 @@ describe('LyricModal Component', () => {
 
     await waitFor(() => {
       expect(getByTestId('skin-stage-sakura')).toBeInTheDocument();
-      expect(queryByTestId('skin-stage-spring')).toBeNull();
+      expect(queryByTestId('skin-stage-tube')).toBeNull();
     });
 
     // 点击盛夏晴空 (summer)
@@ -183,5 +193,187 @@ describe('LyricModal Component', () => {
       expect(getByTestId('skin-stage-winter')).toBeInTheDocument();
       expect(queryByTestId('skin-stage-autumn')).toBeNull();
     });
+
+    // 点击千禧CD (cd)
+    const cdCard = getByText('千禧CD');
+    await fireEvent.click(cdCard);
+    expect(skin.current).toBe('cd');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-cd')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-winter')).toBeNull();
+    });
+
+    // 点击雨夜窗扉 (rain)
+    const rainCard = getByText('雨夜窗扉');
+    await fireEvent.click(rainCard);
+    expect(skin.current).toBe('rain');
+
+    await waitFor(() => {
+      expect(getByTestId('skin-stage-rain')).toBeInTheDocument();
+      expect(queryByTestId('skin-stage-cd')).toBeNull();
+    });
+  });
+
+  it('renders low-key mini player and handles hover control logic on bottom player bar', async () => {
+    vi.useFakeTimers();
+    const onTogglePlay = vi.fn();
+    const onPrev = vi.fn();
+    const onNext = vi.fn();
+
+    const { getByTestId } = render(LyricModal, {
+      props: {
+        track: mockTrack,
+        currentTime: 45,
+        duration: 200,
+        playing: true,
+        playMode: 'list',
+        isLiked: false,
+        onTogglePlay,
+        onPrev,
+        onNext,
+        onToggleMode: vi.fn(),
+        onSeek: vi.fn(),
+        onSeekTime: vi.fn(),
+        onToggleLike: vi.fn(),
+        onTogglePeq: vi.fn(),
+        onToggleDrawer: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 验证低调 mini 播放器控制面板已渲染
+    expect(getByTestId('immersive-mini-player')).toBeInTheDocument();
+    const miniPlayerContainer = getByTestId('immersive-mini-player-container');
+    const miniPlayBtn = getByTestId('mini-btn-play');
+    await fireEvent.click(miniPlayBtn);
+    expect(onTogglePlay).toHaveBeenCalledTimes(1);
+
+    // 验证底部控制面板与贴底感应区
+    const bottomControls = getByTestId('immersive-bottom-controls');
+    const bottomTrigger = getByTestId('immersive-bottom-progress-trigger');
+
+    // 初始状态 uiVisible 为 true：大播放器显现，小播放器隐藏互斥
+    expect(bottomControls.className).toContain('opacity-100');
+    expect(miniPlayerContainer.className).toContain('opacity-0');
+    expect(miniPlayerContainer.className).toContain('pointer-events-none');
+
+    // 鼠标 mouseenter 到底部控制栏，保持显示并不应在 3.2s 后消失
+    await fireEvent.mouseEnter(bottomControls);
+    vi.advanceTimersByTime(4000);
+    expect(bottomControls.className).toContain('opacity-100');
+    expect(miniPlayerContainer.className).toContain('opacity-0');
+
+    // 鼠标移出底部控制栏，启动 3.2s 渐隐倒计时：大播放器消失，小播放器显现
+    await fireEvent.mouseLeave(bottomControls);
+    vi.advanceTimersByTime(3500);
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-0');
+      expect(miniPlayerContainer.className).toContain('opacity-100');
+      expect(miniPlayerContainer.className).toContain('pointer-events-auto');
+    });
+
+    // 鼠标悬停贴底进度条感应区（mouse on 触发显示大播放器，同时小播放器隐去）
+    await fireEvent.mouseEnter(bottomTrigger);
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-100');
+      expect(miniPlayerContainer.className).toContain('opacity-0');
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('dynamically switches meta theme-color to dark on mount and restores on unmount', () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('spring');
+    // 白天模式下普通浏览：浅色
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#f0fdf4');
+
+    const { unmount } = render(LyricModal, {
+      props: {
+        track: mockTrack,
+        currentTime: 0,
+        duration: 269,
+        playing: true,
+        playMode: 'list',
+        isLiked: false,
+        onTogglePlay: vi.fn(),
+        onPrev: vi.fn(),
+        onNext: vi.fn(),
+        onToggleMode: vi.fn(),
+        onSeek: vi.fn(),
+        onSeekTime: vi.fn(),
+        onToggleLike: vi.fn(),
+        onTogglePeq: vi.fn(),
+        onToggleDrawer: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 挂载后：沉浸模式下切为当前皮肤的白天同色系深色锚点（告别死黑，自然融入皮肤，如 spring 为 #064e3b）
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#064e3b');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#064e3b');
+
+    // 卸载后：自动恢复白天模式浅色
+    unmount();
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#f0fdf4');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#f0fdf4');
+
+    document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('renders immersive titlebar background layer and adheres to spatial partitioning', async () => {
+    vi.useFakeTimers();
+
+    const { getByTestId, container } = render(LyricModal, {
+      props: {
+        track: mockTrack,
+        currentTime: 0,
+        duration: 269,
+        playing: true,
+        playMode: 'list',
+        isLiked: false,
+        onTogglePlay: vi.fn(),
+        onPrev: vi.fn(),
+        onNext: vi.fn(),
+        onToggleMode: vi.fn(),
+        onSeek: vi.fn(),
+        onSeekTime: vi.fn(),
+        onToggleLike: vi.fn(),
+        onTogglePeq: vi.fn(),
+        onToggleDrawer: vi.fn(),
+        onClose: vi.fn()
+      }
+    });
+
+    // 1. 验证无缝顶栏背景层与电影暗角聚焦层已存在
+    expect(getByTestId('immersive-titlebar-bg')).toBeInTheDocument();
+    expect(getByTestId('immersive-cinematic-vignette')).toBeInTheDocument();
+
+    const bottomControls = getByTestId('immersive-bottom-controls');
+    const miniPlayerContainer = getByTestId('immersive-mini-player-container');
+    const modalDiv = container.firstElementChild as HTMLElement;
+
+    // 推进 3.5 秒进入沉静模式：大播放器隐去，小播放器显现
+    vi.advanceTimersByTime(3500);
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-0');
+      expect(miniPlayerContainer.className).toContain('opacity-100');
+    });
+
+    // 2. 空间分区感应：鼠标移向左侧舞台 (clientX: 240, clientY: 400) -> 绝不抢先唤起大播放器，保证小播放器稳定
+    await fireEvent.mouseMove(modalDiv, { clientX: 240, clientY: 400 });
+    expect(bottomControls.className).toContain('opacity-0');
+    expect(miniPlayerContainer.className).toContain('opacity-100');
+
+    // 3. 空间分区感应：鼠标移向底部边缘 (距底部 48px 以内，如 innerHeight=800, clientY=780) -> 瞬时唤起大播放器
+    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true });
+    await fireEvent.mouseMove(modalDiv, { clientX: 500, clientY: 780 });
+    await waitFor(() => {
+      expect(bottomControls.className).toContain('opacity-100');
+      expect(miniPlayerContainer.className).toContain('opacity-0');
+    });
+
+    vi.useRealTimers();
   });
 });

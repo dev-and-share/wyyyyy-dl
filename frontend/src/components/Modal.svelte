@@ -1,6 +1,46 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { onMount, type Snippet, type Component } from 'svelte';
+  import { X, Folder, Plus, Package, Headphones, Trash2, HeartCrack, Settings, Sparkles, Sliders, TriangleAlert, Info, MessageSquare, Rocket, Smartphone } from '@lucide/svelte';
   import { t } from '../lib/i18n/index.svelte';
+  import { pushModalBackdrop } from '../lib/skinStore.svelte';
+
+  const MODAL_ICON_MAP: Record<string, Component<{ size?: number | string; strokeWidth?: number | string; class?: string }>> = {
+    '📂': Folder,
+    '📁': Folder,
+    '➕': Plus,
+    '📦': Package,
+    '🎧': Headphones,
+    '🗑️': Trash2,
+    '💔': HeartCrack,
+    '✨': Sparkles,
+    '⚙️': Settings,
+    '🎛️': Sliders,
+    '⚠️': TriangleAlert,
+    'ℹ️': Info,
+    '💡': Sparkles,
+    '💬': MessageSquare,
+    '🚀': Rocket,
+    '📲': Smartphone
+  };
+
+  onMount(() => {
+    const release = pushModalBackdrop();
+    return () => release();
+  });
+
+  // 🚀 将模态框传送至 document.body 顶层，彻底突破父级容器 (如 SwipeableTabsView / overflow / scroll-snap) 的层叠上下文陷阱
+  function portal(node: HTMLElement) {
+    if (typeof document !== 'undefined' && document.body && node.parentElement !== document.body) {
+      document.body.appendChild(node);
+    }
+    return {
+      destroy() {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      }
+    };
+  }
 
   let {
     title = '',
@@ -85,8 +125,10 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="fixed inset-0 w-screen h-screen bg-black/60 backdrop-blur-sm {zIndex} flex items-end sm:items-center justify-center p-0 sm:p-4 box-border {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
+  use:portal
+  class="fixed inset-0 w-screen h-screen bg-black/60 backdrop-blur-sm {zIndex} flex items-end sm:items-center justify-center p-0 sm:p-4 box-border cursor-pointer {closing ? 'animate-[modalFadeIn_0.2s_ease-out_reverse]' : 'animate-[modalFadeIn_0.2s_ease-out]'}"
   onclick={(e) => e.target === e.currentTarget && handleClose()}
+  ontouchend={(e) => { if (e.target === e.currentTarget) { e.preventDefault(); handleClose(); } }}
 >
   <div
     role="dialog"
@@ -97,7 +139,7 @@
       w-full max-sm:rounded-t-[28px] max-sm:rounded-b-none max-sm:border-t max-sm:border-b-0 max-sm:max-h-[88vh]
       sm:rounded-2xl sm:max-h-[85vh] sm:border sm:mx-auto
       {height}
-      shadow-2xl overflow-hidden flex flex-col box-border
+      shadow-2xl overflow-hidden flex flex-col box-border cursor-default
       {closing && dragOffset === 0
         ? 'max-sm:animate-[drawerSlideDownSP_0.2s_ease-in] sm:animate-[modalFadeIn_0.2s_ease-out_reverse]'
         : 'max-sm:animate-[drawerSlideUpSP_0.25s_cubic-bezier(0.16,1,0.3,1)] sm:animate-[scaleUp_0.25s_cubic-bezier(0.16,1,0.3,1)]'}"
@@ -122,22 +164,31 @@
       ontouchend={handleTouchEnd}
     >
       <div class="flex items-center gap-2 font-bold text-[var(--text-main)] text-base select-none">
-        {#if icon}<span class="text-xl leading-none">{icon}</span>{/if}
+        {#if icon}
+          {@const IconComp = MODAL_ICON_MAP[icon]}
+          {#if IconComp}
+            <span class="text-[var(--primary-color)] flex items-center justify-center shrink-0">
+              <IconComp size={18} strokeWidth={2.2} />
+            </span>
+          {:else}
+            <span class="text-xl leading-none">{icon}</span>
+          {/if}
+        {/if}
         <h2 class="text-base font-bold text-[var(--text-main)] m-0">{title}</h2>
       </div>
       <button
         type="button"
-        class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent text-sm"
+        class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent"
         onclick={handleClose}
         title={t('common.close')}
         aria-label={t('common.close')}
       >
-        ✕
+        <X size={18} strokeWidth={2.2} />
       </button>
     </div>
 
     <!-- Modal Body 内容区 -->
-    <div class="p-4 sm:p-5 overflow-y-auto text-[var(--text-main)] text-[13.5px] leading-relaxed max-h-[75vh] overscroll-contain flex-1 custom-scrollbar">
+    <div class="p-4 sm:p-5 overflow-y-auto text-[var(--text-main)] text-[13.5px] leading-relaxed max-h-[75vh] overscroll-contain flex-1 custom-scrollbar {!footer ? 'max-sm:pb-[calc(18px+env(safe-area-inset-bottom,0px))]' : ''}">
       {@render children()}
     </div>
 

@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api } from '../../lib/api';
   import { t } from '../../lib/i18n';
+  import { authStore } from '../../lib/authStore.svelte';
+  import { isScrobbleEnabled, setScrobbleEnabled } from '../../lib/player/scrobble';
+  import { User, Lock, Headphones } from '@lucide/svelte';
 
   let { showToast = () => {} } = $props<{
     showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error', dur?: number) => void;
@@ -12,6 +15,25 @@
   let showCookieInput = $state(false);
   let cookieText = $state('');
   let isSavingCookie = $state(false);
+  let scrobbleEnabled = $state(isScrobbleEnabled());
+  let cookieTextareaEl = $state<HTMLTextAreaElement | null>(null);
+
+  function toggleCookieInput() {
+    showCookieInput = !showCookieInput;
+    if (showCookieInput) {
+      tick().then(() => cookieTextareaEl?.focus());
+    }
+  }
+
+  function toggleScrobble() {
+    scrobbleEnabled = !scrobbleEnabled;
+    setScrobbleEnabled(scrobbleEnabled);
+    showToast(
+      scrobbleEnabled ? t('settings.scrobbleEnabledToast') : t('settings.scrobbleDisabledToast'),
+      'info',
+      2000
+    );
+  }
 
   export async function checkLogin() {
     isCheckingLogin = true;
@@ -56,7 +78,7 @@
 <section class="flex flex-col gap-2.5">
   <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
     <div class="flex items-center gap-1.5">
-      <span>👤</span>
+      <User size={14} />
       <span>{t('settings.accountSectionTitle')}</span>
     </div>
     <button
@@ -84,27 +106,35 @@
       {/if}
     </div>
 
-    <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">
-      <button
-        type="button"
-        class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all"
-        onclick={() => showCookieInput = !showCookieInput}
-      >
-        {showCookieInput ? t('settings.collapseCookieInput') : t('settings.configCookieBtn')}
-      </button>
-      <a
-        href="/login"
-        target="_blank"
-        rel="noreferrer"
-        class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all text-center no-underline shrink-0"
-      >
-        {t('settings.account.qrLogin')}
-      </a>
-    </div>
+    {#if authStore.authEnabled && !authStore.isAdmin}
+      <div class="pt-2 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+        <Lock size={13} />
+        <span>云端主账号由超级管理员统一绑定托管，访客模式不支持换绑</span>
+      </div>
+    {:else}
+      <div class="pt-2 border-t border-[var(--border-color)] flex items-center gap-2">
+        <button
+          type="button"
+          class="flex-1 py-1.5 px-3 rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs font-medium text-[var(--text-main)] border border-[var(--border-color)] cursor-pointer transition-all"
+          onclick={toggleCookieInput}
+        >
+          {showCookieInput ? t('settings.collapseCookieInput') : t('settings.configCookieBtn')}
+        </button>
+        <a
+          href="/login"
+          target="_blank"
+          rel="noreferrer"
+          class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-500 border border-red-500/20 cursor-pointer transition-all text-center no-underline shrink-0"
+        >
+          {t('settings.account.qrLogin')}
+        </a>
+      </div>
+    {/if}
 
     {#if showCookieInput}
       <div class="pt-2 flex flex-col gap-2">
         <textarea
+          bind:this={cookieTextareaEl}
           bind:value={cookieText}
           rows="3"
           placeholder={t('settings.cookiePlaceholder')}
@@ -129,5 +159,30 @@
         </div>
       </div>
     {/if}
+
+    <!-- 🎧 网易云听歌打卡 (Scrobble) 开关 -->
+    <div class="pt-3 border-t border-[var(--border-color)] flex items-center justify-between gap-3">
+      <div class="flex flex-col gap-0.5 min-w-0">
+        <span class="font-semibold text-xs text-[var(--text-main)] flex items-center gap-1.5">
+          <Headphones size={13} />
+          <span>{t('settings.scrobbleLabel')}</span>
+        </span>
+        <span class="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          {t('settings.scrobbleDesc')}
+        </span>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={scrobbleEnabled}
+        aria-label={t('settings.scrobbleLabel')}
+        class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {scrobbleEnabled ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
+        onclick={toggleScrobble}
+      >
+        <span
+          class="block w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform duration-200 {scrobbleEnabled ? 'translate-x-5.5' : 'translate-x-0'}"
+        ></span>
+      </button>
+    </div>
   </div>
 </section>

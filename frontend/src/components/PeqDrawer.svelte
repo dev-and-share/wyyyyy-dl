@@ -1,8 +1,16 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { Sliders, X, Zap, Lightbulb, RotateCcw } from '@lucide/svelte';
   import { INITIAL_BANDS, BUILTIN_PRESETS, type Band } from '../lib/peq';
   import { t } from '../lib/i18n/index.svelte';
+  import { pushModalBackdrop } from '../lib/skinStore.svelte';
 
-  const PEQ_STORAGE_KEY = 'wyyyy_peq_settings';
+  onMount(() => {
+    const release = pushModalBackdrop();
+    return () => release();
+  });
+
+  const PEQ_STORAGE_KEY = 'wyy_peq_settings';
 
   function loadPeqFromStorage(): { enabled: boolean; bands: Band[] } | null {
     try {
@@ -176,7 +184,7 @@
       ontouchend={handleTouchEnd}
     >
       <div class="flex items-center gap-2">
-        <span class="text-lg">🎛️</span>
+        <Sliders size={18} class="text-emerald-500" />
         <h3 class="m-0 text-base font-bold text-[var(--text-main)]">{t('peq.title')}</h3>
       </div>
       <button
@@ -185,7 +193,7 @@
         onclick={handleClose}
         title={t('common.close')}
       >
-        ✕
+        <X size={15} />
       </button>
     </div>
 
@@ -199,7 +207,10 @@
             onchange={(e) => (enabled = (e.target as HTMLInputElement).checked)}
             class="w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer"
           />
-          <span>⚡ {t('peq.enable')}</span>
+          <span class="inline-flex items-center gap-1">
+            <Zap size={13} class="text-amber-400" />
+            <span>{t('peq.enable')}</span>
+          </span>
         </label>
 
         <select
@@ -217,7 +228,7 @@
 
       {#if BUILTIN_PRESETS[preset]}
         <div class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] bg-black/5 dark:bg-white/[0.03] px-2.5 py-1 rounded-lg">
-          <span class="text-xs">💡</span>
+          <Lightbulb size={13} class="text-amber-400 shrink-0" />
           <span class="text-[11px]">{t(`peq.preset.${preset}.desc` as any) || BUILTIN_PRESETS[preset].desc}</span>
         </div>
       {/if}
@@ -270,8 +281,14 @@
 
     <!-- 底部操作按钮栏 -->
     <div class="flex justify-end gap-2.5 pt-2 border-t border-black/5 dark:border-white/5">
-      <button type="button" onclick={reset} class="btn-secondary text-xs px-3.5 py-1.5">🔄 {t('peq.reset')}</button>
-      <button type="button" onclick={onClose} class="btn-primary bg-gradient-to-br from-emerald-500 to-teal-600 text-xs px-4 py-1.5 font-semibold">✕ {t('common.close')}</button>
+      <button type="button" onclick={reset} class="btn-secondary text-xs px-3.5 py-1.5 flex items-center gap-1.5">
+        <RotateCcw size={13} />
+        <span>{t('peq.reset')}</span>
+      </button>
+      <button type="button" onclick={onClose} class="btn-primary bg-gradient-to-br from-emerald-500 to-teal-600 text-xs px-4 py-1.5 font-semibold flex items-center gap-1.5">
+        <X size={13} />
+        <span>{t('common.close')}</span>
+      </button>
     </div>
   </div>
 </div>

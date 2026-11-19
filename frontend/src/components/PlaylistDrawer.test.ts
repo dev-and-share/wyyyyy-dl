@@ -116,7 +116,7 @@ describe('PlaylistDrawer Collector Mode (Pending Download)', () => {
 
     expect(api.downloadSingle).toHaveBeenCalledWith('103');
     await waitFor(() => {
-      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'wyyyy:download-submitted' }));
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'wyy:download-submitted' }));
     });
   });
 

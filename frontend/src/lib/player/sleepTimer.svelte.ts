@@ -41,7 +41,7 @@ export class SleepTimerStore {
   setTimer(opt: SleepTimerOption, onTrigger?: () => void) {
     this.controller.setTimer(opt, () => {
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('wyyyy:sleep-timer-trigger'));
+        window.dispatchEvent(new CustomEvent('wyy:sleep-timer-trigger'));
       }
       if (onTrigger) {
         try {
@@ -74,7 +74,7 @@ export class SleepTimerStore {
     const cb = onTrigger
       ? () => {
           if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('wyyyy:sleep-timer-trigger'));
+            window.dispatchEvent(new CustomEvent('wyy:sleep-timer-trigger'));
           }
           try {
             onTrigger();

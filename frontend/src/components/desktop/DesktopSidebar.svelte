@@ -1,9 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../lib/i18n';
-  import { jumpToDownloadTasks, type ActiveTab } from '../../lib/router.svelte';
-  import { geoProxyState, fetchGeoProxyConfig } from '../../lib/geoProxyStore.svelte';
+  import { jumpToDownloadTasks, exitPlaylistToGallery, scrollToPageTop, type ActiveTab, AppRoute, SpecialRouteId, isDailyRecommendRoute } from '../../lib/router.svelte';
+  import { geoProxyState, fetchGeoProxyConfig, refreshGeoProxy } from '../../lib/geoProxyStore.svelte';
+  import { globalUiState, toggleTheme, openSettings } from '../../lib/ui.svelte';
+  import type { ThemeMode } from '../../lib/theme';
   import DesktopSidebarPlaylists from './DesktopSidebarPlaylists.svelte';
+  import WyyLogo from '../WyyLogo.svelte';
+  import { Music, Folder, Calendar, Search, HardDriveDownload, Puzzle, Moon, Sun, SunMoon, Settings, Globe, RefreshCw, ChevronsLeft, ChevronsRight } from '@lucide/svelte';
 
   let {
     tab,
@@ -16,6 +20,9 @@
     onPlayPlaylist,
     onToggleCollapse,
     onOpenDownloadTasks,
+    onToggleTheme,
+    onOpenSettings,
+    themeMode = globalUiState.themeMode,
     showToast
   } = $props<{
     tab: ActiveTab;
@@ -28,16 +35,29 @@
     onPlayPlaylist?: (id: string, name: string) => void;
     onToggleCollapse: () => void;
     onOpenDownloadTasks?: () => void;
+    onToggleTheme?: () => void;
+    onOpenSettings?: () => void;
+    themeMode?: ThemeMode;
     showToast?: (m: string, t?: string) => void;
   }>();
 
-  const isRecommendActive = $derived(tab === 'playlist' && currentPlaylistId === 'daily-recommend');
-  const isPlaylistActive = $derived(tab === 'playlist' && currentPlaylistId !== 'daily-recommend');
+  const isRecommendActive = $derived(tab === AppRoute.PLAYLIST && isDailyRecommendRoute(currentPlaylistId));
+  const isPlaylistActive = $derived(tab === AppRoute.PLAYLIST && !isDailyRecommendRoute(currentPlaylistId));
 
   onMount(() => {
     if (!geoProxyState.loaded) {
       fetchGeoProxyConfig();
     }
+    // 代理开启时轻量轮询同步后端状态，自愈恢复后自动由黄转绿
+    const timer = setInterval(() => {
+      if (geoProxyState.enabled) {
+        fetchGeoProxyConfig();
+      }
+    }, 20_000);
+
+    return () => {
+      clearInterval(timer);
+    };
   });
 
   const proxyTooltipSummary = $derived.by(() => {
@@ -66,61 +86,100 @@
     }
     onSwitchTab('playlist');
   }
+
+  function handleLogoClick() {
+    if (tab !== AppRoute.PLAYLIST || currentPlaylistId) {
+      if (onViewPlaylist) {
+        onViewPlaylist('');
+      } else {
+        exitPlaylistToGallery();
+      }
+      onSwitchTab(AppRoute.PLAYLIST);
+    }
+    scrollToPageTop();
+  }
 </script>
 
 <!-- PC Desktop Left Sidebar (Visible >= 1024px) -->
 <aside
   data-testid="desktop-sidebar"
-  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--card-bg)] backdrop-blur-xl border-r border-[var(--border-color)] transition-[width,height] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
-  style="height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'}; max-height: {hasPlayerBar ? 'calc(100vh - 74px)' : '100vh'};"
+  class="hidden lg:flex flex-col shrink-0 select-none bg-[var(--sidebar-bg,var(--card-bg))] backdrop-blur-xl border-[var(--border-subtle)] transition-[width,height,margin,border-radius,box-shadow] duration-200 ease-in-out self-start sticky top-0 overflow-hidden {collapsed ? 'w-[58px]' : 'w-[224px]'}"
+  style="
+    margin-top: var(--sidebar-mt, 0px);
+    margin-bottom: var(--sidebar-mb, 0px);
+    margin-left: var(--sidebar-ml, 0px);
+    margin-right: var(--sidebar-mr, 0px);
+    border-radius: var(--sidebar-radius, 0px);
+    border-width: var(--sidebar-border-width, 0 1px 0 0);
+    border-style: solid;
+    box-shadow: var(--sidebar-shadow, none);
+    height: calc(100vh - var(--sidebar-mt, 0px) - var(--sidebar-mb, 0px) - {hasPlayerBar ? '74px' : '0px'});
+    max-height: calc(100vh - var(--sidebar-mt, 0px) - var(--sidebar-mb, 0px) - {hasPlayerBar ? '74px' : '0px'});
+  "
 >
   <!-- 1. Top Bar: Logo & Collapse Button -->
-  <div class="flex flex-col border-b border-[var(--border-color)] shrink-0 wco-drag-region">
-    <div class="w-full shrink-0" style="height: env(titlebar-area-height, 0px);"></div>
-    <div class="h-12 flex items-center px-3 justify-between gap-1 overflow-hidden shrink-0">
+  <div class="flex flex-col border-b border-[var(--border-subtle)] shrink-0 wco-drag-region">
+    <div class="w-full shrink-0" style="height: var(--sidebar-spacer-height, var(--wco-height, env(titlebar-area-height, 0px)));"></div>
+    <div class="h-12 flex items-center justify-between gap-1 overflow-hidden shrink-0 {collapsed ? 'px-1 justify-center' : 'px-3'}">
       {#if !collapsed}
-        <div class="flex items-center gap-2 min-w-0 pl-0.5">
-          <span class="text-lg leading-none shrink-0">🎵</span>
-          <span class="font-bold text-sm text-[var(--text-main)] tracking-tight truncate">
-            {t('topbar.title')}
-          </span>
+        <!-- 展开态：完整 WYY 走马灯 Logo + 极简收起 « 按钮 -->
+        <div class="flex items-center min-w-0 pl-0.5 wco-no-drag">
+          <WyyLogo
+            class="wco-no-drag"
+            title={tab === AppRoute.PLAYLIST && !currentPlaylistId ? 'WYY · Whatever You Yearn' : t('topbar.playlist')}
+            onclick={handleLogoClick}
+          />
         </div>
+        <button
+          type="button"
+          data-testid="btn-toggle-sidebar"
+          class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0 flex items-center justify-center"
+          onclick={onToggleCollapse}
+          title={t('sidebar.collapseTooltip')}
+          aria-label={t('sidebar.collapse')}
+        >
+          <ChevronsLeft size={16} />
+        </button>
       {:else}
-        <div class="w-full flex justify-center" title={t('topbar.title')}>
-          <span class="text-lg leading-none">🎵</span>
-        </div>
+        <!-- 🏝️ 收起态：单一精致居中交互大按钮 (默认优雅 🎵，hover 丝滑浮现展开提示 »，彻底消除挤压感) -->
+        <button
+          type="button"
+          data-testid="btn-toggle-sidebar"
+          class="wco-no-drag group/expand-btn relative w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--primary-color)] hover:bg-[var(--btn-secondary-hover-bg)] active:scale-95 transition-all duration-200 cursor-pointer border-none bg-transparent"
+          onclick={onToggleCollapse}
+          title={t('sidebar.expandTooltip')}
+          aria-label={t('sidebar.expand')}
+        >
+          <!-- 默认态：居中音符 -->
+          <span class="flex items-center justify-center transition-all duration-200 group-hover/expand-btn:opacity-0 group-hover/expand-btn:scale-75 absolute">
+            <Music size={16} />
+          </span>
+          <!-- Hover 态：平滑浮现展开双右箭头 -->
+          <span class="flex items-center justify-center text-[var(--primary-color)] opacity-0 scale-75 group-hover/expand-btn:opacity-100 group-hover/expand-btn:scale-100 transition-all duration-200 absolute">
+            <ChevronsRight size={16} />
+          </span>
+        </button>
       {/if}
-
-      <button
-        type="button"
-        data-testid="btn-toggle-sidebar"
-        class="wco-no-drag p-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] transition-colors cursor-pointer border-none bg-transparent shrink-0"
-        onclick={onToggleCollapse}
-        title={collapsed ? t('sidebar.expandTooltip') : t('sidebar.collapseTooltip')}
-        aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
-      >
-        {collapsed ? '»' : '«'}
-      </button>
     </div>
   </div>
 
   <!-- 2. Main Navigation Area -->
-  <nav class="p-1.5 flex flex-col gap-1 border-b border-[var(--border-color)] shrink-0">
+  <nav class="p-1.5 flex flex-col gap-1 border-b border-[var(--border-subtle)] shrink-0">
     <!-- Playlists -->
     <button
       type="button"
       data-testid="sidebar-tab-playlist"
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {isPlaylistActive ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => {
-        if (currentPlaylistId === 'daily-recommend') {
-          onViewPlaylist ? onViewPlaylist('') : onSwitchTab('playlist');
+        if (isDailyRecommendRoute(currentPlaylistId)) {
+          onViewPlaylist ? onViewPlaylist('') : onSwitchTab(AppRoute.PLAYLIST);
         } else {
-          onSwitchTab('playlist');
+          onSwitchTab(AppRoute.PLAYLIST);
         }
       }}
       title={t('topbar.playlist')}
     >
-      <span class="text-[15px] leading-none shrink-0">📁</span>
+      <Folder size={16} class="shrink-0" />
       {#if !collapsed}
         <span class="truncate flex-1 text-left">{t('topbar.playlist')}</span>
       {/if}
@@ -133,14 +192,14 @@
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {isRecommendActive ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => {
         if (onViewPlaylist) {
-          onViewPlaylist('daily-recommend');
+          onViewPlaylist(SpecialRouteId.DAILY_RECOMMEND);
         } else {
-          onSwitchTab('playlist');
+          onSwitchTab(AppRoute.PLAYLIST);
         }
       }}
       title={t('recommend.dailyExclusive')}
     >
-      <span class="text-[15px] leading-none shrink-0">📅</span>
+      <Calendar size={16} class="shrink-0" />
       {#if !collapsed}
         <span class="truncate flex-1 text-left">{t('recommend.dailyRecommendShort')}</span>
       {/if}
@@ -154,7 +213,7 @@
       onclick={() => onSwitchTab('search')}
       title={t('topbar.search')}
     >
-      <span class="text-[15px] leading-none shrink-0">🔍</span>
+      <Search size={16} class="shrink-0" />
       {#if !collapsed}
         <span class="truncate flex-1 text-left">{t('topbar.search')}</span>
       {/if}
@@ -171,7 +230,7 @@
         onclick={() => onSwitchTab('download-mgr')}
         title={t('sidebar.localAndDownload')}
       >
-        <span class="text-[15px] leading-none shrink-0">📥</span>
+        <HardDriveDownload size={16} class="shrink-0" />
         {#if !collapsed}
           <span class="truncate flex-1 text-left">{t('topbar.local')}</span>
         {/if}
@@ -212,152 +271,212 @@
       data-testid="sidebar-tab-musicfree"
       class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all duration-150 {tab === 'musicfree' ? 'bg-[var(--nav-tab-active-bg)] text-[var(--nav-tab-active-color)] shadow-sm' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-bg)]'} {collapsed ? 'justify-center px-0' : ''}"
       onclick={() => onSwitchTab('musicfree')}
-      title="MusicFree发现中心 (MusicFree 广场与插件)"
+      title={t('musicfree.navDiscoverTooltip')}
     >
-      <span class="text-[15px] leading-none shrink-0">🧩</span>
+      <Puzzle size={16} class="shrink-0" />
       {#if !collapsed}
-        <span class="truncate flex-1 text-left">发现</span>
+        <span class="truncate flex-1 text-left">{t('musicfree.navDiscover')}</span>
       {/if}
     </button>
   </nav>
 
-  <!-- 3. Playlist Quick Navigation -->
+  <!-- 3. Playlist Quick Navigation (仅在侧栏展开时呈现，收拢模式保持极简清爽) -->
   {#if !collapsed}
     <DesktopSidebarPlaylists
       onPlaylistClick={handlePlaylistClick}
       {onPlayPlaylist}
     />
-  {:else}
-    <!-- Compact shortcuts in collapsed state -->
-    <div class="flex flex-col items-center gap-2 pt-2">
-      <button
-        type="button"
-        class="w-9 h-9 flex items-center justify-center rounded-xl bg-[var(--btn-secondary-bg)] hover:bg-[var(--btn-secondary-hover-bg)] text-xs cursor-pointer border-none text-[var(--text-secondary)] hover:text-[var(--text-main)]"
-        title={t('playlist.myPlaylists')}
-        onclick={() => onSwitchTab('playlist')}
-      >
-        📂
-      </button>
-    </div>
   {/if}
 
-  <!-- 4. Bottom Version Info -->
+  <!-- 4. Bottom Version, Actions & Network Status (固定靠底) -->
   <div
-    class="px-3 py-1.5 border-t border-[var(--border-color)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] opacity-60 hover:opacity-100 transition-opacity shrink-0 select-none {collapsed ? 'justify-center py-1' : ''}"
+    class="mt-auto px-2 py-1.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)] opacity-70 hover:opacity-100 transition-opacity shrink-0 select-none {collapsed ? 'justify-center py-2' : 'px-3'}"
     data-testid="sidebar-version-info"
   >
     {#if !collapsed}
-      <span class="truncate">{t('topbar.title')}</span>
+      <span class="truncate text-[11px] font-semibold text-[var(--text-secondary)]">{t('topbar.title')}</span>
       <div class="flex items-center gap-1.5 shrink-0">
+        {@render themeButton(false)}
+        {@render settingsButton(false)}
         <span class="text-[9px] px-1.5 py-0.5 rounded bg-[var(--btn-secondary-bg)] border border-[var(--border-color)] text-[var(--text-secondary)] leading-none">v{__APP_VERSION__}</span>
         {#if geoProxyState.enabled}
-          <div
-            class="relative group/proxy inline-flex items-center justify-center cursor-pointer"
-            data-testid="sidebar-geo-proxy-icon"
-            role="status"
-            aria-label={proxyTooltipSummary}
-            title={proxyTooltipSummary}
-          >
-            <span
-              class="flex items-center justify-center w-4 h-4 rounded transition-all duration-150 {geoProxyState.fallbackDirect
-                ? 'text-amber-400 bg-amber-500/15 hover:bg-amber-500/25'
-                : 'text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25'}"
-            >
-              <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-              </svg>
-            </span>
-            <span
-              class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full {geoProxyState.fallbackDirect ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}"
-            ></span>
-
-            <!-- Tooltip 浮层详情卡片 (向上展开) -->
-            <div
-              data-testid="sidebar-proxy-tooltip"
-              class="absolute bottom-full right-0 mb-2 w-[200px] p-2.5 rounded-xl bg-neutral-900/95 dark:bg-neutral-950/95 text-neutral-200 border border-neutral-700/60 shadow-2xl backdrop-blur-md opacity-0 invisible group-hover/proxy:opacity-100 group-hover/proxy:visible transition-all duration-150 pointer-events-none z-50 flex flex-col gap-1.5 font-sans text-left select-text"
-            >
-              <!-- 顶部状态栏 -->
-              <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
-                <div class="flex items-center gap-1.5 font-semibold text-xs text-white">
-                  <span>🌐</span>
-                  <span>{t('settings.geoProxy.tooltipTitle')}</span>
-                </div>
-                <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium {geoProxyState.fallbackDirect ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">
-                  {geoProxyState.fallbackDirect ? t('settings.geoProxy.fallbackDirectTitle') : t('settings.geoProxy.activeBadge')}
-                </span>
-              </div>
-
-              <!-- 详情列表 -->
-              <div class="flex flex-col gap-1 text-[11px] leading-tight text-neutral-300">
-                <div class="flex items-start justify-between gap-1.5">
-                  <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.outIpLabel')}</span>
-                  <span class="font-mono text-white text-right break-all">
-                    {geoProxyState.activeProxy || t('settings.geoProxy.notLockedTitle')}
-                  </span>
-                </div>
-
-                {#if geoProxyState.activeLocation}
-                  <div class="flex items-start justify-between gap-1.5">
-                    <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.locationLabel')}</span>
-                    <span class="text-right text-neutral-200 truncate max-w-[125px]" title={geoProxyState.activeLocation}>
-                      {geoProxyState.activeLocation}
-                    </span>
-                  </div>
-                {/if}
-
-                {#if geoProxyState.activeLatencyMs !== null}
-                  <div class="flex items-center justify-between gap-1.5">
-                    <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.latencyLabel')}</span>
-                    <span class="font-mono font-bold text-emerald-400 text-[10px]">
-                      {geoProxyState.activeLatencyMs} ms
-                    </span>
-                  </div>
-                {/if}
-
-                <div class="flex items-center justify-between gap-1.5">
-                  <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.modeLabel')}</span>
-                  <span class="text-neutral-300">
-                    {geoProxyState.mode === 'custom' ? t('settings.geoProxy.modeCustom') : t('settings.geoProxy.modePool')}
-                  </span>
-                </div>
-              </div>
-
-              <!-- 小指示三角 -->
-              <div class="absolute -bottom-1 right-2 w-2 h-2 bg-neutral-900 border-r border-b border-neutral-700/60 rotate-45"></div>
-            </div>
-          </div>
+          {@render proxyIndicator(false)}
         {/if}
       </div>
     {:else}
-      <div class="flex items-center gap-1 shrink-0">
-        <span class="text-[9px] cursor-default font-semibold" title="{t('topbar.title')} v{__APP_VERSION__}">v{__APP_VERSION__}</span>
+      <!-- 收拢模式：主题、设置、网络图标与版本号居中整齐排布 -->
+      <div class="flex flex-col items-center justify-center gap-1.5 w-full">
+        <div class="flex items-center justify-center gap-1">
+          {@render themeButton(true)}
+          {@render settingsButton(true)}
+        </div>
         {#if geoProxyState.enabled}
-          <div
-            class="relative group/proxy inline-flex items-center justify-center cursor-pointer"
-            data-testid="sidebar-geo-proxy-icon"
-            role="status"
-            aria-label={proxyTooltipSummary}
-            title={proxyTooltipSummary}
-          >
-            <span
-              class="flex items-center justify-center w-3.5 h-3.5 rounded transition-all duration-150 {geoProxyState.fallbackDirect
-                ? 'text-amber-400 bg-amber-500/15'
-                : 'text-emerald-400 bg-emerald-500/15'}"
-            >
-              <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-              </svg>
-            </span>
-            <span
-              class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full {geoProxyState.fallbackDirect ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}"
-            ></span>
-          </div>
+          {@render proxyIndicator(true)}
         {/if}
+        <span
+          class="text-[8px] font-mono cursor-default font-semibold text-[var(--text-muted)] leading-none text-center"
+          title="{t('topbar.title')} v{__APP_VERSION__}"
+        >
+          v{__APP_VERSION__}
+        </span>
       </div>
     {/if}
   </div>
 </aside>
+
+{#snippet themeButton(isCollapsed: boolean)}
+  <button
+    type="button"
+    data-testid={isCollapsed ? 'sidebar-btn-toggle-theme-collapsed' : 'sidebar-btn-toggle-theme'}
+    class="w-5 h-5 rounded flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] active:scale-90 border-none bg-transparent cursor-pointer transition-all duration-150"
+    onclick={(e) => {
+      e.stopPropagation();
+      if (onToggleTheme) onToggleTheme();
+      else toggleTheme();
+    }}
+    title={t('topbar.toggleTheme')}
+    aria-label={t('topbar.toggleTheme')}
+  >
+    {#if themeMode === 'dark'}
+      <Moon size={14} />
+    {:else if themeMode === 'light'}
+      <Sun size={14} />
+    {:else}
+      <SunMoon size={14} />
+    {/if}
+  </button>
+{/snippet}
+
+{#snippet settingsButton(isCollapsed: boolean)}
+  <button
+    type="button"
+    data-testid={isCollapsed ? 'sidebar-btn-open-settings-collapsed' : 'sidebar-btn-open-settings'}
+    class="relative w-5 h-5 rounded flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-[var(--btn-secondary-hover-bg)] active:scale-90 border-none bg-transparent cursor-pointer transition-all duration-150"
+    onclick={(e) => {
+      e.stopPropagation();
+      if (onOpenSettings) onOpenSettings();
+      else openSettings();
+    }}
+    title={t('topbar.settings')}
+    aria-label={t('topbar.settings')}
+  >
+    <Settings size={14} />
+    {#if globalUiState.hasPwaUpdate}
+      <span
+        data-testid={isCollapsed ? 'badge-sidebar-update-collapsed' : 'badge-sidebar-update'}
+        class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 ring-1 ring-[var(--card-bg)] animate-pulse pointer-events-none"
+      ></span>
+    {/if}
+  </button>
+{/snippet}
+
+{#snippet proxyIndicator(isCollapsed: boolean)}
+  <button
+    type="button"
+    class="relative group/proxy inline-flex items-center justify-center cursor-pointer border-none bg-transparent p-0 transition-transform active:scale-95 {isCollapsed ? 'p-0.5 rounded hover:bg-white/5' : ''} {geoProxyState.isRefreshing ? 'cursor-wait opacity-80' : ''}"
+    data-testid="sidebar-geo-proxy-icon"
+    aria-label={proxyTooltipSummary}
+    title={proxyTooltipSummary}
+    disabled={geoProxyState.isRefreshing}
+    onclick={(e) => {
+      e.stopPropagation();
+      refreshGeoProxy(showToast);
+    }}
+    onmouseenter={() => {
+      if (!geoProxyState.isRefreshing) {
+        fetchGeoProxyConfig();
+      }
+    }}
+  >
+    <span
+      class="flex items-center justify-center w-4 h-4 rounded transition-all duration-150 {geoProxyState.fallbackDirect
+        ? 'text-amber-400 bg-amber-500/15 hover:bg-amber-500/25'
+        : 'text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25'}"
+    >
+      <svg
+        class="w-2.5 h-2.5 transition-transform duration-300 {geoProxyState.isRefreshing ? 'animate-spin text-purple-400' : ''}"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+      </svg>
+    </span>
+    <span
+      class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full {geoProxyState.isRefreshing
+        ? 'bg-purple-400 animate-ping'
+        : (geoProxyState.fallbackDirect ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse')}"
+    ></span>
+
+    <!-- Tooltip 浮层详情卡片 -->
+    <div
+      data-testid="sidebar-proxy-tooltip"
+      class="absolute {isCollapsed ? 'bottom-0 left-full ml-3' : 'bottom-full right-0 mb-2'} w-[200px] p-2.5 rounded-xl bg-neutral-900/95 dark:bg-neutral-950/95 text-neutral-200 border border-neutral-700/60 shadow-2xl backdrop-blur-md opacity-0 invisible group-hover/proxy:opacity-100 group-hover/proxy:visible transition-all duration-150 pointer-events-none z-50 flex flex-col gap-1.5 font-sans text-left select-text"
+    >
+      <!-- 顶部状态栏 -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <div class="flex items-center gap-1.5 font-semibold text-xs text-white">
+          <Globe size={13} />
+          <span>{t('settings.geoProxy.tooltipTitle')}</span>
+        </div>
+        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-medium {geoProxyState.isRefreshing ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : (geoProxyState.fallbackDirect ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30')}">
+          {geoProxyState.isRefreshing ? t('settings.geoProxy.testing') : (geoProxyState.fallbackDirect ? t('settings.geoProxy.fallbackDirectTitle') : t('settings.geoProxy.activeBadge'))}
+        </span>
+      </div>
+
+      <!-- 详情列表 -->
+      <div class="flex flex-col gap-1 text-[11px] leading-tight text-neutral-300">
+        <div class="flex items-start justify-between gap-1.5">
+          <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.outIpLabel')}</span>
+          <span class="font-mono text-white text-right break-all">
+            {geoProxyState.activeProxy || t('settings.geoProxy.notLockedTitle')}
+          </span>
+        </div>
+
+        {#if geoProxyState.activeLocation}
+          <div class="flex items-start justify-between gap-1.5">
+            <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.locationLabel')}</span>
+            <span class="text-right text-neutral-200 truncate max-w-[125px]" title={geoProxyState.activeLocation}>
+              {geoProxyState.activeLocation}
+            </span>
+          </div>
+        {/if}
+
+        {#if geoProxyState.activeLatencyMs !== null}
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.latencyLabel')}</span>
+            <span class="font-mono font-bold text-emerald-400 text-[10px]">
+              {geoProxyState.activeLatencyMs} ms
+            </span>
+          </div>
+        {/if}
+
+        <div class="flex items-center justify-between gap-1.5">
+          <span class="text-neutral-400 shrink-0">{t('settings.geoProxy.modeLabel')}</span>
+          <span class="text-neutral-300">
+            {geoProxyState.mode === 'custom' ? t('settings.geoProxy.modeCustom') : t('settings.geoProxy.modePool')}
+          </span>
+        </div>
+      </div>
+
+      <!-- 底部提示：告知用户点击即可刷新 -->
+      <div class="mt-0.5 pt-1 border-t border-white/10 text-[9px] text-neutral-400 flex items-center justify-between">
+        <span>{geoProxyState.isRefreshing ? t('settings.geoProxy.refreshingPool') : t('sidebar.proxyClickHint')}</span>
+        <RefreshCw size={10} class={geoProxyState.isRefreshing ? 'animate-spin' : ''} />
+      </div>
+
+      {#if !isCollapsed}
+        <!-- 小指示三角 (展开时显示在下方) -->
+        <div class="absolute -bottom-1 right-2 w-2 h-2 bg-neutral-900 border-r border-b border-neutral-700/60 rotate-45"></div>
+      {:else}
+        <!-- 小指示三角 (收拢时显示在左侧) -->
+        <div class="absolute bottom-2 -left-1 w-2 h-2 bg-neutral-900 border-l border-b border-neutral-700/60 rotate-45"></div>
+      {/if}
+    </div>
+  </button>
+{/snippet}

@@ -4,6 +4,7 @@
   import { t } from '../lib/i18n';
   import FolderNode from './FolderNode.svelte';
   import LocalSearchBox from './LocalSearchBox.svelte';
+  import { RefreshCw, Folder } from '@lucide/svelte';
   import { DEFAULT_VINYL_COVER, matchesKeyword } from '../lib/utils';
 
   let {
@@ -128,7 +129,7 @@
       <LocalSearchBox
         bind:value={filterKw}
         placeholder={t('folder.searchPlaceholder')}
-        historyKey="wyyyy_folder_search_history"
+        historyKey="wyy_folder_search_history"
         hideIcon={true}
       />
     </div>
@@ -155,11 +156,12 @@
       </button>
       <button
         type="button"
-        class="btn-secondary px-2.5 py-1 text-xs cursor-pointer active:scale-95 transition-all"
+        class="btn-secondary px-2.5 py-1 text-xs cursor-pointer active:scale-95 transition-all inline-flex items-center gap-1.5"
         onclick={() => curRoot && loadBrowse(curRoot.path, true)}
         title={t('folder.refreshLibraryTooltip')}
       >
-        🔄 {t('common.refresh')}
+        <RefreshCw size={12} />
+        <span>{t('common.refresh')}</span>
       </button>
     </div>
   </div>
@@ -168,7 +170,10 @@
   {#if curRoot}
     <div class="bg-[var(--stat-bar-bg,#1e293b)]/30 border border-[var(--border-subtle)] rounded-xl p-2.5 px-3.5 mb-2 flex justify-between items-center flex-wrap gap-2">
       <div class="flex items-center gap-2">
-        <span class="font-bold text-xs text-[var(--text-main)]">📁 {curRoot.name}</span>
+        <span class="font-bold text-xs text-[var(--text-main)] inline-flex items-center gap-1.5">
+          <Folder size={14} class="text-amber-500" />
+          <span>{curRoot.name}</span>
+        </span>
         <span class="bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 px-2 py-0.5 rounded-full text-[11px] text-[var(--text-muted)]">
           {t('folder.statsSummary', { dirs: tree.filter((t: any) => t.directory).length, tracks: tree.filter((t: any) => !t.directory).length })}
         </span>

@@ -8,6 +8,7 @@
     open = $bindable(false),
     accent = 'default',
     flat = false,
+    minHeight,
     badge,
     icon,
     onToggle,
@@ -17,6 +18,7 @@
     open?: boolean;
     accent?: AccordionAccent;
     flat?: boolean;
+    minHeight?: string;
     badge?: string | number;
     icon?: string;
     onToggle?: (open: boolean) => void;
@@ -129,7 +131,10 @@
 </script>
 
 {#if flat}
-  <div class="bg-[var(--card-bg)] backdrop-blur-md rounded-2xl shadow-sm md:shadow-md overflow-hidden border border-[var(--border-color)] p-3 md:p-5">
+  <div
+    class="bg-[var(--card-bg)] backdrop-blur-md rounded-2xl shadow-sm md:shadow-md overflow-hidden border border-[var(--border-color)] p-3 md:p-5 flex-1 flex flex-col {minHeight ? '' : 'min-h-[calc(100dvh-250px)] lg:min-h-0'}"
+    style={minHeight ? `min-height: ${minHeight};` : ''}
+  >
     {#if children}
       {@render children()}
     {/if}

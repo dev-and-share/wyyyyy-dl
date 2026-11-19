@@ -55,4 +55,29 @@ describe('LocalSearchBox Component', () => {
 
     localStorage.removeItem(STORAGE_KEY);
   });
+
+  it('supports autofocus and clicking search icon focuses the input', async () => {
+    const { getByPlaceholderText, getByRole } = render(LocalSearchBox, {
+      props: {
+        value: '',
+        placeholder: '自动聚焦测试',
+        autofocus: true
+      }
+    });
+
+    const input = getByPlaceholderText('自动聚焦测试') as HTMLInputElement;
+    expect(input).toBeDefined();
+
+    // 等待 tick/setTimeout 触发 focus
+    await new Promise((r) => setTimeout(r, 60));
+    expect(document.activeElement).toBe(input);
+
+    // 测试点击左侧 🔍 按钮使输入框聚焦
+    input.blur();
+    expect(document.activeElement).not.toBe(input);
+
+    const searchIconBtn = getByRole('button', { name: '搜索' });
+    await fireEvent.click(searchIconBtn);
+    expect(document.activeElement).toBe(input);
+  });
 });

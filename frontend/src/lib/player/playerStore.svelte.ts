@@ -39,6 +39,7 @@ export class PlayerStore {
   curTime = $state<number>(0);
   duration = $state<number>(0);
   playing = $state<boolean>(false);
+  loading = $state<boolean>(false);
   vol = $state<number>(0.85);
   autoSkipTrial = $state<boolean>(true);
   serverOnly = $state<boolean>(false);
@@ -53,7 +54,7 @@ export class PlayerStore {
 
   constructor() {
     if (typeof localStorage !== 'undefined') {
-      const savedVol = Number(localStorage.getItem('wyyyy_player_vol'));
+      const savedVol = Number(localStorage.getItem('wyy_player_vol'));
       if (!isNaN(savedVol) && savedVol > 0 && savedVol <= 1) {
         this.vol = savedVol;
       }
@@ -337,6 +338,7 @@ export class PlayerStore {
     this.curTime = 0;
     this.duration = 0;
     this.playing = false;
+    this.loading = false;
     this.playlistId = null;
     this.save();
   }

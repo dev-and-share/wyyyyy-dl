@@ -13,7 +13,7 @@ describe('AddToPlaylistModal hybrid contracts', () => {
       { id: 'local_1', name: '我的本地车载', trackCount: 3, isLocal: true }
     ];
     myPlaylists.length = 0;
-    myPlaylists.push({ id: 1001, name: '网易云自建歌单', trackCount: 10, subscribed: false });
+    myPlaylists.push({ id: 1001, name: '云端自建歌单', trackCount: 10, subscribed: false });
     taskState.downloadedSet = new Set();
     taskState.downloadedCustomSet = new Set();
   });
@@ -27,9 +27,9 @@ describe('AddToPlaylistModal hybrid contracts', () => {
       }
     });
 
-    expect(getByText('☁️ 网易云歌单')).toBeInTheDocument();
+    expect(getByText('☁️ 云端歌单')).toBeInTheDocument();
     expect(getByText('🖥️ 本地专属歌单 (零污染云端)')).toBeInTheDocument();
-    expect(await findByText('网易云自建歌单')).toBeInTheDocument();
+    expect(await findByText('云端自建歌单')).toBeInTheDocument();
   });
 
   it('shows warning and blocks adding when external MusicFree song is NOT downloaded or cached', async () => {
@@ -41,8 +41,8 @@ describe('AddToPlaylistModal hybrid contracts', () => {
       }
     });
 
-    // 应该只展示本地专属歌单，不展示网易云歌单选项卡，防止污染云端
-    expect(queryByText('☁️ 网易云歌单')).toBeNull();
+    // 应该只展示本地专属歌单，不展示云端歌单选项卡，防止污染云端
+    expect(queryByText('☁️ 云端歌单')).toBeNull();
     expect(getByText('外部音源需先下载或缓存')).toBeInTheDocument();
   });
 

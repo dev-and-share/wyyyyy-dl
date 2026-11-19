@@ -44,8 +44,9 @@ describe('DesktopPlaylistGallery Session Freeze & UI Stability Contracts', () =>
     // Verify initial play counts
     const countA = getByTestId('gallery-playcount-101');
     const countB = getByTestId('gallery-playcount-102');
-    expect(countA.textContent).toContain('🔥 5');
-    expect(countB.textContent).toContain('🔥 4');
+    expect(countA.textContent).toContain('5');
+    expect(countA.querySelector('svg')).toBeDefined();
+    expect(countB.textContent).toContain('4');
 
     // Initial order: Card A is before Card B because 5 > 4
     let cards = container.querySelectorAll('[data-testid^="gallery-card-1"]');
@@ -58,7 +59,7 @@ describe('DesktopPlaylistGallery Session Freeze & UI Stability Contracts', () =>
     await tick();
 
     // 1. Instant value feedback: Card B badge immediately updates from 4 to 6
-    expect(getByTestId('gallery-playcount-102').textContent).toContain('🔥 6');
+    expect(getByTestId('gallery-playcount-102').textContent).toContain('6');
 
     // 2. Session Freeze / No UI Jitter: Card B does NOT jump in front of Card A!
     cards = container.querySelectorAll('[data-testid^="gallery-card-1"]');
@@ -71,5 +72,65 @@ describe('DesktopPlaylistGallery Session Freeze & UI Stability Contracts', () =>
     cards = container.querySelectorAll('[data-testid^="gallery-card-1"]');
     expect(cards[0].getAttribute('data-testid')).toBe('gallery-card-102');
     expect(cards[1].getAttribute('data-testid')).toBe('gallery-card-101');
+  });
+
+  it('renders local playlist tab and switches to local playlists gallery', async () => {
+    myPlaylists.push(
+      { id: 201, name: '云端线上歌单', trackCount: 15, subscribed: false }
+    );
+    const { localPlaylistState } = await import('../../lib/localPlaylistStore.svelte');
+    localPlaylistState.playlists = [
+      { id: 'local_fav_test', name: '本地我喜欢的音乐', trackCount: 5, isLocal: true },
+      { id: 'local_dance', name: '本地电音舞曲', trackCount: 12, isLocal: true }
+    ];
+
+    const onSelectPlaylist = vi.fn();
+    const { getByTestId, queryByTestId, getByText, queryByText } = render(DesktopPlaylistGallery, {
+      props: {
+        onSelectPlaylist,
+        showToast: vi.fn()
+      }
+    });
+
+    const localTab = getByTestId('gallery-tab-local');
+    expect(localTab).toBeDefined();
+    expect(localTab.textContent).toContain('2');
+
+    // In All tab, both cloud and local playlists are visible
+    expect(getByTestId('gallery-card-201')).toBeDefined();
+    expect(getByTestId('gallery-card-local_dance')).toBeDefined();
+
+    // Click Local tab
+    await fireEvent.click(localTab);
+    await tick();
+
+    // Now only local playlists are rendered
+    expect(getByTestId('gallery-card-local_dance')).toBeDefined();
+    expect(queryByTestId('gallery-card-201')).toBeNull();
+
+    // Click local card
+    await fireEvent.click(getByTestId('gallery-card-local_dance'));
+    expect(onSelectPlaylist).toHaveBeenCalledWith('local_dance');
+  });
+
+  it('reactively updates gallery when playlists are loaded asynchronously after initial mount', async () => {
+    const { getByTestId, queryByTestId } = render(DesktopPlaylistGallery, {
+      props: {
+        onSelectPlaylist: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    // Initially empty state rendered
+    expect(queryByTestId('gallery-card-301')).toBeNull();
+
+    // Playlists arrive asynchronously (e.g. from backend network request)
+    myPlaylists.push(
+      { id: 301, name: '新同步的歌单', trackCount: 8, subscribed: false }
+    );
+    await tick();
+
+    // Gallery should reactively display the newly loaded card
+    expect(getByTestId('gallery-card-301')).toBeDefined();
   });
 });

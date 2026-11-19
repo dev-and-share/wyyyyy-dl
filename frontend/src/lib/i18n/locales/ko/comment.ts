@@ -12,7 +12,7 @@ export default {
   'comment.totalCount': '총 {count}개의 댓글',
   'comment.loadingCloud': '클라우드 댓글 불러오는 중...',
   'comment.loadFailed': '댓글이 없거나 불러오지 못했습니다',
-  'comment.emptyHint': '아직 댓글이 없습니다. NetEase Cloud Music에 첫 댓글을 남겨보세요~',
+  'comment.emptyHint': '아직 댓글이 없습니다. 첫 댓글을 남겨보세요~',
   'comment.hotSection': '🔥 베스트 댓글',
   'comment.latestSection': '💬 최신 댓글',
   'comment.defaultUser': '클라우드 음악 사용자',

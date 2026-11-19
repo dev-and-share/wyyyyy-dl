@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { ChevronUp } from '@lucide/svelte';
   import { scrollToPageTop } from '../../lib/router.svelte';
   import { playerStore } from '../../lib/playerStore.svelte';
 
@@ -58,8 +59,6 @@
     aria-label="回到顶部"
     title="回到顶部"
   >
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="18 15 12 9 6 15"></polyline>
-    </svg>
+    <ChevronUp size={16} strokeWidth={2.5} />
   </button>
 {/if}

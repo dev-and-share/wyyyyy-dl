@@ -12,7 +12,7 @@ export default {
   'comment.totalCount': '合計 {count} 件のコメント',
   'comment.loadingCloud': 'クラウドコメントを読み込み中...',
   'comment.loadFailed': 'コメントがないか取得に失敗しました',
-  'comment.emptyHint': 'コメントはまだありません。NetEase Cloud Musicで最初のコメントを残しましょう~',
+  'comment.emptyHint': 'コメントはまだありません。最初のコメントを残しましょう~',
   'comment.hotSection': '🔥 人気のコメント',
   'comment.latestSection': '💬 最新のコメント',
   'comment.defaultUser': 'クラウド音楽ユーザー',

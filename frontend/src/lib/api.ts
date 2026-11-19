@@ -32,6 +32,7 @@ export const api = {
   loginStatus: () => get('/v3/auth/status'),
   qrStatus: (unikey: string) => get(`/v3/auth/qr/status?unikey=${encodeURIComponent(unikey)}`),
   setCookie: (c: string) => postForm('/v3/cookie', { cookie: c }),
+  userProfile: () => get('/v3/user/profile'),
 
   // 🎵 核心解析
   songV1: (id: string, level: string, name?: string, artist?: string) =>
@@ -44,6 +45,8 @@ export const api = {
   search: (keywords: string, type: string, limit: string) => postForm('/v3/search', { keywords, type, limit }),
   myPlaylist: () => postForm('/v3/my_playlists', {}),
   recommendSongs: () => get('/v3/recommend/songs'),
+  scrobble: (songId: string | number, sourceId?: string | number | null, time?: number) =>
+    postJson('/v3/scrobble', { songId: Number(songId), sourceId: sourceId ? Number(sourceId) : undefined, time: time ? Number(time) : undefined }),
 
   // ❤️ 红心与歌单操作
   likeList: () => get('/v3/like/list'),
@@ -58,7 +61,8 @@ export const api = {
   // 📥 下载调度
   setRepeat: (v: boolean) => get(`/v3/download/setRepeat?repeat=${v}`),
   getRepeat: () => get('/v3/download/getRepeat'),
-  downloadSingle: (id: string) => get(`/v3/download/single?id=${encodeURIComponent(id)}`),
+  downloadSingle: (id: string, force = false) => get(`/v3/download/single?id=${encodeURIComponent(id)}${force ? '&force=true' : ''}`),
+  forceDownloadSingle: (id: string) => req(`/v3/download/force?id=${encodeURIComponent(id)}`, { method: 'POST' }),
   downloadPlaylist: (id: string) => get(`/v3/download/playlist?id=${encodeURIComponent(id)}`),
   downloadAlbum: (id: string) => get(`/v3/download/album?id=${encodeURIComponent(id)}`),
   tasks: () => get('/v3/download/tasks'),
@@ -100,7 +104,7 @@ export const api = {
     return get(`/v3/reveal?${q.toString()}`);
   },
 
-  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染网易云云端)
+  // 📁 本地专属自建歌单 (Local Playlists - SQLite 隔离，零污染云端)
   localPlaylistList: () => get('/v3/local-playlist/list'),
   localPlaylistCreate: (name: string, coverUrl?: string) => postJson('/v3/local-playlist/create', { name, coverUrl }),
   localPlaylistDelete: (id: string) => postForm('/v3/local-playlist/delete', { id }),
@@ -119,13 +123,14 @@ export const api = {
 
   // 🧩 自定义/插件音源落盘下载
   downloadCustom: (track: {
-    id?: string;
+    id?: string | number;
     name: string;
     artist?: string;
     album?: string;
     url: string;
     coverUrl?: string;
     lyric?: string;
+    source?: string;
     headers?: Record<string, string>;
   }) => postJson('/v3/download/custom', track),
 
@@ -133,5 +138,14 @@ export const api = {
   getGeoProxyConfig: () => get('/v3/geo-proxy/config'),
   updateGeoProxyConfig: (config: any) => postJson('/v3/geo-proxy/config', config),
   testGeoProxy: (proxyUrl?: string) => postJson('/v3/geo-proxy/test', { proxyUrl }),
-  refreshGeoProxyPool: () => postJson('/v3/geo-proxy/refresh', {})
+  refreshGeoProxyPool: () => postJson('/v3/geo-proxy/refresh', {}),
+
+  // 🩺 播放器运行诊断上报与查询
+  submitPlaybackDebugReport: (report: any) => postJson('/v3/debug/playback', report),
+  listPlaybackDebugReports: (limit = 50) => get(`/v3/debug/playback?limit=${encodeURIComponent(String(limit))}`),
+  clearPlaybackDebugReports: async () => {
+    const res = await fetch('/v3/debug/playback', { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
 };

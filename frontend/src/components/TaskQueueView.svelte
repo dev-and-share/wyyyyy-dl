@@ -1,8 +1,11 @@
 <script lang="ts">
   import TaskStatusBadge from './TaskStatusBadge.svelte';
+  import { Headphones, Pause, Save, Loader2, RefreshCw } from '@lucide/svelte';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
   import { taskState, startTaskPolling, fetchTasks } from '../lib/taskStore.svelte';
+  import { playerStore } from '../lib/playerStore.svelte';
+  import type { Track } from '../lib/types';
   import { t } from '../lib/i18n';
 
   let {
@@ -14,6 +17,70 @@
   }>();
 
   let retryingIds = $state<Set<string>>(new Set());
+  let forcingIds = $state<Set<string>>(new Set());
+
+  function isTrackPlaying(item: any): boolean {
+    const songId = String(item.id || item.songId || '');
+    return Boolean(
+      playerStore.playing &&
+      playerStore.activeTrack &&
+      String(playerStore.activeTrack.id) === songId
+    );
+  }
+
+  function handlePreview(item: any) {
+    const songId = String(item.id || item.songId || '');
+    if (!songId) return;
+    const songTitle = item.name || item.songName || item.title || `Task #${songId}`;
+
+    if (isTrackPlaying(item)) {
+      playerStore.togglePlay();
+      return;
+    }
+
+    const previewTrack: Track = {
+      id: songId,
+      name: songTitle,
+      artist: item.artist || '',
+      isLocal: false,
+      allowTrial: true
+    };
+
+    playerStore.setQueue([previewTrack], 0);
+    showToast(t('download.previewStarted', { name: songTitle }), 'info', 1800);
+  }
+
+  async function handleForceDownload(item: any) {
+    const songId = String(item.id || item.songId || '');
+    if (!songId || forcingIds.has(songId)) return;
+
+    const next = new Set(forcingIds);
+    next.add(songId);
+    forcingIds = next;
+
+    const songTitle = item.name || item.songName || item.title || songId;
+
+    taskState.tasks = taskState.tasks.map((t: any) => {
+      if (String(t.id || t.songId || '') === songId) {
+        return { ...t, status: 'PENDING', errorMsg: null };
+      }
+      return t;
+    });
+
+    try {
+      await api.downloadSingle(songId, true);
+      showToast(t('download.forceDownloadSubmitted', { name: songTitle }), 'info');
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
+      startTaskPolling();
+      await fetchTasks();
+    } catch (err: any) {
+      showToast(err?.message || 'Force download failed', 'error');
+    } finally {
+      const cleanup = new Set(forcingIds);
+      cleanup.delete(songId);
+      forcingIds = cleanup;
+    }
+  }
 
   async function handleRetry(item: any) {
     const songId = String(item.id || item.songId || '');
@@ -34,7 +101,7 @@
     try {
       await api.downloadSingle(songId);
       showToast(t('drawer.downloadSubmitted', { name: item.name || songId }), 'info');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
       startTaskPolling();
       await fetchTasks();
     } catch (err: any) {
@@ -55,10 +122,10 @@
   >
     <div class="flex flex-col gap-1.5">
       {#each tasks as taskItem}
-        {@const isFailed = taskItem.status === 'FAILED' || taskItem.status === 'ERROR'}
+        {@const isFailed = taskItem.status === 'FAILED' || taskItem.status === 'ERROR' || (taskItem.status === 'SKIP' && taskItem.errorMsg?.includes('阻止落盘'))}
         <div class="flex justify-between items-center px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/[0.02] border border-black/5 dark:border-white/5 gap-2 {isFailed ? 'border-rose-500/20 bg-rose-500/[0.02]' : ''}">
           <div class="flex-1 min-w-0">
-            <span class="truncate block text-xs {isFailed ? 'text-rose-500 dark:text-rose-400 font-semibold' : 'text-[var(--text-main)] font-medium'}">
+            <span class="truncate block text-xs {isFailed ? 'text-rose-500 dark:text-rose-400 font-semibold' : 'text-[var(--text-main)] font-medium'}" title={taskItem.name || taskItem.id}>
               {taskItem.name || taskItem.id}
             </span>
             {#if taskItem.errorMsg}
@@ -67,7 +134,7 @@
               </span>
             {/if}
           </div>
-          <div class="flex items-center gap-1.5 shrink-0">
+          <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
             {#if taskItem.status === 'SUCCESS'}
               <button
                 type="button"
@@ -78,14 +145,49 @@
                 {t('common.reveal')}
               </button>
             {:else if isFailed}
+              <!-- 🎧 试听 -->
               <button
                 type="button"
-                class="px-2 py-0.5 text-[11px] rounded bg-rose-500/15 hover:bg-rose-500/25 active:scale-95 text-rose-500 dark:text-rose-400 border border-rose-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
+                data-testid="btn-preview-task"
+                class="px-1.5 py-0.5 text-[11px] rounded font-semibold cursor-pointer transition-all inline-flex items-center gap-1 active:scale-95 {isTrackPlaying(taskItem) ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/40' : 'bg-black/5 dark:bg-white/10 text-[var(--text-main)] border border-black/10 dark:border-white/10'}"
+                onclick={() => handlePreview(taskItem)}
+                title={t('common.audition')}
+              >
+                {#if isTrackPlaying(taskItem)}
+                  <Pause size={12} fill="currentColor" />
+                {:else}
+                  <Headphones size={12} />
+                {/if}
+                <span>{isTrackPlaying(taskItem) ? t('common.auditioning') : t('common.audition')}</span>
+              </button>
+
+              <!-- 💾 强制落盘 -->
+              <button
+                type="button"
+                data-testid="btn-force-download-task"
+                class="px-1.5 py-0.5 text-[11px] rounded bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
+                disabled={forcingIds.has(String(taskItem.id || taskItem.songId))}
+                onclick={() => handleForceDownload(taskItem)}
+                title={t('download.forceDownloadTooltip')}
+              >
+                {#if forcingIds.has(String(taskItem.id || taskItem.songId))}
+                  <Loader2 size={12} class="animate-spin" />
+                {:else}
+                  <Save size={12} />
+                {/if}
+                <span>{t('common.forceSave')}</span>
+              </button>
+
+              <!-- 🔄 重试 -->
+              <button
+                type="button"
+                data-testid="btn-retry-task"
+                class="px-1.5 py-0.5 text-[11px] rounded bg-rose-500/15 hover:bg-rose-500/25 active:scale-95 text-rose-500 dark:text-rose-400 border border-rose-500/30 font-semibold cursor-pointer transition-all inline-flex items-center gap-1"
                 disabled={retryingIds.has(String(taskItem.id || taskItem.songId))}
                 onclick={() => handleRetry(taskItem)}
                 title={t('common.retry')}
               >
-                <span class={retryingIds.has(String(taskItem.id || taskItem.songId)) ? 'animate-spin inline-block' : ''}>🔄</span>
+                <RefreshCw size={12} class={retryingIds.has(String(taskItem.id || taskItem.songId)) ? 'animate-spin' : ''} />
                 <span>{t('common.retry')}</span>
               </button>
             {/if}

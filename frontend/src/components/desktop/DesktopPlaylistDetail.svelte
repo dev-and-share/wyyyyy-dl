@@ -8,7 +8,9 @@
     getPlaylist,
     getPlaylistSearchKeyword,
     loadPlaylistDetail,
-    recordPlaylistPlay
+    recordPlaylistPlay,
+    getPlaylistPlayCount,
+    clearPlaylistPlayCount
   } from '../../lib/playlist.svelte';
   import { api } from '../../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
@@ -22,21 +24,23 @@
   import RemoveFromPlaylistModal from '../RemoveFromPlaylistModal.svelte';
   import { cacheTrackToBrowser } from '../../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, markSongDownloaded, isSameTrack } from '../../lib/trackStatus.svelte';
-  import { isLocalPlaylist } from '../../lib/localPlaylistStore.svelte';
+  import { isLocalPlaylist, cleanPlaylistDisplayName } from '../../lib/localPlaylistStore.svelte';
   import { downloadPlaylistTrack } from '../../lib/playlistTrackDownloadHelper';
   import { toPlayerTrack } from '../../lib/playerHelper';
   import { t } from '../../lib/i18n';
   import DesktopHeaderActions from './DesktopHeaderActions.svelte';
+  import PlaylistDownloadDropdown from '../PlaylistDownloadDropdown.svelte';
+  import { Play, HardDrive, Package, HeartCrack, Star, Search, Plus, Trash2, Loader2, Sparkles, TriangleAlert } from '@lucide/svelte';
 
   let {
     playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
     downloadedSet = new Set<number>(), onBackToGallery, onToggleLike, onPlayQueue,
-    onAlbum, onReveal, showToast
+    onSong, onAlbum, onReveal, showToast
   } = $props<{
     playlistId: string; playlistTrigger?: number; curTrack?: any; playing?: boolean;
     likedSet: Set<number>; downloadedSet?: Set<number>; onBackToGallery: () => void;
     onToggleLike: (id: any, name?: string, artist?: string, extra?: any) => void; onPlayQueue: (tracks: any[], optionsOrIdx?: any) => void;
-    onAlbum?: (albumId: string) => void; onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
+    onSong?: (id: string) => void; onAlbum?: (albumId: string) => void; onReveal?: (item: any) => void; showToast: (m: string, t?: string) => void;
   }>();
   let desktopCurPage = $state(1);
   let filteredTracks = $derived(getFilteredTracks());
@@ -44,26 +48,31 @@
   let hasMore = $derived(desktopCurPage < totalPages);
   let paged = $derived(filteredTracks.slice(0, desktopCurPage * pageSize));
   let playlist = $derived(getPlaylist());
+  let playCount = $derived(playlist?.id ? getPlaylistPlayCount(playlist.id) : 0);
 
   let sentinelEl = $state<HTMLElement | null>(null);
   let isLoadingNext = $state(false);
+  let lastLoadTime = 0;
 
-  function loadNextPage() {
-    if (!hasMore || isLoadingNext) return;
+  function loadNextPage(isInitialAutoFill = false) {
+    const now = Date.now();
+    if (!hasMore || isLoadingNext || now - lastLoadTime < 150) return;
     isLoadingNext = true;
+    lastLoadTime = now;
     desktopCurPage = Math.min(totalPages, desktopCurPage + 1);
-    tick().then(() => {
+    setTimeout(() => {
       isLoadingNext = false;
-      checkSentinel();
-    });
+      if (isInitialAutoFill && desktopCurPage < 3) checkSentinel(true);
+    }, 150);
   }
 
-  function checkSentinel() {
+  function checkSentinel(isInitialAutoFill = false) {
     if (!sentinelEl || !hasMore || isLoadingNext) return;
     const rect = sentinelEl.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
     const vh = window.innerHeight || document.documentElement.clientHeight;
-    if (rect.top <= vh + 200) {
-      loadNextPage();
+    if (rect.top <= vh + 200 && rect.bottom >= -50) {
+      loadNextPage(isInitialAutoFill);
     }
   }
 
@@ -77,32 +86,20 @@
   });
 
   $effect(() => {
-    if (desktopCurPage > totalPages) {
-      desktopCurPage = Math.max(1, totalPages);
-    }
+    if (desktopCurPage > totalPages) desktopCurPage = Math.max(1, totalPages);
   });
 
   $effect(() => {
     if (!sentinelEl || typeof IntersectionObserver === 'undefined') return;
-
     const observer = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry && entry.isIntersecting) {
-        loadNextPage();
-      }
-    }, {
-      rootMargin: '200px'
-    });
-
+      if (entries[0]?.isIntersecting) loadNextPage();
+    }, { rootMargin: '200px' });
     observer.observe(sentinelEl);
-
     const scrollParent = sentinelEl.closest('.app-main-container') || window;
     const onScroll = () => checkSentinel();
     scrollParent.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
-
     checkSentinel();
-
     return () => {
       observer.disconnect();
       scrollParent.removeEventListener('scroll', onScroll);
@@ -110,14 +107,9 @@
     };
   });
 
-  let downloadedCount = $derived(
-    allTracks.filter((t: any) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length
-  );
+  let downloadedCount = $derived(allTracks.filter((t: any) => (downloadedSet && downloadedSet.has(Number(t.id))) || t.isLocal === true).length);
   let pendingCount = $derived(Math.max(0, allTracks.length - downloadedCount));
-
-  let isCurrentPlaylistLoaded = $derived(
-    !!playlist && String(playlist.id) === String(playlistId)
-  );
+  let isCurrentPlaylistLoaded = $derived(!!playlist && String(playlist.id) === String(playlistId));
 
   let loadError = $state('');
   let showForkModal = $state(false);
@@ -152,12 +144,7 @@
   async function handlePlayAll() {
     if (!allTracks.length) return;
     if (playlist?.id) recordPlaylistPlay(playlist.id);
-    const queue = allTracks.map((item: any) => {
-      const status = getTrackSourceStatus(item.id, item.isLocal, curTrack);
-      return toPlayerTrack(item, {
-        isLocal: status.isLocal
-      });
-    });
+    const queue = allTracks.map((item: any) => toPlayerTrack(item, { isLocal: getTrackSourceStatus(item.id, item.isLocal, curTrack).isLocal }));
     onPlayQueue(queue, { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false });
     showToast(t('playlist.playingPlaylistToast', { name: playlist?.name || t('playlist.title'), count: queue.length }), 'success', 2000);
   }
@@ -167,7 +154,7 @@
     try {
       await api.downloadPlaylist(playlistId);
       showToast(t('playlist.submittedBatchDownload'), 'success', 2000);
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
@@ -177,11 +164,8 @@
     cachingTrackId = item.id;
     try {
       const res = await cacheTrackToBrowser({
-        id: item.id,
-        name: item.name,
-        artist: formatArtist(item),
-        cover: item.al?.picUrl || DEFAULT_VINYL_COVER,
-        album: item.al?.name || item.album
+        id: item.id, name: item.name, artist: formatArtist(item),
+        cover: item.al?.picUrl || DEFAULT_VINYL_COVER, album: item.al?.name || item.album
       });
       showToast(res.msg || (res.success ? t('search.cachedToBrowser') : t('common.failed')), res.success ? 'success' : 'error');
     } catch (e: any) {
@@ -197,20 +181,26 @@
     try {
       const res = await api.playlistSubscribe(String(playlist.id), nextSub);
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || (nextSub ? t('playlist.subscribeFailedRiskPrompt') : t('playlist.unsubscribeFailed')), 'warning', 5000);
-        return;
+        return showToast(res.msg || (nextSub ? t('playlist.subscribeFailedRiskPrompt') : t('playlist.unsubscribeFailed')), 'warning', 5000);
       }
       playlist.subscribed = nextSub;
       showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
-    } catch (e: any) {
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
+    } catch {
       showToast(t('playlist.operateExceptionPrompt'), 'warning', 4000);
     }
   }
 
   function handleForkSuccess(newId: string) {
-    if (newId) {
-      loadData(newId);
+    if (newId) loadData(newId);
+  }
+
+  function handleClearPlayCount() {
+    if (!playlist?.id) return;
+    if (playCount <= 0) return showToast(t('playlist.playCountAlreadyZero'), 'info');
+    if (window.confirm(t('playlist.confirmClearPlayCount', { name: cleanPlaylistDisplayName(playlist) }))) {
+      clearPlaylistPlayCount(playlist.id);
+      showToast(t('playlist.playCountClearedSuccess'), 'success');
     }
   }
 </script>
@@ -238,7 +228,7 @@
 
   {#if isCurrentPlaylistLoaded}
     <!-- 2. 精致紧凑 Hero 横幅区 -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
+    <div class="relative z-30 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3.5 sm:p-4 rounded-2xl bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] shadow-sm">
       <img
         src={formatCoverUrl(playlist.coverImgUrl, 300)}
         alt={playlist.name}
@@ -247,8 +237,8 @@
       <div class="flex-1 min-w-0 flex flex-col gap-1.5">
         <div class="flex items-center gap-2">
           {#if playlist.isLocal}
-            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              🖥️ 本地歌单
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+              <HardDrive size={10} /> 本地歌单
             </span>
           {:else}
             <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
@@ -258,7 +248,7 @@
           <span class="text-xs text-[var(--text-muted)]">ID: {playlist.id}</span>
         </div>
         <h1 class="text-lg sm:text-xl font-bold text-[var(--text-main)] truncate tracking-tight">
-          {playlist.name}
+          {cleanPlaylistDisplayName(playlist)}
         </h1>
         <p class="text-xs text-[var(--text-secondary)] flex items-center gap-2 flex-wrap">
           <span>{t('playlist.creatorLabel', { creator: playlist.creator || t('playlist.defaultCreator') })}</span>
@@ -268,6 +258,15 @@
               <span>{t('playlist.diskStats', { downloaded: downloadedCount, pending: pendingCount })}</span>
             </span>
           {/if}
+          <button
+            type="button"
+            data-testid="detail-playcount-badge"
+            class="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0 inline-flex items-center gap-1 cursor-pointer transition-all border select-none {playCount > 0 ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border-amber-500/30 active:scale-95' : 'bg-white/5 text-[var(--text-muted)] hover:bg-white/10 border-[var(--border-subtle)] active:scale-95'}"
+            title={playCount > 0 ? `${t('myPlaylists.historyPlayTooltip', { count: playCount })} (${t('playlist.doubleClickToClear')})` : t('playlist.doubleClickToClear')}
+            ondblclick={handleClearPlayCount}
+          >
+            {t('myPlaylists.historyPlayCount', { count: playCount })}
+          </button>
         </p>
 
         <!-- 快捷操作按钮组 -->
@@ -278,18 +277,19 @@
             class="btn-primary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
             onclick={handlePlayAll}
           >
-            <span>▶️</span>
+            <Play size={13} fill="currentColor" />
             <span>{t('playlist.playAll')}</span>
           </button>
           {#if !playlist.isLocal}
-            <button
-              type="button"
-              data-testid="btn-detail-download-all"
-              class="btn-secondary flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-              onclick={handleDownloadAll}
-            >
-              <span>🖥️</span> <span>{t('playlist.downloadAllToPc')}</span>
-            </button>
+            <PlaylistDownloadDropdown
+              playlistId={playlist.id}
+              playlistName={playlist.name}
+              {allTracks}
+              {curTrack}
+              isLocal={playlist.isLocal}
+              dropdownMode="popover"
+              onDownloadAllToPc={handleDownloadAll}
+            />
           {/if}
           {#if playlist && !playlist.isLocal && !playlist.isCreator}
             <button
@@ -299,7 +299,7 @@
               onclick={() => showForkModal = true}
               title={t('playlist.forkDesc')}
             >
-              <span>📦</span> <span>{t('playlist.forkTitle')}</span>
+              <Package size={13} /> <span>{t('playlist.forkTitle')}</span>
             </button>
             <button
               type="button"
@@ -308,7 +308,7 @@
               onclick={handleToggleSubscribe}
               title={playlist.subscribed ? t('playlist.unsubscribeTooltip') : t('playlist.subscribeTooltip')}
             >
-              <span>{playlist.subscribed ? '💔' : '⭐'}</span> <span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
+              {#if playlist.subscribed}<HeartCrack size={13} />{:else}<Star size={13} />{/if} <span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
             </button>
           {/if}
         </div>
@@ -320,8 +320,8 @@
 
     <!-- 3. 宽屏歌曲大表格 (流式平滑展开，表头吸顶，与外层视口完美契合) -->
     {#if filteredTracks.length === 0}
-      <div class="py-16 text-center text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-dashed border-[var(--border-color)] p-8">
-        <span class="text-3xl block mb-2">🔍</span>
+      <div class="py-16 text-center text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-dashed border-[var(--border-color)] p-8 flex flex-col items-center justify-center">
+        <Search size={32} class="mb-2 opacity-40 text-[var(--text-muted)]" />
         <span>{t('playlist.notFoundSong', { kw: getPlaylistSearchKeyword() })}</span>
       </div>
     {:else}
@@ -354,20 +354,15 @@
                   </td>
                   <td class="py-2.5 px-3 min-w-0">
                     <div class="flex items-center gap-2 min-w-0">
-                      <span class="font-semibold text-[var(--text-main)] truncate max-w-xs xl:max-w-md group-hover:text-red-400 transition-colors">
+                      <button
+                        type="button"
+                        class="clickable-track-title cursor-pointer truncate font-semibold text-left bg-transparent border-none p-0 text-[var(--text-main)] hover:text-red-500 transition-colors max-w-xs xl:max-w-md"
+                        title={t('playlist.viewSongDetails')}
+                        onclick={() => onSong ? onSong(String(trackItem.id)) : onPlayQueue([toPlayerTrack(trackItem, { isLocal: status.isLocal })])}
+                      >
                         {trackItem.name}
-                      </span>
-                      <TrackSourceBadge
-                        id={trackItem.id}
-                        name={trackItem.name}
-                        {artist}
-                        path={trackItem.filePath}
-                        item={trackItem}
-                        isServer={status.isServer}
-                        isPhone={status.isPhone}
-                        {curTrack}
-                        class="shrink-0"
-                      />
+                      </button>
+                      <TrackSourceBadge id={trackItem.id} name={trackItem.name} {artist} path={trackItem.filePath} item={trackItem} isServer={status.isServer} isPhone={status.isPhone} {curTrack} class="shrink-0" />
                       <TrackLikeBtn liked={isTrackLiked(trackItem.id, trackItem.name, artist)} onclick={() => onToggleLike(trackItem.id, trackItem.name, artist, trackItem)} />
                     </div>
                   </td>
@@ -376,11 +371,7 @@
                   </td>
                   <td class="py-2.5 px-3 text-[var(--text-muted)] truncate hidden md:table-cell">
                     {#if trackItem.al?.id && onAlbum}
-                      <button
-                        type="button"
-                        class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]"
-                        onclick={() => onAlbum?.(String(trackItem.al.id))}
-                      >
+                      <button type="button" class="text-left bg-transparent border-none p-0 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer truncate max-w-[160px]" onclick={() => onAlbum?.(String(trackItem.al.id))}>
                         {trackItem.al.name || t('search.tab.song')}
                       </button>
                     {:else}
@@ -389,10 +380,7 @@
                   </td>
                   <td class="py-2.5 pr-4 text-right whitespace-nowrap">
                     <div class="inline-flex items-center justify-end gap-1.5">
-                      <SlotBtn
-                        playing={isPlayingThis && playing}
-                        onclick={() => onPlayQueue([toPlayerTrack(trackItem, { isLocal: status.isLocal })])}
-                      >
+                      <SlotBtn playing={isPlayingThis && playing} onclick={() => onPlayQueue([toPlayerTrack(trackItem, { isLocal: status.isLocal })])}>
                         {getTrackPlayActionLabel({ isPlaying: isPlayingThis && playing, isLocal: status.isLocal, variant: 'desktop' })}
                       </SlotBtn>
                       {#if status.isServer}
@@ -403,9 +391,10 @@
                       <SlotBtn onclick={() => handleCache(trackItem)}>
                         {status.isPhone ? t('search.cachedShort') : cachingTrackId === trackItem.id ? t('playlist.cachingBadge') : t('search.cacheShort')}
                       </SlotBtn>
-                      <SlotBtn onclick={() => addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist }}>➕</SlotBtn>
+                      {#if onSong}<SlotBtn onclick={() => onSong(String(trackItem.id))}>{t('playlist.detailBtn')}</SlotBtn>{/if}
+                      <SlotBtn onclick={() => addToPlaylistSong = { id: trackItem.id, name: trackItem.name, artist }}><Plus size={12} strokeWidth={2.5} /></SlotBtn>
                       {#if playlist && (playlist.isCreator || !playlist.subscribed)}
-                        <SlotBtn onclick={() => removingTrack = { id: trackItem.id, name: trackItem.name, artist }}>🗑️</SlotBtn>
+                        <SlotBtn onclick={() => removingTrack = { id: trackItem.id, name: trackItem.name, artist }}><Trash2 size={12} /></SlotBtn>
                       {/if}
                     </div>
                   </td>
@@ -423,12 +412,12 @@
         >
           {#if hasMore}
             <div class="flex items-center gap-2 text-[var(--text-secondary)] py-1">
-              <span class="inline-block animate-spin text-red-500 text-sm">⏳</span>
+              <Loader2 size={14} class="animate-spin text-red-500" />
               <span>{t('playlist.loadingMoreTracks', { loaded: paged.length, total: filteredTracks.length })}</span>
             </div>
           {:else}
             <div class="flex items-center gap-2 text-[var(--text-muted)] text-[11px] py-1">
-              <span>✨</span>
+              <Sparkles size={12} class="text-amber-400" />
               <span>{t('playlist.loadedAllTracks', { count: filteredTracks.length })}{#if getPlaylistSearchKeyword()}{t('playlist.filteredFromTotal', { count: allTracks.length })}{/if}</span>
             </div>
           {/if}
@@ -437,7 +426,7 @@
     {/if}
   {:else if loadError}
     <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
-      <span class="text-3xl">⚠️</span>
+      <TriangleAlert size={32} class="text-amber-500" />
       <span class="text-sm font-semibold text-red-400">{loadError}</span>
       <div class="flex items-center gap-2 mt-2">
         <button
@@ -458,7 +447,7 @@
     </div>
   {:else}
     <div class="py-16 text-center flex flex-col items-center justify-center gap-3 text-xs text-[var(--text-muted)] bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-8 my-2 shadow-sm">
-      <span class="text-3xl animate-spin text-red-500">⏳</span>
+      <Loader2 size={32} class="animate-spin text-red-500" />
       <span class="text-sm font-semibold text-[var(--text-main)]">{t('playlist.loadingContent')}</span>
       <span class="text-xs text-[var(--text-muted)] max-w-sm">{t('playlist.loadingLargeNotice')}</span>
     </div>

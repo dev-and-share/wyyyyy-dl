@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import { api } from '../lib/api';
   import Modal from './Modal.svelte';
   import { t } from '../lib/i18n/index.svelte';
@@ -22,6 +23,14 @@
   let name = $state('');
   let isPrivate = $state(false);
   let loading = $state(false);
+  let inputEl = $state<HTMLInputElement | null>(null);
+
+  onMount(() => {
+    tick().then(() => {
+      inputEl?.focus();
+      inputEl?.select();
+    });
+  });
 
   $effect(() => {
     name = playlistName || t('playlist.defaultForkName');
@@ -52,7 +61,7 @@
       showToast(t('playlist.forkSuccess', { count: trackIds.length, name: trimmed }), 'success', 4000);
 
       // notify playlist created
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
 
       if (onSuccess) {
         onSuccess(newId, trimmed);
@@ -75,6 +84,7 @@
     <div>
       <label for="fork-playlist-name" class="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">{t('playlist.forkNameLabel')}</label>
       <input
+        bind:this={inputEl}
         id="fork-playlist-name"
         type="text"
         placeholder={t('playlist.forkNamePlaceholder')}

@@ -1,6 +1,20 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import type { Snippet, Component } from 'svelte';
   import DesktopHeaderActions from './DesktopHeaderActions.svelte';
+  import { Search, Folder, Calendar, HardDriveDownload, Puzzle, Sparkles, Sliders, Music, Headphones } from '@lucide/svelte';
+
+  const HEADER_ICON_MAP: Record<string, Component<{ size?: number | string; strokeWidth?: number | string; class?: string }>> = {
+    '🔍': Search,
+    '📁': Folder,
+    '📂': Folder,
+    '📅': Calendar,
+    '📥': HardDriveDownload,
+    '🧩': Puzzle,
+    '✨': Sparkles,
+    '🎛️': Sliders,
+    '🎵': Music,
+    '🎧': Headphones
+  };
 
   let {
     icon = '',
@@ -29,7 +43,14 @@
   <!-- 左侧：图标 + 板块大标题 + 状态/统计 Badge + 辅助说明 -->
   <div class="flex items-center gap-3 min-w-0">
     {#if icon}
-      <span class="text-2xl leading-none select-none shrink-0" aria-hidden="true">{icon}</span>
+      {@const IconComp = HEADER_ICON_MAP[icon]}
+      {#if IconComp}
+        <span class="text-[var(--primary-color)] flex items-center justify-center shrink-0" aria-hidden="true">
+          <IconComp size={24} strokeWidth={2.2} />
+        </span>
+      {:else}
+        <span class="text-2xl leading-none select-none shrink-0" aria-hidden="true">{icon}</span>
+      {/if}
     {/if}
     <div class="flex items-baseline gap-2.5 min-w-0 flex-wrap">
       <h1 class="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight shrink-0 whitespace-nowrap">
@@ -59,7 +80,7 @@
   </div>
 
   <!-- 右侧：统一规格的 Sub-Tabs 胶囊 / 音源切换 / 操作按钮区 + 桌面端全局快捷控制 -->
-  <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 self-start sm:self-auto overflow-x-auto max-w-full">
+  <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 self-start sm:self-auto overflow-x-auto no-scrollbar lg:overflow-visible max-w-full">
     {#if actions}
       {@render actions()}
     {:else if children}

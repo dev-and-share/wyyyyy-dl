@@ -5,6 +5,7 @@
     activeIndex: number;
     count: number;
     disabled?: boolean;
+    minHeight?: string | number;
     onChange: (index: number) => void;
     children?: import('svelte').Snippet;
   }
@@ -13,9 +14,14 @@
     activeIndex = 0,
     count = 3,
     disabled = false,
+    minHeight = 'calc(100dvh - 250px)',
     onChange,
     children
   }: Props = $props();
+
+  const formattedMinHeight = $derived(
+    typeof minHeight === 'number' ? `${minHeight}px` : (minHeight || 'calc(100dvh - 250px)')
+  );
 
   let viewportEl = $state<HTMLDivElement | null>(null);
   let trackEl = $state<HTMLDivElement | null>(null);
@@ -91,7 +97,14 @@
     if (typeof ResizeObserver !== 'undefined' && trackEl) {
       resizeObserver = new ResizeObserver(() => {
         updateHeight();
+        if (viewportEl && viewportEl.clientWidth > 0 && activeIndex > 0) {
+          const expectedLeft = activeIndex * viewportEl.clientWidth;
+          if (Math.abs(viewportEl.scrollLeft - expectedLeft) > 5) {
+            viewportEl.scrollTo({ left: expectedLeft, behavior: 'auto' });
+          }
+        }
       });
+      if (viewportEl) resizeObserver.observe(viewportEl);
       Array.from(trackEl.children).forEach((child) => {
         resizeObserver?.observe(child);
       });
@@ -117,10 +130,10 @@
   role="region"
   aria-label="Swipeable tab view"
   class="swipeable-tabs-viewport {disabled ? 'overflow-x-hidden' : 'overflow-x-auto'}"
-  style={viewportHeight ? `height: ${viewportHeight}px;` : ''}
+  style="--swipeable-min-height: {formattedMinHeight}; min-height: {formattedMinHeight}; {viewportHeight ? `height: ${viewportHeight}px;` : ''}"
   onscroll={handleScroll}
 >
-  <div bind:this={trackEl} class="swipeable-tabs-track">
+  <div bind:this={trackEl} class="swipeable-tabs-track" style="min-height: {formattedMinHeight};">
     {@render children?.()}
   </div>
 </div>
@@ -136,6 +149,7 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
     transition: height 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    min-height: calc(100dvh - 250px);
   }
   .swipeable-tabs-viewport::-webkit-scrollbar {
     display: none;
@@ -145,6 +159,7 @@
     display: flex;
     width: 100%;
     align-items: flex-start;
+    min-height: 100%;
   }
 
   :global(.swipeable-tabs-track > *) {
@@ -155,5 +170,8 @@
     box-sizing: border-box !important;
     scroll-snap-align: start;
     scroll-snap-stop: always;
+    min-height: var(--swipeable-min-height, calc(100dvh - 250px));
+    display: flex;
+    flex-direction: column;
   }
 </style>

@@ -1,0 +1,9 @@
+ __      __      ____     ____   __
+ \ \    / /\ \   / /\ \   / /\ \ / /
+  \ \/\/ /  \ \_/ /  \ \_/ /  \ V / 
+   \_/\_/    \   /    \   /    |_|  
+              \_/      \_/          
+
+ ${AnsiColor.BRIGHT_BLUE}:: WYY :: ${AnsiColor.DEFAULT}(v${application.version:5.5.0}) — ${AnsiColor.BRIGHT_CYAN}Whatever You Yearn${AnsiColor.DEFAULT}
+ ${AnsiColor.BRIGHT_BLACK}Powered by Spring Boot 3 & Svelte 5 Runes${AnsiColor.DEFAULT}
+

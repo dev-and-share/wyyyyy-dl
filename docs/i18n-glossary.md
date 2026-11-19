@@ -1,10 +1,10 @@
 # i18n 术语对照表 (Glossary)
 
-本文档定义网易云音乐下载器在 5 种语言中的核心术语规范。各语言翻译与字典键值均须遵循此约定。
+本文档定义 WYY 音乐工作台在 5 种语言中的核心术语规范。各语言翻译与字典键值均须遵循此约定。
 
 | 概念 / 模块 | zh-CN (简体中文) | zh-TW (繁體中文·台灣) | ja (日本語) | en (English) | ko (한국어) |
 |---|---|---|---|---|---|
-| 应用名称 | 网易云音乐下载器 | 網易雲音樂下載器 | NetEase Music Downloader | NetEase Music Downloader | NetEase Music Downloader |
+| 应用名称 | WYY 音乐工作台 | WYY 音樂工作台 | WYY 音楽ワークベンチ | WYY Music Workbench | WYY 음악 워크벤치 |
 | 歌单 | 歌单 | 播放清單 | プレイリスト | Playlist | 재생목록 |
 | 歌曲 / 单曲 | 歌曲 / 单曲 | 歌曲 / 單曲 | 曲 / トラック | Track / Song | 곡 / 트랙 |
 | 歌手 | 歌手 | 歌手 / 藝人 | アーティスト | Artist | 아티스트 |

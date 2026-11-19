@@ -1,6 +1,7 @@
 <script lang="ts">
   import { i18n, setLocale, t } from '../../lib/i18n/index.svelte';
   import type { Locale } from '../../lib/i18n/types';
+  import { Globe } from '@lucide/svelte';
 
   const languages: { id: Locale; label: string }[] = [
     { id: 'zh-CN', label: '简体中文' }, // i18n-ignore: language native name
@@ -18,7 +19,7 @@
 
 <section class="flex flex-col gap-2.5">
   <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-    <span>🌐</span>
+    <Globe size={14} />
     <span>{t('settings.language')}</span>
   </div>
   <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">

@@ -158,4 +158,79 @@ describe('Service Worker Audio Stream & Range Pass-Through Contracts (sw.js)', (
     expect(partialRes.headers.get('Accept-Ranges')).toBe('bytes');
     expect(partialRes.headers.get('Content-Type')).toBe('audio/mpeg');
   });
+
+  it('bypasses SW for non-audio dynamic API requests (/v3/tasks, /v3/user/profile)', async () => {
+    const apiUrls = [
+      'http://localhost:8080/v3/tasks',
+      'http://localhost:8080/v3/user/profile',
+      'http://localhost:8080/v3/playlist/all',
+      'http://localhost:8080/v3/repeat'
+    ];
+
+    for (const url of apiUrls) {
+      const respondWith = vi.fn();
+      fetchListener!({
+        request: {
+          method: 'GET',
+          url,
+          headers: new Headers()
+        },
+        respondWith
+      });
+      // 动态接口不应被 SW 拦截，直接放行走原生网络
+      expect(respondWith).not.toHaveBeenCalled();
+    }
+  });
+
+  it('serves hashed assets (/svelte/assets/*) Cache-First without network wait', async () => {
+    const cachedAssetRes = new Response('console.log("cached bundle");', {
+      status: 200,
+      headers: { 'Content-Type': 'application/javascript' }
+    });
+    mockCacheMatch.mockResolvedValue(cachedAssetRes);
+
+    let capturedPromise: Promise<Response> | null = null;
+    fetchListener!({
+      request: {
+        method: 'GET',
+        url: 'http://localhost:8080/svelte/assets/index-CUNxsaqJ.js',
+        headers: new Headers()
+      },
+      respondWith: (p: Promise<Response>) => {
+        capturedPromise = p;
+      }
+    });
+
+    expect(capturedPromise).not.toBeNull();
+    const res = await capturedPromise!;
+    expect(res).toBe(cachedAssetRes);
+  });
+
+  it('serves navigation requests immediately from cache when available (SWR)', async () => {
+    const cachedHtmlRes = new Response('<!doctype html><html>cached</html>', {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' }
+    });
+    mockCacheMatch.mockResolvedValue(cachedHtmlRes);
+
+    let capturedPromise: Promise<Response> | null = null;
+    const waitUntil = vi.fn();
+    fetchListener!({
+      request: {
+        method: 'GET',
+        url: 'http://localhost:8080/svelte/index.html',
+        mode: 'navigate',
+        headers: new Headers()
+      },
+      respondWith: (p: Promise<Response>) => {
+        capturedPromise = p;
+      },
+      waitUntil
+    });
+
+    expect(capturedPromise).not.toBeNull();
+    const res = await capturedPromise!;
+    expect(res).toBe(cachedHtmlRes);
+    expect(waitUntil).toHaveBeenCalled();
+  });
 });

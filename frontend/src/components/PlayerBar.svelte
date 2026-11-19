@@ -10,6 +10,7 @@
     curTrack,
     queue,
     playing,
+    loading = false,
     curTime,
     duration,
     playMode,
@@ -25,17 +26,20 @@
     onQueue,
     onClearQueue,
     onToggleLike = () => {},
-    minimized = $bindable(false)
+    minimized = $bindable(false),
+    onSong
   } = $props<{
     curTrack: Track | null;
     queue: Track[];
     playing: boolean;
+    loading?: boolean;
     curTime: number;
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
     vol: number;
     likedSet?: Set<number>;
     minimized?: boolean;
+    onSong?: (id: string) => void;
     onTogglePlay: () => void;
     onPrev: () => void;
     onNext: () => void;
@@ -159,6 +163,7 @@
         {curTrack}
         {queue}
         {playing}
+        {loading}
         {curTime}
         {duration}
         {playMode}
@@ -175,6 +180,7 @@
         {onPeq}
         {onQueue}
         {onToggleLike}
+        {onSong}
         onMinimize={() => minimized = true}
       />
     </div>
@@ -185,6 +191,7 @@
         {curTrack}
         {queue}
         {playing}
+        {loading}
         {curTime}
         {duration}
         {playMode}
@@ -201,6 +208,7 @@
         {onPeq}
         {onQueue}
         {onToggleLike}
+        {onSong}
         onMinimize={() => minimized = true}
       />
     </div>

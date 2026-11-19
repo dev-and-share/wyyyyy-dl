@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { platform } from '../lib/platform';
   import type { ThemeMode } from '../lib/theme';
-  import { skin } from '../lib/skinStore.svelte';
+  import { skin, pushModalBackdrop } from '../lib/skinStore.svelte';
   import { SKIN_LIST } from './skins/skinTypes';
   import SettingsCacheSection from './settings/SettingsCacheSection.svelte';
   import SettingsAccountSection from './settings/SettingsAccountSection.svelte';
@@ -9,8 +10,20 @@
   import SettingsLanguageSection from './settings/SettingsLanguageSection.svelte';
   import SettingsSleepTimerSection from './settings/SettingsSleepTimerSection.svelte';
   import SettingsGeoProxySection from './settings/SettingsGeoProxySection.svelte';
+  import SettingsUserProfileSection from './settings/SettingsUserProfileSection.svelte';
+  import SettingsCustomBgSection from './settings/SettingsCustomBgSection.svelte';
+  import SettingsDiagnosticsSection from './settings/SettingsDiagnosticsSection.svelte';
   import { getF3TimeoutMinutes, setF3TimeoutMinutes } from '../lib/iosF3KeepAlive';
+  import {
+    hasPendingPwaUpdate,
+    getPendingUpdateVersion,
+    probeForPwaUpdate,
+    triggerManualPwaUpdate
+  } from '../lib/pwa';
+  import { globalUiState } from '../lib/ui.svelte';
+  import { layoutState } from '../lib/layout.svelte';
   import { t } from '../lib/i18n';
+  import { Settings, Rocket, X, Palette, Sun, Moon, SunMoon, Sliders, HardDriveDownload } from '@lucide/svelte';
 
   let {
     repeat,
@@ -36,6 +49,25 @@
   let dragOffset = $state(0);
   let isDragging = $state(false);
   let iosKeepAliveMin = $state(getF3TimeoutMinutes());
+  let hasUpdateAvailable = $derived(globalUiState.hasPwaUpdate || hasPendingPwaUpdate());
+  let pendingVer = $derived(globalUiState.pwaUpdateVersion || getPendingUpdateVersion());
+  let isUpdatingVersion = $state(false);
+
+  async function handleManualUpdate() {
+    if (isUpdatingVersion) return;
+    isUpdatingVersion = true;
+    await triggerManualPwaUpdate();
+  }
+
+  onMount(() => {
+    const releaseBackdrop = pushModalBackdrop();
+    if (!hasUpdateAvailable) {
+      probeForPwaUpdate().catch(() => {});
+    }
+    return () => {
+      releaseBackdrop();
+    };
+  });
 
   function handleClose() {
     if (closing) return;
@@ -75,6 +107,19 @@
       dragOffset = 0;
     }
   }
+
+  // 💻 桌面端沉浸居中浮动控制台 / 📱 移动端底部手势抽屉 自适应样式
+  const isDesktop = $derived(layoutState.isDesktop);
+
+  const panelStyle = $derived.by(() => {
+    if (isDesktop) {
+      const transform = closing ? 'translate(-50%, -48%) scale(0.96)' : 'translate(-50%, -50%) scale(1)';
+      const opacity = closing ? '0' : '1';
+      return `top: 50%; left: 50%; transform: ${transform}; opacity: ${opacity}; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--border-color);`;
+    }
+    const transform = closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`;
+    return `transform: ${transform}; box-shadow: 0 -12px 40px var(--primary-glow, rgba(0, 0, 0, 0.5)), 0 -1px 0 0 var(--border-color);`;
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -84,21 +129,20 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="fixed inset-0 z-[100049] transition-opacity duration-200 backdrop-blur-md {closing ? 'opacity-0' : 'opacity-100'}
-    bg-black/40 dark:bg-gradient-to-b dark:from-[var(--bg-color)]/95 dark:via-[var(--bg-color)]/70 dark:to-black/80"
+    bg-black/45 dark:bg-black/65"
   onclick={handleClose}
 ></div>
 
-<!-- Settings Drawer Panel -->
+<!-- Settings Panel (💻 桌面端：优雅居中无界沉浸悬浮控制台 / 📱 移动端：底部手势抽屉) -->
 <div
   role="dialog"
   aria-modal="true"
   aria-label={t('settings.title')}
-  class="fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-transform duration-200 ease-out flex flex-col
+  class="settings-drawer-panel fixed z-[100050] bg-[var(--card-bg-solid,var(--card-bg))] text-[var(--text-main)] transition-all duration-200 ease-out flex flex-col
     inset-x-0 bottom-0 max-h-[88vh] rounded-t-[28px] border-t border-[var(--border-color)] backdrop-blur-2xl
     pb-[calc(16px+env(safe-area-inset-bottom,0px))]
-    lg:inset-y-0 lg:right-0 lg:left-auto lg:w-[420px] lg:max-h-full lg:rounded-none lg:border-l lg:border-t-0 lg:pb-0"
-  style="transform: {closing ? 'translateY(100%)' : `translateY(${dragOffset}px)`};
-         box-shadow: 0 -12px 40px var(--primary-glow, rgba(0, 0, 0, 0.5)), 0 -1px 0 0 var(--border-color);"
+    lg:inset-auto lg:w-[680px] lg:max-w-[calc(100vw-64px)] lg:max-h-[82vh] lg:rounded-[28px] lg:border lg:border-[var(--border-color)] lg:pb-0 select-text overflow-hidden"
+  style={panelStyle}
 >
   <!-- Mobile Drag Handle -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -113,10 +157,30 @@
 
   <!-- Header -->
   <div class="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border-color)] shrink-0 select-none">
-    <div class="flex items-center gap-2">
-      <span class="text-xl leading-none">⚙️</span>
-      <h2 class="text-base font-bold text-[var(--text-main)] m-0">{t('settings.title')}</h2>
-      <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--text-muted)]/10 text-[var(--text-muted)] border border-[var(--border-color)] leading-none select-none">v{__APP_VERSION__}</span>
+    <div class="flex items-center gap-2 min-w-0">
+      <Settings size={20} class="text-[var(--primary-color)]" />
+      <h2 class="text-base font-bold text-[var(--text-main)] m-0 truncate">{t('settings.title')}</h2>
+      {#if hasUpdateAvailable}
+        <button
+          type="button"
+          data-testid="btn-settings-update-version"
+          disabled={isUpdatingVersion}
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 hover:from-red-600 hover:to-amber-600 shadow-[0_0_12px_rgba(239,68,68,0.55)] border border-white/25 cursor-pointer transition-all active:scale-95 animate-pulse shrink-0"
+          onclick={handleManualUpdate}
+          title={t('settings.newVersionClickToUpdate', { version: pendingVer || 'NEW' })}
+        >
+          <Rocket size={12} />
+          <span class="font-mono">v{__APP_VERSION__}{pendingVer && pendingVer !== `v${__APP_VERSION__}` ? ` → ${pendingVer}` : ''}</span>
+          <span>{t('settings.updateNowBadge')}</span>
+        </button>
+      {:else}
+        <span
+          data-testid="settings-header-version"
+          class="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--text-muted)]/10 text-[var(--text-muted)] border border-[var(--border-color)] leading-none select-none shrink-0"
+        >
+          v{__APP_VERSION__}
+        </span>
+      {/if}
     </div>
     <button
       type="button"
@@ -125,43 +189,19 @@
       onclick={handleClose}
       aria-label={t('settings.close')}
     >
-      ✕
+      <X size={18} strokeWidth={2.2} />
     </button>
   </div>
 
   <!-- Content -->
   <div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-8 flex flex-col gap-6 custom-scrollbar text-sm">
-    <!-- Section 1: Download Preferences -->
-    <section class="flex flex-col gap-2.5">
-      <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>📥</span>
-        <span>{t('settings.downloadPreference')}</span>
-      </div>
-      <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
-        <div class="flex flex-col gap-0.5 min-w-0">
-          <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.allowDuplicateDownload')}</span>
-          <span class="text-xs text-[var(--text-secondary)]">{t('settings.allowDuplicateDownloadDesc')}</span>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={repeat}
-          aria-label={t('settings.allowDuplicateAria')}
-          data-testid="switch-repeat"
-          class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {repeat ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
-          onclick={onToggleRepeat}
-        >
-          <span
-            class="block w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform duration-200 {repeat ? 'translate-x-5.5' : 'translate-x-0'}"
-          ></span>
-        </button>
-      </div>
-    </section>
+    <!-- 👤 Section: User Profile & Permissions (顶置展示) -->
+    <SettingsUserProfileSection {showToast} />
 
     <!-- Section 2: Appearance -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>🎨</span>
+        <Palette size={14} />
         <span>{t('settings.interfaceAppearance')}</span>
       </div>
       <div class="p-1.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] grid grid-cols-3 gap-1">
@@ -170,21 +210,21 @@
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'light' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('light')}
         >
-          <span>☀️</span> {t('settings.themeLight')}
+          <Sun size={13} /> {t('settings.themeLight')}
         </button>
         <button
           type="button"
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'dark' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('dark')}
         >
-          <span>🌙</span> {t('settings.themeDark')}
+          <Moon size={13} /> {t('settings.themeDark')}
         </button>
         <button
           type="button"
           class="py-2 rounded-xl text-xs font-medium cursor-pointer border-none transition-all flex items-center justify-center gap-1.5 {themeMode === 'auto' ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
           onclick={() => onSelectTheme('auto')}
         >
-          <span>🌓</span> {t('settings.themeAuto')}
+          <SunMoon size={13} /> {t('settings.themeAuto')}
         </button>
       </div>
 
@@ -214,7 +254,7 @@
     <!-- Section 3: Audio Experience -->
     <section class="flex flex-col gap-2.5">
       <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-        <span>🎛️</span>
+        <Sliders size={14} />
         <span>{t('settings.audioExperience')}</span>
       </div>
       <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
@@ -290,6 +330,58 @@
 
     <!-- Section 6: Maintenance -->
     <SettingsMaintenanceSection {showToast} />
+
+    <!-- 🩺 播放运行诊断与自动上报 -->
+    <SettingsDiagnosticsSection {showToast} onOpenHud={handleClose} />
+
+    <!-- 🌄 自定义播放器背景 -->
+    <SettingsCustomBgSection {showToast} />
+
+    <!-- Section 7: Download Preferences (低频使用项，放置于最底部) -->
+    <section class="flex flex-col gap-2.5">
+      <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
+        <HardDriveDownload size={14} />
+        <span>{t('settings.downloadPreference')}</span>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-[var(--nav-tabs-bg)] border border-[var(--border-color)] flex items-center justify-between gap-3">
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <span class="font-semibold text-sm text-[var(--text-main)]">{t('settings.allowDuplicateDownload')}</span>
+          <span class="text-xs text-[var(--text-secondary)]">{t('settings.allowDuplicateDownloadDesc')}</span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={repeat}
+          aria-label={t('settings.allowDuplicateAria')}
+          data-testid="switch-repeat"
+          class="relative shrink-0 w-12 h-6.5 rounded-full transition-colors duration-200 cursor-pointer border-none p-0.5 {repeat ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-700'}"
+          onclick={onToggleRepeat}
+        >
+          <span
+            class="block w-5.5 h-5.5 rounded-full bg-white shadow-md transform transition-transform duration-200 {repeat ? 'translate-x-5.5' : 'translate-x-0'}"
+          ></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 品牌极客彩蛋: 抽屉底部版本信息与 Hover 展开微交互 -->
+    <div class="pt-4 pb-2 flex flex-col items-center justify-center gap-1 border-t border-[var(--border-color)]/40 mt-2 select-none">
+      <div
+        data-testid="settings-version-easter-egg"
+        class="group flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--text-muted)]/5 hover:bg-[var(--text-muted)]/10 border border-[var(--border-color)]/60 transition-all duration-300 cursor-default"
+        title="WYY · Whatever You Yearn"
+      >
+        <span class="text-[11px] font-mono font-medium text-[var(--text-muted)] group-hover:text-[var(--text-main)] transition-colors">
+          v{__APP_VERSION__}
+        </span>
+        <span class="hidden group-hover:inline-block text-[11px] font-serif italic text-red-500 dark:text-red-400 transition-all duration-300">
+          · Whatever You Yearn
+        </span>
+      </div>
+      <span class="text-[10px] text-[var(--text-muted)]/60 font-sans tracking-wide">
+        Crafted with Svelte 5 Runes & Spring Boot 3
+      </span>
+    </div>
   </div>
 </div>
 

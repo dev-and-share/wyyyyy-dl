@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "项目名称标识"
   type        = string
-  default     = "wyyyyy-dl"
+  default     = "wyy"
 }
 
 variable "environment" {
@@ -67,7 +67,7 @@ variable "lambda_timeout" {
 variable "lambda_zip_path" {
   description = "编译打包产物 ZIP 文件的相对路径"
   type        = string
-  default     = "../../build/distributions/wyyyyy-dl-aws.zip"
+  default     = "../../build/distributions/wyy-aws.zip"
 }
 
 variable "cloudfront_price_class" {
@@ -77,7 +77,7 @@ variable "cloudfront_price_class" {
 }
 
 variable "netease_cookie" {
-  description = "网易云音乐 Cookie (可选，优先从本地文件或此变量注入)"
+  description = "云端音乐 Cookie (可选，优先从本地文件或此变量注入)"
   type        = string
   default     = ""
   sensitive   = true

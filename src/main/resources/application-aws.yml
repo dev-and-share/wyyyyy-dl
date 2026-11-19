@@ -1,6 +1,6 @@
 spring:
   application:
-    name: wyyyyy-dl
+    name: wyy
   mvc:
     publish-request-handled-event: false
   web:

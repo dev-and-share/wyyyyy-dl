@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api } from '../../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER, getApiCache, setApiCache } from '../../lib/utils';
   import type { Track } from '../../lib/types';
@@ -12,6 +12,7 @@
   import { musicFreeStore } from '../../lib/musicfree/musicFreeStore.svelte';
   import { routerState } from '../../lib/router.svelte';
   import { t } from '../../lib/i18n';
+  import { Search, Loader2, Music, X, Cloud, Puzzle } from '@lucide/svelte';
 
   let {
     curTrack = null,
@@ -39,10 +40,10 @@
     showToast: (m: string, t?: string) => void;
   }>();
 
-  const STORAGE_KEY_KW = 'wyyyy_search_kw';
-  const STORAGE_KEY_TYPE = 'wyyyy_search_type';
-  const STORAGE_KEY_SOURCE = 'wyyyy_search_source';
-  const STORAGE_KEY_HISTORY = 'wyyyy_desktop_search_history';
+  const STORAGE_KEY_KW = 'wyy_search_kw';
+  const STORAGE_KEY_TYPE = 'wyy_search_type';
+  const STORAGE_KEY_SOURCE = 'wyy_search_source';
+  const STORAGE_KEY_HISTORY = 'wyy_desktop_search_history';
 
   let kw = $state('');
   let sType = $state('1'); // 1: song, 10: album, 1000: playlist, 100: artist
@@ -57,6 +58,7 @@
   let addToPlaylistSong = $state<any>(null);
   let searchHistory = $state<string[]>([]);
   let activeArtistId = $state('');
+  let searchInputEl = $state<HTMLInputElement | null>(null);
 
   let lastHandledAlbumTrigger = 0;
   $effect(() => {
@@ -102,6 +104,22 @@
     if (kw.trim()) {
       executeSearch(kw.trim(), false).catch(() => {});
     }
+    tick().then(() => {
+      searchInputEl?.focus();
+    });
+
+    const onFocusSearch = () => {
+      searchInputEl?.focus();
+      searchInputEl?.select();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('wyy:focus-search', onFocusSearch);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('wyy:focus-search', onFocusSearch);
+      }
+    };
   });
 
   function saveHistory(term: string) {
@@ -146,16 +164,16 @@
         mfResults = res.results || [];
         searchLoading = false;
         if (!mfResults.length && showEmptyToast) {
-          showToast('未在已启用的 MusicFree 插件中找到相关结果', 'info');
+          showToast(t('musicfree.noSearchResults'), 'info');
         }
       } catch (e: any) {
         searchLoading = false;
-        if (showEmptyToast) showToast('插件检索异常: ' + (e?.message || e), 'error');
+        if (showEmptyToast) showToast(t('musicfree.pluginError', { error: e?.message || e }), 'error');
       }
       return;
     }
 
-    // 2. 网易云原生检索分支
+    // 2. 原生云端检索分支
     const cacheKey = 'search_' + sType + '_' + query;
     const cached = getApiCache(cacheKey);
     if (cached?.data && Array.isArray(cached.data) && cached.data.length > 0) {
@@ -210,7 +228,7 @@
       } else {
         showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
@@ -220,7 +238,7 @@
     try {
       await api.downloadPlaylist(id);
       showToast(t('search.submittedPlaylist', { name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e?.message || e }), 'error');
     }
@@ -230,7 +248,7 @@
     try {
       await api.downloadAlbum(id);
       showToast(t('search.submittedAlbum', { name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.submitFailedWithMsg', { message: e?.message || e }), 'error');
     }
@@ -277,9 +295,9 @@
     <DesktopViewHeader
       icon="🔍"
       title={t('topbar.search')}
-      badge={searchSource === 'musicfree' ? '聚合检索' : '官方直连'}
+      badge={searchSource === 'musicfree' ? t('musicfree.badgeAggregate') : t('musicfree.badgeDirect')}
       badgeType={searchSource === 'musicfree' ? 'purple' : 'default'}
-      subtitle="全网多源搜索引擎"
+      subtitle={t('musicfree.searchSubtitle')}
     >
       {#snippet actions()}
         <!-- 🎯 音源来源选择器 (统一规格胶囊) -->
@@ -290,7 +308,7 @@
             class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'netease' ? 'bg-red-500 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('netease')}
           >
-            <span>☁️</span> <span>网易云</span>
+            <Cloud size={13} /> <span>{t('search.sourceNetease')}</span>
           </button>
           <button
             type="button"
@@ -298,7 +316,7 @@
             class="px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all flex items-center gap-1.5 {searchSource === 'musicfree' ? 'bg-purple-600 text-white shadow-sm font-bold' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]'}"
             onclick={() => handleSourceChange('musicfree')}
           >
-            <span>🧩</span> <span>MusicFree 聚合</span>
+            <Puzzle size={13} /> <span>{t('search.sourceMusicFree')}</span>
           </button>
         </div>
       {/snippet}
@@ -320,20 +338,30 @@
       <div class="flex items-center gap-2.5">
         <div class="relative flex-1">
           <input
+            bind:this={searchInputEl}
             type="search"
             data-testid="desktop-search-input"
-            placeholder={searchSource === 'musicfree' ? '输入歌曲或歌手，跨所有启用插件并行检索...' : t('search.desktopInputPlaceholder')}
-            class="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors"
+            placeholder={searchSource === 'musicfree' ? t('search.placeholderMusicFree') : t('search.desktopInputPlaceholder')}
+            class="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-red-500 transition-colors placeholder:text-[var(--text-muted)]/60 placeholder:italic placeholder:transition-opacity"
             bind:value={kw}
             onkeydown={(e) => e.key === 'Enter' && executeSearch()}
           />
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">🔍</span>
+          <button
+            type="button"
+            tabindex="-1"
+            class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer p-0 bg-transparent border-none transition-opacity"
+            onclick={() => searchInputEl?.focus()}
+            title={t('common.search')}
+            aria-label={t('common.search')}
+          >
+            <Search size={14} />
+          </button>
           {#if kw}
             <button
               type="button"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none bg-transparent"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer border-none bg-transparent flex items-center justify-center p-0.5"
               onclick={() => kw = ''}
-            >✕</button>
+            ><X size={14} /></button>
           {/if}
         </div>
 
@@ -365,8 +393,8 @@
     <!-- 2. 结果展示区 -->
     {#if searchLoading}
       <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
-        <span class="text-3xl animate-spin">⏳</span>
-        <span>{searchSource === 'musicfree' ? '正在调用插件跨源检索中...' : t('search.searchingLibrary')}</span>
+        <Loader2 size={32} class="animate-spin text-red-500" />
+        <span>{searchSource === 'musicfree' ? t('musicfree.searchingParallel') : t('search.searchingLibrary')}</span>
       </div>
     {:else if searchSource === 'musicfree'}
       <DesktopSearchMusicFreeResults
@@ -402,13 +430,13 @@
       />
     {:else if hasSearched}
       <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-        <span class="text-4xl">🔍</span>
+        <Search size={40} class="opacity-40 text-[var(--text-muted)]" />
         <span class="text-sm font-medium text-[var(--text-secondary)]">{t('search.noResultsForKw', { kw })}</span>
         <span class="text-xs text-[var(--text-muted)]">{t('search.tryDifferentKw')}</span>
       </div>
     {:else}
       <div class="py-20 text-center flex flex-col items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)]">
-        <span class="text-4xl">🎵</span>
+        <Music size={40} class="opacity-40 text-[var(--text-muted)]" />
         <span class="text-sm font-bold text-[var(--text-main)]">{t('search.librarySearchTitle')}</span>
         <span class="text-xs text-[var(--text-muted)] max-w-md">{t('search.librarySearchPrompt')}</span>
       </div>

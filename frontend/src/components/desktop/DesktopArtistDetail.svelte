@@ -10,6 +10,7 @@
   import { getTrackSourceStatus, isSameTrack } from '../../lib/trackStatus.svelte';
   import { t } from '../../lib/i18n';
   import DesktopHeaderActions from './DesktopHeaderActions.svelte';
+  import { Loader2, Star, Zap, HardDrive, Pause, Play, Download, Plus, FolderOpen } from '@lucide/svelte';
 
   let {
     artistId,
@@ -117,7 +118,7 @@
         return;
       }
       showToast(t('artist.forkSuccess', { name: plName }), 'success', 3500);
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
     } catch (e: any) {
       showToast(t('artist.forkFailedWithMsg', { message: e?.message || e }), 'error');
     } finally {
@@ -136,7 +137,7 @@
       } catch {}
     }
     showToast(t('artist.submittedDownloadCount', { count: submitCount, total: songs.length }), 'success');
-    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
   }
 
   async function handleBatchCache() {
@@ -172,7 +173,7 @@
       } else {
         showToast(t('download.submitSuccessWithName', { name: songName }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
@@ -222,7 +223,7 @@
 
   {#if loading && !artistData}
     <div class="py-20 text-center flex flex-col items-center gap-3 text-xs text-[var(--text-muted)]">
-      <span class="text-3xl animate-spin">⏳</span>
+      <Loader2 size={32} class="animate-spin text-red-500" />
       <span>{t('artist.fetchingTop50')}</span>
     </div>
   {:else if artistData}
@@ -270,7 +271,11 @@
             onclick={handleForkToPlaylist}
             title={t('artist.forkTooltip')}
           >
-            <span>{forking ? '⏳' : '⭐'}</span>
+            {#if forking}
+              <Loader2 size={13} class="animate-spin" />
+            {:else}
+              <Star size={13} />
+            {/if}
             <span>{forking ? t('artist.forking') : t('artist.collectAsPlaylist')}</span>
           </button>
           <button
@@ -280,7 +285,11 @@
             onclick={handleBatchCache}
             title={t('artist.cacheTooltip')}
           >
-            <span>{cachingBatch ? '⏳' : '⚡'}</span>
+            {#if cachingBatch}
+              <Loader2 size={13} class="animate-spin" />
+            {:else}
+              <Zap size={13} />
+            {/if}
             <span>{cachingBatch ? t('artist.caching') : t('artist.offlineCache')}</span>
           </button>
           <button
@@ -289,7 +298,7 @@
             onclick={handleBatchDownload}
             title={t('artist.downloadAllTooltip')}
           >
-            <span>🖥️</span>
+            <HardDrive size={13} />
             <span>{t('download.batchDownload')}</span>
           </button>
         </div>
@@ -335,7 +344,16 @@
                     >
                       {s.name}
                     </button>
-                    <TrackSourceBadge id={s.id} isLocal={s.isLocal} {curTrack} class="shrink-0" />
+                    <TrackSourceBadge
+                      id={s.id}
+                      name={s.name}
+                      artist={artistName}
+                      path={s.filePath}
+                      item={s}
+                      isLocal={s.isLocal}
+                      {curTrack}
+                      class="shrink-0"
+                    />
                     {#if onToggleLike}
                       <TrackLikeBtn liked={likedSet.has(Number(s.id))} onclick={() => onToggleLike(Number(s.id), s.name, artistName)} />
                     {/if}
@@ -370,7 +388,11 @@
                       onclick={() => onPlayQueue && onPlayQueue([{ id: s.id, name: s.name, artist: artistName, cover: s.picUrl || s.al?.picUrl || artistData?.picUrl || DEFAULT_VINYL_COVER, isLocal: status.isLocal }])}
                       title={isPlayingThis && playing ? t('player.pause') : t('search.listenNow')}
                     >
-                      {isPlayingThis && playing ? '⏸' : '▶'}
+                      {#if isPlayingThis && playing}
+                        <Pause size={12} fill="currentColor" />
+                      {:else}
+                        <Play size={12} fill="currentColor" />
+                      {/if}
                     </SlotBtn>
 
                     <!-- 下载到电脑 -->
@@ -378,7 +400,7 @@
                       onclick={() => handleDownloadSingle(String(s.id), s.name)}
                       title={t('search.downloadTrackToServer')}
                     >
-                      📥
+                      <Download size={12} />
                     </SlotBtn>
 
                     <!-- 加入歌单 -->
@@ -386,7 +408,7 @@
                       onclick={() => addToPlaylistSong = { id: Number(s.id), name: s.name, artist: artistName }}
                       title={t('playlist.addTo')}
                     >
-                      ➕
+                      <Plus size={12} strokeWidth={2.5} />
                     </SlotBtn>
 
                     <!-- 离线缓存 -->
@@ -394,7 +416,11 @@
                       onclick={() => handleCacheTrack(s)}
                       title={t('search.cacheToBrowserTooltip')}
                     >
-                      {cachingTrackId === s.id ? '⏳' : '⚡'}
+                      {#if cachingTrackId === s.id}
+                        <Loader2 size={12} class="animate-spin text-red-500" />
+                      {:else}
+                        <Zap size={12} />
+                      {/if}
                     </SlotBtn>
 
                     <!-- 定位 -->
@@ -403,7 +429,7 @@
                         onclick={() => onReveal({ id: s.id, name: s.name, artist: artistName })}
                         title={t('player.revealOnDisk')}
                       >
-                        📂
+                        <FolderOpen size={12} />
                       </SlotBtn>
                     {/if}
                   </div>

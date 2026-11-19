@@ -1,5 +1,5 @@
 import { api } from './api';
-import { isLocalPlaylist } from './localPlaylistStore.svelte';
+import { isLocalPlaylist, isSystemFavoritesPlaylist } from './localPlaylistStore.svelte';
 
 export interface UnifiedPlaylist {
   id: string;
@@ -41,7 +41,11 @@ export class LocalPlaylistProvider implements PlaylistProvider {
         if (res?.code && res.code !== '000000') {
           throw new Error(res.msg || '获取本地歌单失败');
         }
-        return res?.data;
+        const data = res?.data;
+        if (data && isSystemFavoritesPlaylist(data.id)) {
+          data.name = (data.name || '').replace(/^[❤️♥️]\s*/, '');
+        }
+        return data;
       } finally {
         this.inFlight.delete(key);
       }

@@ -13,4 +13,6 @@ export default {
   'toast.like.removed': '좋아요가 취소되었습니다',
   'toast.like.added': '「{name}」을(를) 즐겨찾기에 추가했습니다',
   'toast.like.failed': '좋아요 상태 업데이트에 실패했습니다',
+  'toast.scrobble.success': '☁️ NetEase 재생 기록 동기화 완료: 「{name}」',
+  'toast.scrobble.failed': '☁️ NetEase 재생 기록 동기화 실패',
 } as const;

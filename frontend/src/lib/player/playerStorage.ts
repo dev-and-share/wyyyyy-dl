@@ -13,7 +13,7 @@ export interface PlayerPersistedState {
 }
 
 const storageAdapter = new PlayerStorageAdapter<Track>({
-  prefix: 'wyyyy_player_',
+  prefix: 'wyy_player_',
   fallbackUrl: (id) => `/v3/stream?id=${id}`
 });
 

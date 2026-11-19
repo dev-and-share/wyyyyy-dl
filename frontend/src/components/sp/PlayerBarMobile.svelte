@@ -9,12 +9,15 @@
   import { skin } from '../../lib/skinStore.svelte';
   import WinampMiniVisualizer from '../skins/WinampMiniVisualizer.svelte';
   import CassetteMiniSpools from '../skins/CassetteMiniSpools.svelte';
+  import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
+  import { X } from '@lucide/svelte';
 
   let {
     curTrack,
     queue = [],
     playing = false,
+    loading = false,
     curTime = 0,
     duration = 0,
     playMode = 'list',
@@ -31,11 +34,13 @@
     onPeq,
     onQueue,
     onToggleLike = () => {},
-    onMinimize
+    onMinimize,
+    onSong
   } = $props<{
     curTrack: Track | null;
     queue: Track[];
     playing: boolean;
+    loading?: boolean;
     curTime: number;
     duration: number;
     playMode: 'list' | 'single' | 'shuffle';
@@ -53,6 +58,7 @@
     onQueue: () => void;
     onToggleLike?: () => void;
     onMinimize: () => void;
+    onSong?: (id: string) => void;
   }>();
 
   let isLiked = $derived(curTrack ? isTrackLiked(curTrack.id, curTrack.name, curTrack.artist) : false);
@@ -60,7 +66,7 @@
 
 <div
   data-testid="player-bar-mobile"
-  class="mobile-player-docked-bar fixed left-0 right-0 z-[9995] px-3 pt-1.5 pb-1.5 flex flex-col gap-1 transition-all duration-300 select-none {skin.current === 'winamp'
+  class="mobile-player-docked-bar fixed left-0 right-0 z-[9995] px-3 pt-1.5 pb-1.5 flex flex-col gap-1 transition-all duration-300 select-none overflow-hidden {skin.current === 'winamp'
     ? 'bg-gradient-to-b from-[#2e3441] via-[#21252d] to-[#171920] border-t-2 border-white/25 shadow-2xl'
     : skin.current === 'cassette'
       ? 'bg-[#181a1f] border-t-2 border-[#2b2f38] shadow-2xl'
@@ -71,8 +77,49 @@
           : 'bg-[var(--card-bg-solid)] backdrop-blur-2xl border-t border-[var(--border-color)]'}"
   style="{skin.cssVars}"
 >
+  {#if customBgStore.enabled && customBgStore.url}
+    <!-- 🌄 自定义背景半透明毛玻璃层 -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none" aria-hidden="true">
+      {#if customBgStore.type === 'image'}
+        <img
+          src={customBgStore.url}
+          alt=""
+          class="w-full h-full transition-[filter,transform,object-position] duration-300"
+          style="
+            filter: blur({Math.max(customBgStore.blur, 10)}px);
+            object-fit: {customBgStore.fit};
+            object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+            transform: scale({customBgStore.scale * 1.1});
+            transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+          "
+        />
+      {:else if customBgStore.type === 'video'}
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video
+          src={customBgStore.url}
+          autoplay
+          loop
+          muted
+          playsinline
+          class="w-full h-full transition-[filter,transform,object-position] duration-300"
+          style="
+            filter: blur({Math.max(customBgStore.blur, 10)}px);
+            object-fit: {customBgStore.fit};
+            object-position: {customBgStore.positionX}% {customBgStore.positionY}%;
+            transform: scale({customBgStore.scale * 1.1});
+            transform-origin: {customBgStore.positionX}% {customBgStore.positionY}%;
+          "
+        ></video>
+      {/if}
+      <div
+        class="absolute inset-0 pointer-events-none transition-colors duration-200"
+        style="background: rgba(10, 14, 26, {Math.max(customBgStore.dimOpacity, 0.45)});"
+      ></div>
+    </div>
+  {/if}
+
   <!-- 2.1 顶部区域：左侧封面；右侧上下两行 -->
-  <div class="flex items-center gap-2.5 w-full">
+  <div class="relative z-10 flex items-center gap-2.5 w-full">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div onclick={onLyric} title={t('player.expandLyric')}>
@@ -151,8 +198,29 @@
         >
           {curTrack?.name || t('player.noTrackPlaying')}
         </span>
+        {#if loading}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span
+            class="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 shrink-0 animate-pulse font-normal flex items-center gap-1 cursor-pointer active:scale-95"
+            onclick={(e) => { e.stopPropagation(); onTogglePlay(); }}
+            title={t('player.cancelLoading')}
+          >
+            <span>{t('player.loadingTrack')}</span>
+            <X size={9} strokeWidth={2.5} class="opacity-70" />
+          </span>
+        {/if}
         {#if curTrack}
-          <TrackSourceBadge id={curTrack.id} isLocal={curTrack.isLocal} {curTrack} class="ml-1" />
+          <TrackSourceBadge
+            id={curTrack.id}
+            name={curTrack.name}
+            artist={curTrack.artist}
+            path={curTrack.filePath}
+            item={curTrack}
+            isLocal={curTrack.isLocal}
+            {curTrack}
+            class="ml-1"
+          />
         {/if}
       </div>
 
@@ -220,17 +288,17 @@
     </div>
   </div>
 
-  <!-- 2.2 第二排：全宽进度条 -->
-  <PlayerProgressBar
-    {curTime}
-    {duration}
-    progressRatio={progressRatio}
-    {onSeek}
-    skinId={skin.current}
-  />
+  <!-- 2.2 第二排与第三排：全宽进度条与控制按键 (z-10 确保位于毛玻璃背景之上) -->
+  <div class="relative z-10 w-full flex flex-col gap-1">
+    <PlayerProgressBar
+      {curTime}
+      {duration}
+      progressRatio={progressRatio}
+      {onSeek}
+      skinId={skin.current}
+    />
 
-  <!-- 2.3 第三排：5个控制按键 (精致紧凑版) -->
-  <div class="flex items-center justify-between w-full px-2 py-0.5">
+    <div class="flex items-center justify-between w-full px-2 py-0.5">
     <button
       data-testid="btn-toggle-mode"
       type="button"
@@ -282,9 +350,14 @@
               ? 'w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/40'
               : 'w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md shadow-red-500/40'}"
       onclick={onTogglePlay}
-      title={playing ? t('player.pause') : t('player.play')}
+      title={loading ? t('player.cancelLoading') : (playing ? t('player.pause') : t('player.play'))}
     >
-      {#if skin.current === 'winamp'}
+      {#if loading}
+        <svg class="animate-spin text-white w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+          <path class="opacity-85" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      {:else if skin.current === 'winamp'}
         <span class="text-xs font-mono font-bold leading-none">{playing ? '❚❚' : '▶'}</span>
       {:else}
         <PlayerIcon name={playing ? 'pause' : 'play'} size={20} />
@@ -323,5 +396,6 @@
     >
       <PlayerIcon name="heart" liked={isLiked} size={16} />
     </button>
+  </div>
   </div>
 </div>

@@ -23,7 +23,7 @@
   --topbar-border: rgba(52, 211, 153, 0.18);
   --input-focus-border: #10b981;
   --input-focus-glow: rgba(16, 185, 129, 0.25);
-  --immersive-bg: radial-gradient(circle at center, #064e3b 0%, #022c22 65%, #021a14 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #064e3b 0%, #032b20 55%, #06140f 85%, #06140f 100%);
   --immersive-header-bg: rgba(6, 78, 59, 0.65);
   --immersive-ring-bg: #022c22;
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(52, 211, 153, 0.18);
@@ -47,7 +47,7 @@
   --topbar-border: rgba(16, 185, 129, 0.15);
   --input-focus-border: #059669;
   --input-focus-glow: rgba(16, 185, 129, 0.2);
-  --immersive-bg: radial-gradient(circle at center, #ffffff 0%, #ecfdf5 60%, #d1fae5 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #059669 0%, #047857 42%, #065f46 72%, #064e3b 100%);
 }
 
 /* 2. 灵动极光 (Aurora Glass) 全局主题 */
@@ -70,7 +70,7 @@
   --topbar-border: rgba(168, 85, 247, 0.2);
   --input-focus-border: #a855f7;
   --input-focus-glow: rgba(168, 85, 247, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #2e1065 0%, #170736 60%, #0b041a 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2e1065 0%, #170736 55%, #0c0a1a 85%, #0c0a1a 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(168, 85, 247, 0.2);
 }
 [data-theme="light"][data-skin="aurora"], [data-theme="light"] [data-skin="aurora"] {
@@ -90,6 +90,7 @@
   --nav-tab-active-color: #7e22ce;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(168, 85, 247, 0.15);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #6d28d9 0%, #5b21b6 42%, #4c1d95 72%, #3b137a 100%);
 }
 
 /* 3. 复古磁带 (Cassette Walkman) 全局主题 */
@@ -112,7 +113,7 @@
   --topbar-border: rgba(245, 158, 11, 0.15);
   --input-focus-border: #f59e0b;
   --input-focus-glow: rgba(245, 158, 11, 0.25);
-  --immersive-bg: radial-gradient(circle at center, #2e2416 0%, #1c160e 65%, #0e0a06 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2e2416 0%, #1c160e 55%, #121316 85%, #121316 100%);
 }
 [data-theme="light"][data-skin="cassette"], [data-theme="light"] [data-skin="cassette"] {
   --bg-color: #fefce8;
@@ -131,6 +132,7 @@
   --nav-tab-active-color: #b45309;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(245, 158, 11, 0.15);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #573319 0%, #452410 45%, #3a1d0a 72%, #3a1d0a 100%);
 }
 
 /* 4. Winamp 经典 (Retro Winamp) 全局主题 */
@@ -153,7 +155,7 @@
   --topbar-border: rgba(255, 255, 255, 0.12);
   --input-focus-border: #10b981;
   --input-focus-glow: rgba(16, 185, 129, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #1b2820 0%, #0f1712 65%, #080c09 100%);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #1b2820 0%, #121c16 55%, #11141b 85%, #11141b 100%);
   --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(16, 185, 129, 0.2);
 }
 [data-theme="light"][data-skin="winamp"], [data-theme="light"] [data-skin="winamp"] {
@@ -173,6 +175,7 @@
   --nav-tab-active-color: #059669;
   --topbar-bg: rgba(255, 255, 255, 0.95);
   --topbar-border: rgba(0, 0, 0, 0.1);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #065f46 0%, #044e39 45%, #033f2e 72%, #033f2e 100%);
 }
 
 /* 🎵 歌单正在播放曲目的皮肤个性化呈现 (Skin Playing Card Highlight) */
@@ -237,234 +240,200 @@
   font-family: monospace;
 }
 
-/* 🌸 春樱初绽 (Sakura Drift) 全局主题 (实景吉野樱自然粉白柔调) */
-[data-skin="sakura"] {
-  --bg-color: #181016;
-  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(253, 232, 240, 0.22) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(249, 168, 212, 0.18) 0%, transparent 65%);
-  --card-bg: rgba(38, 20, 30, 0.92);
-  --card-bg-solid: #26141f;
-  --card-header-bg: rgba(38, 20, 30, 0.96);
-  --card-header-hover: rgba(244, 114, 182, 0.1);
-  --border-color: rgba(244, 114, 182, 0.32);
-  --border-subtle: rgba(244, 114, 182, 0.12);
-  --primary-color: #f472b6;
-  --primary-hover: #ec4899;
-  --primary-glow: rgba(244, 114, 182, 0.45);
-  --btn-primary-bg: linear-gradient(135deg, #f472b6, #fb7185);
-  --nav-tabs-bg: rgba(244, 114, 182, 0.12);
-  --nav-tab-active-bg: rgba(244, 114, 182, 0.24);
-  --nav-tab-active-color: #fce7f3;
-  --topbar-bg: rgba(38, 20, 30, 0.94);
-  --topbar-border: rgba(244, 114, 182, 0.24);
-  --input-focus-border: #f472b6;
-  --input-focus-glow: rgba(244, 114, 182, 0.3);
-  --immersive-bg: radial-gradient(circle at center, #3d1c2e 0%, #22101b 65%, #12080f 100%);
-  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(244, 114, 182, 0.25);
+@import './skins-seasons.css';
+
+/* ==========================================================================
+   📻 5. 复古胆机 (Vacuum Tube Amp) 全局主题
+   ========================================================================== */
+[data-skin="tube"] {
+  --bg-color: #170b04;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(245, 158, 11, 0.16) 0%, transparent 65%);
+  --card-bg: rgba(35, 18, 9, 0.92);
+  --card-bg-solid: #221207;
+  --card-header-bg: rgba(35, 18, 9, 0.96);
+  --border-color: rgba(245, 158, 11, 0.24);
+  --border-subtle: rgba(245, 158, 11, 0.1);
+  --primary-color: #f59e0b;
+  --primary-hover: #d97706;
+  --primary-glow: rgba(245, 158, 11, 0.4);
+  --btn-primary-bg: linear-gradient(135deg, #f59e0b, #b45309);
+  --nav-tabs-bg: rgba(245, 158, 11, 0.12);
+  --nav-tab-active-bg: rgba(245, 158, 11, 0.25);
+  --nav-tab-active-color: #fbbf24;
+  --topbar-bg: rgba(35, 18, 9, 0.94);
+  --topbar-border: rgba(245, 158, 11, 0.2);
+  --input-focus-border: #f59e0b;
+  --input-focus-glow: rgba(245, 158, 11, 0.3);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #3d1b06 0%, #291003 55%, #170b04 85%, #170b04 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(245, 158, 11, 0.22);
 }
-[data-theme="light"][data-skin="sakura"], [data-theme="light"] [data-skin="sakura"] {
-  --bg-color: #fff8fa;
-  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(244, 114, 182, 0.15) 0%, transparent 70%);
+[data-theme="light"][data-skin="tube"], [data-theme="light"] [data-skin="tube"] {
+  --bg-color: #fffbeb;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(245, 158, 11, 0.14) 0%, transparent 65%);
   --card-bg: #ffffff;
   --card-bg-solid: #ffffff;
   --card-header-bg: #ffffff;
-  --border-color: #fce7f3;
-  --border-subtle: #fff1f2;
-  --primary-color: #ec4899;
-  --primary-hover: #db2777;
-  --primary-glow: rgba(236, 72, 153, 0.25);
-  --btn-primary-bg: linear-gradient(135deg, #f472b6, #fb7185);
-  --nav-tabs-bg: #fdf2f8;
+  --border-color: #fde68a;
+  --border-subtle: #fef3c7;
+  --primary-color: #b45309;
+  --primary-hover: #92400e;
+  --primary-glow: rgba(180, 83, 9, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #f59e0b, #d97706);
+  --nav-tabs-bg: #fef3c7;
   --nav-tab-active-bg: #ffffff;
-  --nav-tab-active-color: #db2777;
+  --nav-tab-active-color: #92400e;
   --topbar-bg: rgba(255, 255, 255, 0.95);
-  --topbar-border: rgba(244, 114, 182, 0.18);
+  --topbar-border: rgba(245, 158, 11, 0.2);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #92400e 0%, #78350f 45%, #5a2608 72%, #451a03 100%);
 }
-[data-skin="sakura"] .track-item-card.is-active-playing {
-  background: rgba(244, 114, 182, 0.14) !important;
-  border-color: rgba(244, 114, 182, 0.45) !important;
-  box-shadow: 0 0 16px rgba(244, 114, 182, 0.2);
-}
-[data-skin="sakura"] .track-item-card.is-active-playing .clickable-track-title {
-  color: #f472b6 !important;
-  text-shadow: 0 0 8px rgba(244, 114, 182, 0.35);
-}
-[data-skin="sakura"] .track-btn-slot.is-playing-btn,
-[data-skin="sakura"] .jump-link-btn.is-playing-btn {
-  background: rgba(244, 114, 182, 0.2) !important;
-  border-color: rgba(244, 114, 182, 0.45) !important;
-  color: #fff1f5 !important;
+[data-skin="tube"] .track-item-card.is-active-playing {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
 }
 
-/* 🌻 盛夏晴空 (Summer Meadow) 全局主题 (明朗晴空纯正天蓝色) */
-[data-skin="summer"] {
-  --bg-color: #072b4a;
-  --bg-gradient: radial-gradient(ellipse at 25% 20%, rgba(56, 189, 248, 0.52) 0%, transparent 65%), radial-gradient(ellipse at 75% 80%, rgba(14, 165, 233, 0.42) 0%, transparent 65%), linear-gradient(180deg, #093963 0%, #06233d 100%);
-  --card-bg: rgba(14, 52, 88, 0.92);
-  --card-bg-solid: #0e3b64;
-  --card-header-bg: rgba(14, 52, 88, 0.96);
-  --card-header-hover: rgba(56, 189, 248, 0.18);
-  --border-color: rgba(56, 189, 248, 0.45);
-  --border-subtle: rgba(56, 189, 248, 0.2);
+/* ==========================================================================
+   💽 6. 千禧 CD 随身听 (Retro CD Walkman) 全局主题
+   ========================================================================== */
+[data-skin="cd"] {
+  --bg-color: #0c192c;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(14, 165, 233, 0.18) 0%, transparent 65%);
+  --card-bg: rgba(18, 35, 60, 0.9);
+  --card-bg-solid: #11233d;
+  --card-header-bg: rgba(18, 35, 60, 0.96);
+  --border-color: rgba(56, 189, 248, 0.25);
+  --border-subtle: rgba(56, 189, 248, 0.1);
   --primary-color: #38bdf8;
-  --primary-hover: #7dd3fc;
-  --primary-glow: rgba(56, 189, 248, 0.55);
-  --btn-primary-bg: linear-gradient(135deg, #0ea5e9, #38bdf8);
-  --nav-tabs-bg: rgba(56, 189, 248, 0.18);
-  --nav-tab-active-bg: rgba(56, 189, 248, 0.35);
-  --nav-tab-active-color: #e0f2fe;
-  --topbar-bg: rgba(14, 52, 88, 0.95);
-  --topbar-border: rgba(56, 189, 248, 0.35);
+  --primary-hover: #0ea5e9;
+  --primary-glow: rgba(56, 189, 248, 0.4);
+  --btn-primary-bg: linear-gradient(135deg, #38bdf8, #0284c7);
+  --nav-tabs-bg: rgba(56, 189, 248, 0.12);
+  --nav-tab-active-bg: rgba(56, 189, 248, 0.26);
+  --nav-tab-active-color: #7dd3fc;
+  --topbar-bg: rgba(18, 35, 60, 0.94);
+  --topbar-border: rgba(56, 189, 248, 0.22);
   --input-focus-border: #38bdf8;
-  --input-focus-glow: rgba(56, 189, 248, 0.45);
-  --immersive-bg: radial-gradient(circle at center, #0284c7 0%, #0369a1 50%, #073458 100%);
-  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(56, 189, 248, 0.4);
+  --input-focus-glow: rgba(56, 189, 248, 0.3);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #163252 0%, #0d1e34 55%, #0c192c 85%, #0c192c 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(56, 189, 248, 0.22);
 }
-[data-theme="light"][data-skin="summer"], [data-theme="light"] [data-skin="summer"] {
-  --bg-color: #e0f2fe;
-  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(56, 189, 248, 0.32) 0%, transparent 70%), linear-gradient(180deg, #bae6fd 0%, #f0f9ff 100%);
+[data-theme="light"][data-skin="cd"], [data-theme="light"] [data-skin="cd"] {
+  --bg-color: #f0f9ff;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(14, 165, 233, 0.15) 0%, transparent 65%);
   --card-bg: #ffffff;
   --card-bg-solid: #ffffff;
   --card-header-bg: #ffffff;
-  --border-color: #7dd3fc;
+  --border-color: #bae6fd;
   --border-subtle: #e0f2fe;
   --primary-color: #0284c7;
   --primary-hover: #0369a1;
-  --primary-glow: rgba(2, 132, 199, 0.28);
-  --btn-primary-bg: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  --primary-glow: rgba(2, 132, 199, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #38bdf8, #0284c7);
   --nav-tabs-bg: #e0f2fe;
   --nav-tab-active-bg: #ffffff;
-  --nav-tab-active-color: #0284c7;
+  --nav-tab-active-color: #0369a1;
   --topbar-bg: rgba(255, 255, 255, 0.95);
-  --topbar-border: rgba(56, 189, 248, 0.28);
+  --topbar-border: rgba(56, 189, 248, 0.2);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #0ea5e9 0%, #0284c7 42%, #0369a1 72%, #0f2e59 100%);
 }
-[data-skin="summer"] .track-item-card.is-active-playing {
-  background: rgba(56, 189, 248, 0.18) !important;
-  border-color: rgba(56, 189, 248, 0.5) !important;
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.25);
-}
-[data-skin="summer"] .track-item-card.is-active-playing .clickable-track-title {
-  color: #38bdf8 !important;
-  text-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
-}
-[data-skin="summer"] .track-btn-slot.is-playing-btn,
-[data-skin="summer"] .jump-link-btn.is-playing-btn {
-  background: rgba(56, 189, 248, 0.24) !important;
-  border-color: rgba(56, 189, 248, 0.55) !important;
-  color: #e0f2fe !important;
+[data-skin="cd"] .track-item-card.is-active-playing {
+  background: rgba(56, 189, 248, 0.16) !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
 }
 
-/* 🍁 金秋落叶 (Autumn Breeze) 全局主题 (璀璨灿烂金秋纯金黄) */
-[data-skin="autumn"] {
-  --bg-color: #1a1305;
-  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(250, 204, 21, 0.35) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(245, 158, 11, 0.28) 0%, transparent 65%);
-  --card-bg: rgba(38, 28, 11, 0.92);
-  --card-bg-solid: #2d210c;
-  --card-header-bg: rgba(38, 28, 11, 0.96);
-  --card-header-hover: rgba(250, 204, 21, 0.12);
-  --border-color: rgba(250, 204, 21, 0.38);
-  --border-subtle: rgba(250, 204, 21, 0.15);
-  --primary-color: #facc15;
-  --primary-hover: #eab308;
-  --primary-glow: rgba(250, 204, 21, 0.5);
-  --btn-primary-bg: linear-gradient(135deg, #facc15, #f59e0b);
-  --nav-tabs-bg: rgba(250, 204, 21, 0.14);
-  --nav-tab-active-bg: rgba(250, 204, 21, 0.28);
-  --nav-tab-active-color: #fef08a;
-  --topbar-bg: rgba(38, 28, 11, 0.94);
-  --topbar-border: rgba(250, 204, 21, 0.26);
-  --input-focus-border: #facc15;
-  --input-focus-glow: rgba(250, 204, 21, 0.35);
-  --immersive-bg: radial-gradient(circle at center, #3b2807 0%, #221603 65%, #100b01 100%);
-  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(250, 204, 21, 0.3);
+/* ==========================================================================
+   🌆 7. 赛博霓虹 (Cyber Synthwave) 全局主题
+   ========================================================================== */
+[data-skin="cyber"] {
+  --bg-color: #1a052e;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(217, 70, 239, 0.22) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(6, 182, 212, 0.15) 0%, transparent 65%);
+  --card-bg: rgba(38, 12, 66, 0.9);
+  --card-bg-solid: #250a42;
+  --card-header-bg: rgba(38, 12, 66, 0.96);
+  --border-color: rgba(217, 70, 239, 0.28);
+  --border-subtle: rgba(217, 70, 239, 0.12);
+  --primary-color: #d946ef;
+  --primary-hover: #c026d3;
+  --primary-glow: rgba(217, 70, 239, 0.45);
+  --btn-primary-bg: linear-gradient(135deg, #d946ef, #06b6d4);
+  --nav-tabs-bg: rgba(217, 70, 239, 0.14);
+  --nav-tab-active-bg: rgba(217, 70, 239, 0.28);
+  --nav-tab-active-color: #f0abfc;
+  --topbar-bg: rgba(38, 12, 66, 0.94);
+  --topbar-border: rgba(217, 70, 239, 0.24);
+  --input-focus-border: #d946ef;
+  --input-focus-glow: rgba(217, 70, 239, 0.35);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #4a0d78 0%, #290646 55%, #1a052e 85%, #1a052e 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(217, 70, 239, 0.25);
 }
-[data-theme="light"][data-skin="autumn"], [data-theme="light"] [data-skin="autumn"] {
-  --bg-color: #fffdf0;
-  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(250, 204, 21, 0.2) 0%, transparent 70%);
+[data-theme="light"][data-skin="cyber"], [data-theme="light"] [data-skin="cyber"] {
+  --bg-color: #faf5ff;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(217, 70, 239, 0.15) 0%, transparent 65%);
   --card-bg: #ffffff;
   --card-bg-solid: #ffffff;
   --card-header-bg: #ffffff;
-  --border-color: #fef08a;
-  --border-subtle: #fef9c3;
-  --primary-color: #d97706;
-  --primary-hover: #b45309;
-  --primary-glow: rgba(217, 119, 6, 0.25);
-  --btn-primary-bg: linear-gradient(135deg, #facc15, #f59e0b);
-  --nav-tabs-bg: #fef9c3;
+  --border-color: #f0abfc;
+  --border-subtle: #fae8ff;
+  --primary-color: #a855f7;
+  --primary-hover: #9333ea;
+  --primary-glow: rgba(168, 85, 247, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #d946ef, #06b6d4);
+  --nav-tabs-bg: #fae8ff;
   --nav-tab-active-bg: #ffffff;
-  --nav-tab-active-color: #b45309;
+  --nav-tab-active-color: #9333ea;
   --topbar-bg: rgba(255, 255, 255, 0.95);
-  --topbar-border: rgba(250, 204, 21, 0.22);
+  --topbar-border: rgba(217, 70, 239, 0.2);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #9333ea 0%, #7e22ce 45%, #581c87 75%, #3b0764 100%);
 }
-[data-skin="autumn"] .track-item-card.is-active-playing {
-  background: rgba(250, 204, 21, 0.16) !important;
-  border-color: rgba(250, 204, 21, 0.48) !important;
-  box-shadow: 0 0 18px rgba(250, 204, 21, 0.25);
-}
-[data-skin="autumn"] .track-item-card.is-active-playing .clickable-track-title {
-  color: #facc15 !important;
-  text-shadow: 0 0 8px rgba(250, 204, 21, 0.4);
-}
-[data-skin="autumn"] .track-btn-slot.is-playing-btn,
-[data-skin="autumn"] .jump-link-btn.is-playing-btn {
-  background: rgba(250, 204, 21, 0.22) !important;
-  border-color: rgba(250, 204, 21, 0.5) !important;
-  color: #fef08a !important;
+[data-skin="cyber"] .track-item-card.is-active-playing {
+  background: rgba(217, 70, 239, 0.18) !important;
+  border-color: rgba(217, 70, 239, 0.6) !important;
 }
 
-/* ❄️ 凛冬初雪 (Winter Snowfall) 全局主题 (纯洁白雪与银霜素裹) */
-[data-skin="winter"] {
-  --bg-color: #0b121e;
-  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(255, 255, 255, 0.32) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(226, 232, 240, 0.25) 0%, transparent 65%);
-  --card-bg: rgba(18, 26, 38, 0.92);
-  --card-bg-solid: #151e2e;
-  --card-header-bg: rgba(18, 26, 38, 0.96);
-  --card-header-hover: rgba(255, 255, 255, 0.12);
-  --border-color: rgba(255, 255, 255, 0.42);
-  --border-subtle: rgba(255, 255, 255, 0.16);
-  --primary-color: #ffffff;
-  --primary-hover: #e2e8f0;
-  --primary-glow: rgba(255, 255, 255, 0.6);
-  --btn-primary-bg: linear-gradient(135deg, #ffffff, #cbd5e1);
-  --nav-tabs-bg: rgba(255, 255, 255, 0.14);
-  --nav-tab-active-bg: rgba(255, 255, 255, 0.28);
-  --nav-tab-active-color: #ffffff;
-  --topbar-bg: rgba(18, 26, 38, 0.94);
-  --topbar-border: rgba(255, 255, 255, 0.28);
-  --input-focus-border: #ffffff;
-  --input-focus-glow: rgba(255, 255, 255, 0.4);
-  --immersive-bg: radial-gradient(circle at center, #1b263b 0%, #0d1522 65%, #05080e 100%);
-  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(255, 255, 255, 0.35);
+/* ==========================================================================
+   🌧️ 8. 雨夜窗扉 (Rainy Window) 全局主题
+   ========================================================================== */
+[data-skin="rain"] {
+  --bg-color: #08101e;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(37, 99, 235, 0.18) 0%, transparent 65%), radial-gradient(ellipse at 75% 75%, rgba(14, 165, 233, 0.12) 0%, transparent 65%);
+  --card-bg: rgba(15, 28, 48, 0.92);
+  --card-bg-solid: #0e1c32;
+  --card-header-bg: rgba(15, 28, 48, 0.96);
+  --border-color: rgba(96, 165, 250, 0.24);
+  --border-subtle: rgba(96, 165, 250, 0.1);
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-glow: rgba(59, 130, 246, 0.4);
+  --btn-primary-bg: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  --nav-tabs-bg: rgba(59, 130, 246, 0.12);
+  --nav-tab-active-bg: rgba(59, 130, 246, 0.26);
+  --nav-tab-active-color: #93c5fd;
+  --topbar-bg: rgba(15, 28, 48, 0.94);
+  --topbar-border: rgba(96, 165, 250, 0.2);
+  --input-focus-border: #3b82f6;
+  --input-focus-glow: rgba(59, 130, 246, 0.3);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #15243e 0%, #0d182b 55%, #08101e 85%, #08101e 100%);
+  --immersive-ring-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 8px rgba(96, 165, 250, 0.22);
 }
-[data-theme="light"][data-skin="winter"], [data-theme="light"] [data-skin="winter"] {
-  --bg-color: #f8fafc;
-  --bg-gradient: radial-gradient(ellipse at 30% 25%, rgba(226, 232, 240, 0.4) 0%, transparent 70%);
+[data-theme="light"][data-skin="rain"], [data-theme="light"] [data-skin="rain"] {
+  --bg-color: #f0f7ff;
+  --bg-gradient: radial-gradient(ellipse at 25% 25%, rgba(59, 130, 246, 0.15) 0%, transparent 65%);
   --card-bg: #ffffff;
   --card-bg-solid: #ffffff;
   --card-header-bg: #ffffff;
-  --border-color: #e2e8f0;
-  --border-subtle: #f1f5f9;
-  --primary-color: #0f172a;
-  --primary-hover: #334155;
-  --primary-glow: rgba(15, 23, 42, 0.2);
-  --btn-primary-bg: linear-gradient(135deg, #ffffff, #e2e8f0);
-  --nav-tabs-bg: #f1f5f9;
+  --border-color: #bfdbfe;
+  --border-subtle: #dbeafe;
+  --primary-color: #1d4ed8;
+  --primary-hover: #1e40af;
+  --primary-glow: rgba(29, 78, 216, 0.2);
+  --btn-primary-bg: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  --nav-tabs-bg: #dbeafe;
   --nav-tab-active-bg: #ffffff;
-  --nav-tab-active-color: #0f172a;
+  --nav-tab-active-color: #1e40af;
   --topbar-bg: rgba(255, 255, 255, 0.95);
-  --topbar-border: rgba(0, 0, 0, 0.12);
+  --topbar-border: rgba(59, 130, 246, 0.2);
+  --immersive-bg: radial-gradient(ellipse 110% 90% at center, #2563eb 0%, #1d4ed8 45%, #172554 75%, #0f1f3d 100%);
 }
-[data-skin="winter"] .track-item-card.is-active-playing {
-  background: rgba(255, 255, 255, 0.16) !important;
-  border-color: rgba(255, 255, 255, 0.65) !important;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-}
-[data-skin="winter"] .track-item-card.is-active-playing .clickable-track-title {
-  color: #ffffff !important;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
-}
-[data-skin="winter"] .track-btn-slot.is-playing-btn,
-[data-skin="winter"] .jump-link-btn.is-playing-btn {
-  background: rgba(255, 255, 255, 0.28) !important;
-  border-color: rgba(255, 255, 255, 0.7) !important;
-  color: #ffffff !important;
+[data-skin="rain"] .track-item-card.is-active-playing {
+  background: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(59, 130, 246, 0.6) !important;
 }

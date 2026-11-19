@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { toastState, type ToastItem } from '../lib/toast.svelte';
+  import { toastState, dismissToast, pauseToast, resumeToast, type ToastItem } from '../lib/toast.svelte';
 
   let { toasts } = $props<{
     toasts?: ToastItem[];
@@ -14,7 +14,11 @@
 >
   {#each activeToasts as t (t.id)}
     <div
-      class="pointer-events-auto inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white shadow-xl backdrop-blur-md max-w-[460px] animate-[toast-fade-in_0.3s_cubic-bezier(0.16,1,0.3,1)] {t.type === 'error' ? 'bg-red-500/95 shadow-red-500/25' : t.type === 'success' ? 'bg-emerald-500/95 shadow-emerald-500/25' : t.type === 'warning' ? 'bg-amber-500/95 shadow-amber-500/25' : 'bg-slate-800/95 shadow-black/30'}"
+      role="status"
+      tabindex="-1"
+      class="pointer-events-auto inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white shadow-xl backdrop-blur-md max-w-[460px] animate-[toast-fade-in_0.3s_cubic-bezier(0.16,1,0.3,1)] transition-transform duration-150 hover:scale-[1.02] {t.type === 'error' ? 'bg-red-500/95 shadow-red-500/25' : t.type === 'success' ? 'bg-emerald-500/95 shadow-emerald-500/25' : t.type === 'warning' ? 'bg-amber-500/95 shadow-amber-500/25' : 'bg-slate-800/95 shadow-black/30'}"
+      onmouseenter={() => pauseToast(t.id)}
+      onmouseleave={() => resumeToast(t.id)}
     >
       <span class="truncate">{t.msg}</span>
       {#if t.action}
@@ -23,7 +27,11 @@
           class="ml-1 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/35 active:scale-95 text-white font-bold text-[11px] cursor-pointer border-none shrink-0 transition-all shadow-xs"
           onclick={(e) => {
             e.stopPropagation();
-            t.action?.onClick();
+            try {
+              t.action?.onClick();
+            } finally {
+              dismissToast(t.id);
+            }
           }}
         >
           {t.action.label}

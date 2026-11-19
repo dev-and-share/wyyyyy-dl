@@ -51,6 +51,8 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
   const byKey = new Map<string, BrowserCacheItem>();
 
   for (const cacheName of await caches.keys()) {
+    // 🛡️ 跳过封面图片缓存池 (最多含 2000 张图片) 与静态资源缓存池，杜绝 iOS WebKit 扫描大量 Request 引发的内存洪峰
+    if (cacheName === 'netease-music-image-v1' || cacheName.startsWith('wyy-')) continue;
     const cache = await caches.open(cacheName);
     for (const request of await cache.keys()) {
       if (!isAudioCacheUrl(request.url)) continue;
@@ -58,8 +60,11 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
         ? (new URL(request.url).pathname + new URL(request.url).search)
         : request.url;
       const meta = metaMap[relUrl] || metaMap[request.url] || {};
-      const response = await cache.match(request);
-      const size = Number(response?.headers.get('content-length') || meta.fileSize || 0);
+      let size = Number(meta.fileSize || 0);
+      if (!size) {
+        const response = await cache.match(request);
+        size = Number(response?.headers.get('content-length') || 0);
+      }
 
       // 提取真实歌曲 ID 与历史记录 ID
       const urlIdMatch = relUrl.match(/[?&]id=([1-9]\d*)/);
@@ -141,7 +146,7 @@ export async function deleteBrowserCacheEntry(item: BrowserCacheItem): Promise<v
   await audioCacheStorage.delete([...item.urls, ...item.relUrls]);
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated'));
   }
 }
 
@@ -177,7 +182,7 @@ export async function removeTrackBrowserCache(songId: string | number): Promise<
 
     localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
     refreshCachedSongIds();
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated', { detail: { id: idStr, removed: true } }));
     return deleted;
   } catch (err) {
     console.warn('[PWA] Failed to remove single track cache:', err);
@@ -215,7 +220,7 @@ export async function clearLowPlayCountCacheEntries(items: BrowserCacheItem[]): 
   localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated'));
   }
   return freedBytes;
 }
@@ -235,7 +240,7 @@ export async function clearAllBrowserAudioCache(): Promise<void> {
   localStorage.removeItem(PWA_TRACK_META_KEY);
   refreshCachedSongIds();
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('wyyyy:browser-cache-updated'));
+    window.dispatchEvent(new CustomEvent('wyy:browser-cache-updated'));
   }
 }
 
@@ -277,8 +282,9 @@ export async function scanImageCache(): Promise<{ count: number; totalBytes: num
     const cache = await caches.open(IMAGE_CACHE_NAME);
     const requests = await cache.keys();
     let totalBytes = 0;
-    for (const req of requests) {
-      const res = await cache.match(req);
+    const sampleLimit = Math.min(requests.length, 25);
+    for (let i = 0; i < sampleLimit; i++) {
+      const res = await cache.match(requests[i]);
       const cl = Number(res?.headers.get('content-length') || 0);
       totalBytes += cl;
     }
@@ -302,4 +308,57 @@ export async function clearAllImageCache(): Promise<void> {
     console.warn('[PWA] Failed to clear image cache:', err);
   }
 }
+
+/**
+ * 查询指定歌曲在浏览器离线缓存中的状态与大小
+ */
+export async function getTrackBrowserCacheInfo(songId: string | number | null | undefined): Promise<{ isCached: boolean; size: number }> {
+  if (!songId || typeof window === 'undefined') {
+    return { isCached: false, size: 0 };
+  }
+  const idStr = String(songId).trim();
+  if (!idStr) return { isCached: false, size: 0 };
+
+  try {
+    const metaMap = readCachedTrackMeta();
+    let foundSize = 0;
+    let cached = false;
+
+    for (const key of Object.keys(metaMap)) {
+      const item = metaMap[key];
+      if (String(item?.id) === idStr || key.includes(`id=${idStr}`)) {
+        cached = true;
+        if (item.fileSize) {
+          foundSize = Number(item.fileSize);
+          break;
+        }
+      }
+    }
+
+    if (!cached && 'caches' in window) {
+      for (const cacheName of await caches.keys()) {
+        if (cacheName === 'netease-music-image-v1' || cacheName.startsWith('wyy-')) continue;
+        const cache = await caches.open(cacheName);
+        const match = await cache.match(`/v3/stream?id=${idStr}`);
+        if (match) {
+          cached = true;
+          const cl = match.headers.get('content-length');
+          if (cl) {
+            foundSize = Number(cl);
+          } else {
+            const blob = await match.clone().blob();
+            foundSize = blob.size;
+          }
+          break;
+        }
+      }
+    }
+
+    return { isCached: cached, size: foundSize };
+  } catch (err) {
+    console.warn('[PWA] Failed to get track cache info:', err);
+    return { isCached: false, size: 0 };
+  }
+}
+
 

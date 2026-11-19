@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "5.4.0",
+  "version": "5.5.68",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,7 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
+    "@lucide/svelte": "^1.72.0",
     "@playwright/test": "^1.62.1",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.5",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
@@ -44,6 +45,6 @@
     "dayjs": "^1.11.23",
     "he": "^2.0.0",
     "pinyin-match": "^1.2.10",
-    "pwa-audio-player": "^1.1.0"
+    "pwa-audio-player": "^1.2.1"
   }
 }

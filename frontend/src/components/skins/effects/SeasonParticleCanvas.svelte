@@ -60,6 +60,18 @@
       };
     }
 
+    let isVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+    const onVisibilityChange = () => {
+      isVisible = typeof document !== 'undefined' && document.visibilityState === 'visible';
+      if (isVisible) {
+        cancelAnimationFrame(animId);
+        animId = requestAnimationFrame(render);
+      } else {
+        cancelAnimationFrame(animId);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     let currentGroundY = height - (bottomOffset || 0);
 
     // 初始化粒子群
@@ -93,6 +105,7 @@
     let tick = 0;
 
     const render = () => {
+      if (!isVisible) return;
       ctx.clearRect(0, 0, width, height);
       tick++;
 
@@ -440,6 +453,7 @@
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   });
 </script>

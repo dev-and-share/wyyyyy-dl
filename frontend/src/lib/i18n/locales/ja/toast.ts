@@ -13,4 +13,6 @@ export default {
   'toast.like.removed': 'お気に入りを解除しました',
   'toast.like.added': '「{name}」をお気に入りに追加しました',
   'toast.like.failed': 'お気に入り状態の更新に失敗しました',
+  'toast.scrobble.success': '☁️ NetEaseに再生履歴を同期しました：「{name}」',
+  'toast.scrobble.failed': '☁️ NetEaseへの再生履歴同期に失敗しました',
 } as const;

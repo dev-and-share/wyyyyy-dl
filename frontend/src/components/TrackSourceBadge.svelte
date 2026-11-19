@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Sparkles, HardDrive, Smartphone } from '@lucide/svelte';
   import { getTrackSourceStatus } from '../lib/trackStatus.svelte';
   import { showToast } from '../lib/toast.svelte';
   import { t } from '../lib/i18n';
@@ -32,14 +33,48 @@
     class?: string;
   }>();
 
+  let isMatchingCurTrack = $derived(
+    Boolean(
+      curTrack &&
+      (id == null ||
+        Number(curTrack.id) === Number(id) ||
+        String(curTrack.id) === String(id) ||
+        (name && curTrack.name === name))
+    )
+  );
+
+  let effectiveName = $derived(
+    name ||
+    item?.name ||
+    item?.songName ||
+    (isMatchingCurTrack ? (curTrack?.name || '') : '') ||
+    ''
+  );
+
+  let effectiveArtist = $derived(
+    artist ||
+    item?.artist ||
+    item?.ar_name ||
+    (isMatchingCurTrack ? (curTrack?.artist || '') : '') ||
+    ''
+  );
+
+  let effectivePath = $derived(
+    path ||
+    item?.filePath ||
+    item?.path ||
+    (isMatchingCurTrack ? (curTrack?.filePath || '') : '') ||
+    ''
+  );
+
   let computedStatus = $derived(
     getTrackSourceStatus(
-      id,
-      Boolean(isLocal && (path || item?.filePath)),
+      id ?? curTrack?.id,
+      Boolean((isLocal || (isMatchingCurTrack && curTrack?.isLocal)) && (effectivePath || item?.filePath)),
       curTrack,
-      typeof id === 'string' && (id.startsWith('mf_') || id.startsWith('ext_')),
-      name,
-      artist
+      typeof (id ?? curTrack?.id) === 'string' && (String(id ?? curTrack?.id).startsWith('mf_') || String(id ?? curTrack?.id).startsWith('ext_')),
+      effectiveName,
+      effectiveArtist
     )
   );
 
@@ -56,37 +91,48 @@
   let isLongPress = false;
 
   function doReveal(e?: Event) {
-    if (!status.isServer) return;
+    if (!status.isServer && !status.isPhone) return;
     if (e) {
       e.stopPropagation();
       e.preventDefault();
     }
-    const cleanPath = (path && !path.startsWith('/v3/stream') && !path.startsWith('http')) ? path : '';
+    const rawPath = effectivePath || '';
+    const cleanPath = (rawPath && !rawPath.startsWith('/v3/stream') && !rawPath.startsWith('http')) ? rawPath : '';
     const targetItem = item
-      ? { ...item, path: (item.path && !item.path.startsWith('/v3/stream') && !item.path.startsWith('http')) ? item.path : cleanPath }
+      ? {
+          ...item,
+          id: item.id ?? item.songId ?? id ?? curTrack?.id,
+          name: item.name || item.songName || effectiveName,
+          artist: item.artist || item.ar_name || effectiveArtist,
+          path: (item.path && !item.path.startsWith('/v3/stream') && !item.path.startsWith('http')) ? item.path : cleanPath,
+          isServer: Boolean(status.isServer),
+          isPhone: Boolean(status.isPhone)
+        }
       : {
-          id,
-          name,
-          artist,
-          path: cleanPath
+          id: id ?? curTrack?.id,
+          name: effectiveName,
+          artist: effectiveArtist,
+          path: cleanPath,
+          isServer: Boolean(status.isServer),
+          isPhone: Boolean(status.isPhone)
         };
     showToast(t('toast.locatingFile'), 'info', 1200);
     if (onReveal) {
       onReveal(targetItem);
     }
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wyyyy:reveal', { detail: targetItem }));
+      window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: targetItem }));
     }
   }
 
   function handleClick(e: MouseEvent) {
-    if (variant === 'tile' && status.isServer) {
+    if (variant === 'tile' && (status.isServer || status.isPhone)) {
       doReveal(e);
     }
   }
 
   function handleTouchStart(e: TouchEvent) {
-    if (!status.isServer) return;
+    if (!status.isServer && !status.isPhone) return;
     if (e.touches.length !== 1) return;
     isLongPress = false;
     startX = e.touches[0].clientX;
@@ -123,12 +169,12 @@
   }
 
   function handleDblClick(e: MouseEvent) {
-    if (!status.isServer) return;
+    if (!status.isServer && !status.isPhone) return;
     doReveal(e);
   }
 
   function handleContextMenu(e: MouseEvent) {
-    if (status.isServer) {
+    if (status.isServer || status.isPhone) {
       // 避免长按时弹出移动端浏览器默认的菜单
       e.preventDefault();
       e.stopPropagation();
@@ -153,7 +199,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      <span class="text-lg leading-none filter drop-shadow-sm">✨</span>
+      <Sparkles size={20} class="text-amber-400" />
     </div>
   {:else if status.isServer}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -170,14 +216,24 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      <span class="text-lg leading-none filter drop-shadow-sm">🖥️</span>
+      <HardDrive size={20} class="text-emerald-400" />
     </div>
   {:else if status.isPhone}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
-      class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-purple-500/15 dark:bg-purple-500/20 border border-purple-500/30 text-purple-400 shadow-sm select-none {customClass}"
+      role="button"
+      tabindex="0"
+      class="w-[42px] h-[42px] rounded-2xl flex items-center justify-center bg-purple-500/15 dark:bg-purple-500/20 border border-purple-500/30 text-purple-400 shadow-sm cursor-pointer select-none active:scale-92 transition-all {customClass}"
       title={t('track.badgePhone')}
+      onclick={handleClick}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
     >
-      <span class="text-lg leading-none filter drop-shadow-sm">📲</span>
+      <Smartphone size={20} class="text-purple-400" />
     </div>
   {/if}
 {:else}
@@ -188,7 +244,7 @@
     <span
       role="button"
       tabindex="0"
-      class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform {customClass}"
+      class="audio-source-badge icon-only badge-both cursor-pointer select-none active:scale-90 transition-transform inline-flex items-center justify-center {customClass}"
       title={t('track.badgeBoth')}
       onclick={doReveal}
       ondblclick={handleDblClick}
@@ -198,7 +254,7 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      ✨
+      <Sparkles size={12} class="text-amber-400" />
     </span>
   {:else if status.isServer}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -206,7 +262,7 @@
     <span
       role="button"
       tabindex="0"
-      class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform {customClass}"
+      class="audio-source-badge icon-only badge-server cursor-pointer select-none active:scale-90 transition-transform inline-flex items-center justify-center {customClass}"
       title={t('track.badgeServer')}
       onclick={doReveal}
       ondblclick={handleDblClick}
@@ -216,14 +272,25 @@
       ontouchcancel={handleTouchEnd}
       oncontextmenu={handleContextMenu}
     >
-      🖥️
+      <HardDrive size={12} class="text-emerald-400" />
     </span>
   {:else if status.isPhone}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <span
-      class="audio-source-badge icon-only badge-browser {customClass}"
+      role="button"
+      tabindex="0"
+      class="audio-source-badge icon-only badge-browser cursor-pointer select-none active:scale-90 transition-transform inline-flex items-center justify-center {customClass}"
       title={t('track.badgePhone')}
+      onclick={doReveal}
+      ondblclick={handleDblClick}
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+      ontouchcancel={handleTouchEnd}
+      oncontextmenu={handleContextMenu}
     >
-      📲
+      <Smartphone size={12} class="text-purple-400" />
     </span>
   {/if}
 {/if}

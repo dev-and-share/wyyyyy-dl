@@ -1,4 +1,4 @@
-# wyyyyy-dl AWS Terraform 基础设施即代码 (IaC)
+# WYY AWS Terraform 基础设施即代码 (IaC)
 
 > 💡 **项目定位**：  
 > 本项目默认运行方式仍为极简的 **Docker / 本地 SQLite**。  

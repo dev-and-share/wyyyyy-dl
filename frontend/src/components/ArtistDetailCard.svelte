@@ -130,7 +130,7 @@
         return;
       }
       showToast(t('artist.forkSuccess', { name: plName }), 'success', 3500);
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
     } catch (e: any) {
       showToast(t('artist.forkFailedWithMsg', { message: e.message || e }), 'error');
     } finally {
@@ -198,7 +198,7 @@
                 onclick: () => {
                   api.downloadSingle(String(s.id)).then(() => {
                     showToast(t('download.submitSuccessWithName', { name: s.name }), 'info');
-                    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+                    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
                   }).catch((e: any) => showToast(t('download.submitFailedWithMsg', { message: e }), 'error'));
                 }
               }
@@ -306,7 +306,16 @@
               {i + 1}. {s.name}
             </button>
             {#if artistName}<span class="text-xs text-[var(--text-secondary)] truncate"> - {artistName}</span>{/if}
-            <TrackSourceBadge id={s.id} isLocal={s.isLocal} {curTrack} class="ml-1.5" />
+            <TrackSourceBadge
+              id={s.id}
+              name={s.name}
+              artist={artistName}
+              path={s.filePath}
+              item={s}
+              isLocal={s.isLocal}
+              {curTrack}
+              class="ml-1.5"
+            />
           </div>
           <div class="track-action-group">
             <!-- 💻 PC 桌面端快捷操作 -->
@@ -328,7 +337,7 @@
                 <SlotBtn onclick={() => {
                   api.downloadSingle(String(s.id)).then(() => {
                     showToast(t('download.submitSuccessWithName', { name: s.name }), 'info');
-                    window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+                    window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
                   }).catch((e: any) => showToast(t('download.submitFailedWithMsg', { message: e }), 'error'));
                 }}>{t('download.downloadSingle')}</SlotBtn>
               {/if}

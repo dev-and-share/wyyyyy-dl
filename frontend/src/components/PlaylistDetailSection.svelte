@@ -3,7 +3,7 @@
   import {
     allTracks, getFilteredTracks, getTotalPages, getPlaylist, getCurPage,
     getPlaylistSearchKeyword, isPlaylistLoading, incPage, recordPlaylistPlay,
-    loadPlaylistDetail, getPaged
+    loadPlaylistDetail, getPaged, getPlaylistPlayCount, clearPlaylistPlayCount
   } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
   import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
@@ -17,15 +17,18 @@
   import AddToPlaylistModal from './AddToPlaylistModal.svelte';
   import ForkPlaylistModal from './ForkPlaylistModal.svelte';
   import RemoveFromPlaylistModal from './RemoveFromPlaylistModal.svelte';
+  import PlaylistDownloadDropdown from './PlaylistDownloadDropdown.svelte';
   import { cacheTrackToBrowser } from '../lib/pwaCache.svelte';
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { t } from '../lib/i18n';
+  import { Loader2, Music2, HardDrive, Play, Link, Package, HeartCrack, Star, Search } from '@lucide/svelte';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
   let playlist = $derived(getPlaylist());
   let curPage = $derived(getCurPage());
+  let playCount = $derived(playlist?.id ? getPlaylistPlayCount(playlist.id) : 0);
   let filteredTracks = $derived(getFilteredTracks());
   let hasMore = $derived(curPage < totalPages);
 
@@ -48,11 +51,9 @@
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let removingTrack = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let cachingTrackId = $state<string | number | null>(null);
-
   let listContainerEl = $state<HTMLElement | null>(null);
   let sentinelEl = $state<HTMLElement | null>(null);
   let isLoadingNext = $state(false);
-
   let pullDistance = $state(0);
   let isPullingAtTop = $state(false);
   let touchStartY = 0;
@@ -61,21 +62,11 @@
   const PULL_THRESHOLD = 36;
 
   function triggerScrollToTop() {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
     const mainEl = typeof document !== 'undefined' ? document.querySelector('.app-main-container') : null;
-    if (mainEl) {
-      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    if (listContainerEl) {
-      listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    try {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(12);
-      }
-    } catch {}
+    if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    if (listContainerEl) listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
+    try { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12); } catch {}
   }
 
   function handleTouchStart(e: TouchEvent) {
@@ -103,9 +94,7 @@
   }
 
   function handleTouchEnd() {
-    if (isPullingAtTop && pullDistance >= PULL_THRESHOLD) {
-      triggerScrollToTop();
-    }
+    if (isPullingAtTop && pullDistance >= PULL_THRESHOLD) triggerScrollToTop();
     isPullingAtTop = false;
     pullDistance = 0;
   }
@@ -125,70 +114,74 @@
   }
 
   onMount(() => {
-    const handleScrollListTop = () => {
-      if (listContainerEl) {
-        listContainerEl.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    };
-    window.addEventListener('wyyyy:scroll-list-top', handleScrollListTop);
-    return () => {
-      window.removeEventListener('wyyyy:scroll-list-top', handleScrollListTop);
-    };
+    const handleScrollListTop = () => listContainerEl?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.addEventListener('wyy:scroll-list-top', handleScrollListTop);
+    return () => window.removeEventListener('wyy:scroll-list-top', handleScrollListTop);
   });
 
-  $effect(() => {
-    pidInput = pid;
-  });
+  $effect(() => { pidInput = pid; });
 
-  function loadNextPage() {
-    if (!hasMore || isLoadingNext) return;
+  let lastLoadTime = 0;
+  const NEXT_PAGE_COOLDOWN_MS = 250;
+  const MAX_AUTO_FILL_PAGES = 3;
+  let scrollRafId = 0;
+
+  function loadNextPage(isInitialAutoFill = false) {
+    const now = Date.now();
+    if (!hasMore || isLoadingNext || now - lastLoadTime < NEXT_PAGE_COOLDOWN_MS) return;
     isLoadingNext = true;
+    lastLoadTime = now;
     incPage(1);
-    tick().then(() => {
+    setTimeout(() => {
       isLoadingNext = false;
-      checkSentinel();
-    });
+      if (isInitialAutoFill && curPage < MAX_AUTO_FILL_PAGES) checkSentinel(true);
+    }, NEXT_PAGE_COOLDOWN_MS);
   }
 
-  function checkSentinel() {
+  function checkSentinel(isInitialAutoFill = false) {
     if (!hasMore || isLoadingNext) return;
+    if (sentinelEl) {
+      const sRect = sentinelEl.getBoundingClientRect();
+      if (sRect.width === 0 && sRect.height === 0) return;
+    }
     if (listContainerEl) {
       const { scrollTop, scrollHeight, clientHeight } = listContainerEl;
-      if (scrollTop + clientHeight >= scrollHeight - 120) {
-        loadNextPage();
+      const overflowY = typeof window !== 'undefined' ? window.getComputedStyle(listContainerEl).overflowY : 'auto';
+      if (overflowY !== 'visible' && scrollHeight > clientHeight + 10) {
+        if (scrollTop + clientHeight >= scrollHeight - 120) loadNextPage(isInitialAutoFill);
         return;
       }
     }
     if (sentinelEl) {
       const rect = sentinelEl.getBoundingClientRect();
       const vh = window.innerHeight || document.documentElement.clientHeight;
-      if (rect.top <= vh + 150) {
-        loadNextPage();
-      }
+      if (rect.top <= vh + 120 && rect.bottom >= -50) loadNextPage(isInitialAutoFill);
     }
   }
 
-  function handleListScroll() {
-    checkSentinel();
+  function throttledCheckSentinel() {
+    if (scrollRafId) return;
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = 0;
+      checkSentinel(false);
+    });
   }
+
+  function handleListScroll() { throttledCheckSentinel(); }
 
   $effect(() => {
     if (!sentinelEl || typeof IntersectionObserver === 'undefined') return;
+    const overflowY = listContainerEl && typeof window !== 'undefined' ? window.getComputedStyle(listContainerEl).overflowY : 'visible';
     const observer = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry && entry.isIntersecting) {
-        loadNextPage();
-      }
-    }, {
-      root: listContainerEl,
-      rootMargin: '120px'
-    });
+      if (entries[0]?.isIntersecting) loadNextPage(false);
+    }, { root: overflowY !== 'visible' ? listContainerEl : null, rootMargin: '120px' });
     observer.observe(sentinelEl);
-    window.addEventListener('scroll', checkSentinel, { passive: true });
-    checkSentinel();
+    window.addEventListener('scroll', throttledCheckSentinel, { passive: true });
+    checkSentinel(true);
     return () => {
       observer.disconnect();
-      window.removeEventListener('scroll', checkSentinel);
+      if (scrollRafId) cancelAnimationFrame(scrollRafId);
+      window.removeEventListener('scroll', throttledCheckSentinel);
     };
   });
 
@@ -196,7 +189,7 @@
     try {
       await api.downloadPlaylist(id);
       showToast(t('download.submittedTask'), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e.message || e }), 'error');
     }
@@ -208,13 +201,12 @@
     try {
       const res = await api.playlistSubscribe(String(playlist.id), nextSub);
       if (res?.code && res.code !== '000000') {
-        showToast(res.msg || (nextSub ? t('playlist.subscribeRiskWarning') : t('playlist.unsubscribeFailed')), 'warning', 5000);
-        return;
+        return showToast(res.msg || (nextSub ? t('playlist.subscribeRiskWarning') : t('playlist.unsubscribeFailed')), 'warning', 5000);
       }
       playlist.subscribed = nextSub;
       showToast(nextSub ? t('playlist.subscribedSuccess', { name: playlist.name }) : t('playlist.unsubscribedSuccess', { name: playlist.name }), 'success');
-      window.dispatchEvent(new CustomEvent('wyyyy:playlist-created'));
-    } catch (e: any) {
+      window.dispatchEvent(new CustomEvent('wyy:playlist-created'));
+    } catch {
       showToast(t('playlist.riskTip'), 'warning', 4000);
     }
   }
@@ -236,7 +228,7 @@
       } else {
         showToast(t('drawer.downloadSubmitted', { name: task?.name || name || t('comment.defaultSong') }), 'info', 2000);
       }
-      window.dispatchEvent(new CustomEvent('wyyyy:download-submitted'));
+      window.dispatchEvent(new CustomEvent('wyy:download-submitted'));
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e.message || e }), 'error');
     }
@@ -270,6 +262,15 @@
       ]
     });
   }
+
+  function handleClearPlayCount() {
+    if (!playlist?.id) return;
+    if (playCount <= 0) return showToast(t('playlist.playCountAlreadyZero'), 'info');
+    if (window.confirm(t('playlist.confirmClearPlayCount', { name: playlist.name || '' }))) {
+      clearPlaylistPlayCount(playlist.id);
+      showToast(t('playlist.playCountClearedSuccess'), 'success');
+    }
+  }
 </script>
 
 <AccordionCard title={t('playlist.sectionDetail')} bind:open flat accent="blue" {onToggle}>
@@ -283,11 +284,7 @@
         class="w-full pl-3 pr-2 !py-1.5 text-xs rounded-lg"
         bind:value={pidInput}
         disabled={isPlaylistLoading()}
-        onkeydown={(e) => {
-          if (e.key === 'Enter' && !isPlaylistLoading()) {
-            onViewPlaylist(pidInput);
-          }
-        }}
+        onkeydown={(e) => { if (e.key === 'Enter' && !isPlaylistLoading()) onViewPlaylist(pidInput); }}
       />
     </div>
     <button
@@ -297,7 +294,7 @@
       onclick={() => onViewPlaylist(pidInput)}
     >
       {#if isPlaylistLoading()}
-        <span class="inline-block animate-spin text-xs">⏳</span>
+        <Loader2 size={12} class="animate-spin text-red-500" />
       {:else}
         <span>{t('playlist.viewDetailBtn')}</span>
       {/if}
@@ -305,19 +302,17 @@
   </div>
 
   {#if !playlist && !isPlaylistLoading()}
-    <div class="py-8 px-4 flex flex-col items-center justify-center gap-2 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2">
-      <div class="text-2xl opacity-60">🎼</div>
+    <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2 min-h-[200px]">
+      <Music2 size={36} class="opacity-40" />
       <div class="text-xs text-[var(--text-muted)] text-center">可去左侧「我的歌单」挑选，或在上方直接输入 ID / 链接解析</div>
     </div>
   {/if}
 
   {#if isPlaylistLoading() && (!playlist || String(playlist.id) !== pid)}
-    <div class="py-8 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm">
-      <div class="text-3xl animate-spin text-red-500">⏳</div>
+    <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-color)] my-3 shadow-sm min-h-[220px]">
+      <Loader2 size={36} class="animate-spin text-red-500" />
       <div class="text-sm font-semibold text-[var(--text-main)]">{t('playlist.fetchingData', { id: pid })}</div>
-      <p class="text-xs text-[var(--text-muted)] text-center max-w-sm m-0 leading-relaxed">
-        {t('playlist.fetchingDataHint')}
-      </p>
+      <p class="text-xs text-[var(--text-muted)] text-center max-w-sm m-0 leading-relaxed">{t('playlist.fetchingDataHint')}</p>
       <div class="w-full max-w-sm flex flex-col gap-2 mt-2">
         <div class="h-12 rounded-xl bg-white/5 animate-pulse w-full"></div>
         <div class="h-6 rounded-lg bg-white/5 animate-pulse w-4/5"></div>
@@ -326,9 +321,16 @@
     </div>
   {:else if playlist}
     <DetailHeaderCard cover={playlist.coverImgUrl || '/favicon.png'} title={playlist.name} subtitle={`${playlist.creator || t('common.unknown')} | ${t('playlist.trackCount', { count: allTracks.length })}`}>
-      <button class="btn-primary" onclick={() => downloadPlaylistById(String(playlist.id))} title={t('playlist.downloadToPcTooltip')}>
-        <span>🖥️</span><span>{t('playlist.downloadToPc')}</span>
-      </button>
+      <PlaylistDownloadDropdown
+        playlistId={playlist.id}
+        playlistName={playlist.name}
+        {allTracks}
+        {curTrack}
+        isLocal={playlist.isLocal}
+        variant="primary"
+        dropdownMode="sheet"
+        onDownloadAllToPc={() => downloadPlaylistById(String(playlist.id))}
+      />
       <button
         class="btn-secondary"
         onclick={() => {
@@ -337,7 +339,16 @@
         }}
         title={t('playlist.playAllTooltip')}
       >
-        <span>▶️</span><span>{t('playlist.playAll')}</span>
+        <Play size={13} fill="currentColor" /><span>{t('playlist.playAll')}</span>
+      </button>
+      <button
+        type="button"
+        data-testid="sp-detail-playcount-badge"
+        class="btn-secondary !text-amber-400 !border-amber-500/30"
+        ondblclick={handleClearPlayCount}
+        title={playCount > 0 ? `${t('myPlaylists.historyPlayTooltip', { count: playCount })} (${t('playlist.doubleClickToClear')})` : t('playlist.doubleClickToClear')}
+      >
+        <span>{t('myPlaylists.historyPlayCount', { count: playCount })}</span>
       </button>
       <button
         type="button"
@@ -345,14 +356,14 @@
         onclick={() => showIdInput = !showIdInput}
         title={t('playlist.parseDetail')}
       >
-        <span>🔗</span><span class="hidden sm:inline">{t('playlist.parseDetail')}</span>
+        <Link size={13} /><span class="hidden sm:inline">{t('playlist.parseDetail')}</span>
       </button>
       {#if playlist && !playlist.isCreator}
         <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title={t('playlist.forkTooltip')}>
-          <span>📦</span><span>{t('playlist.forkBtn')}</span>
+          <Package size={13} /><span>{t('playlist.forkBtn')}</span>
         </button>
         <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}>
-          <span>{playlist.subscribed ? '💔' : '⭐'}</span><span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
+          {#if playlist.subscribed}<HeartCrack size={13} />{:else}<Star size={13} />{/if}<span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
         </button>
       {/if}
     </DetailHeaderCard>
@@ -360,8 +371,8 @@
     <PlaylistTrackFilter />
 
     {#if filteredTracks.length === 0}
-      <div class="py-12 text-center text-xs text-[var(--text-muted)] bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl p-6 my-2 border border-dashed border-[var(--border-color)]">
-        <span class="text-2xl block mb-1">🔍</span>
+      <div class="py-12 text-center text-xs text-[var(--text-muted)] bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl p-6 my-2 border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center">
+        <Search size={28} class="mb-1 opacity-40 text-[var(--text-muted)]" />
         <span>{t('playlist.notFoundSong', { kw: getPlaylistSearchKeyword() })}</span>
       </div>
     {:else}
@@ -456,7 +467,7 @@
       >
         {#if hasMore}
           <div class="flex items-center justify-center gap-2 text-[var(--text-secondary)] py-1">
-            <span class="inline-block animate-spin text-red-500 text-sm">⏳</span>
+            <Loader2 size={14} class="animate-spin text-red-500" />
             <span>{t('playlist.loadingMoreTracks', { loaded: paged.length, total: filteredTracks.length })}</span>
           </div>
         {:else}
@@ -473,14 +484,11 @@
 {#if addToPlaylistSong}
   <AddToPlaylistModal song={addToPlaylistSong} onClose={() => addToPlaylistSong = null} {showToast} />
 {/if}
-
 {#if showForkModal && playlist}
   <ForkPlaylistModal
     playlistName={playlist.name} trackCount={allTracks.length} trackIds={allTracks.map((t: any) => t.id)}
-    onClose={() => showForkModal = false} onSuccess={(newId) => { if (newId) onViewPlaylist(newId); }} {showToast}
-  />
+    onClose={() => showForkModal = false} onSuccess={(newId) => { if (newId) onViewPlaylist(newId); }} {showToast} />
 {/if}
-
 {#if removingTrack && playlist}
   <RemoveFromPlaylistModal song={removingTrack} playlistId={playlist.id} playlistName={playlist.name} onClose={() => removingTrack = null} {showToast} />
 {/if}

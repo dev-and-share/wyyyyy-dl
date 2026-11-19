@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { skin, SkinStore } from './skinStore.svelte';
+import { skin, SkinStore, setImmersiveThemeColor, getIsImmersiveActive, pushModalBackdrop, getModalBackdropCount } from './skinStore.svelte';
+import { customBgStore } from './customBgStore.svelte';
 import { DEFAULT_PALETTE } from '../components/skins/skinTypes';
 import * as colorExt from './colorExtractor';
 
 describe('skinStore', () => {
   beforeEach(() => {
     localStorage.clear();
+    customBgStore._reset();
     skin._reset();
     vi.restoreAllMocks();
   });
@@ -77,6 +79,122 @@ describe('skinStore', () => {
     skin.set('sakura');
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fff0f5');
     document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('supports modal backdrop synchronization to prevent topbar light gaps', () => {
+    // 1. 白天浅色模式下：打开 Modal 计算物理混色 (#999890)，杜绝死黑方块与大门牙割裂
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('autumn');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#fffdf0');
+    expect(document.documentElement.style.getPropertyValue('--cinema-corner-bg')).toContain('radial-gradient');
+    expect(getModalBackdropCount()).toBe(0);
+
+    const releaseLight = pushModalBackdrop();
+    expect(getModalBackdropCount()).toBe(1);
+    // 混色后绝非原浅色 #fffdf0，而是与全屏遮罩对齐的深邃同色系暗场 #363941，杜绝浅色大门牙
+    const lightModalColor = document.querySelector('meta[name="theme-color"]')?.getAttribute('content');
+    expect(lightModalColor).not.toBe('#fffdf0');
+    expect(lightModalColor).toBe('#363941');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#363941');
+    expect(document.documentElement.style.getPropertyValue('--cinema-corner-bg')).toContain('54, 57, 65');
+    releaseLight();
+    expect(getModalBackdropCount()).toBe(0);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#fffdf0');
+
+    // 2. 深色模式下：打开 Modal 同步压暗至深色 (#121212)，关闭后恢复深色皮肤底色
+    document.documentElement.removeAttribute('data-theme');
+    skin.set('vinyl');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+
+    const release1 = pushModalBackdrop();
+    expect(getModalBackdropCount()).toBe(1);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#121212');
+
+    // 嵌套打开第二个 Modal / 菜单
+    const release2 = pushModalBackdrop();
+    expect(getModalBackdropCount()).toBe(2);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
+
+    // 关闭第二个 Modal，仍处于遮罩暗化中
+    release2();
+    expect(getModalBackdropCount()).toBe(1);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#121212');
+
+    // 关闭最后一个 Modal，自动恢复深色皮肤底色
+    release1();
+    expect(getModalBackdropCount()).toBe(0);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#0a0e1a');
+
+    // 多次调用 release 不会下溢
+    release1();
+    expect(getModalBackdropCount()).toBe(0);
+  });
+
+  it('supports dynamic dark synchronization for immersive playback mode', () => {
+    // 1. 白天模式下普通浏览
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('aurora');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#faf5ff');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#faf5ff');
+    expect(getIsImmersiveActive()).toBe(false);
+
+    // 2. 进入全屏沉浸播放 (LyricModal 挂载)
+    setImmersiveThemeColor(true);
+    expect(getIsImmersiveActive()).toBe(true);
+    // 浅色模式下切为皮肤同色系深色锚点（告别死黑），如 aurora 为 #3b137a
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#3b137a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#3b137a');
+
+    // 3. 在沉浸模式内切换皮肤为 spring (浅色锚点 #064e3b)
+    skin.set('spring');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#064e3b');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#064e3b');
+
+    // 4. 退出全屏沉浸播放 (LyricModal 销毁)
+    setImmersiveThemeColor(false);
+    expect(getIsImmersiveActive()).toBe(false);
+    // 自动恢复当前皮肤在白天模式下的主题色
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#f0fdf4');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#f0fdf4');
+
+    document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('syncs meta theme-color and --wco-titlebar-bg with customBgStore topColor in immersive mode', async () => {
+    skin.set('vinyl');
+    const mockBlob = new Blob(['img'], { type: 'image/jpeg' });
+    await customBgStore.setMedia(mockBlob, 'image', 'warm-wood.jpg');
+    customBgStore.setDimOpacity(0.5);
+    customBgStore.setTopColor('#c8aa8c');
+
+    // Non-immersive mode still uses skin color
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+
+    // Enter immersive mode: theme-color & --wco-titlebar-bg adopt dimmed customBg top color (#645546)
+    setImmersiveThemeColor(true);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#645546');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#645546');
+
+    // Changing dimOpacity dynamically updates titlebar color
+    customBgStore.setDimOpacity(0);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#c8aa8c');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#c8aa8c');
+
+    // Disabling customBg reverts to skin immersive anchor
+    customBgStore.setEnabled(false);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#0a0e1a');
+
+    // Re-enable then clear also reverts to skin immersive anchor
+    customBgStore.setEnabled(true);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#c8aa8c');
+    await customBgStore.clear();
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
+
+    setImmersiveThemeColor(false);
   });
 
   it('ignores invalid skin in set()', () => {

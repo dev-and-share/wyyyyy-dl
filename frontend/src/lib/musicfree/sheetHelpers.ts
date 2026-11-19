@@ -1,4 +1,7 @@
 import type { InstalledPluginRecord } from './types';
+import { openSheet } from '../ui.svelte';
+import { t } from '../i18n';
+import { jumpToMusicFreeSearch } from '../router.svelte';
 
 export const INVALID_KEYWORD_BLACKLIST = [
   '歌曲宝', '书音', '6yueting', '好听轻音乐', '爱听', '种子', 'audiomack', '有声', '评书',
@@ -136,4 +139,68 @@ export function extractSheetTracks(detail: any, pluginId: string, platformName: 
     _pluginPlatform: platformName
   }));
 }
+
+/**
+ * 移动端唤出歌曲更多操作底栏抽屉
+ */
+export function openMusicFreeTrackSheet({
+  title,
+  artist,
+  trackObj,
+  status,
+  isCur,
+  playing,
+  onPlay,
+  onDownload,
+  onCache,
+  onAddToPlaylist
+}: {
+  title: string;
+  artist: string;
+  trackObj: any;
+  status: any;
+  isCur: boolean;
+  playing: boolean;
+  onPlay: () => void;
+  onDownload: () => void;
+  onCache: () => void;
+  onAddToPlaylist: () => void;
+}) {
+  openSheet({
+    title,
+    subtitle: artist,
+    actions: [
+      {
+        label: isCur && playing ? '⏸ ' + t('player.pause') : '▶️ ' + t('search.play'),
+        style: 'primary',
+        onclick: onPlay
+      },
+      {
+        label: '🧩 ' + t('musicfree.mfSearchShort'),
+        style: 'default',
+        onclick: () => jumpToMusicFreeSearch(`${title} ${artist}`)
+      },
+      ...(status.isServer ? [{
+        label: '🔍 ' + t('common.reveal'),
+        style: 'default' as const,
+        onclick: () => window.dispatchEvent(new CustomEvent('wyy:reveal', { detail: { id: trackObj.id, name: title, artist } }))
+      }] : [{
+        label: '📥 ' + t('download.downloadSingle'),
+        style: 'default' as const,
+        onclick: onDownload
+      }]),
+      {
+        label: status.isPhone ? '📱 ' + t('search.cachedShort') : '📱 ' + t('search.cacheShort'),
+        style: 'default',
+        onclick: onCache
+      },
+      {
+        label: '➕ ' + t('playlist.addTo'),
+        style: 'default',
+        onclick: onAddToPlaylist
+      }
+    ]
+  });
+}
+
 

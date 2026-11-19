@@ -4,6 +4,24 @@ import { tick } from 'svelte';
 import DesktopSidebar from './DesktopSidebar.svelte';
 import { myPlaylists, recordPlaylistPlay, playlistPlayCounts } from '../../lib/playlist.svelte';
 import { geoProxyState, updateGeoProxyState } from '../../lib/geoProxyStore.svelte';
+import { api } from '../../lib/api';
+
+vi.mock('../../lib/api', () => ({
+  api: {
+    getGeoProxyConfig: vi.fn().mockResolvedValue({ code: '000000', data: {} }),
+    testGeoProxy: vi.fn().mockResolvedValue({
+      code: '000000',
+      data: {
+        success: true,
+        proxy: '112.5.6.7:8080',
+        location: '中国 广东 广州',
+        latencyMs: 88,
+        isFastestWinner: true
+      }
+    }),
+    refreshGeoProxyPool: vi.fn().mockResolvedValue({ code: '000000' })
+  }
+}));
 
 describe('DesktopSidebar', () => {
   beforeEach(() => {
@@ -81,7 +99,7 @@ describe('DesktopSidebar', () => {
     });
 
     const toggleBtn = getByTestId('btn-toggle-sidebar');
-    expect(toggleBtn.textContent?.trim()).toBe('«');
+    expect(toggleBtn.querySelector('svg')).toBeDefined();
     await fireEvent.click(toggleBtn);
     expect(onToggleCollapse).toHaveBeenCalledTimes(1);
   });
@@ -302,23 +320,153 @@ describe('DesktopSidebar', () => {
     expect(tooltip.textContent).toContain('274 ms');
   });
 
-  it('shows collapsed proxy icon when sidebar is collapsed', () => {
+  it('triggers proxy refresh when clicking proxy network icon', async () => {
     updateGeoProxyState({
       enabled: true,
       loaded: true,
-      activeProxy: '1.2.3.4:8080'
+      activeProxy: '120.232.115.57:3128',
+      fallbackDirect: true,
+      mode: 'pool'
     });
 
+    const showToast = vi.fn();
     const { getByTestId } = render(DesktopSidebar, {
       props: {
         tab: 'playlist',
-        collapsed: true,
+        collapsed: false,
         onSwitchTab: vi.fn(),
-        onToggleCollapse: vi.fn()
+        onToggleCollapse: vi.fn(),
+        showToast
       }
     });
 
     const icon = getByTestId('sidebar-geo-proxy-icon');
     expect(icon).toBeDefined();
+
+    await fireEvent.click(icon);
+    await tick();
+
+    expect(api.testGeoProxy).toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalled();
+  });
+
+  it('renders local playlist tab in sidebar and switches to local playlists', async () => {
+    myPlaylists.push(
+      { id: 101, name: '云端歌单', trackCount: 5, subscribed: false }
+    );
+    const { localPlaylistState } = await import('../../lib/localPlaylistStore.svelte');
+    localPlaylistState.playlists = [
+      { id: 'local_fav_123', name: '本地我喜欢的音乐', trackCount: 3, isLocal: true },
+      { id: 'local_rock', name: '本地摇滚歌单', trackCount: 8, isLocal: true }
+    ];
+
+    const onPlaylistClick = vi.fn();
+    const { getByTestId, getByText, queryByText } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn(),
+        onViewPlaylist: onPlaylistClick
+      }
+    });
+
+    const localFilterBtn = getByTestId('sidebar-filter-local');
+    expect(localFilterBtn).toBeDefined();
+    expect(localFilterBtn.textContent).toContain('本地');
+
+    // In All tab, both cloud and local playlists are visible
+    expect(getByText('云端歌单')).toBeDefined();
+    expect(getByText('本地摇滚歌单')).toBeDefined();
+
+    // Click Local tab
+    await fireEvent.click(localFilterBtn);
+    await tick();
+
+    // Now only local playlists are displayed
+    expect(getByText('本地摇滚歌单')).toBeDefined();
+    expect(queryByText('云端歌单')).toBeNull();
+
+    // Click local playlist item
+    const localItemBtn = getByText('本地摇滚歌单').closest('button');
+    expect(localItemBtn).not.toBeNull();
+    await fireEvent.click(localItemBtn!);
+    expect(onPlaylistClick).toHaveBeenCalledWith('local_rock');
+  });
+
+  it('renders clean vertical layout in collapsed mode without duplicate folder shortcut', () => {
+    updateGeoProxyState({
+      enabled: true,
+      loaded: true,
+      activeProxy: '120.232.115.57:3128',
+      fallbackDirect: false,
+      mode: 'pool'
+    });
+
+    const onToggleCollapse = vi.fn();
+    const { getByTestId, queryByText } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: true,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse
+      }
+    });
+
+    // 1. Unified center expand button exists with note icon and right arrow hint
+    const toggleBtn = getByTestId('btn-toggle-sidebar');
+    expect(toggleBtn).toBeDefined();
+    expect(toggleBtn.querySelectorAll('svg').length).toBeGreaterThan(0);
+
+    // 2. Click center button triggers toggle collapse
+    fireEvent.click(toggleBtn);
+    expect(onToggleCollapse).toHaveBeenCalledTimes(1);
+
+    // 3. Redundant folder button 📂 should not exist in collapsed mode
+    expect(queryByText('📂')).toBeNull();
+
+    // 4. Proxy icon and version info exist
+    const proxyIcon = getByTestId('sidebar-geo-proxy-icon');
+    expect(proxyIcon).toBeDefined();
+
+    const versionInfo = getByTestId('sidebar-version-info');
+    expect(versionInfo.textContent).toContain('v');
+  });
+
+  it('embeds playlist total count dynamically into search input placeholder without separate sticky count header', async () => {
+    myPlaylists.push(
+      { id: 101, name: '流行热歌', subscribed: false } as any,
+      { id: 102, name: '轻音乐', subscribed: true } as any
+    );
+
+    const { container, getByTestId, queryByText } = render(DesktopSidebar, {
+      props: {
+        tab: 'playlist',
+        collapsed: false,
+        onSwitchTab: vi.fn(),
+        onToggleCollapse: vi.fn()
+      }
+    });
+
+    await tick();
+    const input = container.querySelector('input');
+    // 1. All mode: includes all cloud + local playlists
+    expect(input?.placeholder).toContain('搜索全部');
+    expect(input?.placeholder).toContain('个歌单...');
+
+    // 2. Switch to created playlists filter
+    const createdFilterBtn = getByTestId('sidebar-filter-created');
+    await fireEvent.click(createdFilterBtn);
+    await tick();
+    expect(input?.placeholder).toBe('搜索 1 个自建歌单...');
+
+    // 3. Switch to saved playlists filter
+    const subscribedFilterBtn = getByTestId('sidebar-filter-subscribed');
+    await fireEvent.click(subscribedFilterBtn);
+    await tick();
+    expect(input?.placeholder).toBe('搜索 1 个收藏歌单...');
+
+    // 4. Playlists render directly, without separate sticky header block
+    expect(queryByText('全部 4')).toBeNull();
   });
 });

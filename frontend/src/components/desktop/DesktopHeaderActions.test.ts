@@ -22,4 +22,11 @@ describe('DesktopHeaderActions', () => {
     await fireEvent.click(btnSettings);
     expect(openSettingsSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('displays red update badge on desktop settings button when hasPwaUpdate is true', () => {
+    uiStore.globalUiState.hasPwaUpdate = true;
+    const { getByTestId } = render(DesktopHeaderActions);
+    expect(getByTestId('badge-desktop-update')).toBeTruthy();
+    uiStore.globalUiState.hasPwaUpdate = false;
+  });
 });
