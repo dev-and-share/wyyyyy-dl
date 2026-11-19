@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Folder, Search, Puzzle, HardDriveDownload, Moon, Sun, SunMoon, Settings } from '@lucide/svelte';
   import { t } from '../lib/i18n/index.svelte';
-  import { scrollToPageTop, type ActiveTab } from '../lib/router.svelte';
+  import { scrollToPageTop, exitPlaylistToGallery, routerState, AppRoute, type ActiveTab } from '../lib/router.svelte';
   import { globalUiState } from '../lib/ui.svelte';
   import { layoutState } from '../lib/layout.svelte';
   import WyyLogo from './WyyLogo.svelte';
@@ -43,13 +43,17 @@
     <WyyLogo
       class="pl-1 shrink-0 wco-no-drag"
       onclick={() => {
-        if (typeof window !== 'undefined' && window.scrollY > 20) {
+        if (tab !== AppRoute.PLAYLIST || routerState.playlistId) {
+          exitPlaylistToGallery();
+          onSwitchTab(AppRoute.PLAYLIST);
+          scrollToPageTop();
+        } else if (typeof window !== 'undefined' && window.scrollY > 20) {
           scrollToPageTop();
         } else if (onRefresh) {
           onRefresh();
         }
       }}
-      title={t('topbar.refresh')}
+      title={tab === AppRoute.PLAYLIST && !routerState.playlistId ? t('topbar.refresh') : t('topbar.playlist')}
     />
     <div class="hidden md:flex bg-[var(--nav-tabs-bg)] p-[3px] rounded-[20px] gap-0.5 flex-1 max-w-[520px] justify-center wco-no-drag">
       <button

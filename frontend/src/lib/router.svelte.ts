@@ -218,6 +218,8 @@ export function jumpToPlaylist(id: string): void {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, AppRoute.PLAYLIST);
     if (pid) {
       localStorage.setItem(STORAGE_KEYS.LAST_PLAYLIST_ID, pid);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.LAST_PLAYLIST_ID);
     }
   } catch {}
 }

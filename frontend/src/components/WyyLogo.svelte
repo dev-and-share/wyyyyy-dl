@@ -59,7 +59,7 @@
   <button
     type="button"
     data-testid="wyy-logo"
-    class="wyy-logo-root group/wyy-logo inline-flex items-center gap-1.5 select-none cursor-pointer border-none bg-transparent p-0 text-left {className}"
+    class="wyy-logo-root group/wyy-logo inline-flex items-center gap-1.5 select-none cursor-pointer border-none bg-transparent p-0 text-left wco-no-drag {className}"
     {onclick}
     onkeydown={(e) => {
       if (e.key === 'Enter' || e.key === ' ') {

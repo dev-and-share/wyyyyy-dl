@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../lib/i18n';
-  import { jumpToDownloadTasks, type ActiveTab, AppRoute, SpecialRouteId, isDailyRecommendRoute } from '../../lib/router.svelte';
+  import { jumpToDownloadTasks, exitPlaylistToGallery, scrollToPageTop, type ActiveTab, AppRoute, SpecialRouteId, isDailyRecommendRoute } from '../../lib/router.svelte';
   import { geoProxyState, fetchGeoProxyConfig, refreshGeoProxy } from '../../lib/geoProxyStore.svelte';
   import { globalUiState, toggleTheme, openSettings } from '../../lib/ui.svelte';
   import type { ThemeMode } from '../../lib/theme';
@@ -86,6 +86,18 @@
     }
     onSwitchTab('playlist');
   }
+
+  function handleLogoClick() {
+    if (tab !== AppRoute.PLAYLIST || currentPlaylistId) {
+      if (onViewPlaylist) {
+        onViewPlaylist('');
+      } else {
+        exitPlaylistToGallery();
+      }
+      onSwitchTab(AppRoute.PLAYLIST);
+    }
+    scrollToPageTop();
+  }
 </script>
 
 <!-- PC Desktop Left Sidebar (Visible >= 1024px) -->
@@ -111,8 +123,12 @@
     <div class="h-12 flex items-center justify-between gap-1 overflow-hidden shrink-0 {collapsed ? 'px-1 justify-center' : 'px-3'}">
       {#if !collapsed}
         <!-- 展开态：完整 WYY 走马灯 Logo + 极简收起 « 按钮 -->
-        <div class="flex items-center min-w-0 pl-0.5">
-          <WyyLogo title="WYY · Whatever You Yearn" />
+        <div class="flex items-center min-w-0 pl-0.5 wco-no-drag">
+          <WyyLogo
+            class="wco-no-drag"
+            title={tab === AppRoute.PLAYLIST && !currentPlaylistId ? 'WYY · Whatever You Yearn' : t('topbar.playlist')}
+            onclick={handleLogoClick}
+          />
         </div>
         <button
           type="button"

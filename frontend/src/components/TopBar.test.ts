@@ -121,4 +121,36 @@ describe('TopBar Component', () => {
     expect(bar?.className).toContain('rounded-none');
     layoutState.wco.visible = false;
   });
+
+  it('navigates back to playlist when clicking logo from other tabs', async () => {
+    const onSwitchTab = vi.fn();
+    const { getByTestId } = render(TopBar, {
+      tab: 'search',
+      themeMode: 'dark',
+      isDesktopLayout: false,
+      onSwitchTab,
+      onToggleTheme: vi.fn()
+    });
+
+    const logo = getByTestId('wyy-logo');
+    await fireEvent.click(logo);
+    expect(onSwitchTab).toHaveBeenCalledWith('playlist');
+  });
+
+  it('triggers onRefresh when clicking logo on playlist tab without playlistId and not scrolled', async () => {
+    const onRefresh = vi.fn();
+    const onSwitchTab = vi.fn();
+    const { getByTestId } = render(TopBar, {
+      tab: 'playlist',
+      themeMode: 'dark',
+      isDesktopLayout: false,
+      onSwitchTab,
+      onToggleTheme: vi.fn(),
+      onRefresh
+    });
+
+    const logo = getByTestId('wyy-logo');
+    await fireEvent.click(logo);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
 });
