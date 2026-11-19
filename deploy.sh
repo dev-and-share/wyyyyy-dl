@@ -101,7 +101,7 @@ echo "✅ sw.js CACHE_NAME 已更新为 wyy-v$NEW_VERSION"
 if [ "$IS_RELEASE" = false ]; then
   echo "⏩ 本地模式 (默认)：跳过 git commit、tag 与 push 流程，纯本地运行"
 else
-  git add "$PKG" "$SW_FILE" "build.gradle"
+  git add -A
   git commit -m "chore: bump version to v$NEW_VERSION"
   git tag "v$NEW_VERSION"
   git push

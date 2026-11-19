@@ -357,14 +357,10 @@ self.addEventListener('fetch', (event) => {
 
   if (isNavigation) {
     event.respondWith((async () => {
+      const isHardReload = event.request.cache === 'reload' || event.request.cache === 'no-cache';
       const cache = await caches.open(CACHE_NAME);
-      // 优先从缓存获取已就绪的 App Shell HTML
-      let cachedResponse = await cache.match(event.request);
-      if (!cachedResponse) {
-        cachedResponse = (await cache.match('/')) || (await cache.match('/svelte/index.html'));
-      }
 
-      // 后台发起网络拉取以获取最新版本 (Stale-While-Revalidate)
+      // 后台或即时发起网络拉取以获取最新版本 (Stale-While-Revalidate)
       const fetchTarget = (typeof Request !== 'undefined' && event.request instanceof Request) ? event.request : (event.request.url || event.request);
       const networkFetch = fetch(fetchTarget).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
@@ -379,13 +375,19 @@ self.addEventListener('fetch', (event) => {
         return null;
       });
 
-      // 🎯 只要本地有缓存，立即返回，0ms 白屏！
-      if (cachedResponse) {
-        event.waitUntil(networkFetch);
-        return cachedResponse;
+      // 🎯 非硬刷新模式下：只要本地有缓存，立即返回，0ms 白屏！
+      if (!isHardReload) {
+        let cachedResponse = await cache.match(event.request);
+        if (!cachedResponse) {
+          cachedResponse = (await cache.match('/')) || (await cache.match('/svelte/index.html'));
+        }
+        if (cachedResponse) {
+          event.waitUntil(networkFetch);
+          return cachedResponse;
+        }
       }
 
-      // 首次未缓存时，等待网络返回
+      // 强制刷新 (Cmd+Shift+R) 或首次未缓存时，等待网络返回最新 HTML
       const networkResponse = await networkFetch;
       if (networkResponse) {
         return networkResponse;
