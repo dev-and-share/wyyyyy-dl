@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.wyy'
-version = '5.5.63'
+version = '5.5.67'
 sourceCompatibility = '21'
 targetCompatibility = '21'
 
