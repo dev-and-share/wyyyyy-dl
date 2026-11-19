@@ -18,11 +18,27 @@ console.log(
 );
 
 const target = document.getElementById('app')!;
-// 清理 HTML 首屏内联 splash 占位骨架，立即无缝挂载 Svelte 主应用
+// 清理 HTML 首屏内联占位，立即无缝挂载 Svelte 主应用
 target.innerHTML = '';
 const app = mount(App, {
   target,
-})
+});
+
+// 首屏 wyy splash 动画控制：保证开屏微动效展示至少 650ms，随后丝滑淡出
+const splash = document.getElementById('pwa-splash');
+if (splash) {
+  const startTime = (window as any).__wyy_splash_start || performance.now();
+  const elapsed = performance.now() - startTime;
+  const minDisplay = 650;
+  const remaining = Math.max(0, minDisplay - elapsed);
+
+  setTimeout(() => {
+    splash.classList.add('wyy-splash-fade-out');
+    setTimeout(() => {
+      splash.remove();
+    }, 450);
+  }, remaining);
+}
 
 // 注册 PWA Service Worker 并监听新版本就绪通知 (仅生产环境注册，开发环境主动注销避免缓存拦截)
 // 🛡️ 禁止 controllerchange 强制自动刷新页面，并在播放时绝对拦截 SKIP_WAITING 激活新版本
