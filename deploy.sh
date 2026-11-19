@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # deploy.sh — 一键 patch 版本升级 + commit + git tag + push + docker build
 # 用法：
-#   ./deploy.sh                      (默认：本地运行，仅更新本地缓存名 + docker build，绝不提交和推送)
+#   ./deploy.sh                      (默认：生产发布 + patch 版本升级 + commit + tag + push + docker build)
+#   ./deploy.sh local                (本地模式：仅更新本地缓存名 + docker build，不提交和推送)
 #   ./deploy.sh native               (本地 Native 模式：构建并启动原生镜像，端口 8081)
 #   ./deploy.sh release [patch|minor|major] (生产发布：自动 commit + git tag + push + 触发 CI 构建)
 set -euo pipefail
 
-ACTION=${1:-local}
-IS_RELEASE=false
+ACTION=${1:-release}
+IS_RELEASE=true
 BUMP="patch"
 
 if docker compose version &> /dev/null; then
@@ -26,13 +27,16 @@ case "$ACTION" in
     echo "🎉 Native 容器已启动！访问地址：http://localhost:8081"
     exit 0
     ;;
+  local)
+    IS_RELEASE=false
+    BUMP="none"
+    ;;
   release|push|prod)
     IS_RELEASE=true
     BUMP=${2:-patch}
     ;;
   major|minor|mini|patch)
-    # 兼容传入版本幅度，但默认依然是安全的本地模式
-    IS_RELEASE=false
+    IS_RELEASE=true
     if [ "$ACTION" = "mini" ]; then
       BUMP="minor"
     else
@@ -44,7 +48,7 @@ case "$ACTION" in
     BUMP="none"
     ;;
   *)
-    IS_RELEASE=false
+    IS_RELEASE=true
     BUMP="patch"
     ;;
 esac
