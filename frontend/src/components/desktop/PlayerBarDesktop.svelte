@@ -14,6 +14,7 @@
   import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
   import { X } from '@lucide/svelte';
+  import { aiStudioStore } from '../../lib/aiStudio/aiStudioStore.svelte';
 
   let {
     curTrack,
@@ -236,6 +237,18 @@
               <span class="inline-flex items-center shrink-0 ml-0.5" onclick={(e) => e.stopPropagation()}>
                 <TrackLikeBtn liked={isLiked} onclick={onToggleLike} />
               </span>
+              <button
+                type="button"
+                data-testid="btn-ai-studio"
+                class="w-6 h-6 rounded-md flex items-center justify-center text-purple-400 hover:text-purple-300 hover:bg-purple-500/15 active:scale-95 transition-all cursor-pointer shrink-0 ml-0.5 group"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  if (curTrack) aiStudioStore.open({ id: curTrack.id, name: curTrack.name, artist: formatArtist(curTrack.artist) });
+                }}
+                title="AI 创作类似歌曲 (YuE2 / MiniMax / ACE-Step)"
+              >
+                <PlayerIcon name="sparkles" size={14} class="group-hover:rotate-12 group-hover:scale-110 transition-transform" />
+              </button>
             {/if}
           </div>
           <div

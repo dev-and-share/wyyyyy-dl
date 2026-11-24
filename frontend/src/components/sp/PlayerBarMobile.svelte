@@ -12,6 +12,7 @@
   import { customBgStore } from '../../lib/customBgStore.svelte';
   import { t } from '../../lib/i18n/index.svelte';
   import { X } from '@lucide/svelte';
+  import { aiStudioStore } from '../../lib/aiStudio/aiStudioStore.svelte';
 
   let {
     curTrack,
@@ -244,6 +245,17 @@
 
         <!-- 快捷按键 -->
         <div class="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            data-testid="btn-ai-studio-mobile"
+            class="w-7 h-7 rounded-full flex items-center justify-center text-purple-400 hover:text-purple-300 hover:bg-purple-500/15 active:scale-95 transition-all cursor-pointer"
+            onclick={() => {
+              if (curTrack) aiStudioStore.open({ id: curTrack.id, name: curTrack.name, artist: formatArtist(curTrack.artist) });
+            }}
+            title="AI 创作类似歌曲"
+          >
+            <PlayerIcon name="sparkles" size={15} />
+          </button>
           <button
             type="button"
             class="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"

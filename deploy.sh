@@ -29,7 +29,7 @@ case "$ACTION" in
     ;;
   local)
     IS_RELEASE=false
-    BUMP="none"
+    BUMP=${2:-none}
     ;;
   release|push|prod)
     IS_RELEASE=true

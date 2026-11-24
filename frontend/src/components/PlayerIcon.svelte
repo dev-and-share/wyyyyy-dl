@@ -21,7 +21,8 @@
     | 'trash'
     | 'search'
     | 'folder'
-    | 'download';
+    | 'download'
+    | 'sparkles';
 </script>
 
 <script lang="ts">
@@ -47,7 +48,8 @@
     Trash2,
     Search,
     Folder,
-    Download
+    Download,
+    Sparkles
   } from '@lucide/svelte';
 
   let {
@@ -218,6 +220,13 @@
   />
 {:else if name === 'download'}
   <Download
+    {size}
+    strokeWidth={2}
+    class="inline-block shrink-0 {customClass}"
+    aria-hidden="true"
+  />
+{:else if name === 'sparkles'}
+  <Sparkles
     {size}
     strokeWidth={2}
     class="inline-block shrink-0 {customClass}"

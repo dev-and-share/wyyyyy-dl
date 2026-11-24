@@ -31,6 +31,7 @@
   import PlayerDiagnosticsHud from './components/PlayerDiagnosticsHud.svelte';
   import RevealModal from './components/RevealModal.svelte';
   import SongDetailModal from './components/SongDetailModal.svelte';
+  import AiStudioModal from './components/ai/AiStudioModal.svelte';
   import PullToRefresh from './components/sp/PullToRefresh.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import ToastContainer from './components/ToastContainer.svelte';
@@ -418,6 +419,9 @@
     {showToast}
   />
 {/if}
+
+<!-- ✨ AI 音乐创作工坊弹窗 (三大模型最高峰战力) -->
+<AiStudioModal />
 
 <!-- ⚙️ 全局系统设置抽屉 -->
 {#if showSettings}
