@@ -61,7 +61,7 @@ describe('AI Studio Store Contracts (Svelte 5 Runes)', () => {
 
     expect(aiStudioStore.isOpen).toBe(true);
     expect(aiStudioStore.currentTrack?.name).toBe('夜曲');
-    expect(spyAnalyze).toHaveBeenCalledWith('12345', '夜曲', '周杰伦');
+    expect(spyAnalyze).toHaveBeenCalledWith('12345', '夜曲', '周杰伦', 'LOCAL_AGY');
 
     // 等待异步分析完成
     await vi.waitFor(() => expect(aiStudioStore.analyzing).toBe(false));
@@ -75,6 +75,19 @@ describe('AI Studio Store Contracts (Svelte 5 Runes)', () => {
 
     aiStudioStore.setEngine('LOCAL_AGY');
     expect(aiStudioStore.engineType).toBe('LOCAL_AGY');
+  });
+
+  it('supports dynamic model and version combination', () => {
+    aiStudioStore.open({ id: 1, name: '晴天', artist: '周杰伦' });
+    expect(aiStudioStore.totalPlannedSongs).toBe(9);
+
+    aiStudioStore.toggleModel('ACE-Step-1.5');
+    expect(aiStudioStore.selectedModels.length).toBe(2);
+    expect(aiStudioStore.totalPlannedSongs).toBe(6);
+
+    aiStudioStore.toggleVersion('V3_EMOTIONAL');
+    expect(aiStudioStore.selectedVersions.length).toBe(2);
+    expect(aiStudioStore.totalPlannedSongs).toBe(4);
   });
 
   it('generates 3x3=9 prompt matrix and organizes active prompts by selected version', async () => {
@@ -169,7 +182,7 @@ describe('AI Studio Store Contracts (Svelte 5 Runes)', () => {
 
     await aiStudioStore.sendRefine('歌词的高潮部分需要更多雨声与雷鸣意象');
 
-    expect(spyRefine).toHaveBeenCalledWith('aip_test_001', '歌词的高潮部分需要更多雨声与雷鸣意象', 'LOCAL_AGY');
+    expect(spyRefine).toHaveBeenCalledWith('aip_test_001', 'V1_FIDELITY', '歌词的高潮部分需要更多雨声与雷鸣意象', 'LOCAL_AGY');
     const userMsg = aiStudioStore.chatMessages.find(m => m.content === '歌词的高潮部分需要更多雨声与雷鸣意象');
     expect(userMsg).toBeDefined();
     expect(userMsg?.role).toBe('user');

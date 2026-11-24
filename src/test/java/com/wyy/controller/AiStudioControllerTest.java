@@ -54,7 +54,7 @@ public class AiStudioControllerTest {
                 .estimatedBpm(72)
                 .build();
 
-        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any())).thenReturn(dto);
+        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any(), any())).thenReturn(dto);
 
         mockMvc.perform(get("/v3/ai/analyze")
                         .param("songId", "186016")
@@ -77,7 +77,7 @@ public class AiStudioControllerTest {
                 .projectDir("/path/to/__AI__/projects/aip_test_001")
                 .build();
 
-        Mockito.when(promptMatrixService.createProjectAndGenerateMatrix(anyString(), any(), any(), anyString()))
+        Mockito.when(promptMatrixService.createProjectAndGenerateMatrix(anyString(), any(), any(), anyString(), any(), any()))
                 .thenReturn(project);
 
         String jsonBody = "{\"songId\":\"186016\",\"title\":\"晴天\",\"artist\":\"周杰伦\",\"engineType\":\"LOCAL_AGY\"}";
@@ -100,7 +100,7 @@ public class AiStudioControllerTest {
                 .analysisReport("更新报告")
                 .build();
 
-        Mockito.when(promptMatrixService.refineProject(eq("aip_test_001"), anyString(), any()))
+        Mockito.when(promptMatrixService.refineProject(eq("aip_test_001"), any(), anyString(), any()))
                 .thenReturn(updated);
 
         String jsonBody = "{\"projectId\":\"aip_test_001\",\"instruction\":\"节奏放慢一点\",\"engineType\":\"LOCAL_AGY\"}";

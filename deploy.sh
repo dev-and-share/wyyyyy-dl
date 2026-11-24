@@ -113,6 +113,20 @@ else
   echo "✅ git tag v$NEW_VERSION 已推送"
 fi
 
+# ── 5.5 确保本地 agy 宿主机网桥常驻运行 ─────────────────────────────────────────
+if ! curl -s http://127.0.0.1:23333/health &>/dev/null; then
+  echo "📡 [agy Bridge] 宿主机网桥未运行，自动后台启动 (0.0.0.0:23333)..."
+  nohup python3 scripts/agy_host_bridge.py > /tmp/agy_host_bridge.log 2>&1 &
+  sleep 1
+  if curl -s http://127.0.0.1:23333/health &>/dev/null; then
+    echo "✅ [agy Bridge] 宿主机网桥启动成功！"
+  else
+    echo "⚠️ [agy Bridge] 宿主机网桥后台启动可能未就绪，请检查 /tmp/agy_host_bridge.log"
+  fi
+else
+  echo "✅ [agy Bridge] 宿主机网桥已在运行 (0.0.0.0:23333)"
+fi
+
 # ── 6. docker build + 启动 ───────────────────────────────────────────────────
 $COMPOSE_CMD up -d --build --remove-orphans
 

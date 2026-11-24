@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 🎨 AI 音乐创作工坊与资产管理控制器 (/v3/ai/* 规范)
@@ -47,11 +48,14 @@ public class AiStudioController {
         private String title;
         private String artist;
         private String engineType; // LOCAL_AGY, NEW_API
+        private List<String> selectedModels;
+        private List<String> selectedVersions;
     }
 
     @Data
     public static class RefineRequest {
         private String projectId;
+        private String versionLabel; // V1_FIDELITY, V2_FUSION, V3_EMOTIONAL
         private String instruction;
         private String engineType;
     }
@@ -63,9 +67,10 @@ public class AiStudioController {
     public RespEntity<AiSongAnalysisDTO> analyzeSong(
             @RequestParam("songId") String songId,
             @RequestParam(value = "title", required = false) String title,
-            @RequestParam(value = "artist", required = false) String artist) {
+            @RequestParam(value = "artist", required = false) String artist,
+            @RequestParam(value = "engineType", required = false) String engineType) {
         try {
-            AiSongAnalysisDTO dto = songAnalysisService.analyzeSong(songId, title, artist);
+            AiSongAnalysisDTO dto = songAnalysisService.analyzeSong(songId, title, artist, engineType);
             return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "分析完成", dto);
         } catch (Exception e) {
             log.error("❌ 原曲逆向解构失败: songId={}", songId, e);
@@ -74,7 +79,7 @@ public class AiStudioController {
     }
 
     /**
-     * 2. 创建工程并生成 9 首曲目定制 Prompt 矩阵
+     * 2. 创建工程并生成定制 Prompt 矩阵 (支持模型与版本自由组合)
      */
     @PostMapping("/generate")
     public RespEntity<AiProjectDTO> generateMatrix(@RequestBody GenerateRequest req) {
@@ -83,8 +88,9 @@ public class AiStudioController {
         }
         try {
             AiProjectDTO project = promptMatrixService.createProjectAndGenerateMatrix(
-                    req.getSongId(), req.getTitle(), req.getArtist(), req.getEngineType());
-            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "生成 9 首曲目规划矩阵成功", project);
+                    req.getSongId(), req.getTitle(), req.getArtist(), req.getEngineType(),
+                    req.getSelectedModels(), req.getSelectedVersions());
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "生成曲目规划矩阵成功", project);
         } catch (Exception e) {
             log.error("❌ 生成 Prompt 矩阵失败", e);
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "生成失败: " + e.getMessage(), null);
@@ -92,7 +98,7 @@ public class AiStudioController {
     }
 
     /**
-     * 3. 多轮追问调优
+     * 3. 多轮对话追问调优 (支持按版本独立 Session 追问)
      */
     @PostMapping("/refine")
     public RespEntity<AiProjectDTO> refineProject(@RequestBody RefineRequest req) {
@@ -100,10 +106,11 @@ public class AiStudioController {
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "缺少 projectId 或 instruction", null);
         }
         try {
-            AiProjectDTO updated = promptMatrixService.refineProject(req.getProjectId(), req.getInstruction(), req.getEngineType());
+            AiProjectDTO updated = promptMatrixService.refineProject(
+                    req.getProjectId(), req.getVersionLabel(), req.getInstruction(), req.getEngineType());
             return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "调优完成", updated);
         } catch (Exception e) {
-            log.error("❌ 调优工程失败: projectId={}", req.getProjectId(), e);
+            log.error("❌ 调优工程失败: projectId={}, version={}", req.getProjectId(), req.getVersionLabel(), e);
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "调优失败: " + e.getMessage(), null);
         }
     }
@@ -150,6 +157,20 @@ public class AiStudioController {
         } catch (Exception e) {
             log.error("❌ 扫描同步失败: id={}", id, e);
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "扫描失败: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * 6.1 全量扫描所有工程的 AI 渲染资产
+     */
+    @PostMapping("/sync-all")
+    public RespEntity<Map<String, Object>> syncAllProjects() {
+        try {
+            Map<String, Object> result = scanSyncService.scanAndSyncAllProjects();
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "全量扫描同步完成", result);
+        } catch (Exception e) {
+            log.error("❌ 全量扫描同步失败", e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "全量扫描失败: " + e.getMessage(), null);
         }
     }
 

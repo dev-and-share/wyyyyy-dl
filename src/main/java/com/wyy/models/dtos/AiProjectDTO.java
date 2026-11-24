@@ -28,4 +28,8 @@ public class AiProjectDTO {
     private List<AiTrackPromptDTO> trackPrompts;
     private List<AiRenderedAssetDTO> renderedAssets;
     private String analysisReport;
+    private String lastAssistantMessage;
+    private List<String> selectedModels;
+    private List<String> selectedVersions;
+    private List<AiSessionHistoryDTO> sessionHistories;
 }

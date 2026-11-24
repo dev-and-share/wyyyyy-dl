@@ -47,6 +47,7 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
         String createSessionTableSql = "CREATE TABLE IF NOT EXISTS ai_session_history (" +
                 "id VARCHAR(64) PRIMARY KEY, " +
                 "project_id VARCHAR(64), " +
+                "version_label VARCHAR(64), " +
                 "engine_type VARCHAR(32), " +
                 "session_id VARCHAR(128), " +
                 "role VARCHAR(32), " +
@@ -87,6 +88,12 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
             stmt.executeUpdate(createSessionTableSql);
             stmt.executeUpdate(createPromptTableSql);
             stmt.executeUpdate(createAssetTableSql);
+
+            try {
+                stmt.executeUpdate("ALTER TABLE ai_session_history ADD COLUMN version_label VARCHAR(64)");
+            } catch (Exception ignored) {
+                // 列已存在或表刚新建，忽略
+            }
 
             stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_ai_sess_proj ON ai_session_history(project_id)");
             stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_ai_prompt_proj ON ai_track_prompt(project_id)");
@@ -140,6 +147,7 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
                     AiProjectDTO p = mapProject(rs);
                     p.setTrackPrompts(getTrackPromptsByProjectId(id));
                     p.setRenderedAssets(getRenderedAssetsByProjectId(id));
+                    p.setSessionHistories(getSessionHistories(id));
                     return p;
                 }
             }
@@ -184,17 +192,18 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
 
     @Override
     public void saveSessionHistory(AiSessionHistoryDTO s) {
-        String sql = "INSERT INTO ai_session_history (id, project_id, engine_type, session_id, role, content) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO ai_session_history (id, project_id, version_label, engine_type, session_id, role, content) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             prepareConnection(conn);
             ps.setString(1, s.getId());
             ps.setString(2, s.getProjectId());
-            ps.setString(3, s.getEngineType());
-            ps.setString(4, s.getSessionId());
-            ps.setString(5, s.getRole());
-            ps.setString(6, s.getContent());
+            ps.setString(3, s.getVersionLabel());
+            ps.setString(4, s.getEngineType());
+            ps.setString(5, s.getSessionId());
+            ps.setString(6, s.getRole());
+            ps.setString(7, s.getContent());
             ps.executeUpdate();
         } catch (Exception e) {
             log.error("❌ [AI Studio DB] 保存会话历史失败", e);
@@ -211,9 +220,14 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
             ps.setString(1, projectId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
+                    String vLabel = null;
+                    try {
+                        vLabel = rs.getString("version_label");
+                    } catch (Exception ignored) {}
                     list.add(AiSessionHistoryDTO.builder()
                             .id(rs.getString("id"))
                             .projectId(rs.getString("project_id"))
+                            .versionLabel(vLabel)
                             .engineType(rs.getString("engine_type"))
                             .sessionId(rs.getString("session_id"))
                             .role(rs.getString("role"))

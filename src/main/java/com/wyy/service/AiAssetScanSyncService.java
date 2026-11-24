@@ -118,8 +118,8 @@ public class AiAssetScanSyncService {
             }
         }
 
-        // 如果全部 9 首均已就绪，状态更新为 COMPLETED
-        if (syncedAssets.size() >= 9) {
+        // 如果全部音轨均已就绪，状态更新为 COMPLETED
+        if (!prompts.isEmpty() && syncedAssets.size() >= prompts.size()) {
             aiStudioRepository.updateProjectStatus(projectId, "COMPLETED");
         } else if (!syncedAssets.isEmpty()) {
             aiStudioRepository.updateProjectStatus(projectId, "OFFLINE_RENDERING");
@@ -127,6 +127,37 @@ public class AiAssetScanSyncService {
 
         log.info("✅ [ScanSync] 扫描同步完成: projectId={}, 发现音频={}首", projectId, syncedAssets.size());
         return syncedAssets;
+    }
+
+    /**
+     * 全量扫描同步所有已注册工程 (支持多曲目批量完成后一键入库)
+     */
+    public Map<String, Object> scanAndSyncAllProjects() {
+        List<AiProjectDTO> projects = aiStudioRepository.listProjects(1000);
+        int totalProjects = projects.size();
+        int totalNewAssets = 0;
+        int completedProjects = 0;
+
+        for (AiProjectDTO p : projects) {
+            try {
+                List<AiRenderedAssetDTO> assets = scanAndSyncProject(p.getId());
+                totalNewAssets += assets.size();
+                AiProjectDTO refreshed = aiStudioRepository.getProjectById(p.getId());
+                if (refreshed != null && "COMPLETED".equals(refreshed.getStatus())) {
+                    completedProjects++;
+                }
+            } catch (Exception e) {
+                log.warn("⚠️ 扫描工程异常: id={}, msg={}", p.getId(), e.getMessage());
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("scannedProjects", totalProjects);
+        result.put("totalSyncedAssets", totalNewAssets);
+        result.put("completedProjects", completedProjects);
+        log.info("✅ [ScanSync] 全量工程扫描完成: 共扫描 {} 个工程, 新同步 {} 首母盘, 已达成完整母盘 {} 个",
+                totalProjects, totalNewAssets, completedProjects);
+        return result;
     }
 
     private Map<String, JsonNode> loadQaReports(File rendersDir) {

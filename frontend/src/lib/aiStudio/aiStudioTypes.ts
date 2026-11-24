@@ -59,10 +59,24 @@ export interface AiProject {
   analysisReport?: string;
   trackPrompts?: AiTrackPrompt[];
   renderedAssets?: AiRenderedAsset[];
+  lastAssistantMessage?: string;
+  selectedModels?: string[];
+  selectedVersions?: string[];
+  sessionHistories?: {
+    id: string;
+    projectId: string;
+    versionLabel?: string;
+    engineType: string;
+    sessionId: string;
+    role: string;
+    content: string;
+    createdAt?: string;
+  }[];
 }
 
 export interface AiChatMessage {
   id: string;
+  versionLabel?: string;
   role: 'system' | 'user' | 'assistant';
   content: string;
   createdAt?: string;

@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 public class AiSessionHistoryDTO {
     private String id;
     private String projectId;
+    private String versionLabel; // V1_FIDELITY, V2_FUSION, V3_EMOTIONAL or ALL
     private String engineType; // LOCAL_AGY, NEW_API
     private String sessionId;  // agy conversation ID or API session ID
     private String role;       // system, user, assistant

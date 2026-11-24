@@ -7,7 +7,14 @@ class AiStudioStore {
   currentTrack = $state<{ id: string | number; name: string; artist: string } | null>(null);
   analysis = $state<AiSongAnalysis | null>(null);
   project = $state<AiProject | null>(null);
+
+  // 当前主工作台查看的版本
   selectedVersion = $state<'V1_FIDELITY' | 'V2_FUSION' | 'V3_EMOTIONAL'>('V1_FIDELITY');
+
+  // 模型与创意版本的勾选多选状态 (自由组合参数化)
+  selectedModels = $state<string[]>(['YuE2-3B', 'MiniMax-Music3', 'ACE-Step-1.5']);
+  selectedVersions = $state<string[]>(['V1_FIDELITY', 'V2_FUSION', 'V3_EMOTIONAL']);
+
   engineType = $state<'LOCAL_AGY' | 'NEW_API'>('LOCAL_AGY');
 
   analyzing = $state(false);
@@ -18,11 +25,45 @@ class AiStudioStore {
 
   chatMessages = $state<AiChatMessage[]>([]);
 
-  // 派生当前选中版本的 3 大模型 prompts
+  // 派生计划生成的总曲目数 M x N
+  totalPlannedSongs = $derived(this.selectedModels.length * this.selectedVersions.length);
+
+  // 派生当前选中版本的已选模型 prompts
   activePrompts = $derived.by<AiTrackPrompt[]>(() => {
     if (!this.project || !this.project.trackPrompts) return [];
     return this.project.trackPrompts.filter(p => p.versionLabel === this.selectedVersion);
   });
+
+  // 派生当前激活版本的追问会话记录 (支持每版本独立追问)
+  currentVersionMessages = $derived.by<AiChatMessage[]>(() => {
+    return this.chatMessages.filter(
+      m => !m.versionLabel || m.versionLabel === 'ALL' || m.versionLabel === this.selectedVersion
+    );
+  });
+
+  toggleModel(model: string) {
+    if (this.selectedModels.includes(model)) {
+      if (this.selectedModels.length <= 1) {
+        showToast('至少需要保留 1 个模型', 'warning');
+        return;
+      }
+      this.selectedModels = this.selectedModels.filter(m => m !== model);
+    } else {
+      this.selectedModels = [...this.selectedModels, model];
+    }
+  }
+
+  toggleVersion(version: string) {
+    if (this.selectedVersions.includes(version)) {
+      if (this.selectedVersions.length <= 1) {
+        showToast('至少需要保留 1 个创意版本', 'warning');
+        return;
+      }
+      this.selectedVersions = this.selectedVersions.filter(v => v !== version);
+    } else {
+      this.selectedVersions = [...this.selectedVersions, version];
+    }
+  }
 
   open(track: { id: string | number; name: string; artist: string }) {
     this.isOpen = true;
@@ -31,11 +72,15 @@ class AiStudioStore {
     this.project = null;
     this.error = null;
     this.selectedVersion = 'V1_FIDELITY';
+    this.selectedModels = ['YuE2-3B', 'MiniMax-Music3', 'ACE-Step-1.5'];
+    this.selectedVersions = ['V1_FIDELITY', 'V2_FUSION', 'V3_EMOTIONAL'];
+
     this.chatMessages = [
       {
         id: 'init-msg',
+        versionLabel: 'ALL',
         role: 'assistant',
-        content: `欢迎来到 AI 音乐创作工坊！当前参考曲目：《${track.name}》- ${track.artist || '未知艺术家'}。我将基于 3 大模型最高峰战力为您策划 9 首类似母盘定制 Prompt。`
+        content: `欢迎来到 AI 音乐创作工坊！当前参考曲目：《${track.name}》- ${track.artist || '未知艺术家'}。\n已接入真实本地 agy 乐理分析引擎。可在左侧自由勾选模型与创意版本，支持定制 M × N 首母盘并随时追问。`
       }
     ];
 
@@ -55,11 +100,12 @@ class AiStudioStore {
     this.analyzing = true;
     this.error = null;
     try {
-      this.analysis = await aiStudioService.analyzeSong(songId, title, artist);
+      this.analysis = await aiStudioService.analyzeSong(songId, title, artist, this.engineType);
       this.chatMessages.push({
         id: `analysis-${Date.now()}`,
+        versionLabel: 'ALL',
         role: 'assistant',
-        content: `✅ 原曲声学与歌词逆向分析完成！推导流派为「${this.analysis.genre}」，情绪基调为「${this.analysis.mood}」，建议调性 ${this.analysis.estimatedKey} / ${this.analysis.estimatedBpm} BPM。随时点击【生成 9 首最高峰 Prompt 矩阵】启动创作！`
+        content: `🎯 原曲声学与乐理逆向解构完成！\n- 赛道: **${this.analysis.genre}**\n- 调性/速度: **${this.analysis.estimatedKey}** / **${this.analysis.estimatedBpm} BPM**\n- 情绪基调: ${this.analysis.mood}\n- 标志配器: ${this.analysis.instrumentation}\n随时点击【生成 Prompt 矩阵】启动创作！`
       });
     } catch (err: any) {
       this.error = err.message || '原曲特征解构失败';
@@ -73,27 +119,32 @@ class AiStudioStore {
     if (!this.currentTrack) return;
     this.generating = true;
     this.error = null;
+    const count = this.totalPlannedSongs;
     try {
       this.chatMessages.push({
         id: `user-gen-${Date.now()}`,
+        versionLabel: 'ALL',
         role: 'user',
-        content: `启动生成类似歌曲：压榨三大模型最高峰战力（YuE2-3B 多乐章规划、MiniMax-Music3 录音棚微表情、ACE-Step 1.5 网格瞬态），产出 3 创意版本 x 3 模型 = 9 首曲目。`
+        content: `启动生成类似歌曲：自由选择 ${this.selectedModels.length} 个模型 × ${this.selectedVersions.length} 个版本 = 共 ${count} 首曲目规划矩阵。`
       });
 
       const res = await aiStudioService.generateMatrix(
         String(this.currentTrack.id),
         this.currentTrack.name,
         this.currentTrack.artist,
-        this.engineType
+        this.engineType,
+        this.selectedModels,
+        this.selectedVersions
       );
       this.project = res;
 
       this.chatMessages.push({
         id: `assistant-gen-${Date.now()}`,
+        versionLabel: 'ALL',
         role: 'assistant',
-        content: `🎉 9 首曲目最高峰 Prompt 矩阵已全部规划完成并落盘本地！\n工程目录: \`${res.projectDir}\`\n如需调整歌词、配器或节奏，可在右侧随时追问我。`
+        content: `🎉 ${count} 首曲目 Prompt 矩阵与 3 套独立长篇歌词已规划完成并落盘本地！\n工程目录: \`${res.projectDir}\`\n当前每个版本都拥有独立的 agy 会话上下文，可针对各版本随时在右侧进行追问与歌词深化。`
       });
-      showToast('9 首 Prompt 矩阵规划完成！', 'success');
+      showToast(`${count} 首 Prompt 矩阵规划完成！`, 'success');
     } catch (err: any) {
       this.error = err.message || 'Prompt 矩阵生成失败';
       showToast(this.error || '生成失败', 'error');
@@ -105,24 +156,36 @@ class AiStudioStore {
   async sendRefine(instruction: string) {
     if (!this.project || !instruction.trim()) return;
     const text = instruction.trim();
+    const currentVer = this.selectedVersion;
     this.refining = true;
     this.chatMessages.push({
       id: `refine-user-${Date.now()}`,
+      versionLabel: currentVer,
       role: 'user',
       content: text
     });
 
     try {
-      const updated = await aiStudioService.refineProject(this.project.id, text, this.engineType);
+      const updated = await aiStudioService.refineProject(this.project.id, currentVer, text, this.engineType);
       this.project = updated;
+
+      // 展示 AI 真实的回复与思考过程
+      const replyContent = updated.lastAssistantMessage || '已基于指令完成乐理与歌词深度调整，相关音轨已同步刷新。';
       this.chatMessages.push({
         id: `refine-resp-${Date.now()}`,
+        versionLabel: currentVer,
         role: 'assistant',
-        content: `✨ 调优建议已吸收并更新至工程！相关分段乐理与参数已完成调整。`
+        content: replyContent
       });
-      showToast('调优完成', 'success');
+      showToast('调优完成，已同步更新音轨！', 'success');
     } catch (err: any) {
       showToast(err.message || '调优执行失败', 'error');
+      this.chatMessages.push({
+        id: `refine-err-${Date.now()}`,
+        versionLabel: currentVer,
+        role: 'assistant',
+        content: `❌ 追问执行异常: ${err.message || '未知错误'}`
+      });
     } finally {
       this.refining = false;
     }
@@ -134,12 +197,24 @@ class AiStudioStore {
     try {
       const assets = await aiStudioService.syncAssets(this.project.id);
       this.project.renderedAssets = assets;
-      if (assets.length >= 9) {
+      if (assets.length >= (this.project.trackPrompts?.length || 9)) {
         this.project.status = 'COMPLETED';
       }
-      showToast(`扫描同步完成，共发现 ${assets.length} 首已渲染母盘`, 'success');
+      showToast(`扫描同步完成，发现 ${assets.length} 首已渲染母盘`, 'success');
     } catch (err: any) {
       showToast(err.message || '扫描同步失败', 'error');
+    } finally {
+      this.syncing = false;
+    }
+  }
+
+  async syncAllProjects() {
+    this.syncing = true;
+    try {
+      const res = await aiStudioService.syncAllProjects();
+      showToast(`全量扫描完成！已扫 ${res.scannedProjects} 工程，新同步 ${res.totalSyncedAssets} 首母盘`, 'success');
+    } catch (err: any) {
+      showToast(err.message || '全量扫描失败', 'error');
     } finally {
       this.syncing = false;
     }

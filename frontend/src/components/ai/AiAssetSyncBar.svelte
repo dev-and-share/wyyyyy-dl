@@ -49,18 +49,29 @@
     <div class="flex items-center gap-2">
       <div class="hidden md:flex items-center gap-1 text-[11px] text-neutral-400 mr-1">
         <Terminal size={12} class="text-cyan-400" />
-        <span>Colab A100 批处理: <code>python colab_batch_runner.py</code></span>
+        <span>多歌曲全局批处理: <code>python colab_master_batch_runner.py</code></span>
       </div>
+
+      <button
+        type="button"
+        class="py-1 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 flex items-center gap-1 font-medium transition-all cursor-pointer active:scale-95 disabled:opacity-40 text-[11px]"
+        disabled={syncing}
+        onclick={() => aiStudioStore.syncAllProjects()}
+        title="全量扫描所有歌曲已渲染的母盘"
+      >
+        <RefreshCw size={11} class={syncing ? 'animate-spin' : ''} />
+        <span>全量同步</span>
+      </button>
 
       <button
         type="button"
         class="py-1.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 font-medium transition-all cursor-pointer active:scale-95 disabled:opacity-40"
         disabled={!project || syncing}
         onclick={() => aiStudioStore.syncAssets()}
-        title="离线跑完音频后，点击扫描同步回本地数据库做资产管理"
+        title="扫描当前工程渲染音频做资产管理"
       >
         <RefreshCw size={13} class={syncing ? 'animate-spin text-purple-400' : ''} />
-        <span>{syncing ? '扫描中...' : '扫描同步渲染资产 (Scan & Sync)'}</span>
+        <span>{syncing ? '扫描中...' : '同步当前工程 (Scan & Sync)'}</span>
       </button>
     </div>
   </div>
