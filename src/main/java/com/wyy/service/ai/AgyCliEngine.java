@@ -154,11 +154,18 @@ public class AgyCliEngine implements IAiEngine {
     }
 
     private AiEngineResponse executeViaBridge(String prompt, String conversationId, String effort, long startTime) {
-        String[] candidateUrls = {
-                configuredBridgeUrl.replaceAll("/+$", "") + "/agy",
-                "http://localhost:23333/agy",
-                "http://127.0.0.1:23333/agy"
-        };
+        List<String> candidateUrls = new ArrayList<>();
+        if (StringUtils.isNotBlank(configuredBridgeUrl)) {
+            candidateUrls.add(configuredBridgeUrl.replaceAll("/+$", "") + "/agy");
+        }
+        if (StringUtils.isBlank(configuredBridgeUrl) || configuredBridgeUrl.contains("host.docker.internal")) {
+            if (!candidateUrls.contains("http://localhost:23333/agy")) {
+                candidateUrls.add("http://localhost:23333/agy");
+            }
+            if (!candidateUrls.contains("http://127.0.0.1:23333/agy")) {
+                candidateUrls.add("http://127.0.0.1:23333/agy");
+            }
+        }
 
         String lastError = null;
         for (String targetUrl : candidateUrls) {
@@ -229,6 +236,7 @@ public class AgyCliEngine implements IAiEngine {
             if (f.exists() && f.canExecute()) {
                 return f.getAbsolutePath();
             }
+            return null;
         }
         String userHome = System.getProperty("user.home");
         if (userHome != null) {

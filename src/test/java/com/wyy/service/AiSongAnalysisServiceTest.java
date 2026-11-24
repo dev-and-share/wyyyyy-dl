@@ -1,6 +1,8 @@
 package com.wyy.service;
 
 import com.wyy.models.dtos.AiSongAnalysisDTO;
+import com.wyy.service.ai.AiEngineResponse;
+import com.wyy.service.ai.AiEngineRouter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,7 +11,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @DisplayName("🔬 AI 歌曲解构与逆向分析服务单元测试")
@@ -21,9 +23,60 @@ public class AiSongAnalysisServiceTest {
     @Mock
     private NeteaseAPIService neteaseAPIService;
 
+    @Mock
+    private AiEngineRouter engineRouter;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    @DisplayName("测试真实 AI 引擎返回 JSON 格式乐理推理结果成功解析")
+    void testGenuineAiAnalysisSuccess() {
+        String mockAiMarkdown = "```json\n" +
+                "{\n" +
+                "  \"genre\": \"校园怀旧流行民谣\",\n" +
+                "  \"genreKey\": \"03_campus_nostalgia_ballad\",\n" +
+                "  \"estimatedKey\": \"G Major\",\n" +
+                "  \"estimatedBpm\": 104,\n" +
+                "  \"mood\": \"青涩初恋、明媚微风中的感伤与回忆\",\n" +
+                "  \"instrumentation\": \"原声木吉他击勾弦、十六分音符扫弦、大提琴复调\",\n" +
+                "  \"lyricStructure\": \"[Intro -> Verse -> Chorus -> Outro]\",\n" +
+                "  \"summary\": \"殿堂级乐理解析报告\"\n" +
+                "}\n" +
+                "```";
+
+        when(engineRouter.execute(anyString(), any(), anyString(), anyString())).thenReturn(
+                AiEngineResponse.builder()
+                        .engineType("LOCAL_AGY")
+                        .success(true)
+                        .responseText(mockAiMarkdown)
+                        .build()
+        );
+
+        AiSongAnalysisDTO result = analysisService.analyzeSong("186016", "晴天", "周杰伦", "LOCAL_AGY");
+        assertNotNull(result);
+        assertEquals("03_campus_nostalgia_ballad", result.getGenre());
+        assertEquals("G Major", result.getEstimatedKey());
+        assertEquals(104, result.getEstimatedBpm());
+        assertTrue(result.getInstrumentation().contains("木吉他"));
+        assertTrue(result.getMood().contains("青涩初恋"));
+    }
+
+    @Test
+    @DisplayName("测试晴天精准特征兜底逻辑 (必须为 G Major, 104 BPM, 绝非 72 BPM 苦情歌)")
+    void testQingtianAccurateFallback() {
+        when(engineRouter.execute(anyString(), any(), anyString(), anyString())).thenReturn(
+                AiEngineResponse.builder().success(false).errorMsg("engine offline").build()
+        );
+
+        AiSongAnalysisDTO result = analysisService.analyzeSong("186016", "晴天", "周杰伦");
+        assertNotNull(result);
+        assertEquals("03_campus_nostalgia_ballad", result.getGenre());
+        assertEquals("G Major", result.getEstimatedKey());
+        assertEquals(104, result.getEstimatedBpm());
+        assertTrue(result.getMood().contains("青涩懵懂"));
     }
 
     @Test

@@ -4,7 +4,6 @@ import com.wyy.dao.IAiStudioRepository;
 import com.wyy.models.dtos.AiProjectDTO;
 import com.wyy.models.dtos.AiRenderedAssetDTO;
 import com.wyy.models.dtos.AiSongAnalysisDTO;
-import com.wyy.models.dtos.AiTrackPromptDTO;
 import com.wyy.service.AiAssetScanSyncService;
 import com.wyy.service.AiPromptMatrixService;
 import com.wyy.service.AiSongAnalysisService;
@@ -17,8 +16,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -67,20 +69,26 @@ public class AiStudioControllerTest {
     }
 
     @Test
-    @DisplayName("POST /v3/ai/generate 生成 9 首 Prompt 矩阵")
+    @DisplayName("POST /v3/ai/generate 生成动态 Prompt 矩阵 (多选模型与版本)")
     void testGenerateMatrix() throws Exception {
         AiProjectDTO project = AiProjectDTO.builder()
                 .id("aip_test_001")
                 .refSongId("186016")
                 .refSongTitle("晴天")
                 .status("PROMPT_READY")
+                .selectedModels(Arrays.asList("YuE2-3B", "ACE-Step-1.5"))
+                .selectedVersions(Arrays.asList("V1_FIDELITY", "V2_FUSION"))
                 .projectDir("/path/to/__AI__/projects/aip_test_001")
                 .build();
 
-        Mockito.when(promptMatrixService.createProjectAndGenerateMatrix(anyString(), any(), any(), anyString(), any(), any()))
-                .thenReturn(project);
+        Mockito.when(promptMatrixService.createProjectAndGenerateMatrix(
+                eq("186016"), eq("晴天"), eq("周杰伦"), eq("LOCAL_AGY"),
+                eq(Arrays.asList("YuE2-3B", "ACE-Step-1.5")),
+                eq(Arrays.asList("V1_FIDELITY", "V2_FUSION"))
+        )).thenReturn(project);
 
-        String jsonBody = "{\"songId\":\"186016\",\"title\":\"晴天\",\"artist\":\"周杰伦\",\"engineType\":\"LOCAL_AGY\"}";
+        String jsonBody = "{\"songId\":\"186016\",\"title\":\"晴天\",\"artist\":\"周杰伦\",\"engineType\":\"LOCAL_AGY\"," +
+                "\"selectedModels\":[\"YuE2-3B\",\"ACE-Step-1.5\"],\"selectedVersions\":[\"V1_FIDELITY\",\"V2_FUSION\"]}";
 
         mockMvc.perform(post("/v3/ai/generate")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,29 +96,32 @@ public class AiStudioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.id").value("aip_test_001"))
+                .andExpect(jsonPath("$.data.selectedModels[0]").value("YuE2-3B"))
                 .andExpect(jsonPath("$.data.status").value("PROMPT_READY"));
     }
 
     @Test
-    @DisplayName("POST /v3/ai/refine 持续追问调优")
+    @DisplayName("POST /v3/ai/refine 持续追问调优 (带独立版本会话 versionLabel)")
     void testRefineProject() throws Exception {
         AiProjectDTO updated = AiProjectDTO.builder()
                 .id("aip_test_001")
                 .status("PROMPT_READY")
                 .analysisReport("更新报告")
+                .lastAssistantMessage("已为您在版本1中延长歌词。")
                 .build();
 
-        Mockito.when(promptMatrixService.refineProject(eq("aip_test_001"), any(), anyString(), any()))
+        Mockito.when(promptMatrixService.refineProject(eq("aip_test_001"), eq("V1_FIDELITY"), eq("延长歌词"), eq("LOCAL_AGY")))
                 .thenReturn(updated);
 
-        String jsonBody = "{\"projectId\":\"aip_test_001\",\"instruction\":\"节奏放慢一点\",\"engineType\":\"LOCAL_AGY\"}";
+        String jsonBody = "{\"projectId\":\"aip_test_001\",\"versionLabel\":\"V1_FIDELITY\",\"instruction\":\"延长歌词\",\"engineType\":\"LOCAL_AGY\"}";
 
         mockMvc.perform(post("/v3/ai/refine")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
-                .andExpect(jsonPath("$.data.analysisReport").value("更新报告"));
+                .andExpect(jsonPath("$.data.analysisReport").value("更新报告"))
+                .andExpect(jsonPath("$.data.lastAssistantMessage").value("已为您在版本1中延长歌词。"));
     }
 
     @Test
@@ -131,5 +142,47 @@ public class AiStudioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data[0].qaPassed").value(1));
+    }
+
+    @Test
+    @DisplayName("POST /v3/ai/sync-all 全量扫描同步所有工程的 AI 渲染资产")
+    void testSyncAllProjects() throws Exception {
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalProjects", 2);
+        summary.put("totalSynced", 6);
+
+        Mockito.when(scanSyncService.scanAndSyncAllProjects()).thenReturn(summary);
+
+        mockMvc.perform(post("/v3/ai/sync-all"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.totalProjects").value(2))
+                .andExpect(jsonPath("$.data.totalSynced").value(6));
+    }
+
+    @Test
+    @DisplayName("GET /v3/ai/projects 查询工程列表")
+    void testListProjects() throws Exception {
+        AiProjectDTO p = AiProjectDTO.builder()
+                .id("aip_001")
+                .refSongTitle("晴天")
+                .build();
+        Mockito.when(aiStudioRepository.listProjects(anyInt())).thenReturn(Collections.singletonList(p));
+
+        mockMvc.perform(get("/v3/ai/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data[0].id").value("aip_001"));
+    }
+
+    @Test
+    @DisplayName("DELETE /v3/ai/project/{id} 删除工程")
+    void testDeleteProject() throws Exception {
+        Mockito.when(aiStudioRepository.deleteProject("aip_001")).thenReturn(true);
+
+        mockMvc.perform(delete("/v3/ai/project/aip_001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data").value(true));
     }
 }
