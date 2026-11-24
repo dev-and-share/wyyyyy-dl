@@ -14,6 +14,28 @@ describe('AI Studio Store Contracts (Svelte 5 Runes)', () => {
     expect(aiStudioStore.selectedVersion).toBe('V1_FIDELITY');
   });
 
+  it('correctly handles backend ApiResponse with code 000000 string', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: '000000',
+        msg: '分析完成',
+        data: {
+          refSongId: '186016',
+          title: '晴天',
+          artist: '周杰伦',
+          genre: '03_mandopop_emotional_ballad'
+        }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await aiStudioService.analyzeSong('186016', '晴天', '周杰伦');
+    expect(res.title).toBe('晴天');
+    expect(res.genre).toBe('03_mandopop_emotional_ballad');
+    vi.unstubAllGlobals();
+  });
+
   it('opens for a given track and initiates auto-analysis', async () => {
     const mockAnalysis = {
       refSongId: '12345',

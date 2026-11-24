@@ -1,7 +1,7 @@
 import type { AiProject, AiRenderedAsset, AiSongAnalysis } from './aiStudioTypes';
 
 interface ApiResponse<T> {
-  code: number;
+  code: number | string;
   msg: string;
   data: T;
 }
@@ -18,7 +18,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(`HTTP error ${res.status}: ${res.statusText}`);
   }
   const json: ApiResponse<T> = await res.json();
-  if (json.code !== 200 && json.code !== 0) {
+  const isSuccess = json.code === '000000' || json.code === 200 || json.code === 0;
+  if (!isSuccess) {
     throw new Error(json.msg || 'AI 服务请求异常');
   }
   return json.data;

@@ -93,8 +93,17 @@
         </div>
       </div>
     {:else}
-      <div class="text-center py-6 text-neutral-500 text-[11px]">
-        暂无解析数据
+      <div class="flex-1 flex flex-col items-center justify-center py-6 text-neutral-400 text-[11px] gap-2">
+        <span class="text-neutral-500">{aiStudioStore.error ? '解构提示: ' + aiStudioStore.error : '暂无本地解析数据'}</span>
+        {#if aiStudioStore.currentTrack}
+          <button
+            type="button"
+            class="px-3 py-1 rounded-lg bg-purple-600/30 text-purple-200 border border-purple-500/30 hover:bg-purple-600/50 cursor-pointer transition-all active:scale-95"
+            onclick={() => aiStudioStore.runAnalysis(String(aiStudioStore.currentTrack?.id), aiStudioStore.currentTrack?.name, aiStudioStore.currentTrack?.artist)}
+          >
+            重新解构原曲
+          </button>
+        {/if}
       </div>
     {/if}
   </div>
@@ -103,12 +112,15 @@
   <button
     type="button"
     class="w-full py-2.5 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:brightness-110 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-    disabled={analyzing || generating || !analysis}
+    disabled={generating || !aiStudioStore.currentTrack}
     onclick={() => aiStudioStore.generateMatrix()}
   >
     {#if generating}
       <Loader2 size={16} class="animate-spin" />
       <span>三大模型最高峰推演中...</span>
+    {:else if analyzing}
+      <Loader2 size={16} class="animate-spin text-purple-200" />
+      <span>原曲解构中 (可直接生成)...</span>
     {:else}
       <Sparkles size={16} class="text-amber-300" />
       <span>{project ? '重新生成 9 首 Prompt 矩阵' : '生成 9 首最高峰 Prompt 矩阵'}</span>
