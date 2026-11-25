@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer" />
     <title>WYY · 现代化全能音乐工作台</title>
-    <meta name="theme-color" id="pwa-theme-color" content="#0a0e1a" />
+    <!--
+      🦷 防大门牙：用 media query 分开声明 dark / light 两套 theme-color
+      浏览器在解析 HTML 的瞬间（JS 还没运行前）就能根据系统色偏好
+      给 PWA standalone/WCO titlebar 两个边角着正确的颜色
+    -->
+    <meta name="theme-color" id="pwa-theme-color-dark"  content="#0a0e1a" media="(prefers-color-scheme: dark)"  />
+    <meta name="theme-color" id="pwa-theme-color-light" content="#ffffff"  media="(prefers-color-scheme: light)" />
     <script>
       window.__wyy_splash_start = performance.now();
       (function() {
@@ -32,13 +38,18 @@
           aurora: { dark: '#0c0a1a', light: '#faf5ff' },
           vinyl: { dark: '#0a0e1a', light: '#ffffff' }
         };
-        var tc = (skinColors[skin] || skinColors.vinyl)[active === 'light' ? 'light' : 'dark'];
-        var meta = document.getElementById('pwa-theme-color');
-        if (meta) meta.setAttribute('content', tc);
+        var sc = skinColors[skin] || skinColors.vinyl;
+        var tc = sc[active === 'light' ? 'light' : 'dark'];
 
-        // 🦷 防大门牙：在 JS 解析阶段就把 html/body 背景色锁定为 splash 背景色
-        // Chrome PWA 启动时 titlebar 区域会短暂露出页面背景，
-        // 通过此处直接设置 html/body 背景色让其与 splash 颜色一致，消除白色/灰色缝隙
+        // 🦷 JS 运行后精确更新 dark/light 两个 theme-color meta
+        // 确保自定义 skin 颜色也能覆盖 HTML 中声明的默认值
+        var metaDark  = document.getElementById('pwa-theme-color-dark');
+        var metaLight = document.getElementById('pwa-theme-color-light');
+        if (metaDark)  metaDark.setAttribute('content',  sc.dark);
+        if (metaLight) metaLight.setAttribute('content', sc.light);
+
+        // 🦷 防大门牙：html 背景色在第一帧渲染前锁定为当前主题颜色
+        // 覆盖 standalone titlebar 下方 / WCO 两侧边角的露出区域
         document.documentElement.style.backgroundColor = tc;
         document.documentElement.style.height = '100%';
       })();
