@@ -4,6 +4,7 @@ import com.wyy.dao.IAiStudioRepository;
 import com.wyy.models.dtos.AiProjectDTO;
 import com.wyy.models.dtos.AiRenderedAssetDTO;
 import com.wyy.models.dtos.AiSessionHistoryDTO;
+import com.wyy.models.dtos.AiSongAnalysisDTO;
 import com.wyy.models.dtos.AiTrackPromptDTO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
@@ -25,6 +26,29 @@ public class InMemoryAiStudioRepository implements IAiStudioRepository {
     private final Map<String, List<AiSessionHistoryDTO>> sessions = new ConcurrentHashMap<>();
     private final Map<String, List<AiTrackPromptDTO>> prompts = new ConcurrentHashMap<>();
     private final Map<String, List<AiRenderedAssetDTO>> assets = new ConcurrentHashMap<>();
+    private final Map<String, AiSongAnalysisDTO> analyses = new ConcurrentHashMap<>();
+
+    @Override
+    public void saveSongAnalysis(AiSongAnalysisDTO analysis) {
+        if (analysis != null && analysis.getRefSongId() != null) {
+            analyses.put(analysis.getRefSongId(), analysis);
+        }
+    }
+
+    @Override
+    public AiSongAnalysisDTO getSongAnalysisBySongId(String refSongId) {
+        return refSongId != null ? analyses.get(refSongId) : null;
+    }
+
+    @Override
+    public AiProjectDTO getLatestProjectBySongId(String refSongId) {
+        if (refSongId == null) return null;
+        return projects.values().stream()
+                .filter(p -> refSongId.equals(p.getRefSongId()))
+                .findFirst()
+                .map(p -> getProjectById(p.getId()))
+                .orElse(null);
+    }
 
     @Override
     public void saveProject(AiProjectDTO project) {

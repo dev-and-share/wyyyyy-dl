@@ -82,6 +82,32 @@ describe('AiSongProfileCard Component Tests', () => {
     expect(getByText(/校园初恋、遗憾怀旧、轻快律动/)).toBeDefined();
   });
 
+  it('triggers reAnalyze when 重新提取 button is clicked', async () => {
+    const spyReAnalyze = vi.spyOn(aiStudioStore, 'reAnalyze').mockResolvedValue();
+    aiStudioStore.analysis = {
+      refSongId: '186016',
+      title: '晴天',
+      artist: '周杰伦',
+      album: '叶惠美',
+      duration: 269,
+      format: 'mp3',
+      bitrate: 320,
+      sampleRate: 44100,
+      genre: '03_campus_nostalgia_ballad',
+      lyric: '',
+      mood: '轻快',
+      instrumentation: '木吉他',
+      estimatedBpm: 104,
+      estimatedKey: 'G Major',
+      analysisSummary: '摘要'
+    };
+    aiStudioStore.analyzing = false;
+
+    const { getByText } = render(AiSongProfileCard);
+    await fireEvent.click(getByText('重新提取'));
+    expect(spyReAnalyze).toHaveBeenCalledTimes(1);
+  });
+
   it('shows loader when analyzing is true', () => {
     aiStudioStore.analyzing = true;
     aiStudioStore.analysis = null;

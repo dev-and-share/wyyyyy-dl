@@ -25,7 +25,7 @@
   }
 </script>
 
-<div class="flex flex-col gap-2.5 bg-black/30 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs text-neutral-300 shrink-0">
+<div class="flex flex-col gap-2.5 bg-neutral-900/55 rounded-2xl p-3 border border-white/10 text-xs text-neutral-300 shrink-0">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <!-- 左侧：工程状态与落盘路径 -->
     <div class="flex items-center gap-2.5 min-w-0">

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { aiStudioStore } from '../../lib/aiStudio/aiStudioStore.svelte';
-  import { Loader2, Sparkles, Cpu, Globe, Music, Disc, Sliders, CheckSquare, Square } from '@lucide/svelte';
+  import { Loader2, Sparkles, Cpu, Globe, Music, Disc, Sliders, CheckSquare, Square, RotateCcw } from '@lucide/svelte';
 
   let analysis = $derived(aiStudioStore.analysis);
   let analyzing = $derived(aiStudioStore.analyzing);
@@ -22,7 +22,7 @@
   ];
 </script>
 
-<div class="flex flex-col gap-3 h-full bg-black/30 backdrop-blur-md rounded-2xl p-3.5 border border-white/10 text-xs text-neutral-300 overflow-y-auto">
+<div class="flex flex-col gap-3 h-full bg-neutral-900/55 rounded-2xl p-3.5 border border-white/10 text-xs text-neutral-300 overflow-y-auto">
   <!-- 头部：参考曲目信息 -->
   <div class="flex items-center gap-2.5 pb-2.5 border-b border-white/10 shrink-0">
     <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
@@ -145,7 +145,19 @@
         <span>原曲声学与乐理逆向解构</span>
       </span>
       {#if analysis}
-        <span class="text-[9px] text-emerald-400">agy 深度解析</span>
+        <div class="flex items-center gap-2">
+          <span class="text-[9px] text-emerald-400">agy 深度解析</span>
+          <button
+            type="button"
+            class="text-[10px] text-neutral-400 hover:text-purple-300 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/5 hover:bg-purple-500/20 border border-white/10 cursor-pointer transition-all disabled:opacity-40"
+            disabled={analyzing}
+            onclick={() => aiStudioStore.reAnalyze()}
+            title="忽略缓存，重新调用 agy 提取原曲乐理"
+          >
+            <RotateCcw size={10} class={analyzing ? 'animate-spin' : ''} />
+            <span>重新提取</span>
+          </button>
+        </div>
       {/if}
     </div>
 

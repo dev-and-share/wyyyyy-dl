@@ -84,7 +84,8 @@ class AiStudioStore {
       }
     ];
 
-    this.runAnalysis(String(track.id), track.name, track.artist);
+    this.runAnalysis(String(track.id), track.name, track.artist, false);
+    this.restoreSavedProject(String(track.id));
   }
 
   close() {
@@ -96,11 +97,73 @@ class AiStudioStore {
     showToast(`已切换推理引擎为: ${engine === 'LOCAL_AGY' ? '本地 agy Agent' : '网络 New API'}`, 'success');
   }
 
-  async runAnalysis(songId: string, title?: string, artist?: string) {
+  async restoreSavedProject(songId: string) {
+    try {
+      if (typeof aiStudioService.getLatestProjectBySong !== 'function') return;
+      const saved = await aiStudioService.getLatestProjectBySong(songId);
+      if (saved && this.currentTrack && String(this.currentTrack.id) === songId) {
+        this.project = saved;
+        if (saved.trackPrompts && saved.trackPrompts.length > 0) {
+          const models = Array.from(new Set(saved.trackPrompts.map(p => p.modelName)));
+          const versions = Array.from(new Set(saved.trackPrompts.map(p => p.versionLabel)));
+          if (models.length > 0) this.selectedModels = models;
+          if (versions.length > 0) {
+            this.selectedVersions = versions;
+            if (!versions.includes(this.selectedVersion)) {
+              this.selectedVersion = versions[0] as 'V1_FIDELITY' | 'V2_FUSION' | 'V3_EMOTIONAL';
+            }
+          }
+        }
+        if (saved.sessionHistories && saved.sessionHistories.length > 0) {
+          const restoredMsgs: AiChatMessage[] = saved.sessionHistories.map(h => ({
+            id: h.id,
+            versionLabel: h.versionLabel || 'ALL',
+            role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+            content: h.content,
+            createdAt: h.createdAt
+          }));
+          this.chatMessages = [...this.chatMessages, ...restoredMsgs];
+        }
+        showToast('已从本地数据库恢复上次创作工程与对话记录', 'success');
+      }
+    } catch {
+      // 静默忽略，不影响新工程创建
+    }
+  }
+
+  async reAnalyze() {
+    if (!this.currentTrack) return;
+    await this.runAnalysis(String(this.currentTrack.id), this.currentTrack.name, this.currentTrack.artist, true);
+    showToast('已重新提取原曲乐理与声学特征并更新数据库', 'success');
+  }
+
+  async retryFromScratch() {
+    if (!this.currentTrack) return;
+    const track = this.currentTrack;
+    this.project = null;
+    this.analysis = null;
+    this.error = null;
+    this.selectedVersion = 'V1_FIDELITY';
+    this.selectedModels = ['YuE2-3B', 'MiniMax-Music3', 'ACE-Step-1.5'];
+    this.selectedVersions = ['V1_FIDELITY', 'V2_FUSION', 'V3_EMOTIONAL'];
+    this.chatMessages = [
+      {
+        id: `retry-init-${Date.now()}`,
+        versionLabel: 'ALL',
+        role: 'assistant',
+        content: `🔄 已开启全新创作流程！正在重新调用真实 agy 引擎逆向解构《${track.name}》...`
+      }
+    ];
+    await this.runAnalysis(String(track.id), track.name, track.artist, true);
+  }
+
+  async runAnalysis(songId: string, title?: string, artist?: string, forceRefresh: boolean = false) {
     this.analyzing = true;
     this.error = null;
     try {
-      this.analysis = await aiStudioService.analyzeSong(songId, title, artist, this.engineType);
+      this.analysis = forceRefresh
+        ? await aiStudioService.analyzeSong(songId, title, artist, this.engineType, true)
+        : await aiStudioService.analyzeSong(songId, title, artist, this.engineType);
       this.chatMessages.push({
         id: `analysis-${Date.now()}`,
         versionLabel: 'ALL',

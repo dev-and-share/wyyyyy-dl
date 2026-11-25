@@ -35,12 +35,34 @@
         var tc = (skinColors[skin] || skinColors.vinyl)[active === 'light' ? 'light' : 'dark'];
         var meta = document.getElementById('pwa-theme-color');
         if (meta) meta.setAttribute('content', tc);
+
+        // 🦷 防大门牙：在 JS 解析阶段就把 html/body 背景色锁定为 splash 背景色
+        // Chrome PWA 启动时 titlebar 区域会短暂露出页面背景，
+        // 通过此处直接设置 html/body 背景色让其与 splash 颜色一致，消除白色/灰色缝隙
+        document.documentElement.style.backgroundColor = tc;
+        document.documentElement.style.height = '100%';
       })();
     </script>
     <style>
+      /* 🦷 防大门牙：html/body 背景由内联 JS 动态写入，此处保底兜底（dark 默认值） */
+      html, body {
+        background-color: #0a0e1a;
+        margin: 0;
+        padding: 0;
+      }
+      /* light 主题时同步切换背景色，确保 titlebar 区域不露出白边 */
+      html[data-theme="light"],
+      html[data-theme="light"] body {
+        background-color: #ffffff;
+      }
       .wyy-splash-container {
         position: fixed;
+        /* 🦷 防大门牙核心：覆盖整个视口包含 WCO titlebar 区域
+           Chrome PWA window-controls-overlay 模式下，fixed 定位的 inset:0
+           会从 titlebar 底部开始，导致 titlebar 高度区域露出页面背景色（大门牙）。
+           通过 top: env(titlebar-area-y, 0px) 或直接 top:0 + 背景色联动来填充。*/
         inset: 0;
+        top: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -54,6 +76,10 @@
         opacity: 1;
         transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         will-change: opacity;
+        /* WCO 模式下 titlebar 区域的 app-region 会让 fixed 元素无法覆盖 titlebar，
+           通过设置 -webkit-app-region: no-drag 确保 splash 覆盖 titlebar 拖动区域 */
+        -webkit-app-region: no-drag;
+        app-region: no-drag;
       }
       [data-theme="light"] .wyy-splash-container {
         background-color: #ffffff;

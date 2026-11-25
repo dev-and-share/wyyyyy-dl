@@ -68,9 +68,10 @@ public class AiStudioController {
             @RequestParam("songId") String songId,
             @RequestParam(value = "title", required = false) String title,
             @RequestParam(value = "artist", required = false) String artist,
-            @RequestParam(value = "engineType", required = false) String engineType) {
+            @RequestParam(value = "engineType", required = false) String engineType,
+            @RequestParam(value = "forceRefresh", defaultValue = "false") boolean forceRefresh) {
         try {
-            AiSongAnalysisDTO dto = songAnalysisService.analyzeSong(songId, title, artist, engineType);
+            AiSongAnalysisDTO dto = songAnalysisService.analyzeSong(songId, title, artist, engineType, forceRefresh);
             return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "分析完成", dto);
         } catch (Exception e) {
             log.error("❌ 原曲逆向解构失败: songId={}", songId, e);
@@ -142,6 +143,20 @@ public class AiStudioController {
             return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "查询成功", p);
         } catch (Exception e) {
             log.error("❌ 查询工程详情失败: id={}", id, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "查询失败: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * 5.1 按原曲 ID 获取最近一次保存的工程 (用于再次打开工作台自动恢复)
+     */
+    @GetMapping("/project/by-song/{songId}")
+    public RespEntity<AiProjectDTO> getLatestProjectBySong(@PathVariable("songId") String songId) {
+        try {
+            AiProjectDTO p = aiStudioRepository.getLatestProjectBySongId(songId);
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), p != null ? "查询成功" : "暂无历史工程", p);
+        } catch (Exception e) {
+            log.error("❌ 按曲目查询历史工程失败: songId={}", songId, e);
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "查询失败: " + e.getMessage(), null);
         }
     }

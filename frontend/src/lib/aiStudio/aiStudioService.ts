@@ -26,11 +26,18 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const aiStudioService = {
-  async analyzeSong(songId: string, title?: string, artist?: string, engineType: string = 'LOCAL_AGY'): Promise<AiSongAnalysis> {
+  async analyzeSong(
+    songId: string,
+    title?: string,
+    artist?: string,
+    engineType: string = 'LOCAL_AGY',
+    forceRefresh: boolean = false
+  ): Promise<AiSongAnalysis> {
     const params = new URLSearchParams({ songId });
     if (title) params.append('title', title);
     if (artist) params.append('artist', artist);
     if (engineType) params.append('engineType', engineType);
+    if (forceRefresh) params.append('forceRefresh', 'true');
     return request<AiSongAnalysis>(`/v3/ai/analyze?${params.toString()}`);
   },
 
@@ -66,6 +73,10 @@ export const aiStudioService = {
 
   async getProject(id: string): Promise<AiProject> {
     return request<AiProject>(`/v3/ai/project/${encodeURIComponent(id)}`);
+  },
+
+  async getLatestProjectBySong(songId: string): Promise<AiProject | null> {
+    return request<AiProject | null>(`/v3/ai/project/by-song/${encodeURIComponent(songId)}`);
   },
 
   async syncAssets(id: string): Promise<AiRenderedAsset[]> {

@@ -29,7 +29,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-xs text-neutral-300 overflow-hidden">
+<div class="flex flex-col h-full bg-neutral-900/55 rounded-2xl p-4 border border-white/10 text-xs text-neutral-300 overflow-hidden">
   <!-- 头部：显示当前版本的独立 Session 标识 -->
   <div class="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
     <div class="flex items-center gap-1.5 font-semibold text-neutral-200">

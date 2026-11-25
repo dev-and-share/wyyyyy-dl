@@ -56,7 +56,7 @@ public class AiStudioControllerTest {
                 .estimatedBpm(72)
                 .build();
 
-        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any(), any())).thenReturn(dto);
+        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any(), any(), eq(false))).thenReturn(dto);
 
         mockMvc.perform(get("/v3/ai/analyze")
                         .param("songId", "186016")
@@ -66,6 +66,42 @@ public class AiStudioControllerTest {
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.title").value("晴天"))
                 .andExpect(jsonPath("$.data.genre").value("03_mandopop_emotional_ballad"));
+    }
+
+    @Test
+    @DisplayName("GET /v3/ai/analyze?forceRefresh=true 强制重新提取 (Retry)")
+    void testAnalyzeSongForceRefresh() throws Exception {
+        AiSongAnalysisDTO dto = AiSongAnalysisDTO.builder()
+                .refSongId("186016")
+                .title("晴天")
+                .estimatedBpm(104)
+                .build();
+
+        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any(), any(), eq(true))).thenReturn(dto);
+
+        mockMvc.perform(get("/v3/ai/analyze")
+                        .param("songId", "186016")
+                        .param("title", "晴天")
+                        .param("forceRefresh", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.estimatedBpm").value(104));
+    }
+
+    @Test
+    @DisplayName("GET /v3/ai/project/by-song/{songId} 按原曲 ID 恢复最新历史工程")
+    void testGetLatestProjectBySong() throws Exception {
+        AiProjectDTO p = AiProjectDTO.builder()
+                .id("aip_restored_001")
+                .refSongId("186016")
+                .refSongTitle("晴天")
+                .build();
+        Mockito.when(aiStudioRepository.getLatestProjectBySongId("186016")).thenReturn(p);
+
+        mockMvc.perform(get("/v3/ai/project/by-song/186016"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.id").value("aip_restored_001"));
     }
 
     @Test

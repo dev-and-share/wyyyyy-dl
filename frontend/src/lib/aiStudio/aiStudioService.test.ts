@@ -40,6 +40,41 @@ describe('aiStudioService API Client Tests', () => {
     expect(result.estimatedKey).toBe('G Major');
   });
 
+  it('analyzeSong appends forceRefresh=true when retrying extraction', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: '000000',
+        msg: '分析成功',
+        data: { refSongId: '186016', estimatedBpm: 104 }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await aiStudioService.analyzeSong('186016', '晴天', '周杰伦', 'LOCAL_AGY', true);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/v3/ai/analyze?songId=186016&title=%E6%99%B4%E5%A4%A9&artist=%E5%91%A8%E6%9D%B0%E4%BC%A6&engineType=LOCAL_AGY&forceRefresh=true',
+      expect.anything()
+    );
+  });
+
+  it('getLatestProjectBySong fetches restored project for a song', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: '000000',
+        msg: '查询成功',
+        data: { id: 'aip_restored_1', refSongId: '186016' }
+      })
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const project = await aiStudioService.getLatestProjectBySong('186016');
+    expect(mockFetch).toHaveBeenCalledWith('/v3/ai/project/by-song/186016', expect.anything());
+    expect(project?.id).toBe('aip_restored_1');
+  });
+
   it('generateMatrix posts dynamic selected models and versions', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

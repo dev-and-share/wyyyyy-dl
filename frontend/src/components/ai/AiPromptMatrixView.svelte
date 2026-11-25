@@ -24,7 +24,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-xs text-neutral-300 overflow-hidden">
+<div class="flex flex-col h-full bg-neutral-900/55 rounded-2xl p-4 border border-white/10 text-xs text-neutral-300 overflow-hidden">
   <!-- 顶部：3 个创意版本切换 Tab (对应独立 Session) -->
   <div class="flex items-center justify-between pb-3 border-b border-white/10 gap-2 shrink-0">
     <div class="flex items-center gap-1.5 p-1 bg-neutral-900/80 rounded-xl border border-white/5">
