@@ -91,6 +91,8 @@ export function syncMetaThemeColor(skinId?: SkinId) {
 
   const color = lastHarmonyResult.harmonizedColor;
 
+  // Keep a single meta[name="theme-color"] tag in index.html; splash screen reads --wco-titlebar-bg
+  // and frontend/index.html mirrors SKIN_THEME_COLORS for pre-mount WCO corner alignment.
   let meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) {
     meta = document.createElement('meta');

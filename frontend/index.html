@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer" />
     <title>WYY · 现代化全能音乐工作台</title>
+    <!-- Keep a single theme-color meta tag; skinStore.svelte.ts queries meta[name="theme-color"] directly.
+         Duplicating it with media="(prefers-color-scheme: ...)" breaks post-load skin/theme updates. -->
     <meta name="theme-color" id="pwa-theme-color" content="#0a0e1a" />
     <script>
       window.__wyy_splash_start = performance.now();
@@ -21,20 +23,37 @@
         var locale = localStorage.getItem('wyl.locale');
         if (locale) document.documentElement.lang = locale;
 
+        // Must stay 1:1 with SKIN_THEME_COLORS in src/components/skins/skinTypes.ts.
+        // Otherwise Chrome WCO corner overlays (theme-color) and #pwa-splash will mismatch ("cutout teeth" gap).
         var skinColors = {
-          spring: { dark: '#06140f', light: '#f0fdf4' },
-          sakura: { dark: '#240d1e', light: '#fff0f5' },
-          summer: { dark: '#072b4a', light: '#e0f2fe' },
-          autumn: { dark: '#1a1305', light: '#fffdf0' },
-          winter: { dark: '#0b121e', light: '#f8fafc' },
-          winamp: { dark: '#11141b', light: '#f1f5f9' },
+          vinyl:    { dark: '#0a0e1a', light: '#ffffff' },
           cassette: { dark: '#121316', light: '#fefce8' },
-          aurora: { dark: '#0c0a1a', light: '#faf5ff' },
-          vinyl: { dark: '#0a0e1a', light: '#ffffff' }
+          cd:       { dark: '#0c192c', light: '#f0f9ff' },
+          tube:     { dark: '#170b04', light: '#fffbeb' },
+          winamp:   { dark: '#11141b', light: '#f1f5f9' },
+          cyber:    { dark: '#1a052e', light: '#faf5ff' },
+          aurora:   { dark: '#0c0a1a', light: '#faf5ff' },
+          rain:     { dark: '#08101e', light: '#f0f7ff' },
+          sakura:   { dark: '#240d1e', light: '#fff0f5' },
+          summer:   { dark: '#072b4a', light: '#bae6fd' },
+          autumn:   { dark: '#1a1305', light: '#fffdf0' },
+          winter:   { dark: '#0b121e', light: '#f8fafc' },
+          spring:   { dark: '#06140f', light: '#f0fdf4' }
         };
+        try {
+          var previewSkin = new URLSearchParams(window.location.search).get('preview_skin');
+          if (previewSkin && skinColors[previewSkin]) {
+            skin = previewSkin;
+            document.documentElement.setAttribute('data-skin', skin);
+          }
+        } catch (e) {}
         var tc = (skinColors[skin] || skinColors.vinyl)[active === 'light' ? 'light' : 'dark'];
         var meta = document.getElementById('pwa-theme-color');
         if (meta) meta.setAttribute('content', tc);
+        // Set --wco-titlebar-bg (the same CSS variable used by pwa-audio-player / skinStore) so #pwa-splash
+        // stays locked to meta[name="theme-color"]. Never set documentElement.style.backgroundColor here,
+        // as an inline html background overrides body skin backgrounds after splash fades out.
+        document.documentElement.style.setProperty('--wco-titlebar-bg', tc);
       })();
     </script>
     <style>
@@ -46,7 +65,8 @@
         align-items: center;
         justify-content: center;
         gap: 1.5rem;
-        background-color: #0a0e1a;
+        /* Consume --wco-titlebar-bg so splash background always equals WCO native corner overlays */
+        background-color: var(--wco-titlebar-bg, #0a0e1a);
         user-select: none;
         -webkit-user-select: none;
         pointer-events: none;
@@ -56,7 +76,7 @@
         will-change: opacity;
       }
       [data-theme="light"] .wyy-splash-container {
-        background-color: #ffffff;
+        background-color: var(--wco-titlebar-bg, #ffffff);
       }
       .wyy-splash-fade-out {
         opacity: 0 !important;
