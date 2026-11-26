@@ -289,7 +289,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    
@@ -365,7 +365,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    
@@ -399,7 +399,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    //专辑详情
@@ -431,7 +431,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    
@@ -465,7 +465,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    
@@ -501,7 +501,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    
@@ -540,7 +540,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    
@@ -611,7 +611,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 	    
 	    
@@ -720,7 +720,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    /**
@@ -763,7 +763,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    /**
@@ -828,6 +828,26 @@ public class NeteaseAPIService implements InitializingBean{
 	    }
 
 	    /**
+	     * 统一表单 POST 出口 (便于单元测试覆写或统一注入策略)
+	     */
+	    protected String postForm(String url, Map<String, String> headers, Map<String, String> formParams) throws Exception {
+	        return HttpClientUtil.postForm(url, headers, formParams);
+	    }
+
+	    private static String extractCsrfToken(String cookieStr) {
+	        if (cookieStr == null || cookieStr.trim().isEmpty()) {
+	            return "";
+	        }
+	        for (String part : cookieStr.split(";")) {
+	            String trimmed = part.trim();
+	            if (trimmed.startsWith("__csrf=")) {
+	                return trimmed.substring("__csrf=".length()).trim();
+	            }
+	        }
+	        return "";
+	    }
+
+	    /**
 	     * 通过 Web 端 WEAPI 协议发送请求 (免设备指纹风控校验)
 	     * @param url 请求目标端点 (如 https://music.163.com/weapi/playlist/subscribe)
 	     * @param data 请求参数负载 (自动追加 csrf_token)
@@ -835,13 +855,28 @@ public class NeteaseAPIService implements InitializingBean{
 	     * @throws Exception
 	     */
 	    public String requestWeapi(String url, Map<String, Object> data) throws Exception {
-	        if (data == null) {
-	            data = new HashMap<>();
+	        String resp = executeWeapiRaw(url, data);
+	        if (resp == null || resp.trim().isEmpty()) {
+	            return "{\"code\":200,\"message\":\"success\"}";
 	        }
-	        if (!data.containsKey("csrf_token")) {
-	            data.put("csrf_token", "");
+	        return resp;
+	    }
+
+	    /**
+	     * 执行 WEAPI 请求并返回原始响应体 (空响应不伪造为 200，供集中式降级网关判断是否继续回退)
+	     */
+	    protected String executeWeapiRaw(String url, Map<String, Object> data) throws Exception {
+	        Map<String, Object> payload = data == null ? new HashMap<>() : new HashMap<>(data);
+	        String csrfToken = extractCsrfToken(this.cookie);
+	        if (!payload.containsKey("csrf_token")) {
+	            payload.put("csrf_token", csrfToken);
 	        }
-	        Map<String, String> formParams = weapiEncrypt(com.alibaba.fastjson.JSON.toJSONString(data));
+	        Map<String, String> formParams = weapiEncrypt(com.alibaba.fastjson.JSON.toJSONString(payload));
+
+	        String targetUrl = url;
+	        if (!csrfToken.isEmpty() && !targetUrl.contains("csrf_token=")) {
+	            targetUrl += (targetUrl.contains("?") ? "&" : "?") + "csrf_token=" + csrfToken;
+	        }
 
 	        Map<String, String> headers = new LinkedHashMap<>();
 	        headers.put("Referer", "https://music.163.com/");
@@ -849,23 +884,93 @@ public class NeteaseAPIService implements InitializingBean{
 	        headers.put("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 	        headers.put("Cookie", getCookieValue(this.cookie));
 
-	        String resp = HttpClientUtil.postForm(url, headers, formParams);
-	        if (resp == null || resp.trim().isEmpty()) {
-	            return "{\"code\":200,\"message\":\"success\"}";
-	        }
-	        return resp;
+	        return postForm(targetUrl, headers, formParams);
 	    }
 
 	    private static final String LINUX_KEY = "rFgB&h#%2?^eDg:Q";
+	    private static final long LINUX_API_COOLDOWN_MS = 60_000L;
+	    private volatile long linuxApiCooldownUntilMs = 0L;
+
+	    void resetLinuxApiCooldown() {
+	        this.linuxApiCooldownUntilMs = 0L;
+	    }
 
 	    /**
-	     * 通过官方 Linux Forward 接口代理请求 (用于无风控写操作)
+	     * 集中式 Linux API 网关调用器：
+	     * 1. 优先尝试官方 Linux Forward 网关 (https://music.163.com/api/linux/forward)
+	     * 2. 若上游返回 502/5xx HTML 页面、网络异常或协议拒绝，自动短时熔断并依次兜底回退至 WEAPI -> EAPI
+	     * 3. 统一在网关层拦截非 JSON 脏响应，避免下游业务抛出 JSONException
 	     */
 	    public String requestLinuxApi(String innerUrl, Map<String, Object> innerParams) throws Exception {
+	        String apiPath = extractApiPath(innerUrl);
+	        long now = System.currentTimeMillis();
+
+	        // 1. Primary: Linux Forward API (unless in brief cooldown after 502/network failure)
+	        if (now >= linuxApiCooldownUntilMs) {
+	            try {
+	                String linuxResp = executeLinuxForward(innerUrl, innerParams);
+	                if (isUsableApiResponse(linuxResp)) {
+	                    log.debug("Linux API response for {}: {}", apiPath, summarizeSnippet(linuxResp));
+	                    return linuxResp;
+	                }
+	                linuxApiCooldownUntilMs = System.currentTimeMillis() + LINUX_API_COOLDOWN_MS;
+	                log.warn("⚠️ [LinuxAPI] 上游网关响应异常 ({}), 冷却 {}s 并自动切换备用通道: snippet={}",
+	                        apiPath, LINUX_API_COOLDOWN_MS / 1000, summarizeSnippet(linuxResp));
+	            } catch (Exception e) {
+	                linuxApiCooldownUntilMs = System.currentTimeMillis() + LINUX_API_COOLDOWN_MS;
+	                log.warn("⚠️ [LinuxAPI] 请求异常 ({}), 冷却 {}s 并自动切换备用通道: {}",
+	                        apiPath, LINUX_API_COOLDOWN_MS / 1000, e.getMessage());
+	            }
+	        } else {
+	            log.debug("⏩ [LinuxAPI] 处于熔断冷却期，直接走备用通道: {}", apiPath);
+	        }
+
+	        // 2. Fallback 1: Web WEAPI (免设备指纹风控；使用 raw 调用，避免空响应被误判成功)
+	        String weapiResp = null;
+	        String weapiUrl = buildWeapiFallbackUrl(apiPath);
+	        if (weapiUrl != null) {
+	            try {
+	                Map<String, Object> weapiParams = buildFallbackParams(apiPath, innerParams, true);
+	                weapiResp = executeWeapiRaw(weapiUrl, weapiParams);
+	                if (isUsableApiResponse(weapiResp)) {
+	                    log.info("🔄 [Fallback->WEAPI] {} 备用通道成功", apiPath);
+	                    return weapiResp;
+	                }
+	                log.warn("⚠️ [Fallback->WEAPI] {} 返回不可用响应，继续尝试 EAPI: {}", apiPath, summarizeSnippet(weapiResp));
+	            } catch (Exception e) {
+	                log.warn("⚠️ [Fallback->WEAPI] {} 调用异常，继续尝试 EAPI: {}", apiPath, e.getMessage());
+	            }
+	        }
+
+	        // 3. Fallback 2: EAPI (interface.music.163.com/eapi)
+	        String eapiResp = null;
+	        try {
+	            Map<String, Object> eapiParams = buildFallbackParams(apiPath, innerParams, false);
+	            eapiResp = requestEapi(apiPath, eapiParams);
+	            if (isUsableApiResponse(eapiResp)) {
+	                log.info("🔄 [Fallback->EAPI] {} 备用通道成功", apiPath);
+	                return eapiResp;
+	            }
+	        } catch (Exception e) {
+	            log.warn("⚠️ [Fallback->EAPI] {} 调用异常: {}", apiPath, e.getMessage());
+	        }
+
+	        // If a fallback returned valid JSON (e.g. a business/risk code), surface it cleanly instead of failing with HTML
+	        if (isJsonPayload(eapiResp)) {
+	            return eapiResp;
+	        }
+	        if (isJsonPayload(weapiResp)) {
+	            return weapiResp;
+	        }
+	        throw new ServiceException(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(),
+	                "上游网易云接口暂时不可用 (" + apiPath + ")");
+	    }
+
+	    private String executeLinuxForward(String innerUrl, Map<String, Object> innerParams) throws Exception {
 	        Map<String, Object> body = new LinkedHashMap<>();
 	        body.put("method", "POST");
 	        body.put("url", innerUrl);
-	        body.put("params", innerParams);
+	        body.put("params", innerParams != null ? innerParams : Collections.emptyMap());
 
 	        String jsonBody = com.alibaba.fastjson.JSON.toJSONString(body);
 	        String eparams = aesEncryptECB(jsonBody, LINUX_KEY);
@@ -878,9 +983,82 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new LinkedHashMap<>();
 	        params.put("eparams", eparams);
 
-	        String resp = HttpClientUtil.postForm("https://music.163.com/api/linux/forward", headers, params);
-	        log.info("Linux API response for {}: {}", innerUrl, resp);
-	        return resp;
+	        return postForm("https://music.163.com/api/linux/forward", headers, params);
+	    }
+
+	    private static String extractApiPath(String innerUrl) {
+	        if (innerUrl == null) {
+	            return "";
+	        }
+	        String path = innerUrl.replaceFirst("^https?://[^/]+", "");
+	        return path.startsWith("/") ? path : "/" + path;
+	    }
+
+	    private static String buildWeapiFallbackUrl(String apiPath) {
+	        if (apiPath != null && apiPath.startsWith("/api/")) {
+	            return "https://music.163.com/weapi/" + apiPath.substring("/api/".length());
+	        }
+	        return null;
+	    }
+
+	    private static Map<String, Object> buildFallbackParams(String apiPath, Map<String, Object> innerParams, boolean forWeapi) {
+	        Map<String, Object> mapped = innerParams == null ? new LinkedHashMap<>() : new LinkedHashMap<>(innerParams);
+	        if ("/api/playlist/delete".equals(apiPath) && mapped.containsKey("pid") && !mapped.containsKey("ids")) {
+	            Object pid = mapped.get("pid");
+	            mapped.put("ids", "[" + pid + "]");
+	            if (forWeapi) {
+	                mapped.remove("pid");
+	            }
+	        }
+	        if ("/api/playlist/manipulate/tracks".equals(apiPath) && forWeapi && !mapped.containsKey("imme")) {
+	            mapped.put("imme", "true");
+	        }
+	        return mapped;
+	    }
+
+	    private static boolean isJsonPayload(String resp) {
+	        if (resp == null) {
+	            return false;
+	        }
+	        String trimmed = resp.trim();
+	        if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+	            return false;
+	        }
+	        try {
+	            JSON.parse(trimmed);
+	            return true;
+	        } catch (Exception e) {
+	            return false;
+	        }
+	    }
+
+	    private static boolean isUsableApiResponse(String resp) {
+	        if (!isJsonPayload(resp)) {
+	            return false;
+	        }
+	        String trimmed = resp.trim();
+	        if (!trimmed.startsWith("{")) {
+	            return true;
+	        }
+	        try {
+	            JSONObject obj = JSON.parseObject(trimmed);
+	            if (obj == null || !obj.containsKey("code")) {
+	                return true;
+	            }
+	            int code = obj.getIntValue("code");
+	            return code != 404 && code != 405 && code != 460 && code != -460 && code != -462
+	                    && code != 500 && code != 502 && code != 503 && code != 504;
+	        } catch (Exception e) {
+	            return false;
+	        }
+	    }
+
+	    private static String summarizeSnippet(String resp) {
+	        if (resp == null) {
+	            return "null";
+	        }
+	        String oneLine = resp.replaceAll("\\s+", " ").trim();
+	        return oneLine.length() > 140 ? oneLine.substring(0, 140) + "..." : oneLine;
 	    }
 
 	    /**
@@ -1026,7 +1204,10 @@ public class NeteaseAPIService implements InitializingBean{
 	     * @return 响应原始 JSON
 	     */
 	    public String requestEapi(String apiPath, Map<String, Object> payload) throws Exception {
-	        String url = "https://interface.music.163.com/eapi" + apiPath;
+	        String eapiEndpoint = (apiPath != null && apiPath.startsWith("/api/"))
+	                ? apiPath.substring("/api".length())
+	                : apiPath;
+	        String url = "https://interface3.music.163.com/eapi" + eapiEndpoint;
 
 	        Map<String, Object> config = new LinkedHashMap<>();
 	        config.put("os", "pc");
@@ -1054,7 +1235,7 @@ public class NeteaseAPIService implements InitializingBean{
 	        Map<String, String> params = new HashMap<>();
 	        params.put("params", encParams);
 
-	        return HttpClientUtil.postForm(url, headers, params);
+	        return postForm(url, headers, params);
 	    }
 
 	    /**
