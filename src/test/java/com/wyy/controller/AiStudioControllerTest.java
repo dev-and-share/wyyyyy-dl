@@ -56,7 +56,7 @@ public class AiStudioControllerTest {
                 .estimatedBpm(72)
                 .build();
 
-        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any(), any())).thenReturn(dto);
+        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any(), any(), eq(false))).thenReturn(dto);
 
         mockMvc.perform(get("/v3/ai/analyze")
                         .param("songId", "186016")
@@ -66,6 +66,42 @@ public class AiStudioControllerTest {
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data.title").value("晴天"))
                 .andExpect(jsonPath("$.data.genre").value("03_mandopop_emotional_ballad"));
+    }
+
+    @Test
+    @DisplayName("GET /v3/ai/analyze?forceRefresh=true 强制重新提取 (Retry)")
+    void testAnalyzeSongForceRefresh() throws Exception {
+        AiSongAnalysisDTO dto = AiSongAnalysisDTO.builder()
+                .refSongId("186016")
+                .title("晴天")
+                .estimatedBpm(104)
+                .build();
+
+        Mockito.when(songAnalysisService.analyzeSong(eq("186016"), any(), any(), any(), eq(true))).thenReturn(dto);
+
+        mockMvc.perform(get("/v3/ai/analyze")
+                        .param("songId", "186016")
+                        .param("title", "晴天")
+                        .param("forceRefresh", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.estimatedBpm").value(104));
+    }
+
+    @Test
+    @DisplayName("GET /v3/ai/project/by-song/{songId} 按原曲 ID 恢复最新历史工程")
+    void testGetLatestProjectBySong() throws Exception {
+        AiProjectDTO p = AiProjectDTO.builder()
+                .id("aip_restored_001")
+                .refSongId("186016")
+                .refSongTitle("晴天")
+                .build();
+        Mockito.when(aiStudioRepository.getLatestProjectBySongId("186016")).thenReturn(p);
+
+        mockMvc.perform(get("/v3/ai/project/by-song/186016"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.id").value("aip_restored_001"));
     }
 
     @Test
@@ -173,6 +209,57 @@ public class AiStudioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("000000"))
                 .andExpect(jsonPath("$.data[0].id").value("aip_001"));
+    }
+
+    @Test
+    @DisplayName("POST /v3/ai/project/{id}/version/{version}/models 动态切换本方案应用模型")
+    void testUpdateVersionModels() throws Exception {
+        AiProjectDTO updated = AiProjectDTO.builder()
+                .id("aip_001")
+                .status("PROMPT_READY")
+                .build();
+        Mockito.when(promptMatrixService.updateVersionModels(eq("aip_001"), eq("V1_FIDELITY"), eq(Arrays.asList("YuE2-3B", "MiniMax-Music3"))))
+                .thenReturn(updated);
+
+        mockMvc.perform(post("/v3/ai/project/aip_001/version/V1_FIDELITY/models")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"models\":[\"YuE2-3B\",\"MiniMax-Music3\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.id").value("aip_001"));
+    }
+
+    @Test
+    @DisplayName("POST /v3/ai/refine-model 单模型专属 Prompt 微调")
+    void testRefineModelPrompt() throws Exception {
+        AiProjectDTO updated = AiProjectDTO.builder()
+                .id("aip_001")
+                .lastAssistantMessage("已针对模型完成微调")
+                .build();
+        Mockito.when(promptMatrixService.refineModelPrompt(eq("aip_001"), eq("trk_1"), eq("加强吉他"), eq("LOCAL_AGY")))
+                .thenReturn(updated);
+
+        mockMvc.perform(post("/v3/ai/refine-model")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"projectId\":\"aip_001\",\"trackPromptId\":\"trk_1\",\"instruction\":\"加强吉他\",\"engineType\":\"LOCAL_AGY\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.lastAssistantMessage").value("已针对模型完成微调"));
+    }
+
+    @Test
+    @DisplayName("POST /v3/ai/project/{id}/queue-gpu 加入 GPU 批量生产等待队列")
+    void testQueueForGpu() throws Exception {
+        AiProjectDTO queued = AiProjectDTO.builder()
+                .id("aip_001")
+                .status("QUEUED_FOR_GPU")
+                .build();
+        Mockito.when(aiStudioRepository.getProjectById("aip_001")).thenReturn(queued);
+
+        mockMvc.perform(post("/v3/ai/project/aip_001/queue-gpu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.status").value("QUEUED_FOR_GPU"));
     }
 
     @Test

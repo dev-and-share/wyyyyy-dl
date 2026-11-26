@@ -1,5 +1,5 @@
 import { aiStudioService } from './aiStudioService';
-import type { AiChatMessage, AiProject, AiSongAnalysis, AiTrackPrompt } from './aiStudioTypes';
+import type { AiChatMessage, AiProject, AiSongAnalysis, AiTrackPrompt, AiVersionPlan } from './aiStudioTypes';
 import { showToast } from '../toast.svelte';
 
 class AiStudioStore {
@@ -20,6 +20,8 @@ class AiStudioStore {
   analyzing = $state(false);
   generating = $state(false);
   refining = $state(false);
+  updatingModels = $state(false);
+  refiningModelId = $state<string | null>(null);
   syncing = $state(false);
   error = $state<string | null>(null);
 
@@ -32,6 +34,27 @@ class AiStudioStore {
   activePrompts = $derived.by<AiTrackPrompt[]>(() => {
     if (!this.project || !this.project.trackPrompts) return [];
     return this.project.trackPrompts.filter(p => p.versionLabel === this.selectedVersion);
+  });
+
+  // 派生当前选中版本的「独立歌词与编曲主方案」(优先读取 DB versionPlans，兼容旧数据兜底)
+  activeVersionPlan = $derived.by<AiVersionPlan | null>(() => {
+    if (!this.project) return null;
+    const plan = this.project.versionPlans?.find(v => v.versionLabel === this.selectedVersion);
+    if (plan) return plan;
+    const prompts = this.activePrompts;
+    if (prompts.length === 0) return null;
+    return {
+      id: `${this.project.id}_${this.selectedVersion.toLowerCase()}`,
+      projectId: this.project.id,
+      versionLabel: this.selectedVersion,
+      planTitle: prompts[0].trackTitle,
+      genre: this.project.genreCategory || '',
+      bpm: this.analysis?.estimatedBpm || 104,
+      musicalKey: this.analysis?.estimatedKey || 'G Major',
+      arrangementNotes: '本版本共享主编曲与乐理企划（可通过右侧独立 AI Session 聊天微调并落盘 DB）',
+      lyricsText: prompts[0].lyricsPlan,
+      appliedModels: prompts.map(p => p.modelName)
+    };
   });
 
   // 派生当前激活版本的追问会话记录 (支持每版本独立追问)
@@ -84,7 +107,8 @@ class AiStudioStore {
       }
     ];
 
-    this.runAnalysis(String(track.id), track.name, track.artist);
+    this.runAnalysis(String(track.id), track.name, track.artist, false);
+    this.restoreSavedProject(String(track.id));
   }
 
   close() {
@@ -96,11 +120,73 @@ class AiStudioStore {
     showToast(`已切换推理引擎为: ${engine === 'LOCAL_AGY' ? '本地 agy Agent' : '网络 New API'}`, 'success');
   }
 
-  async runAnalysis(songId: string, title?: string, artist?: string) {
+  async restoreSavedProject(songId: string) {
+    try {
+      if (typeof aiStudioService.getLatestProjectBySong !== 'function') return;
+      const saved = await aiStudioService.getLatestProjectBySong(songId);
+      if (saved && this.currentTrack && String(this.currentTrack.id) === songId) {
+        this.project = saved;
+        if (saved.trackPrompts && saved.trackPrompts.length > 0) {
+          const models = Array.from(new Set(saved.trackPrompts.map(p => p.modelName)));
+          const versions = Array.from(new Set(saved.trackPrompts.map(p => p.versionLabel)));
+          if (models.length > 0) this.selectedModels = models;
+          if (versions.length > 0) {
+            this.selectedVersions = versions;
+            if (!versions.includes(this.selectedVersion)) {
+              this.selectedVersion = versions[0] as 'V1_FIDELITY' | 'V2_FUSION' | 'V3_EMOTIONAL';
+            }
+          }
+        }
+        if (saved.sessionHistories && saved.sessionHistories.length > 0) {
+          const restoredMsgs: AiChatMessage[] = saved.sessionHistories.map(h => ({
+            id: h.id,
+            versionLabel: h.versionLabel || 'ALL',
+            role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+            content: h.content,
+            createdAt: h.createdAt
+          }));
+          this.chatMessages = [...this.chatMessages, ...restoredMsgs];
+        }
+        showToast('已从本地数据库恢复上次创作工程与对话记录', 'success');
+      }
+    } catch {
+      // 静默忽略，不影响新工程创建
+    }
+  }
+
+  async reAnalyze() {
+    if (!this.currentTrack) return;
+    await this.runAnalysis(String(this.currentTrack.id), this.currentTrack.name, this.currentTrack.artist, true);
+    showToast('已重新提取原曲乐理与声学特征并更新数据库', 'success');
+  }
+
+  async retryFromScratch() {
+    if (!this.currentTrack) return;
+    const track = this.currentTrack;
+    this.project = null;
+    this.analysis = null;
+    this.error = null;
+    this.selectedVersion = 'V1_FIDELITY';
+    this.selectedModels = ['YuE2-3B', 'MiniMax-Music3', 'ACE-Step-1.5'];
+    this.selectedVersions = ['V1_FIDELITY', 'V2_FUSION', 'V3_EMOTIONAL'];
+    this.chatMessages = [
+      {
+        id: `retry-init-${Date.now()}`,
+        versionLabel: 'ALL',
+        role: 'assistant',
+        content: `🔄 已开启全新创作流程！正在重新调用真实 agy 引擎逆向解构《${track.name}》...`
+      }
+    ];
+    await this.runAnalysis(String(track.id), track.name, track.artist, true);
+  }
+
+  async runAnalysis(songId: string, title?: string, artist?: string, forceRefresh: boolean = false) {
     this.analyzing = true;
     this.error = null;
     try {
-      this.analysis = await aiStudioService.analyzeSong(songId, title, artist, this.engineType);
+      this.analysis = forceRefresh
+        ? await aiStudioService.analyzeSong(songId, title, artist, this.engineType, true)
+        : await aiStudioService.analyzeSong(songId, title, artist, this.engineType);
       this.chatMessages.push({
         id: `analysis-${Date.now()}`,
         versionLabel: 'ALL',
@@ -191,6 +277,55 @@ class AiStudioStore {
     }
   }
 
+  async toggleActiveVersionModel(model: string) {
+    if (!this.project || this.updatingModels) return;
+    const currentPlan = this.activeVersionPlan;
+    const currentModels = currentPlan?.appliedModels?.length
+      ? [...currentPlan.appliedModels]
+      : this.activePrompts.map(p => p.modelName);
+
+    let nextModels: string[];
+    if (currentModels.includes(model)) {
+      if (currentModels.length <= 1) {
+        showToast('当前编曲方案至少需要保留 1 个渲染模型', 'warning');
+        return;
+      }
+      nextModels = currentModels.filter(m => m !== model);
+    } else {
+      nextModels = [...currentModels, model];
+    }
+
+    this.updatingModels = true;
+    try {
+      const updated = await aiStudioService.updateVersionModels(this.project.id, this.selectedVersion, nextModels);
+      this.project = updated;
+      showToast(`已将本套歌词编曲应用至 ${nextModels.length} 个模型`, 'success');
+    } catch (err: any) {
+      showToast(err.message || '切换应用模型失败', 'error');
+    } finally {
+      this.updatingModels = false;
+    }
+  }
+
+  async refineModel(trackPromptId: string, instruction: string) {
+    if (!this.project || !instruction.trim() || this.refiningModelId) return;
+    this.refiningModelId = trackPromptId;
+    try {
+      const updated = await aiStudioService.refineModelPrompt(
+        this.project.id,
+        trackPromptId,
+        instruction.trim(),
+        this.engineType
+      );
+      this.project = updated;
+      showToast(updated.lastAssistantMessage || '模型专属微调完成！', 'success');
+    } catch (err: any) {
+      showToast(err.message || '模型微调失败', 'error');
+    } finally {
+      this.refiningModelId = null;
+    }
+  }
+
   async syncAssets() {
     if (!this.project) return;
     this.syncing = true;
@@ -217,6 +352,17 @@ class AiStudioStore {
       showToast(err.message || '全量扫描失败', 'error');
     } finally {
       this.syncing = false;
+    }
+  }
+
+  async queueForGpu() {
+    if (!this.project) return;
+    try {
+      const updated = await aiStudioService.queueProjectForGpu(this.project.id);
+      this.project = updated;
+      showToast('已加入 GPU 批量生产等待队列并落盘 DB！', 'success');
+    } catch (err: any) {
+      showToast(err.message || '加入队列失败', 'error');
     }
   }
 }

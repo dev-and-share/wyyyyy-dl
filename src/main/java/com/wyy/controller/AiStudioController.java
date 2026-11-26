@@ -60,6 +60,19 @@ public class AiStudioController {
         private String engineType;
     }
 
+    @Data
+    public static class UpdateModelsRequest {
+        private List<String> models;
+    }
+
+    @Data
+    public static class RefineModelRequest {
+        private String projectId;
+        private String trackPromptId;
+        private String instruction;
+        private String engineType;
+    }
+
     /**
      * 1. 逆向分析原曲特征
      */
@@ -68,9 +81,10 @@ public class AiStudioController {
             @RequestParam("songId") String songId,
             @RequestParam(value = "title", required = false) String title,
             @RequestParam(value = "artist", required = false) String artist,
-            @RequestParam(value = "engineType", required = false) String engineType) {
+            @RequestParam(value = "engineType", required = false) String engineType,
+            @RequestParam(value = "forceRefresh", defaultValue = "false") boolean forceRefresh) {
         try {
-            AiSongAnalysisDTO dto = songAnalysisService.analyzeSong(songId, title, artist, engineType);
+            AiSongAnalysisDTO dto = songAnalysisService.analyzeSong(songId, title, artist, engineType, forceRefresh);
             return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "分析完成", dto);
         } catch (Exception e) {
             log.error("❌ 原曲逆向解构失败: songId={}", songId, e);
@@ -116,6 +130,46 @@ public class AiStudioController {
     }
 
     /**
+     * 3.1 动态更新某版本方案所应用的模型列表 (共享同一套歌词与编曲)
+     */
+    @PostMapping("/project/{id}/version/{versionLabel}/models")
+    public RespEntity<AiProjectDTO> updateVersionModels(
+            @PathVariable("id") String id,
+            @PathVariable("versionLabel") String versionLabel,
+            @RequestBody UpdateModelsRequest req) {
+        if (req == null || req.getModels() == null || req.getModels().isEmpty()) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "至少需要选择 1 个模型", null);
+        }
+        try {
+            AiProjectDTO updated = promptMatrixService.updateVersionModels(id, versionLabel, req.getModels());
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "模型应用配置已更新", updated);
+        } catch (Exception e) {
+            log.error("❌ 更新版本应用模型失败: id={}, version={}", id, versionLabel, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "更新失败: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * 3.2 单模型专属 Prompt 微调 (仅调整该模型的声学/参数 Prompt，不动公共歌词)
+     */
+    @PostMapping("/refine-model")
+    public RespEntity<AiProjectDTO> refineModelPrompt(@RequestBody RefineModelRequest req) {
+        if (req == null || StringUtils.isBlank(req.getProjectId())
+                || StringUtils.isBlank(req.getTrackPromptId())
+                || StringUtils.isBlank(req.getInstruction())) {
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "缺少必要参数", null);
+        }
+        try {
+            AiProjectDTO updated = promptMatrixService.refineModelPrompt(
+                    req.getProjectId(), req.getTrackPromptId(), req.getInstruction(), req.getEngineType());
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "模型专属微调完成", updated);
+        } catch (Exception e) {
+            log.error("❌ 模型专属微调失败: trackPromptId={}", req.getTrackPromptId(), e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "微调失败: " + e.getMessage(), null);
+        }
+    }
+
+    /**
      * 4. 获取工程列表
      */
     @GetMapping("/projects")
@@ -147,6 +201,20 @@ public class AiStudioController {
     }
 
     /**
+     * 5.1 按原曲 ID 获取最近一次保存的工程 (用于再次打开工作台自动恢复)
+     */
+    @GetMapping("/project/by-song/{songId}")
+    public RespEntity<AiProjectDTO> getLatestProjectBySong(@PathVariable("songId") String songId) {
+        try {
+            AiProjectDTO p = aiStudioRepository.getLatestProjectBySongId(songId);
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), p != null ? "查询成功" : "暂无历史工程", p);
+        } catch (Exception e) {
+            log.error("❌ 按曲目查询历史工程失败: songId={}", songId, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "查询失败: " + e.getMessage(), null);
+        }
+    }
+
+    /**
      * 6. 扫描并同步渲染音频资产
      */
     @PostMapping("/project/{id}/sync")
@@ -171,6 +239,21 @@ public class AiStudioController {
         } catch (Exception e) {
             log.error("❌ 全量扫描同步失败", e);
             return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "全量扫描失败: " + e.getMessage(), null);
+        }
+    }
+
+    /**
+     * 6.2 将工程正式加入离线 GPU 批量生产等待队列 (落盘 DB 状态为 QUEUED_FOR_GPU)
+     */
+    @PostMapping("/project/{id}/queue-gpu")
+    public RespEntity<AiProjectDTO> queueForGpu(@PathVariable("id") String id) {
+        try {
+            aiStudioRepository.updateProjectStatus(id, "QUEUED_FOR_GPU");
+            AiProjectDTO updated = aiStudioRepository.getProjectById(id);
+            return RespEntity.apply(CommonRespInfo.SUCCESS.getCode(), "已加入 GPU 等待生产队列", updated);
+        } catch (Exception e) {
+            log.error("❌ 加入 GPU 队列失败: id={}", id, e);
+            return RespEntity.apply(CommonRespInfo.SERVICE_EXECUTION_ERROR.getCode(), "入队失败: " + e.getMessage(), null);
         }
     }
 

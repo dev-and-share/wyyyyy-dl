@@ -26,6 +26,7 @@ public class AiProjectDTO {
     private String updatedAt;
 
     private List<AiTrackPromptDTO> trackPrompts;
+    private List<AiVersionPlanDTO> versionPlans;
     private List<AiRenderedAssetDTO> renderedAssets;
     private String analysisReport;
     private String lastAssistantMessage;

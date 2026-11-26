@@ -10,23 +10,21 @@ describe('AiSongProfileCard Component Tests', () => {
     aiStudioStore.open({ id: 186016, name: '晴天', artist: '周杰伦' });
   });
 
-  it('renders track title, artist and default 3x3=9 configuration', () => {
+  it('renders default 3x3=9 configuration', () => {
     const { getByText } = render(AiSongProfileCard);
 
-    expect(getByText('晴天')).toBeDefined();
-    expect(getByText('周杰伦')).toBeDefined();
-    expect(getByText(/3 模型 × 3 版本 = 9 首/)).toBeDefined();
-    expect(getByText(/生成 9 首最高峰 Prompt 矩阵/)).toBeDefined();
+    expect(getByText('推理引擎')).toBeDefined();
+    expect(getByText(/生成编曲方案 \(9\)/)).toBeDefined();
   });
 
   it('switches engine type on button click', async () => {
     const { getByText } = render(AiSongProfileCard);
 
-    const netApiBtn = getByText('网络 New API');
+    const netApiBtn = getByText('New API');
     await fireEvent.click(netApiBtn);
     expect(aiStudioStore.engineType).toBe('NEW_API');
 
-    const agyBtn = getByText('本地 agy CLI');
+    const agyBtn = getByText('本地 agy');
     await fireEvent.click(agyBtn);
     expect(aiStudioStore.engineType).toBe('LOCAL_AGY');
   });
@@ -40,17 +38,15 @@ describe('AiSongProfileCard Component Tests', () => {
 
     expect(aiStudioStore.selectedModels).toEqual(['YuE2-3B', 'MiniMax-Music3']);
     expect(aiStudioStore.totalPlannedSongs).toBe(6);
-    expect(getByText(/2 模型 × 3 版本 = 6 首/)).toBeDefined();
-    expect(getByText(/生成 6 首最高峰 Prompt 矩阵/)).toBeDefined();
+    expect(getByText(/生成编曲方案 \(6\)/)).toBeDefined();
 
     // Toggle off V3_EMOTIONAL -> from 3 to 2 versions
-    const v3Btn = getByText('版本3 · 极致情绪');
+    const v3Btn = getByText('方案3 · 情绪');
     await fireEvent.click(v3Btn);
 
     expect(aiStudioStore.selectedVersions).toEqual(['V1_FIDELITY', 'V2_FUSION']);
     expect(aiStudioStore.totalPlannedSongs).toBe(4);
-    expect(getByText(/2 模型 × 2 版本 = 4 首/)).toBeDefined();
-    expect(getByText(/生成 4 首最高峰 Prompt 矩阵/)).toBeDefined();
+    expect(getByText(/生成编曲方案 \(4\)/)).toBeDefined();
   });
 
   it('renders acoustic & music theory analysis details when present', () => {
@@ -82,19 +78,45 @@ describe('AiSongProfileCard Component Tests', () => {
     expect(getByText(/校园初恋、遗憾怀旧、轻快律动/)).toBeDefined();
   });
 
+  it('triggers reAnalyze when 重新提取 button is clicked', async () => {
+    const spyReAnalyze = vi.spyOn(aiStudioStore, 'reAnalyze').mockResolvedValue();
+    aiStudioStore.analysis = {
+      refSongId: '186016',
+      title: '晴天',
+      artist: '周杰伦',
+      album: '叶惠美',
+      duration: 269,
+      format: 'mp3',
+      bitrate: 320,
+      sampleRate: 44100,
+      genre: '03_campus_nostalgia_ballad',
+      lyric: '',
+      mood: '轻快',
+      instrumentation: '木吉他',
+      estimatedBpm: 104,
+      estimatedKey: 'G Major',
+      analysisSummary: '摘要'
+    };
+    aiStudioStore.analyzing = false;
+
+    const { getByText } = render(AiSongProfileCard);
+    await fireEvent.click(getByText('重新提取'));
+    expect(spyReAnalyze).toHaveBeenCalledTimes(1);
+  });
+
   it('shows loader when analyzing is true', () => {
     aiStudioStore.analyzing = true;
     aiStudioStore.analysis = null;
 
     const { getByText } = render(AiSongProfileCard);
-    expect(getByText('agy 正在逆向提取原曲乐理与情绪...')).toBeDefined();
+    expect(getByText('提取中...')).toBeDefined();
   });
 
   it('triggers generateMatrix on button click', async () => {
     const spyGenerate = vi.spyOn(aiStudioStore, 'generateMatrix').mockResolvedValue();
 
     const { getByText } = render(AiSongProfileCard);
-    const generateBtn = getByText(/生成 9 首最高峰 Prompt 矩阵/);
+    const generateBtn = getByText(/生成编曲方案 \(9\)/);
     await fireEvent.click(generateBtn);
 
     expect(spyGenerate).toHaveBeenCalledTimes(1);

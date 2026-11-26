@@ -13,7 +13,7 @@ describe('AiAssetSyncBar Component Tests', () => {
     const { getByText } = render(AiAssetSyncBar);
     expect(getByText('工程落盘目录: ./__AI__/projects/')).toBeDefined();
     expect(getByText('全量同步')).toBeDefined();
-    expect(getByText('同步当前工程 (Scan & Sync)')).toBeDefined();
+    expect(getByText('同步工程')).toBeDefined();
   });
 
   it('renders project directory and status when project is loaded', () => {
@@ -26,7 +26,8 @@ describe('AiAssetSyncBar Component Tests', () => {
 
     const { getByText } = render(AiAssetSyncBar);
     expect(getByText('/my/workspace/__AI__/projects/aip_001')).toBeDefined();
-    expect(getByText('等待离线批处理')).toBeDefined();
+    expect(getByText('待入 GPU 队列')).toBeDefined();
+    expect(getByText('加入 GPU 等待队列')).toBeDefined();
   });
 
   it('triggers syncAllProjects when 全量同步 button is clicked', async () => {

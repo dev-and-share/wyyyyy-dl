@@ -25,7 +25,7 @@
   }
 </script>
 
-<div class="flex flex-col gap-2.5 bg-black/30 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs text-neutral-300 shrink-0">
+<div class="flex flex-col gap-2.5 bg-neutral-900/55 rounded-2xl p-3 border border-white/10 text-xs text-neutral-300 shrink-0">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <!-- 左侧：工程状态与落盘路径 -->
     <div class="flex items-center gap-2.5 min-w-0">
@@ -39,22 +39,30 @@
       {#if project}
         <span class="px-2 py-0.5 rounded-md text-[10px] font-bold border {project.status === 'COMPLETED'
           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'}">
-          {project.status === 'COMPLETED' ? '母盘全量就绪' : '等待离线批处理'}
+          : project.status === 'QUEUED_FOR_GPU'
+            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+            : 'bg-amber-500/20 text-amber-300 border-amber-500/30'}">
+          {project.status === 'COMPLETED' ? '母盘全量就绪' : project.status === 'QUEUED_FOR_GPU' ? '已入 GPU 生产队列' : '待入 GPU 队列'}
         </span>
       {/if}
     </div>
 
-    <!-- 右侧：Colab 批处理准备与 Scan & Sync 按钮 -->
+    <!-- 右侧：GPU 队列与扫描同步 -->
     <div class="flex items-center gap-2">
-      <div class="hidden md:flex items-center gap-1 text-[11px] text-neutral-400 mr-1">
-        <Terminal size={12} class="text-cyan-400" />
-        <span>多歌曲全局批处理: <code>python colab_master_batch_runner.py</code></span>
-      </div>
+      <button
+        type="button"
+        class="py-1 px-2.5 rounded-lg bg-cyan-600/25 hover:bg-cyan-600/40 text-cyan-200 border border-cyan-500/30 flex items-center gap-1 font-medium transition-colors cursor-pointer active:scale-95 disabled:opacity-40 text-[11px]"
+        disabled={!project || project.status === 'QUEUED_FOR_GPU' || project.status === 'COMPLETED'}
+        onclick={() => aiStudioStore.queueForGpu()}
+        title="将选定的方案与模型加入离线 GPU 批量生产队列"
+      >
+        <Music size={11} />
+        <span>{project?.status === 'QUEUED_FOR_GPU' ? '已在 GPU 队列' : '加入 GPU 等待队列'}</span>
+      </button>
 
       <button
         type="button"
-        class="py-1 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 flex items-center gap-1 font-medium transition-all cursor-pointer active:scale-95 disabled:opacity-40 text-[11px]"
+        class="py-1 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 flex items-center gap-1 font-medium transition-colors cursor-pointer active:scale-95 disabled:opacity-40 text-[11px]"
         disabled={syncing}
         onclick={() => aiStudioStore.syncAllProjects()}
         title="全量扫描所有歌曲已渲染的母盘"
@@ -65,13 +73,13 @@
 
       <button
         type="button"
-        class="py-1.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 font-medium transition-all cursor-pointer active:scale-95 disabled:opacity-40"
+        class="py-1.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 font-medium transition-colors cursor-pointer active:scale-95 disabled:opacity-40"
         disabled={!project || syncing}
         onclick={() => aiStudioStore.syncAssets()}
         title="扫描当前工程渲染音频做资产管理"
       >
         <RefreshCw size={13} class={syncing ? 'animate-spin text-purple-400' : ''} />
-        <span>{syncing ? '扫描中...' : '同步当前工程 (Scan & Sync)'}</span>
+        <span>{syncing ? '扫描中...' : '同步工程'}</span>
       </button>
     </div>
   </div>

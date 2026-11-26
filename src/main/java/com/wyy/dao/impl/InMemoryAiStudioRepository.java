@@ -4,7 +4,9 @@ import com.wyy.dao.IAiStudioRepository;
 import com.wyy.models.dtos.AiProjectDTO;
 import com.wyy.models.dtos.AiRenderedAssetDTO;
 import com.wyy.models.dtos.AiSessionHistoryDTO;
+import com.wyy.models.dtos.AiSongAnalysisDTO;
 import com.wyy.models.dtos.AiTrackPromptDTO;
+import com.wyy.models.dtos.AiVersionPlanDTO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
@@ -24,7 +26,31 @@ public class InMemoryAiStudioRepository implements IAiStudioRepository {
     private final Map<String, AiProjectDTO> projects = new ConcurrentHashMap<>();
     private final Map<String, List<AiSessionHistoryDTO>> sessions = new ConcurrentHashMap<>();
     private final Map<String, List<AiTrackPromptDTO>> prompts = new ConcurrentHashMap<>();
+    private final Map<String, List<AiVersionPlanDTO>> versionPlans = new ConcurrentHashMap<>();
     private final Map<String, List<AiRenderedAssetDTO>> assets = new ConcurrentHashMap<>();
+    private final Map<String, AiSongAnalysisDTO> analyses = new ConcurrentHashMap<>();
+
+    @Override
+    public void saveSongAnalysis(AiSongAnalysisDTO analysis) {
+        if (analysis != null && analysis.getRefSongId() != null) {
+            analyses.put(analysis.getRefSongId(), analysis);
+        }
+    }
+
+    @Override
+    public AiSongAnalysisDTO getSongAnalysisBySongId(String refSongId) {
+        return refSongId != null ? analyses.get(refSongId) : null;
+    }
+
+    @Override
+    public AiProjectDTO getLatestProjectBySongId(String refSongId) {
+        if (refSongId == null) return null;
+        return projects.values().stream()
+                .filter(p -> refSongId.equals(p.getRefSongId()))
+                .findFirst()
+                .map(p -> getProjectById(p.getId()))
+                .orElse(null);
+    }
 
     @Override
     public void saveProject(AiProjectDTO project) {
@@ -38,6 +64,7 @@ public class InMemoryAiStudioRepository implements IAiStudioRepository {
         AiProjectDTO p = projects.get(id);
         if (p != null) {
             p.setTrackPrompts(getTrackPromptsByProjectId(id));
+            p.setVersionPlans(getVersionPlansByProjectId(id));
             p.setRenderedAssets(getRenderedAssetsByProjectId(id));
         }
         return p;
@@ -80,6 +107,29 @@ public class InMemoryAiStudioRepository implements IAiStudioRepository {
     @Override
     public List<AiTrackPromptDTO> getTrackPromptsByProjectId(String projectId) {
         return prompts.getOrDefault(projectId, new ArrayList<>());
+    }
+
+    @Override
+    public void deleteTrackPromptsByProjectAndVersion(String projectId, String versionLabel) {
+        List<AiTrackPromptDTO> list = prompts.get(projectId);
+        if (list != null) {
+            list.removeIf(t -> versionLabel != null && versionLabel.equalsIgnoreCase(t.getVersionLabel()));
+        }
+    }
+
+    @Override
+    public void saveVersionPlans(List<AiVersionPlanDTO> plans) {
+        if (plans == null || plans.isEmpty()) return;
+        for (AiVersionPlanDTO plan : plans) {
+            List<AiVersionPlanDTO> list = versionPlans.computeIfAbsent(plan.getProjectId(), k -> new ArrayList<>());
+            list.removeIf(p -> p.getId().equals(plan.getId()));
+            list.add(plan);
+        }
+    }
+
+    @Override
+    public List<AiVersionPlanDTO> getVersionPlansByProjectId(String projectId) {
+        return new ArrayList<>(versionPlans.getOrDefault(projectId, new ArrayList<>()));
     }
 
     @Override

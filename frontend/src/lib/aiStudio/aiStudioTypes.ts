@@ -46,6 +46,21 @@ export interface AiRenderedAsset {
   syncedAt?: string;
 }
 
+export interface AiVersionPlan {
+  id: string;
+  projectId: string;
+  versionLabel: 'V1_FIDELITY' | 'V2_FUSION' | 'V3_EMOTIONAL' | string;
+  planTitle: string;
+  genre: string;
+  bpm: number;
+  musicalKey: string;
+  arrangementNotes: string;
+  lyricsText: string;
+  sessionId?: string;
+  appliedModels: string[];
+  updatedAt?: string;
+}
+
 export interface AiProject {
   id: string;
   refSongId: string;
@@ -58,6 +73,7 @@ export interface AiProject {
   updatedAt: string;
   analysisReport?: string;
   trackPrompts?: AiTrackPrompt[];
+  versionPlans?: AiVersionPlan[];
   renderedAssets?: AiRenderedAsset[];
   lastAssistantMessage?: string;
   selectedModels?: string[];

@@ -20,7 +20,7 @@ describe('AiChatRefineDrawer Component Tests', () => {
     aiStudioStore.selectedVersion = 'V1_FIDELITY';
     const { getByText } = render(AiChatRefineDrawer);
 
-    expect(getByText(/版本1 · 原味升华 会话/)).toBeDefined();
+    expect(getByText('版本1 · 原味升华')).toBeDefined();
   });
 
   it('renders chat messages filtered for current version session', () => {
@@ -53,7 +53,7 @@ describe('AiChatRefineDrawer Component Tests', () => {
 
     const { getByPlaceholderText, getByTitle } = render(AiChatRefineDrawer);
 
-    const textarea = getByPlaceholderText(/针对【版本1 · 原味升华】输入指令/);
+    const textarea = getByPlaceholderText(/微调【版本1 · 原味升华】歌词或编曲/);
     await fireEvent.input(textarea, { target: { value: '延长第二段歌词' } });
 
     const sendBtn = getByTitle('发送追问指令');
@@ -66,6 +66,6 @@ describe('AiChatRefineDrawer Component Tests', () => {
     aiStudioStore.refining = true;
 
     const { getByText } = render(AiChatRefineDrawer);
-    expect(getByText(/agy 正在针对【版本1 · 原味升华】深度推演并更新歌词/)).toBeDefined();
+    expect(getByText('正在微调...')).toBeDefined();
   });
 });

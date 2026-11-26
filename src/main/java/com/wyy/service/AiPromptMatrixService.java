@@ -8,6 +8,7 @@ import com.wyy.models.dtos.AiProjectDTO;
 import com.wyy.models.dtos.AiSessionHistoryDTO;
 import com.wyy.models.dtos.AiSongAnalysisDTO;
 import com.wyy.models.dtos.AiTrackPromptDTO;
+import com.wyy.models.dtos.AiVersionPlanDTO;
 import com.wyy.service.ai.AiEngineResponse;
 import com.wyy.service.ai.AiEngineRouter;
 import lombok.extern.slf4j.Slf4j;
@@ -78,8 +79,9 @@ public class AiPromptMatrixService {
         new File(projectDir, "prompts").mkdirs();
         new File(projectDir, "renders").mkdirs();
 
-        // 4. 为每个选中的版本分别启动独立的 AI Session 进行创作
+        // 4. 为每个选中的版本分别启动独立的 AI Session 进行创作 (每个版本产出 1 套主歌词与编曲方案，持久化落盘 DB)
         List<AiTrackPromptDTO> allPrompts = new ArrayList<>();
+        List<AiVersionPlanDTO> versionPlans = new ArrayList<>();
         StringBuilder combinedReport = new StringBuilder(analysis.getAnalysisSummary() + "\n\n");
         Map<String, String> versionSessionMap = new HashMap<>();
 
@@ -101,15 +103,33 @@ public class AiPromptMatrixService {
                     .engineType(engineType)
                     .sessionId(convId)
                     .role("assistant")
-                    .content("【" + getVersionName(vLabel) + " 独立企划】\n" + (StringUtils.isNotBlank(respText) ? respText : "已生成该版本专属独立长篇歌词与三大模型战力提示词。"))
+                    .content("【" + getVersionName(vLabel) + " 独立企划】\n" + (StringUtils.isNotBlank(respText) ? respText : "已生成该版本专属独立长篇歌词与编曲方案。"))
                     .build());
 
             combinedReport.append("### 📀 版本企划方案: ").append(getVersionName(vLabel)).append("\n")
                     .append("- **会话 Session ID**: `").append(convId).append("`\n")
                     .append(StringUtils.abbreviate(respText, 500)).append("\n\n");
 
-            // 为该版本生成所有已选模型的专属音轨
-            List<AiTrackPromptDTO> vTracks = buildVersionTracks(projectId, analysis, vLabel, respText, models);
+            // 构建并保存该版本的主歌词与编曲方案 (与模型解耦)
+            String masterLyrics = buildDedicatedLyrics(analysis, vLabel, "UNIFIED");
+            String arrangementNotes = buildArrangementNotes(analysis, vLabel);
+            AiVersionPlanDTO planDTO = AiVersionPlanDTO.builder()
+                    .id(projectId + "_" + vLabel.toLowerCase())
+                    .projectId(projectId)
+                    .versionLabel(vLabel)
+                    .planTitle("《" + analysis.getTitle() + " · " + getVersionName(vLabel) + "》")
+                    .genre(analysis.getGenre())
+                    .bpm(getBpmForVersion(analysis.getEstimatedBpm(), vLabel))
+                    .musicalKey(analysis.getEstimatedKey())
+                    .arrangementNotes(arrangementNotes)
+                    .lyricsText(masterLyrics)
+                    .sessionId(convId)
+                    .appliedModels(new ArrayList<>(models))
+                    .build();
+            versionPlans.add(planDTO);
+
+            // 为该版本生成所有已选模型的专属适配器 Prompt (共用同一套 masterLyrics)
+            List<AiTrackPromptDTO> vTracks = buildVersionTracksWithLyrics(projectId, analysis, vLabel, masterLyrics, models);
             allPrompts.addAll(vTracks);
         }
 
@@ -127,12 +147,14 @@ public class AiPromptMatrixService {
                 .status("PROMPT_READY")
                 .analysisReport(combinedReport.toString())
                 .trackPrompts(allPrompts)
+                .versionPlans(versionPlans)
                 .selectedModels(models)
                 .selectedVersions(versions)
                 .sessionHistories(aiStudioRepository.getSessionHistories(projectId))
                 .build();
 
         aiStudioRepository.saveProject(projectDTO);
+        aiStudioRepository.saveVersionPlans(versionPlans);
         aiStudioRepository.saveTrackPrompts(allPrompts);
 
         log.info("🎉 [AI Studio] 成功创建工程: id={}, 共 {} 首定制曲目，跨 {} 个独立 Session",
@@ -222,14 +244,29 @@ public class AiPromptMatrixService {
 
         List<AiTrackPromptDTO> currentTracks = aiStudioRepository.getTrackPromptsByProjectId(projectId);
         List<AiTrackPromptDTO> updatedTracks = new ArrayList<>();
+        List<AiVersionPlanDTO> plans = aiStudioRepository.getVersionPlansByProjectId(projectId);
+
+        String refinedVerse = "\n\n[Refined Verse - 追问深化段落]\n" +
+                "(根据制作人追问指令「" + instruction + "」深化拓展)\n" +
+                "岁月在琴弦间泛起微光，那些未完成的誓言仍在风中激荡。\n" +
+                "走过漫长雨季，回望最初的晴朗，心跳的声音比任何旋律都滚烫！";
+
+        if (needUpdateTracks && plans != null) {
+            for (AiVersionPlanDTO vp : plans) {
+                if (vLabel.equalsIgnoreCase(vp.getVersionLabel())) {
+                    vp.setLyricsText((vp.getLyricsText() != null ? vp.getLyricsText() : "") + refinedVerse);
+                    vp.setArrangementNotes((vp.getArrangementNotes() != null ? vp.getArrangementNotes() : "") +
+                            "\n• [追问调优] " + instruction);
+                    vp.setSessionId(updatedConvId);
+                }
+            }
+            aiStudioRepository.saveVersionPlans(plans);
+        }
 
         for (AiTrackPromptDTO t : currentTracks) {
             if (vLabel.equalsIgnoreCase(t.getVersionLabel())) {
                 if (needUpdateTracks) {
-                    t.setLyricsPlan(t.getLyricsPlan() + "\n\n[Refined Verse - 追问深化段落]\n" +
-                            "(根据制作人追问指令「" + instruction + "」深化拓展)\n" +
-                            "岁月在琴弦间泛起微光，那些未完成的誓言仍在风中激荡。\n" +
-                            "走过漫长雨季，回望最初的晴朗，心跳的声音比任何旋律都滚烫！");
+                    t.setLyricsPlan(t.getLyricsPlan() + refinedVerse);
                     t.setPromptContent(t.getPromptContent() + "\nRefined Instruction: " + instruction);
                 }
             }
@@ -251,11 +288,97 @@ public class AiPromptMatrixService {
         project.setLastAssistantMessage(respText);
         project.setAnalysisReport(project.getAnalysisReport() + "\n\n---\n**[" + getVersionName(vLabel) + " 追问调优]**\n- **指令**: " + instruction + "\n" + respText);
         project.setTrackPrompts(updatedTracks);
+        project.setVersionPlans(plans);
         project.setSessionHistories(aiStudioRepository.getSessionHistories(projectId));
         aiStudioRepository.saveProject(project);
 
         log.info("✅ [AI 追问完成] 工程:{} 成功处理版本 [{}] 追问", projectId, vLabel);
         return project;
+    }
+
+    /**
+     * 🎛️ 动态切换某套「歌词与编曲方案」所应用的渲染模型列表 (1~N 个模型，共享同一套歌词与编曲)
+     */
+    public AiProjectDTO updateVersionModels(String projectId, String targetVersion, List<String> models) {
+        AiProjectDTO project = aiStudioRepository.getProjectById(projectId);
+        if (project == null) {
+            throw new IllegalArgumentException("未找到 AI 工程: " + projectId);
+        }
+        if (models == null || models.isEmpty()) {
+            throw new IllegalArgumentException("至少需要选择 1 个应用模型");
+        }
+
+        String vLabel = StringUtils.isNotBlank(targetVersion) ? normalizeVersionLabel(targetVersion) : "V1_FIDELITY";
+        List<AiVersionPlanDTO> plans = aiStudioRepository.getVersionPlansByProjectId(projectId);
+        AiVersionPlanDTO targetPlan = plans.stream()
+                .filter(p -> vLabel.equalsIgnoreCase(p.getVersionLabel()))
+                .findFirst()
+                .orElse(null);
+
+        String masterLyrics = (targetPlan != null && StringUtils.isNotBlank(targetPlan.getLyricsText()))
+                ? targetPlan.getLyricsText()
+                : buildDedicatedLyrics(AiSongAnalysisDTO.builder().title(project.getRefSongTitle()).build(), vLabel, "UNIFIED");
+
+        AiSongAnalysisDTO analysis = AiSongAnalysisDTO.builder()
+                .refSongId(project.getRefSongId())
+                .title(project.getRefSongTitle())
+                .artist(project.getRefArtist())
+                .genre(targetPlan != null ? targetPlan.getGenre() : project.getGenreCategory())
+                .estimatedBpm(targetPlan != null && targetPlan.getBpm() != null ? targetPlan.getBpm() : 104)
+                .estimatedKey(targetPlan != null && StringUtils.isNotBlank(targetPlan.getMusicalKey()) ? targetPlan.getMusicalKey() : "G Major")
+                .instrumentation("原声吉他、钢琴、弦乐群、鼓组")
+                .mood("定制编曲")
+                .build();
+
+        if (targetPlan != null) {
+            targetPlan.setAppliedModels(new ArrayList<>(models));
+            aiStudioRepository.saveVersionPlans(List.of(targetPlan));
+        }
+
+        aiStudioRepository.deleteTrackPromptsByProjectAndVersion(projectId, vLabel);
+        List<AiTrackPromptDTO> newTracks = buildVersionTracksWithLyrics(projectId, analysis, vLabel, masterLyrics, models);
+        aiStudioRepository.saveTrackPrompts(newTracks);
+
+        return aiStudioRepository.getProjectById(projectId);
+    }
+
+    /**
+     * 🛠️ 单模型专属微调栏：只针对特定模型实例的 Prompt 与超参进行 AI 调优，不动公共主歌词与其他模型
+     */
+    public AiProjectDTO refineModelPrompt(String projectId, String trackPromptId, String instruction, String preferredEngine) {
+        AiProjectDTO project = aiStudioRepository.getProjectById(projectId);
+        if (project == null) {
+            throw new IllegalArgumentException("未找到 AI 工程: " + projectId);
+        }
+        List<AiTrackPromptDTO> currentTracks = aiStudioRepository.getTrackPromptsByProjectId(projectId);
+        AiTrackPromptDTO targetTrack = currentTracks.stream()
+                .filter(t -> trackPromptId.equals(t.getId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("未找到指定模型轨道: " + trackPromptId));
+
+        String engineType = StringUtils.isNotBlank(preferredEngine) ? preferredEngine : "LOCAL_AGY";
+        String modelRefinePrompt = String.format(
+                "你正在针对《%s》的【%s】模型专属Prompt进行声学参数与指令微调。\n" +
+                "当前模型 Prompt：\n%s\n\n" +
+                "制作人针对该模型的专属微调指令：「%s」\n" +
+                "请直接输出调整后的模型声学提示词增强段落（简明扼要的英文声学/混音/演绎标签，无需重写歌词）。",
+                project.getRefSongTitle(), targetTrack.getModelName(), targetTrack.getPromptContent(), instruction
+        );
+
+        AiEngineResponse resp = engineRouter.execute(modelRefinePrompt, null, "medium", engineType);
+        String aiSuggestion = (resp != null && resp.isSuccess() && StringUtils.isNotBlank(resp.getResponseText()))
+                ? StringUtils.abbreviate(resp.getResponseText().trim(), 400)
+                : "Model-specific tuning applied: " + instruction;
+
+        targetTrack.setPromptContent(targetTrack.getPromptContent() +
+                "\n\n[Model-Specific Tuning (" + targetTrack.getModelName() + ")]: " + instruction +
+                "\n" + aiSuggestion);
+
+        aiStudioRepository.saveTrackPrompts(List.of(targetTrack));
+
+        AiProjectDTO refreshed = aiStudioRepository.getProjectById(projectId);
+        refreshed.setLastAssistantMessage("已针对模型【" + targetTrack.getModelName() + "】完成专属 Prompt 微调（公共主歌词保持不变）。");
+        return refreshed;
     }
 
     private String buildVersionBriefingPrompt(AiSongAnalysisDTO a, String vLabel) {
@@ -284,7 +407,17 @@ public class AiPromptMatrixService {
         }
     }
 
-    private List<AiTrackPromptDTO> buildVersionTracks(String projectId, AiSongAnalysisDTO a, String vLabel, String aiThoughts, List<String> models) {
+    private String buildArrangementNotes(AiSongAnalysisDTO a, String vLabel) {
+        if ("V1_FIDELITY".equalsIgnoreCase(vLabel)) {
+            return "经典原味升华：保留原曲核心和声走向与青春校园叙事，以双轨原声木吉他、大提琴复调对位、温暖电贝斯与干脆架子鼓构建 48kHz 母带级全息声场。";
+        } else if ("V2_FUSION".equalsIgnoreCase(vLabel)) {
+            return "跨界裂变融合：打破常规流派边界，融合赛博工业合成器、808 重低音滑音与新国风古筝切分音，BPM 提速至 " + getBpmForVersion(a.getEstimatedBpm(), vLabel) + "，营造强张力跨界碰撞。";
+        } else {
+            return "极致情绪微表情：以近距离拾音弱音立式钢琴独白开场，逐步叠加气声、颤音与大动态弦乐群，至 Bridge 与 Final Chorus 爆发出院线级真声 Belting 撕裂张力。";
+        }
+    }
+
+    private List<AiTrackPromptDTO> buildVersionTracksWithLyrics(String projectId, AiSongAnalysisDTO a, String vLabel, String masterLyrics, List<String> models) {
         List<AiTrackPromptDTO> list = new ArrayList<>();
         String vName = getVersionName(vLabel);
 
@@ -298,7 +431,7 @@ public class AiPromptMatrixService {
                         .modelName("YuE2-3B")
                         .trackTitle("《" + a.getTitle() + " · " + vName + "》")
                         .promptContent(buildYuE2Prompt(a, vLabel))
-                        .lyricsPlan(buildDedicatedLyrics(a, vLabel, "YuE2-3B"))
+                        .lyricsPlan(masterLyrics)
                         .modelParamsJson("{\"backend\": \"pt\", \"cot\": \"full\", \"seed\": 20261221, \"sample_rate\": 48000}")
                         .build());
             } else if (mKey.contains("minimax")) {
@@ -309,7 +442,7 @@ public class AiPromptMatrixService {
                         .modelName("MiniMax-Music3")
                         .trackTitle("《" + a.getTitle() + " · " + vName + "》")
                         .promptContent(buildMiniMaxPrompt(a, vLabel))
-                        .lyricsPlan(buildDedicatedLyrics(a, vLabel, "MiniMax-Music3"))
+                        .lyricsPlan(masterLyrics)
                         .modelParamsJson("{\"precision\": \"int8_convrot\", \"vocal_expression\": \"rich_breath_vibrato\", \"sample_rate\": 48000}")
                         .build());
             } else if (mKey.contains("ace") || mKey.contains("step")) {
@@ -320,7 +453,7 @@ public class AiPromptMatrixService {
                         .modelName("ACE-Step-1.5")
                         .trackTitle("《" + a.getTitle() + " · " + vName + "》")
                         .promptContent(buildAceStepPrompt(a, vLabel))
-                        .lyricsPlan(buildDedicatedLyrics(a, vLabel, "ACE-Step-1.5"))
+                        .lyricsPlan(masterLyrics)
                         .modelParamsJson("{\"backend\": \"pt\", \"guidance_scale\": 7.0, \"bpm\": " + (getBpmForVersion(a.getEstimatedBpm(), vLabel)) + ", \"sample_rate\": 48000}")
                         .build());
             }

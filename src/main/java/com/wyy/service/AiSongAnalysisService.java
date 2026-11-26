@@ -2,6 +2,7 @@ package com.wyy.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wyy.dao.IAiStudioRepository;
 import com.wyy.dao.IHistoryStorageRepository;
 import com.wyy.models.dtos.AiSongAnalysisDTO;
 import com.wyy.models.dtos.DownloadHistoryItem;
@@ -27,6 +28,9 @@ public class AiSongAnalysisService {
     @Autowired(required = false)
     private IHistoryStorageRepository downloadHistoryDAO;
 
+    @Autowired(required = false)
+    private IAiStudioRepository aiStudioRepository;
+
     @Autowired
     private NeteaseAPIService neteaseAPIService;
 
@@ -38,16 +42,30 @@ public class AiSongAnalysisService {
     private static final Pattern LRC_TIME_TAG_PATTERN = Pattern.compile("\\[\\d{2}:\\d{2}[\\.:]?\\d{0,3}\\]");
 
     /**
-     * 对指定歌曲进行多维逆向解构分析 (默认使用 LOCAL_AGY)
+     * 对指定歌曲进行多维逆向解构分析 (默认使用 LOCAL_AGY，优先读取 DB 缓存)
      */
     public AiSongAnalysisDTO analyzeSong(String songId, String hintTitle, String hintArtist) {
-        return analyzeSong(songId, hintTitle, hintArtist, "LOCAL_AGY");
+        return analyzeSong(songId, hintTitle, hintArtist, "LOCAL_AGY", false);
     }
 
     /**
-     * 对指定歌曲进行多维逆向解构分析，调用指定 AI 推理引擎
+     * 对指定歌曲进行多维逆向解构分析，调用指定 AI 推理引擎 (优先读取 DB 缓存)
      */
     public AiSongAnalysisDTO analyzeSong(String songId, String hintTitle, String hintArtist, String preferredEngine) {
+        return analyzeSong(songId, hintTitle, hintArtist, preferredEngine, false);
+    }
+
+    /**
+     * 对指定歌曲进行多维逆向解构分析，支持 forceRefresh 强制重新提取 (Retry)
+     */
+    public AiSongAnalysisDTO analyzeSong(String songId, String hintTitle, String hintArtist, String preferredEngine, boolean forceRefresh) {
+        if (!forceRefresh && aiStudioRepository != null && StringUtils.isNotBlank(songId)) {
+            AiSongAnalysisDTO cached = aiStudioRepository.getSongAnalysisBySongId(songId);
+            if (cached != null) {
+                log.info("📦 [AI Analysis DB] 命中已保存的原曲解构记录: songId={}, title={}", songId, cached.getTitle());
+                return cached;
+            }
+        }
         String title = StringUtils.isNotBlank(hintTitle) ? hintTitle : "未知曲目";
         String artist = StringUtils.isNotBlank(hintArtist) ? hintArtist : "未知艺术家";
         String album = "单曲 / 专辑";
@@ -152,7 +170,7 @@ public class AiSongAnalysisService {
 
         log.info("🎶 [AI 乐理解构完成] 曲目:《{}》 赛道:{} 调性:{} BPM:{}", title, profile.genreName, profile.estimatedKey, profile.estimatedBpm);
 
-        return AiSongAnalysisDTO.builder()
+        AiSongAnalysisDTO result = AiSongAnalysisDTO.builder()
                 .refSongId(songId)
                 .title(title)
                 .artist(artist)
@@ -169,6 +187,12 @@ public class AiSongAnalysisService {
                 .estimatedKey(profile.estimatedKey)
                 .analysisSummary(summary)
                 .build();
+
+        if (aiStudioRepository != null && StringUtils.isNotBlank(songId)) {
+            aiStudioRepository.saveSongAnalysis(result);
+        }
+
+        return result;
     }
 
     private GenreProfile performAiMusicAnalysis(String title, String artist, String album, String format,

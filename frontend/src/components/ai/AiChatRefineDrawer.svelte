@@ -29,69 +29,52 @@
   }
 </script>
 
-<div class="flex flex-col h-full bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-xs text-neutral-300 overflow-hidden">
-  <!-- 头部：显示当前版本的独立 Session 标识 -->
+<div class="flex flex-col h-full bg-neutral-900/55 rounded-2xl p-4 border border-white/10 text-xs text-neutral-300 overflow-hidden">
+  <!-- 头部 -->
   <div class="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
-    <div class="flex items-center gap-1.5 font-semibold text-neutral-200">
-      <Bot size={15} class="text-purple-400" />
-      <span>AI 音乐总监 · 持续追问</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium font-mono">
-        {versionLabels[selectedVersion] || selectedVersion} 会话
-      </span>
-    </div>
+    <span class="font-semibold text-zinc-200">编曲微调</span>
+    <span class="text-[10px] px-2 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/10">
+      {versionLabels[selectedVersion] || selectedVersion}
+    </span>
   </div>
 
-  <!-- 消息流容器 (按当前版本展示独立上下文) -->
+  <!-- 消息流 -->
   <div class="flex-1 overflow-y-auto py-3 space-y-3 pr-1">
     {#each messages as msg (msg.id)}
       <div class="flex gap-2 {msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-        {#if msg.role !== 'user'}
-          <div class="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
-            <Sparkles size={13} />
-          </div>
-        {/if}
-
         <div
-          class="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[11px] leading-relaxed whitespace-pre-wrap {msg.role === 'user'
-            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-xs shadow-sm'
-            : 'bg-neutral-900/80 text-neutral-200 border border-white/5 rounded-bl-xs'}"
+          class="max-w-[88%] rounded-xl px-3 py-2 text-[11px] leading-relaxed whitespace-pre-wrap {msg.role === 'user'
+            ? 'bg-zinc-100 text-zinc-950'
+            : 'bg-zinc-900/80 text-zinc-200 border border-white/5'}"
         >
           {msg.content}
         </div>
-
-        {#if msg.role === 'user'}
-          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0 border border-indigo-500/30">
-            <User size={13} />
-          </div>
-        {/if}
       </div>
     {/each}
 
     {#if refining}
-      <div class="flex gap-2 justify-start items-center text-purple-400 text-[11px] py-1">
-        <Loader2 size={14} class="animate-spin" />
-        <span>agy 正在针对【{versionLabels[selectedVersion]}】深度推演并更新歌词...</span>
+      <div class="flex gap-2 justify-start items-center text-zinc-400 text-[11px] py-1">
+        <Loader2 size={13} class="animate-spin" />
+        <span>正在微调...</span>
       </div>
     {/if}
   </div>
 
-  <!-- 底部追问输入框 -->
+  <!-- 输入框 -->
   <div class="pt-2 border-t border-white/10 shrink-0">
-    <div class="relative flex items-end bg-neutral-900/90 rounded-xl border border-white/10 focus-within:border-purple-500/50 transition-all p-1.5">
+    <div class="relative flex items-end bg-black/40 rounded-xl border border-white/10 focus-within:border-white/30 transition-colors p-1.5">
       <textarea
         bind:value={inputPrompt}
         onkeydown={handleKeyDown}
-        placeholder={project ? `针对【${versionLabels[selectedVersion]}】输入指令 (如：延长歌词、增加木吉他SOLO)...` : "请先生成 Prompt 矩阵..."}
+        placeholder={project ? `微调【${versionLabels[selectedVersion]}】歌词或编曲...` : "请先生成方案..."}
         disabled={!project || refining}
         rows="2"
-        class="w-full bg-transparent resize-none text-[11px] text-white placeholder-neutral-500 outline-none px-2 py-1 leading-relaxed disabled:cursor-not-allowed"
+        class="w-full bg-transparent resize-none text-[11px] text-white placeholder-zinc-500 outline-none px-2 py-1 leading-relaxed disabled:cursor-not-allowed"
       ></textarea>
 
       <button
         type="button"
-        class="w-8 h-8 rounded-lg bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center shrink-0 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 shadow-sm"
+        class="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 flex items-center justify-center shrink-0 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         disabled={!project || refining || !inputPrompt.trim()}
         onclick={handleSubmit}
         title="发送追问指令"

@@ -1,5 +1,6 @@
 package com.wyy.service;
 
+import com.wyy.dao.IAiStudioRepository;
 import com.wyy.models.dtos.AiSongAnalysisDTO;
 import com.wyy.service.ai.AiEngineResponse;
 import com.wyy.service.ai.AiEngineRouter;
@@ -12,7 +13,7 @@ import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @DisplayName("🔬 AI 歌曲解构与逆向分析服务单元测试")
 public class AiSongAnalysisServiceTest {
@@ -25,6 +26,9 @@ public class AiSongAnalysisServiceTest {
 
     @Mock
     private AiEngineRouter engineRouter;
+
+    @Mock
+    private IAiStudioRepository aiStudioRepository;
 
     @BeforeEach
     void setUp() {
@@ -62,6 +66,36 @@ public class AiSongAnalysisServiceTest {
         assertEquals(104, result.getEstimatedBpm());
         assertTrue(result.getInstrumentation().contains("木吉他"));
         assertTrue(result.getMood().contains("青涩初恋"));
+        verify(aiStudioRepository, times(1)).saveSongAnalysis(any(AiSongAnalysisDTO.class));
+    }
+
+    @Test
+    @DisplayName("测试 DB 缓存命中与 forceRefresh 重新提取 (Retry)")
+    void testAnalysisDbCacheAndForceRefresh() {
+        AiSongAnalysisDTO cached = AiSongAnalysisDTO.builder()
+                .refSongId("186016")
+                .title("晴天")
+                .artist("周杰伦")
+                .genre("03_campus_nostalgia_ballad")
+                .estimatedKey("G Major")
+                .estimatedBpm(104)
+                .build();
+
+        when(aiStudioRepository.getSongAnalysisBySongId("186016")).thenReturn(cached);
+
+        // 1. 常规请求命中 DB 缓存，不调用 agy 引擎
+        AiSongAnalysisDTO hit = analysisService.analyzeSong("186016", "晴天", "周杰伦", "LOCAL_AGY", false);
+        assertEquals(104, hit.getEstimatedBpm());
+        verify(engineRouter, never()).execute(anyString(), any(), anyString(), anyString());
+
+        // 2. forceRefresh=true 强制重新提取并覆盖写入 DB
+        when(engineRouter.execute(anyString(), any(), anyString(), anyString())).thenReturn(
+                AiEngineResponse.builder().success(false).errorMsg("fallback").build()
+        );
+        AiSongAnalysisDTO refreshed = analysisService.analyzeSong("186016", "晴天", "周杰伦", "LOCAL_AGY", true);
+        assertNotNull(refreshed);
+        verify(engineRouter, times(1)).execute(anyString(), any(), anyString(), anyString());
+        verify(aiStudioRepository, times(1)).saveSongAnalysis(any(AiSongAnalysisDTO.class));
     }
 
     @Test

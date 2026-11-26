@@ -26,11 +26,18 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const aiStudioService = {
-  async analyzeSong(songId: string, title?: string, artist?: string, engineType: string = 'LOCAL_AGY'): Promise<AiSongAnalysis> {
+  async analyzeSong(
+    songId: string,
+    title?: string,
+    artist?: string,
+    engineType: string = 'LOCAL_AGY',
+    forceRefresh: boolean = false
+  ): Promise<AiSongAnalysis> {
     const params = new URLSearchParams({ songId });
     if (title) params.append('title', title);
     if (artist) params.append('artist', artist);
     if (engineType) params.append('engineType', engineType);
+    if (forceRefresh) params.append('forceRefresh', 'true');
     return request<AiSongAnalysis>(`/v3/ai/analyze?${params.toString()}`);
   },
 
@@ -60,12 +67,39 @@ export const aiStudioService = {
     });
   },
 
+  async updateVersionModels(
+    projectId: string,
+    versionLabel: string,
+    models: string[]
+  ): Promise<AiProject> {
+    return request<AiProject>(`/v3/ai/project/${encodeURIComponent(projectId)}/version/${encodeURIComponent(versionLabel)}/models`, {
+      method: 'POST',
+      body: JSON.stringify({ models })
+    });
+  },
+
+  async refineModelPrompt(
+    projectId: string,
+    trackPromptId: string,
+    instruction: string,
+    engineType: string = 'LOCAL_AGY'
+  ): Promise<AiProject> {
+    return request<AiProject>('/v3/ai/refine-model', {
+      method: 'POST',
+      body: JSON.stringify({ projectId, trackPromptId, instruction, engineType })
+    });
+  },
+
   async listProjects(limit: number = 50): Promise<AiProject[]> {
     return request<AiProject[]>(`/v3/ai/projects?limit=${limit}`);
   },
 
   async getProject(id: string): Promise<AiProject> {
     return request<AiProject>(`/v3/ai/project/${encodeURIComponent(id)}`);
+  },
+
+  async getLatestProjectBySong(songId: string): Promise<AiProject | null> {
+    return request<AiProject | null>(`/v3/ai/project/by-song/${encodeURIComponent(songId)}`);
   },
 
   async syncAssets(id: string): Promise<AiRenderedAsset[]> {
@@ -76,6 +110,12 @@ export const aiStudioService = {
 
   async syncAllProjects(): Promise<{ scannedProjects: number; totalSyncedAssets: number; completedProjects: number }> {
     return request<{ scannedProjects: number; totalSyncedAssets: number; completedProjects: number }>('/v3/ai/sync-all', {
+      method: 'POST'
+    });
+  },
+
+  async queueProjectForGpu(id: string): Promise<AiProject> {
+    return request<AiProject>(`/v3/ai/project/${encodeURIComponent(id)}/queue-gpu`, {
       method: 'POST'
     });
   },

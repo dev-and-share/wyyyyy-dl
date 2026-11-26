@@ -4,9 +4,12 @@ import com.wyy.dao.IAiStudioRepository;
 import com.wyy.models.dtos.AiProjectDTO;
 import com.wyy.models.dtos.AiRenderedAssetDTO;
 import com.wyy.models.dtos.AiSessionHistoryDTO;
+import com.wyy.models.dtos.AiSongAnalysisDTO;
 import com.wyy.models.dtos.AiTrackPromptDTO;
+import com.wyy.models.dtos.AiVersionPlanDTO;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,6 +17,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -81,6 +85,40 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
                 "synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                 ")";
 
+        String createAnalysisTableSql = "CREATE TABLE IF NOT EXISTS ai_song_analysis (" +
+                "ref_song_id VARCHAR(64) PRIMARY KEY, " +
+                "title VARCHAR(255), " +
+                "artist VARCHAR(255), " +
+                "album VARCHAR(255), " +
+                "duration INT, " +
+                "format VARCHAR(32), " +
+                "bitrate INT, " +
+                "sample_rate INT, " +
+                "genre VARCHAR(128), " +
+                "lyric TEXT, " +
+                "mood TEXT, " +
+                "instrumentation TEXT, " +
+                "estimated_bpm INT, " +
+                "estimated_key VARCHAR(64), " +
+                "analysis_summary TEXT, " +
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                ")";
+
+        String createVersionPlanTableSql = "CREATE TABLE IF NOT EXISTS ai_version_plan (" +
+                "id VARCHAR(128) PRIMARY KEY, " +
+                "project_id VARCHAR(64), " +
+                "version_label VARCHAR(64), " +
+                "plan_title VARCHAR(255), " +
+                "genre VARCHAR(128), " +
+                "bpm INT, " +
+                "musical_key VARCHAR(64), " +
+                "arrangement_notes TEXT, " +
+                "lyrics_text TEXT, " +
+                "session_id VARCHAR(128), " +
+                "applied_models TEXT, " +
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                ")";
+
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
             prepareConnection(conn);
@@ -88,6 +126,8 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
             stmt.executeUpdate(createSessionTableSql);
             stmt.executeUpdate(createPromptTableSql);
             stmt.executeUpdate(createAssetTableSql);
+            stmt.executeUpdate(createAnalysisTableSql);
+            stmt.executeUpdate(createVersionPlanTableSql);
 
             try {
                 stmt.executeUpdate("ALTER TABLE ai_session_history ADD COLUMN version_label VARCHAR(64)");
@@ -146,6 +186,7 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
                 if (rs.next()) {
                     AiProjectDTO p = mapProject(rs);
                     p.setTrackPrompts(getTrackPromptsByProjectId(id));
+                    p.setVersionPlans(getVersionPlansByProjectId(id));
                     p.setRenderedAssets(getRenderedAssetsByProjectId(id));
                     p.setSessionHistories(getSessionHistories(id));
                     return p;
@@ -364,6 +405,181 @@ public abstract class AbstractJdbcAiStudioRepository implements IAiStudioReposit
             }
         } catch (Exception e) {
             log.error("❌ [AI Studio DB] 查询渲染资产失败: projectId={}", projectId, e);
+        }
+        return list;
+    }
+
+    @Override
+    public void saveSongAnalysis(AiSongAnalysisDTO a) {
+        if (a == null || a.getRefSongId() == null) return;
+        String sql = "INSERT INTO ai_song_analysis (ref_song_id, title, artist, album, duration, format, bitrate, " +
+                "sample_rate, genre, lyric, mood, instrumentation, estimated_bpm, estimated_key, analysis_summary, updated_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) " +
+                "ON CONFLICT(ref_song_id) DO UPDATE SET " +
+                "title = excluded.title, artist = excluded.artist, album = excluded.album, " +
+                "duration = excluded.duration, format = excluded.format, bitrate = excluded.bitrate, " +
+                "sample_rate = excluded.sample_rate, genre = excluded.genre, lyric = excluded.lyric, " +
+                "mood = excluded.mood, instrumentation = excluded.instrumentation, estimated_bpm = excluded.estimated_bpm, " +
+                "estimated_key = excluded.estimated_key, analysis_summary = excluded.analysis_summary, " +
+                "updated_at = CURRENT_TIMESTAMP";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            prepareConnection(conn);
+            ps.setString(1, a.getRefSongId());
+            ps.setString(2, a.getTitle());
+            ps.setString(3, a.getArtist());
+            ps.setString(4, a.getAlbum());
+            ps.setObject(5, a.getDuration());
+            ps.setString(6, a.getFormat());
+            ps.setObject(7, a.getBitrate());
+            ps.setObject(8, a.getSampleRate());
+            ps.setString(9, a.getGenre());
+            ps.setString(10, a.getLyric());
+            ps.setString(11, a.getMood());
+            ps.setString(12, a.getInstrumentation());
+            ps.setObject(13, a.getEstimatedBpm());
+            ps.setString(14, a.getEstimatedKey());
+            ps.setString(15, a.getAnalysisSummary());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("❌ [AI Studio DB] 保存原曲分析结果失败: songId={}", a.getRefSongId(), e);
+        }
+    }
+
+    @Override
+    public AiSongAnalysisDTO getSongAnalysisBySongId(String refSongId) {
+        if (refSongId == null) return null;
+        String sql = "SELECT * FROM ai_song_analysis WHERE ref_song_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            prepareConnection(conn);
+            ps.setString(1, refSongId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return AiSongAnalysisDTO.builder()
+                            .refSongId(rs.getString("ref_song_id"))
+                            .title(rs.getString("title"))
+                            .artist(rs.getString("artist"))
+                            .album(rs.getString("album"))
+                            .duration(rs.getObject("duration") != null ? rs.getInt("duration") : null)
+                            .format(rs.getString("format"))
+                            .bitrate(rs.getObject("bitrate") != null ? rs.getInt("bitrate") : null)
+                            .sampleRate(rs.getObject("sample_rate") != null ? rs.getInt("sample_rate") : null)
+                            .genre(rs.getString("genre"))
+                            .lyric(rs.getString("lyric"))
+                            .mood(rs.getString("mood"))
+                            .instrumentation(rs.getString("instrumentation"))
+                            .estimatedBpm(rs.getObject("estimated_bpm") != null ? rs.getInt("estimated_bpm") : null)
+                            .estimatedKey(rs.getString("estimated_key"))
+                            .analysisSummary(rs.getString("analysis_summary"))
+                            .build();
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ [AI Studio DB] 查询原曲分析缓存失败: songId={}", refSongId, e);
+        }
+        return null;
+    }
+
+    @Override
+    public AiProjectDTO getLatestProjectBySongId(String refSongId) {
+        if (refSongId == null) return null;
+        String sql = "SELECT id FROM ai_project WHERE ref_song_id = ? ORDER BY updated_at DESC LIMIT 1";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            prepareConnection(conn);
+            ps.setString(1, refSongId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return getProjectById(rs.getString("id"));
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ [AI Studio DB] 按曲目查询最新工程失败: songId={}", refSongId, e);
+        }
+        return null;
+    }
+
+    @Override
+    public void deleteTrackPromptsByProjectAndVersion(String projectId, String versionLabel) {
+        String sql = "DELETE FROM ai_track_prompt WHERE project_id = ? AND version_label = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            prepareConnection(conn);
+            ps.setString(1, projectId);
+            ps.setString(2, versionLabel);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("❌ [AI Studio DB] 删除版本关联音轨失败: projectId={}, version={}", projectId, versionLabel, e);
+        }
+    }
+
+    @Override
+    public void saveVersionPlans(List<AiVersionPlanDTO> plans) {
+        if (plans == null || plans.isEmpty()) return;
+        String sql = "INSERT INTO ai_version_plan (id, project_id, version_label, plan_title, genre, bpm, " +
+                "musical_key, arrangement_notes, lyrics_text, session_id, applied_models, updated_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) " +
+                "ON CONFLICT(id) DO UPDATE SET " +
+                "plan_title = excluded.plan_title, genre = excluded.genre, bpm = excluded.bpm, " +
+                "musical_key = excluded.musical_key, arrangement_notes = excluded.arrangement_notes, " +
+                "lyrics_text = excluded.lyrics_text, session_id = excluded.session_id, " +
+                "applied_models = excluded.applied_models, updated_at = CURRENT_TIMESTAMP";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            prepareConnection(conn);
+            for (AiVersionPlanDTO plan : plans) {
+                ps.setString(1, plan.getId());
+                ps.setString(2, plan.getProjectId());
+                ps.setString(3, plan.getVersionLabel());
+                ps.setString(4, plan.getPlanTitle());
+                ps.setString(5, plan.getGenre());
+                ps.setObject(6, plan.getBpm());
+                ps.setString(7, plan.getMusicalKey());
+                ps.setString(8, plan.getArrangementNotes());
+                ps.setString(9, plan.getLyricsText());
+                ps.setString(10, plan.getSessionId());
+                ps.setString(11, plan.getAppliedModels() != null ? String.join(",", plan.getAppliedModels()) : "");
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            log.error("❌ [AI Studio DB] 批量保存版本歌词编曲方案失败", e);
+        }
+    }
+
+    @Override
+    public List<AiVersionPlanDTO> getVersionPlansByProjectId(String projectId) {
+        List<AiVersionPlanDTO> list = new ArrayList<>();
+        String sql = "SELECT * FROM ai_version_plan WHERE project_id = ? ORDER BY version_label ASC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            prepareConnection(conn);
+            ps.setString(1, projectId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String modelsRaw = rs.getString("applied_models");
+                    List<String> models = StringUtils.isNotBlank(modelsRaw)
+                            ? Arrays.asList(modelsRaw.split(","))
+                            : new ArrayList<>();
+                    list.add(AiVersionPlanDTO.builder()
+                            .id(rs.getString("id"))
+                            .projectId(rs.getString("project_id"))
+                            .versionLabel(rs.getString("version_label"))
+                            .planTitle(rs.getString("plan_title"))
+                            .genre(rs.getString("genre"))
+                            .bpm(rs.getObject("bpm") != null ? rs.getInt("bpm") : null)
+                            .musicalKey(rs.getString("musical_key"))
+                            .arrangementNotes(rs.getString("arrangement_notes"))
+                            .lyricsText(rs.getString("lyrics_text"))
+                            .sessionId(rs.getString("session_id"))
+                            .appliedModels(models)
+                            .updatedAt(rs.getString("updated_at"))
+                            .build());
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ [AI Studio DB] 查询版本歌词编曲方案失败: projectId={}", projectId, e);
         }
         return list;
     }
