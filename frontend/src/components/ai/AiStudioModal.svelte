@@ -1,7 +1,7 @@
 <script lang="ts">
   import { aiStudioStore } from '../../lib/aiStudio/aiStudioStore.svelte';
   import { layoutState } from '../../lib/layout.svelte';
-  import { syncMetaThemeColor } from '../../lib/skinStore.svelte';
+  import { setForcedThemeColor } from '../../lib/skinStore.svelte';
   import AiSongProfileCard from './AiSongProfileCard.svelte';
   import AiPromptMatrixView from './AiPromptMatrixView.svelte';
   import AiChatRefineDrawer from './AiChatRefineDrawer.svelte';
@@ -16,10 +16,9 @@
 
   $effect(() => {
     if (!isOpen || typeof document === 'undefined') return;
-    const meta = document.querySelector('meta[name="theme-color"]');
-    meta?.setAttribute('content', '#0a0a0a');
+    setForcedThemeColor('#0a0a0a');
     return () => {
-      syncMetaThemeColor();
+      setForcedThemeColor(null);
     };
   });
 
@@ -33,15 +32,15 @@
 <svelte:window onkeydown={handleKeyDown} />
 
 {#if isOpen}
-  <!-- 全屏沉浸式 AI 音乐创作平台 (接入 pwa-audio-player WCO 几何避让与零模糊高性能渲染) -->
+  <!-- 全屏沉浸式 AI 音乐创作平台 (接入 pwa-audio-player WCO 几何避让与 1:1 theme-color 同步) -->
   <div
     data-testid="ai-studio-modal"
-    class="fixed inset-0 z-[10000] bg-neutral-950 text-neutral-100 flex flex-col overflow-hidden select-none"
+    class="fixed inset-0 z-[10000] bg-[#0a0a0a] text-neutral-100 flex flex-col overflow-hidden select-none"
   >
-    <!-- 🪟 PWA Window Controls Overlay 专属顶部拖拽条 (与顶栏同色无缝融合，彻底避让交通灯与右侧控件) -->
+    <!-- 🪟 PWA Window Controls Overlay 专属顶部拖拽条 (1:1 对齐 #0a0a0a，彻底消除左右顶角异色大门牙) -->
     {#if wcoVisible && wcoHeight > 0}
       <div
-        class="w-full shrink-0 bg-neutral-950 wco-drag-region"
+        class="w-full shrink-0 bg-[#0a0a0a] wco-drag-region"
         style="height: {wcoHeight}px;"
         aria-hidden="true"
       ></div>
@@ -49,7 +48,7 @@
 
     <!-- 创作平台统一顶栏 -->
     <header
-      class="h-14 px-5 border-b border-white/10 flex items-center justify-between bg-neutral-950 shrink-0 z-20"
+      class="h-14 px-5 border-b border-white/10 flex items-center justify-between bg-[#0a0a0a] shrink-0 z-20"
       style={!wcoVisible ? 'padding-top: env(safe-area-inset-top, 0px);' : ''}
     >
       <div class="flex items-center gap-3 min-w-0">

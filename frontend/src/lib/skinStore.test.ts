@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { skin, SkinStore, setImmersiveThemeColor, getIsImmersiveActive, pushModalBackdrop, getModalBackdropCount } from './skinStore.svelte';
+import { skin, SkinStore, setImmersiveThemeColor, setForcedThemeColor, syncMetaThemeColor, getIsImmersiveActive, pushModalBackdrop, getModalBackdropCount } from './skinStore.svelte';
 import { customBgStore } from './customBgStore.svelte';
 import { DEFAULT_PALETTE } from '../components/skins/skinTypes';
 import * as colorExt from './colorExtractor';
@@ -195,6 +195,25 @@ describe('skinStore', () => {
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0e1a');
 
     setImmersiveThemeColor(false);
+  });
+
+  it('locks WCO meta theme-color and --wco-titlebar-bg via setForcedThemeColor and restores on null', () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    skin.set('summer');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#bae6fd');
+
+    setForcedThemeColor('#0a0a0a');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0a0a');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#0a0a0a');
+
+    // Even if syncMetaThemeColor is triggered externally (e.g., CinemaCornerStage), forced color holds
+    syncMetaThemeColor('summer');
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#0a0a0a');
+
+    // Restoring null reverts cleanly to summer.light (#bae6fd)
+    setForcedThemeColor(null);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#bae6fd');
+    expect(document.documentElement.style.getPropertyValue('--wco-titlebar-bg')).toBe('#bae6fd');
   });
 
   it('ignores invalid skin in set()', () => {

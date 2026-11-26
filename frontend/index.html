@@ -57,16 +57,9 @@
       })();
     </script>
     <style>
-      /* 🦷 防大门牙：html/body 背景由内联 JS 动态写入，此处保底兜底（dark 默认值） */
       html, body {
-        background-color: #0a0e1a;
         margin: 0;
         padding: 0;
-      }
-      /* light 主题时同步切换背景色，确保 titlebar 区域不露出白边 */
-      html[data-theme="light"],
-      html[data-theme="light"] body {
-        background-color: #ffffff;
       }
       .wyy-splash-container {
         position: fixed;

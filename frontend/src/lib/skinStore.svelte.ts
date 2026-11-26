@@ -7,8 +7,17 @@ import { customBgStore } from './customBgStore.svelte';
 const STORAGE_KEY = 'player_skin';
 
 let isImmersiveActive = false;
+let forcedOverlayColor: string | null = null;
 let modalBackdropCount = $state(0);
 let lastHarmonyResult: TitlebarHarmonyResult | null = null;
+
+/**
+ * 强制锁定全局 WCO 顶栏与 theme-color (如全屏纯黑 AI 创作工坊)，传 null 恢复自动调和
+ */
+export function setForcedThemeColor(color: string | null) {
+  forcedOverlayColor = color;
+  syncMetaThemeColor();
+}
 
 /**
  * 设置全屏沉浸模式状态
@@ -89,7 +98,7 @@ export function syncMetaThemeColor(skinId?: SkinId) {
     customBgColor
   });
 
-  const color = lastHarmonyResult.harmonizedColor;
+  const color = forcedOverlayColor || lastHarmonyResult.harmonizedColor;
 
   // Keep a single meta[name="theme-color"] tag in index.html; splash screen reads --wco-titlebar-bg
   // and frontend/index.html mirrors SKIN_THEME_COLORS for pre-mount WCO corner alignment.
