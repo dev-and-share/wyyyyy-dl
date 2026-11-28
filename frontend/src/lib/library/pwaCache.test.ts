@@ -11,8 +11,11 @@ import {
   cacheTrackToBrowser,
   handleTrackPlayback,
   resetTrackPlayback,
-  cachedSongIdSet
+  cachedSongIdSet,
+  ensureCachedTrackMeta,
+  isFallbackTrackLabel
 } from './pwaCache.svelte';
+import { precacheCandidateAudio } from '../player/nextTrackPrecache';
 import {
   formatCacheDate,
   scanBrowserCache,
@@ -266,5 +269,145 @@ describe('PWA Cache & Auto-cache Contracts', () => {
     expect(filterCacheByMinPlayCount(list, 99).length).toBe(0);
     expect(filterCacheByMinPlayCount(list, -1).length).toBe(4);
     expect(filterCacheByMinPlayCount(list, NaN).length).toBe(4);
+  });
+
+  it('ensureCachedTrackMeta ignores fallback placeholder names and writes real metadata', () => {
+    expect(isFallbackTrackLabel('离线音轨 #1961264465')).toBe(true);
+    expect(isFallbackTrackLabel('浏览器已离线')).toBe(true);
+    expect(isFallbackTrackLabel('七里香')).toBe(false);
+
+    // Must refuse persisting fallback labels
+    expect(
+      ensureCachedTrackMeta({ id: '888', name: '离线音轨 #888', artist: '浏览器已离线' }, '/v3/stream?id=888', 5000)
+    ).toBe(false);
+    expect(localStorage.getItem(PWA_TRACK_META_KEY)).toBeNull();
+
+    // Must persist real metadata
+    expect(
+      ensureCachedTrackMeta(
+        { id: '888', name: '夜曲', artist: '周杰伦', cover: 'https://p1.music.126.net/cover.jpg' },
+        '/v3/stream?id=888',
+        5242880
+      )
+    ).toBe(true);
+
+    const stored = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
+    expect(stored['/v3/stream?id=888']).toMatchObject({
+      id: '888',
+      songName: '夜曲',
+      artist: '周杰伦',
+      cover: 'https://p1.music.126.net/cover.jpg',
+      fileSize: 5242880
+    });
+  });
+
+  it('precacheCandidateAudio persists track metadata to localStorage alongside CacheStorage', async () => {
+    const fakeBlob = new Blob([new Uint8Array(1_400_000)], { type: 'audio/mpeg' });
+    const putSpy = vi.fn().mockResolvedValue(undefined);
+    const mockCache = {
+      match: vi.fn().mockImplementation(async (req: string) => {
+        if (putSpy.mock.calls.length > 0 && req === '/v3/stream?id=40404') {
+          return {
+            headers: { get: (h: string) => (h.toLowerCase() === 'content-length' ? String(fakeBlob.size) : null) }
+          };
+        }
+        return undefined;
+      }),
+      put: putSpy
+    };
+    (window as any).caches = {
+      keys: vi.fn().mockResolvedValue(['netease-music-audio-v1']),
+      open: vi.fn().mockResolvedValue(mockCache)
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'audio/mpeg', 'Content-Length': String(fakeBlob.size) }),
+        blob: async () => fakeBlob
+      })
+    );
+
+    const ok = await precacheCandidateAudio(
+      {
+        id: 40404,
+        name: '稻香',
+        artist: '周杰伦',
+        cover: 'https://p1.music.126.net/daoxiang.jpg',
+        url: 'https://cdn.example/daoxiang.mp3'
+      },
+      () => {}
+    );
+
+    expect(ok).toBe(true);
+    expect(putSpy).toHaveBeenCalled();
+
+    const stored = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
+    expect(stored['/v3/stream?id=40404']).toMatchObject({
+      id: '40404',
+      songName: '稻香',
+      artist: '周杰伦',
+      cover: 'https://p1.music.126.net/daoxiang.jpg',
+      fileSize: fakeBlob.size
+    });
+  });
+
+  it('scanBrowserCache auto-heals missing metadata via /v3/history/batch_detail and degrades gracefully offline', async () => {
+    const mockCache = {
+      keys: vi.fn().mockResolvedValue([
+        { url: 'http://localhost/v3/stream?id=100' },
+        { url: 'http://localhost/v3/stream?id=200' }
+      ]),
+      match: vi.fn().mockResolvedValue({
+        headers: { get: () => '4096000' }
+      }),
+      delete: vi.fn().mockResolvedValue(true)
+    };
+    (window as any).caches = {
+      keys: vi.fn().mockResolvedValue(['netease-music-audio-v1']),
+      open: vi.fn().mockResolvedValue(mockCache)
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: '000000',
+        data: {
+          bySongId: [{ songId: 100, songName: '晴天', artist: '周杰伦', fileSize: 4096000 }],
+          byOnlineSongId: {
+            '200': {
+              songId: 200,
+              songName: '七里香',
+              artist: '周杰伦',
+              cover: 'https://p1.music.126.net/qlx.jpg'
+            }
+          }
+        }
+      })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const healed = await scanBrowserCache();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v3/history/batch_detail',
+      expect.objectContaining({ method: 'POST' })
+    );
+
+    const byId = Object.fromEntries(healed.list.map((i) => [i.id, i]));
+    expect(byId['100'].name).toBe('晴天');
+    expect(byId['100'].artist).toBe('周杰伦');
+    expect(byId['200'].name).toBe('七里香');
+    expect(byId['200'].cover).toBe('https://p1.music.126.net/qlx.jpg');
+
+    const stored = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
+    expect(stored['/v3/stream?id=100']?.songName).toBe('晴天');
+    expect(stored['/v3/stream?id=200']?.songName).toBe('七里香');
+
+    // Verify graceful fallback when metadata is empty and network fails
+    localStorage.clear();
+    fetchMock.mockRejectedValueOnce(new Error('Offline'));
+    const fallbackRes = await scanBrowserCache();
+    expect(fallbackRes.list.map((i) => i.name).sort()).toEqual(['离线音轨 #100', '离线音轨 #200']);
   });
 });

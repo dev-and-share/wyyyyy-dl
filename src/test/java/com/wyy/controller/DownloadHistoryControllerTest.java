@@ -110,6 +110,29 @@ public class DownloadHistoryControllerTest {
     }
 
     @Test
+    @DisplayName("测试 /v3/history/batch_detail: 本地未命中曲目自动从云端 songDetail 补全元数据")
+    public void testGetBatchHistoryDetailResolvesMissingOnlineSongs() throws Exception {
+        DownloadHistoryItem localItem = new DownloadHistoryItem();
+        localItem.setSongId(100L);
+        localItem.setSongName("本地晴天");
+        localItem.setArtist("周杰伦");
+
+        Mockito.when(downloadHistoryDAO.getRecordsBySongIds(any())).thenReturn(java.util.Collections.singletonList(localItem));
+        String onlineJson = "{\"code\":200,\"songs\":[{\"id\":200,\"name\":\"夜曲\",\"ar\":[{\"name\":\"周杰伦\"}],\"al\":{\"name\":\"十一月的萧邦\",\"picUrl\":\"https://p1.music.126.net/cover.jpg\"}}]}";
+        Mockito.when(neteaseAPIService.songDetail(eq(java.util.Collections.singletonList(200L)))).thenReturn(onlineJson);
+
+        mockMvc.perform(post("/v3/history/batch_detail")
+                .contentType("application/json")
+                .content("{\"songIds\":[100,200]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("000000"))
+                .andExpect(jsonPath("$.data.bySongId[0].songName").value("本地晴天"))
+                .andExpect(jsonPath("$.data.byOnlineSongId['200'].songName").value("夜曲"))
+                .andExpect(jsonPath("$.data.byOnlineSongId['200'].artist").value("周杰伦"))
+                .andExpect(jsonPath("$.data.byOnlineSongId['200'].cover").value("https://p1.music.126.net/cover.jpg"));
+    }
+
+    @Test
     @DisplayName("测试 /v3/reveal: 物理文件定位查询与智能查找")
     public void testRevealFile() throws Exception {
         java.io.File mockFile = java.io.File.createTempFile("mock_track", ".mp3");

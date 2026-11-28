@@ -117,6 +117,9 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       activeAdapter.resolveTrack(track.id, { name: track.name, artist: track.artist, raw: track.raw }),
       10000
     );
+    if (resolved.name && (!track.name || track.name === t('common.unknownTrack'))) {
+      track.name = resolved.name;
+    }
     if (resolved.cover) track.cover = resolved.cover;
     if (resolved.lyric && !track.lyric) track.lyric = resolved.lyric;
     if (resolved.br) track.br = resolved.br;
@@ -129,6 +132,10 @@ export async function resolveTrackUrl(track: Track): Promise<string> {
       track.album = resolved.album;
       if (!track.al) track.al = {};
       if (!track.al.name) track.al.name = resolved.album;
+    }
+    const resolvedDurationMs = Number(resolved.raw?.rawData?.dt || 0);
+    if (resolvedDurationMs > 0 && !(track as any).duration) {
+      (track as any).duration = resolvedDurationMs;
     }
 
     // 🛡️ 网易云无版权或试听截断曲目自动尝试内置官方跨源直链兜底

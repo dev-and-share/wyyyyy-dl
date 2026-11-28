@@ -80,16 +80,7 @@ public class DownloadHistoryController {
                         if (songs != null && !songs.isEmpty()) {
                             com.alibaba.fastjson.JSONObject songObj = songs.getJSONObject(0);
                             String fetchedName = songObj.getString("name");
-                            String fetchedArtist = null;
-                            com.alibaba.fastjson.JSONArray arArr = songObj.getJSONArray("ar");
-                            if (arArr != null && !arArr.isEmpty()) {
-                                List<String> arNames = new java.util.ArrayList<>();
-                                for (int i = 0; i < arArr.size(); i++) {
-                                    String n = arArr.getJSONObject(i).getString("name");
-                                    if (StringUtils.isNotBlank(n)) arNames.add(n);
-                                }
-                                fetchedArtist = String.join("/", arNames);
-                            }
+                            String fetchedArtist = extractArtistNames(songObj);
                             if (StringUtils.isNotBlank(fetchedName)) {
                                 found = downloadHistoryDAO.findLocalFileBySongOrName(songId, fetchedName, fetchedArtist);
                             }
@@ -181,8 +172,33 @@ public class DownloadHistoryController {
         return RespEntity.apply(CommonRespInfo.SUCCESS, item);
     }
 
+    private String extractArtistNames(com.alibaba.fastjson.JSONObject songObj) {
+        if (songObj == null) return null;
+        com.alibaba.fastjson.JSONArray arArr = songObj.getJSONArray("ar");
+        if (arArr == null || arArr.isEmpty()) {
+            arArr = songObj.getJSONArray("artists");
+        }
+        if (arArr == null || arArr.isEmpty()) return null;
+        List<String> arNames = new java.util.ArrayList<>();
+        for (int i = 0; i < arArr.size(); i++) {
+            com.alibaba.fastjson.JSONObject ar = arArr.getJSONObject(i);
+            String n = ar != null ? ar.getString("name") : null;
+            if (StringUtils.isNotBlank(n)) arNames.add(n);
+        }
+        return arNames.isEmpty() ? null : String.join("/", arNames);
+    }
+
+    private <T> List<List<T>> partitionList(List<T> source, int chunkSize) {
+        List<List<T>> chunks = new java.util.ArrayList<>();
+        if (source == null || source.isEmpty()) return chunks;
+        for (int i = 0; i < source.size(); i += chunkSize) {
+            chunks.add(source.subList(i, Math.min(i + chunkSize, source.size())));
+        }
+        return chunks;
+    }
+
     /**
-     * 批量获取历史记录详情 (用于前端批量匹配浏览器离线缓存歌曲信息)
+     * 批量获取历史记录详情 (用于前端批量匹配浏览器离线缓存歌曲信息，并对未落盘曲目自动向云端补全元数据)
      */
     @PostMapping("/history/batch_detail")
     public RespEntity<Map<String, Object>> getBatchHistoryDetail(@RequestBody Map<String, List<Long>> requestBody) {
@@ -191,10 +207,75 @@ public class DownloadHistoryController {
 
         Map<String, Object> result = new HashMap<>();
         if (historyIds != null && !historyIds.isEmpty()) {
-            result.put("byHistoryId", downloadHistoryDAO.getRecordsByIds(historyIds));
+            List<Long> distinctHistIds = historyIds.stream().filter(id -> id != null && id > 0).distinct().toList();
+            List<DownloadHistoryItem> byHistoryId = new java.util.ArrayList<>();
+            for (List<Long> chunk : partitionList(distinctHistIds, 500)) {
+                List<DownloadHistoryItem> found = downloadHistoryDAO.getRecordsByIds(chunk);
+                if (found != null) byHistoryId.addAll(found);
+            }
+            result.put("byHistoryId", byHistoryId);
         }
         if (songIds != null && !songIds.isEmpty()) {
-            result.put("bySongId", downloadHistoryDAO.getRecordsBySongIds(songIds));
+            List<Long> distinctSongIds = songIds.stream().filter(id -> id != null && id > 0).distinct().toList();
+            List<DownloadHistoryItem> bySongId = new java.util.ArrayList<>();
+            for (List<Long> chunk : partitionList(distinctSongIds, 500)) {
+                List<DownloadHistoryItem> found = downloadHistoryDAO.getRecordsBySongIds(chunk);
+                if (found != null) bySongId.addAll(found);
+            }
+            result.put("bySongId", bySongId);
+
+            // 对本地历史库中未记录的 songIds（例如纯在线预缓存曲目），通过云端 songDetail 批量补全歌名/歌手/封面
+            java.util.Set<Long> matchedSongIds = bySongId.stream()
+                    .map(DownloadHistoryItem::getSongId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toSet());
+            List<Long> missingSongIds = distinctSongIds.stream()
+                    .filter(id -> !matchedSongIds.contains(id))
+                    .toList();
+
+            if (!missingSongIds.isEmpty() && neteaseAPIService != null) {
+                Map<String, Map<String, Object>> byOnlineSongId = new HashMap<>();
+                for (List<Long> chunk : partitionList(missingSongIds, 200)) {
+                    try {
+                        String detailStr = neteaseAPIService.songDetail(chunk);
+                        if (StringUtils.isBlank(detailStr)) continue;
+                        com.alibaba.fastjson.JSONObject detailJson = com.alibaba.fastjson.JSON.parseObject(detailStr);
+                        com.alibaba.fastjson.JSONArray songs = detailJson != null ? detailJson.getJSONArray("songs") : null;
+                        if (songs == null) continue;
+                        for (int i = 0; i < songs.size(); i++) {
+                            com.alibaba.fastjson.JSONObject songObj = songs.getJSONObject(i);
+                            if (songObj == null) continue;
+                            Long sid = songObj.getLong("id");
+                            String name = songObj.getString("name");
+                            if (sid == null || sid <= 0 || StringUtils.isBlank(name)) continue;
+
+                            Map<String, Object> meta = new HashMap<>();
+                            meta.put("songId", sid);
+                            meta.put("songName", name);
+                            String artistNames = extractArtistNames(songObj);
+                            if (StringUtils.isNotBlank(artistNames)) {
+                                meta.put("artist", artistNames);
+                            }
+                            com.alibaba.fastjson.JSONObject al = songObj.getJSONObject("al");
+                            if (al == null) al = songObj.getJSONObject("album");
+                            if (al != null) {
+                                if (StringUtils.isNotBlank(al.getString("name"))) {
+                                    meta.put("album", al.getString("name"));
+                                }
+                                if (StringUtils.isNotBlank(al.getString("picUrl"))) {
+                                    meta.put("cover", al.getString("picUrl"));
+                                }
+                            }
+                            byOnlineSongId.put(String.valueOf(sid), meta);
+                        }
+                    } catch (Exception ex) {
+                        log.warn("批量补全离线缓存云端歌曲元数据异常, size={}", chunk.size(), ex);
+                    }
+                }
+                if (!byOnlineSongId.isEmpty()) {
+                    result.put("byOnlineSongId", byOnlineSongId);
+                }
+            }
         }
         return RespEntity.apply(CommonRespInfo.SUCCESS, result);
     }

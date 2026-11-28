@@ -9,8 +9,10 @@ import {
   PWA_TRACK_META_KEY,
   audioCacheStorage,
   getSongPlayCount,
+  isFallbackTrackLabel,
   refreshCachedSongIds
 } from './pwaCache.svelte';
+import { healMissingBrowserCacheMetadata } from './browserCacheHeal';
 
 export type BrowserCacheItem = {
   key: string;
@@ -38,7 +40,6 @@ export function readCachedTrackMeta(): Record<string, any> {
   }
 }
 
-
 /**
  * 扫描并获取所有手机离线音乐缓存，按「播放次数 ↓ > 缓存时间 ↓」复合排序
  */
@@ -49,6 +50,7 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
 
   const metaMap = readCachedTrackMeta();
   const byKey = new Map<string, BrowserCacheItem>();
+  const missingMetaItems = new Map<string, { item: BrowserCacheItem; historyId: string | null }>();
 
   for (const cacheName of await caches.keys()) {
     // 🛡️ 跳过封面图片缓存池 (最多含 2000 张图片) 与静态资源缓存池，杜绝 iOS WebKit 扫描大量 Request 引发的内存洪峰
@@ -71,8 +73,10 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
       const urlHistMatch = relUrl.match(/[?&]historyId=(\d+)/);
       const songId = meta.id && String(meta.id) !== '0' ? String(meta.id) : (urlIdMatch ? urlIdMatch[1] : null);
 
-      const songName = (meta.songName || '').trim();
-      const songArtist = formatArtist(meta.artist) || '';
+      const rawMetaName = (meta.songName || '').trim();
+      const songName = rawMetaName && !isFallbackTrackLabel(rawMetaName) ? rawMetaName : '';
+      const rawMetaArtist = formatArtist(meta.artist) || '';
+      const songArtist = rawMetaArtist && !isFallbackTrackLabel(rawMetaArtist) ? rawMetaArtist : '';
 
       // 🎵 逻辑唯一键：优先真实歌曲 ID (song_xxx)，其次标准化歌名+歌手 (meta_name_artist)，兜底 relUrl
       const uniqueKey = songId
@@ -106,8 +110,13 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
         if (meta.cover && (!existing.cover || existing.cover === DEFAULT_VINYL_COVER)) {
           existing.cover = meta.cover;
         }
+        if (songName && isFallbackTrackLabel(existing.name)) {
+          existing.name = songName;
+          existing.artist = songArtist || t('cache.browserOffline');
+          missingMetaItems.delete(uniqueKey);
+        }
       } else {
-        byKey.set(uniqueKey, {
+        const entry: BrowserCacheItem = {
           key: uniqueKey,
           id: songId,
           urls: [request.url],
@@ -119,9 +128,17 @@ export async function scanBrowserCache(): Promise<{ list: BrowserCacheItem[]; to
           size,
           time: itemTime,
           playCount: itemPlayCount
-        });
+        };
+        byKey.set(uniqueKey, entry);
+        if (!songName && (songId || urlHistMatch)) {
+          missingMetaItems.set(uniqueKey, { item: entry, historyId: urlHistMatch ? urlHistMatch[1] : null });
+        }
       }
     }
+  }
+
+  if (missingMetaItems.size > 0) {
+    await healMissingBrowserCacheMetadata([...missingMetaItems.values()], metaMap);
   }
 
   // 🎯 复合排序规则：播放次数多优先 (降序) > 缓存时间新优先 (降序)

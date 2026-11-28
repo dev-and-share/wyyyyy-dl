@@ -71,6 +71,7 @@ export const api = {
   // 📜 本地历史管理
   historyList: (kw: string, page: number, pageSize = 10) => get(`/v3/history/list?keyword=${encodeURIComponent(kw)}&page=${page}&pageSize=${pageSize}`),
   historyIds: () => get('/v3/history/ids'),
+  historyBatchDetail: (payload: { historyIds?: number[]; songIds?: number[] }) => postJson('/v3/history/batch_detail', payload),
   historyStats: () => get('/v3/history/stats'),
   historyScan: () => req('/v3/history/scan', { method: 'POST' }),
   historyScanExternal: () => req('/v3/history/scan_external', { method: 'POST' }),

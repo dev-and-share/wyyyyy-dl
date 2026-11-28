@@ -1,7 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { builtinPlugins, qqPlugin, kugouPlugin, resolveFallbackFromBuiltins } from './index';
 
 describe('Official Builtin MusicFree Plugins', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('exports official builtin plugins with valid metadata', () => {
     expect(builtinPlugins).toHaveLength(2);
 
@@ -60,5 +63,71 @@ describe('Official Builtin MusicFree Plugins', () => {
     expect(qqPlugin.isVip!({ pay: { payplay: 1 } })).toBe(true);
     expect(qqPlugin.isVip!({ raw: { pay: { paytrackmouth: 1 } } })).toBe(true);
     expect(qqPlugin.isVip!({ pay: { payplay: 0 } })).toBe(false);
+  });
+
+  it('rejects wrong artist, substring title, and cover/DJ candidates in resolveFallbackFromBuiltins', async () => {
+    const kugouSearch = vi.spyOn(kugouPlugin, 'search').mockResolvedValue({
+      isEnd: true,
+      data: [
+        { id: 'vip1', title: '不同', artist: '孙燕姿', duration: 221000, isVip: true },
+        { id: 'wrong1', title: '不同', artist: '某网络歌手', duration: 291000, isVip: false },
+        { id: 'cover1', title: '不同 (翻唱)', artist: '孙燕姿粉丝', duration: 220000, isVip: false },
+        { id: 'substr1', title: '与众不同', artist: '孙燕姿', duration: 220000, isVip: false }
+      ]
+    });
+    const kugouMedia = vi.spyOn(kugouPlugin, 'getMediaSource').mockResolvedValue({ url: 'https://bad.example/wrong.mp3' });
+
+    const qqSearch = vi.spyOn(qqPlugin, 'search').mockResolvedValue({
+      isEnd: true,
+      data: [
+        { id: 'wrong2', title: '不同', artist: '其他歌手', duration: 291000, isVip: false }
+      ]
+    });
+    const qqMedia = vi.spyOn(qqPlugin, 'getMediaSource').mockResolvedValue({ url: 'https://bad.example/wrong2.mp3' });
+
+    const result = await resolveFallbackFromBuiltins({
+      id: 287063,
+      name: '不同',
+      artist: '孙燕姿',
+      duration: 221000
+    });
+
+    expect(result).toBeNull();
+    // Should never search bare title without artist when artist is known
+    for (const call of [...kugouSearch.mock.calls, ...qqSearch.mock.calls]) {
+      expect(call[0]).toContain('孙燕姿');
+    }
+    expect(kugouMedia).not.toHaveBeenCalled();
+    expect(qqMedia).not.toHaveBeenCalled();
+  });
+
+  it('selects matching non-VIP studio track from secondary plugin when primary has only VIP', async () => {
+    vi.spyOn(kugouPlugin, 'search').mockResolvedValue({
+      isEnd: true,
+      data: [
+        { id: 'vip1', title: '不同', artist: '孙燕姿', duration: 221000, isVip: true }
+      ]
+    });
+    vi.spyOn(qqPlugin, 'search').mockResolvedValue({
+      isEnd: true,
+      data: [
+        { id: 'live1', title: '不同 (Live)', artist: '孙燕姿', duration: 225000, isVip: false },
+        { id: 'studio1', title: '不同', artist: '孙燕姿', duration: 221000, isVip: false }
+      ]
+    });
+    const qqMedia = vi.spyOn(qqPlugin, 'getMediaSource').mockResolvedValue({
+      url: 'https://qq.example/butong-sunyanzi.mp3'
+    });
+
+    const result = await resolveFallbackFromBuiltins({
+      id: 287063,
+      name: '不同',
+      artist: '孙燕姿',
+      duration: 221000
+    });
+
+    expect(result?.url).toBe('https://qq.example/butong-sunyanzi.mp3');
+    expect(qqMedia).toHaveBeenCalledTimes(1);
+    expect(qqMedia.mock.calls[0][0].id).toBe('studio1');
   });
 });

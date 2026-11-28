@@ -2,7 +2,7 @@ import type { Track } from '../types';
 import { t } from '../i18n';
 import { playerStore } from './playerStore.svelte';
 import { playbackTelemetry } from './playbackTelemetry.svelte';
-import { PWA_CACHE_NAME } from '../library/pwaCache.svelte';
+import { PWA_CACHE_NAME, ensureCachedTrackMeta } from '../library/pwaCache.svelte';
 import { isTrackUrlExpired, resolveTrackUrl } from './playerHelper';
 import {
   MIN_VALID_AUDIO_BYTES,
@@ -63,6 +63,28 @@ export async function precacheCandidateAudio(
   );
   if (ok) {
     playbackTelemetry.recordPrecache('ok', candidate);
+    const cacheKey = candidate.id != null && candidate.id !== ''
+      ? `/v3/stream?id=${String(candidate.id)}`
+      : (candidate.url || '');
+    if (cacheKey) {
+      let cachedSize = 0;
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        try {
+          const cache = await caches.open(PWA_CACHE_NAME);
+          const matched = await cache.match(cacheKey);
+          const cl = matched?.headers?.get?.('content-length');
+          if (cl) {
+            cachedSize = Number(cl) || 0;
+          } else if (matched && typeof matched.blob === 'function') {
+            const b = await matched.clone().blob();
+            cachedSize = b?.size || 0;
+          }
+        } catch {
+          // ignore cache size inspection errors
+        }
+      }
+      ensureCachedTrackMeta(candidate, cacheKey, cachedSize);
+    }
   }
   return ok;
 }

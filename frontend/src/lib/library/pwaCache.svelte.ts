@@ -1,5 +1,6 @@
 import { api } from '../api';
 import { t } from '../i18n';
+import { formatArtist } from '../utils';
 import { AudioCacheStorage } from 'pwa-audio-player';
 
 export const PWA_CACHE_NAME = 'netease-music-audio-v1';
@@ -111,6 +112,71 @@ if (typeof window !== 'undefined') {
   }) as EventListener);
 }
 
+const FALLBACK_TRACK_LABEL_RE = /^(?:离线音轨|離線音軌|本地音轨|Offline Track|Local Track)\s*#\d+|^(?:本地缓存音频|Locally Cached Audio|本機快取音訊|ローカルキャッシュ音源|로컬 캐시 오디오|浏览器已离线|Browser Offline|瀏覽器已離線|ブラウザオフライン|브라우저 오프라인)$/i;
+
+/**
+ * 判断文本是否为兜底占位的假歌名/假歌手（避免把占位文本固化进本地元数据）
+ */
+export function isFallbackTrackLabel(text?: string | null): boolean {
+  if (!text) return false;
+  return FALLBACK_TRACK_LABEL_RE.test(String(text).trim());
+}
+
+/**
+ * 为已进入 CacheStorage 的音频补充或修复本地元数据 (供下一首静默预加载与旧缓存自愈使用)
+ */
+export function ensureCachedTrackMeta(
+  track: {
+    id?: string | number | null;
+    name?: string;
+    artist?: any;
+    cover?: string;
+    album?: string;
+  } | null | undefined,
+  cacheKey: string,
+  fileSize?: number
+): boolean {
+  if (!track || !cacheKey || typeof localStorage === 'undefined') return false;
+  const rawName = String(track.name || '').trim();
+  if (!rawName || isFallbackTrackLabel(rawName)) return false;
+
+  const rawArtist = formatArtist(track.artist);
+  const safeArtist = rawArtist && !isFallbackTrackLabel(rawArtist) ? rawArtist : '';
+  const id = track.id != null && track.id !== '' ? String(track.id) : '';
+
+  try {
+    const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
+    const existing = metaMap[cacheKey] || {};
+    const existingValidName = existing.songName && !isFallbackTrackLabel(existing.songName)
+      ? String(existing.songName).trim()
+      : '';
+    const resolvedSize = Number(fileSize || existing.fileSize || 0);
+
+    // 若已有完整真实歌名、歌手与大小，则不重复覆写时间戳
+    if (existingValidName && (existing.artist || !safeArtist) && (existing.fileSize || !resolvedSize)) {
+      return false;
+    }
+
+    metaMap[cacheKey] = {
+      ...existing,
+      id: id || existing.id || '',
+      songName: existingValidName || rawName,
+      artist: (existing.artist && !isFallbackTrackLabel(existing.artist) ? existing.artist : safeArtist) || t('common.unknownArtist'),
+      cover: existing.cover || track.cover || '/favicon.png',
+      album: existing.album || track.album || '',
+      fileSize: resolvedSize,
+      time: existing.time || existing.cachedAt || Date.now(),
+      playCount: id ? getSongPlayCount(id) : (existing.playCount || 0)
+    };
+
+    localStorage.setItem(PWA_TRACK_META_KEY, JSON.stringify(metaMap));
+    refreshCachedSongIds();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 检查指定歌曲 ID 是否已在浏览器离线 Cache 中
  */
@@ -218,8 +284,10 @@ export async function cacheTrackToBrowser(
 
     // 写入本地离线曲库元数据供断网渲染与播放器读取
     const metaMap = JSON.parse(localStorage.getItem(PWA_TRACK_META_KEY) || '{}');
-    const sName = songData.name || track.name || t('common.unknownSong');
-    const sArtist = songData.ar_name || track.artist || t('common.unknownArtist');
+    const rawTrackName = track.name && !isFallbackTrackLabel(track.name) ? track.name : '';
+    const rawTrackArtist = track.artist && !isFallbackTrackLabel(formatArtist(track.artist)) ? formatArtist(track.artist) : '';
+    const sName = songData.name || rawTrackName || t('common.unknownSong');
+    const sArtist = songData.ar_name || rawTrackArtist || t('common.unknownArtist');
     const sCover = songData.al_pic_url || track.cover || '/favicon.png';
     const sAlbum = songData.al_name || track.album || '';
     const currentPlayCount = getSongPlayCount(id);
@@ -234,7 +302,9 @@ export async function cacheTrackToBrowser(
       time: Date.now(),
       playCount: currentPlayCount
     };
-    metaMap[canonicalUrl] = meta;
+    if (songData.name || rawTrackName) {
+      metaMap[canonicalUrl] = meta;
+    }
     if (audioUrl && audioUrl !== canonicalUrl) {
       delete metaMap[audioUrl];
     }
