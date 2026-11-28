@@ -2,12 +2,13 @@
   import { onMount } from 'svelte';
   import AccordionCard from './AccordionCard.svelte';
   import SlotBtn from './SlotBtn.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
   import TrackSourceBadge from './TrackSourceBadge.svelte';
-  import { formatBytes, DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { formatBytes, DEFAULT_VINYL_COVER, matchesKeyword } from '../lib/utils';
   import { autoCacheState, setAutoCacheEnabled, getSongPlayCount } from '../lib/pwaCache.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { playerStore } from '../lib/playerStore.svelte';
-  import { RefreshCw, Trash2, Play, Pause, MoreHorizontal, Loader2 } from '@lucide/svelte';
+  import { RefreshCw, Trash2, Play, Pause, MoreHorizontal, Search } from '@lucide/svelte';
   import { t } from '../lib/i18n';
   import {
     type BrowserCacheItem,
@@ -38,6 +39,13 @@
   let browserCacheLoading = $state(false);
   let minPlayThreshold = $state(2);
   let minPlayCountToPlay = $state(1);
+  let searchKw = $state('');
+  let showSearch = $state(false);
+  let filteredCacheList = $derived(
+    searchKw.trim()
+      ? browserCacheList.filter((item) => matchesKeyword(`${item.name} ${item.artist}`, searchKw.trim()))
+      : browserCacheList
+  );
 
   function handlePlayAll() {
     if (browserCacheList.length === 0) {
@@ -127,6 +135,34 @@
     }
   }
 
+  function openCacheMoreSheet() {
+    openSheet({
+      title: t('download.tabCache'),
+      subtitle: t('cache.totalOfflineTracks', {
+        count: browserCacheList.length,
+        size: browserCacheBytes ? formatBytes(browserCacheBytes) : '0 B'
+      }),
+      actions: [
+        {
+          label: `${autoCacheState.enabled ? '✅' : '⬜'} ${t('cache.autoCacheTitle')}`,
+          style: 'default',
+          onclick: () => {
+            const next = !autoCacheState.enabled;
+            setAutoCacheEnabled(next);
+            showToast(next ? t('cache.autoCacheEnabled') : t('cache.autoCacheDisabled'), 'info', 1500);
+          }
+        },
+        { label: `🔄 ${t('common.refresh')}`, style: 'default', onclick: loadList },
+        ...(browserCacheList.length > 0
+          ? [
+              { label: `${t('cache.cleanBelow')} ${minPlayThreshold} ${t('cache.unitTimes')}`, style: 'default' as const, onclick: handleClearLowPlayCount },
+              { label: `🗑️ ${t('common.clear')}`, style: 'danger' as const, onclick: handleClearAll }
+            ]
+          : [])
+      ]
+    });
+  }
+
   function openTrackSheet(item: BrowserCacheItem) {
     const isPlayingThis = playerStore.playing && (
       String(playerStore.activeTrack?.id) === String(item.id) ||
@@ -190,52 +226,13 @@
 </script>
 
 <AccordionCard title={t('cache.accordionTitle')} bind:open {flat} accent="emerald">
-  <!-- Stats & Control Bar (极简两行操作卡片：首行纯按钮操作，首数与体积精简移至下方状态栏) -->
-  <div class="cache-stat-bar">
-    <div class="stat-top-row">
-      <button
-        type="button"
-        class="btn-secondary cache-action-btn flex items-center gap-1.5"
-        onclick={loadList}
-        disabled={browserCacheLoading}
-        title={t('cache.rescanTooltip')}
-      >
-        <RefreshCw size={12} class={browserCacheLoading ? 'animate-spin' : ''} />
-        <span>{browserCacheLoading ? t('cache.scanning') : t('common.refresh')}</span>
-      </button>
-
-      <!-- Auto Cache Checkbox -->
-      <label class="auto-cache-toggle" title={t('cache.autoCacheTooltip')}>
-        <input
-          type="checkbox"
-          checked={autoCacheState.enabled}
-          onchange={(e) => {
-            const val = (e.currentTarget as HTMLInputElement).checked;
-            setAutoCacheEnabled(val);
-            showToast(val ? t('cache.autoCacheEnabled') : t('cache.autoCacheDisabled'), 'info', 1500);
-          }}
-        />
-        <span class="font-medium text-[var(--text-main)]">{t('cache.autoCacheTitle')}</span>
-      </label>
-
-      <!-- 🗑️ 清空按钮紧凑同行右侧或并列展示 -->
-      <button
-        type="button"
-        class="btn-secondary cache-action-btn btn-danger flex items-center gap-1.5"
-        onclick={handleClearAll}
-        disabled={browserCacheLoading || browserCacheList.length === 0}
-        title={t('cache.clearAllTooltip')}
-      >
-        <Trash2 size={12} />
-        <span>{t('common.clear')}</span>
-      </button>
-    </div>
-
-    <div class="stat-actions-row">
+  <!-- Row 1: 1排主操作按钮靠左（PC 展开全部，SP 收纳低频项进 ···）+ 右侧 🔍 -->
+  <div class="flex items-center justify-between gap-1.5 mb-2 text-[13px] md:bg-[var(--stat-bar-bg)] md:border md:border-[var(--border-subtle)] md:py-2 md:px-3 md:rounded-lg">
+    <div class="flex items-center gap-1.5 flex-wrap min-w-0">
       <button
         type="button"
         data-testid="btn-cache-play-all"
-        class="btn-primary cache-action-btn play-all-btn"
+        class="btn-primary cache-action-btn play-all-btn shrink-0"
         onclick={handlePlayAll}
         disabled={browserCacheLoading || browserCacheList.length === 0}
         title={t('cache.playAllTooltip')}
@@ -243,7 +240,7 @@
         {t('playlist.playAll')}
       </button>
 
-      <div class="play-filter-control" title={t('cache.playFilterTooltip')}>
+      <div class="play-filter-control shrink-0" title={t('cache.playFilterTooltip')}>
         <button
           type="button"
           data-testid="btn-cache-play-filtered"
@@ -266,32 +263,103 @@
         <span class="clean-unit-text">{t('cache.unitTimes')}</span>
       </div>
 
-      <!-- Clear cache less than N plays -->
-      <div class="clean-low-control" title={t('cache.cleanLowTooltip')}>
+      <!-- SP 移动端：低频操作收进 ··· -->
+      <button
+        type="button"
+        class="btn-secondary md:hidden px-2 py-1 text-xs inline-flex items-center justify-center shrink-0"
+        onclick={openCacheMoreSheet}
+        title={t('common.moreActions')}
+        aria-label={t('common.moreActions')}
+      >
+        <MoreHorizontal size={14} />
+      </button>
+
+      <!-- PC 桌面端：完整展开其余控制项 -->
+      <div class="hidden md:contents">
+        <label class="auto-cache-toggle" title={t('cache.autoCacheTooltip')}>
+          <input
+            type="checkbox"
+            checked={autoCacheState.enabled}
+            onchange={(e) => {
+              const val = (e.currentTarget as HTMLInputElement).checked;
+              setAutoCacheEnabled(val);
+              showToast(val ? t('cache.autoCacheEnabled') : t('cache.autoCacheDisabled'), 'info', 1500);
+            }}
+          />
+          <span class="font-medium text-[var(--text-main)]">{t('cache.autoCacheTitle')}</span>
+        </label>
+
+        <div class="clean-low-control" title={t('cache.cleanLowTooltip')}>
+          <button
+            type="button"
+            class="clean-low-btn"
+            onclick={handleClearLowPlayCount}
+            disabled={browserCacheLoading || browserCacheList.length === 0}
+          >
+            {t('cache.cleanBelow')}
+          </button>
+          <input
+            type="number"
+            min="1"
+            max="99"
+            class="clean-n-input"
+            bind:value={minPlayThreshold}
+            onclick={(e) => e.stopPropagation()}
+            title={t('cache.cleanThresholdTooltip')}
+          />
+          <span class="clean-unit-text">{t('cache.unitTimes')}</span>
+        </div>
+
         <button
           type="button"
-          class="clean-low-btn"
-          onclick={handleClearLowPlayCount}
-          disabled={browserCacheLoading || browserCacheList.length === 0}
+          class="btn-secondary cache-action-btn flex items-center gap-1.5"
+          onclick={loadList}
+          disabled={browserCacheLoading}
+          title={t('cache.rescanTooltip')}
         >
-          {t('cache.cleanBelow')}
+          <RefreshCw size={12} class={browserCacheLoading ? 'animate-spin' : ''} />
+          <span>{browserCacheLoading ? t('cache.scanning') : t('common.refresh')}</span>
         </button>
-        <input
-          type="number"
-          min="1"
-          max="99"
-          class="clean-n-input"
-          bind:value={minPlayThreshold}
-          onclick={(e) => e.stopPropagation()}
-          title={t('cache.cleanThresholdTooltip')}
-        />
-        <span class="clean-unit-text">{t('cache.unitTimes')}</span>
+
+        <button
+          type="button"
+          class="btn-secondary cache-action-btn btn-danger flex items-center gap-1.5"
+          onclick={handleClearAll}
+          disabled={browserCacheLoading || browserCacheList.length === 0}
+          title={t('cache.clearAllTooltip')}
+        >
+          <Trash2 size={12} />
+          <span>{t('common.clear')}</span>
+        </button>
       </div>
     </div>
+
+    <button
+      type="button"
+      class="btn-secondary px-2 py-1 text-xs inline-flex items-center justify-center shrink-0 {showSearch || searchKw ? '!text-emerald-400 !border-emerald-500/40 !bg-emerald-500/10 font-bold' : ''}"
+      onclick={() => { if (showSearch || searchKw) { showSearch = false; searchKw = ''; } else { showSearch = true; } }}
+      title={t('common.search')}
+      aria-label={t('common.search')}
+    >
+      <Search size={13} />
+    </button>
   </div>
 
-  <!-- Sorting Hint (SP 移动端紧凑展示，避免长文折行) -->
-  <div class="cache-sort-hint-bar flex items-center justify-between text-[11px] text-[var(--text-muted)] py-1 px-1">
+  <!-- Row 2: 点击 🔍 展开搜索过滤 -->
+  {#if showSearch || searchKw}
+    <div class="mb-2">
+      <LocalSearchBox
+        bind:value={searchKw}
+        autofocus={true}
+        placeholder={t('playlist.filterTracksPlaceholder')}
+        onClear={() => { searchKw = ''; showSearch = false; }}
+        inputClassName="!py-1.5"
+      />
+    </div>
+  {/if}
+
+  <!-- Row 3: Sorting Hint + Count -->
+  <div class="cache-sort-hint-bar flex items-center justify-between text-[11px] text-[var(--text-muted)] pb-2 mb-1 border-b border-[var(--border-subtle)]">
     <div class="flex items-center gap-1.5 min-w-0" title={t('cache.sortRule')}>
       <span class="hint-icon">📌</span>
       <span class="hint-label hidden sm:inline truncate">{t('cache.sortRule')}</span>
@@ -316,7 +384,7 @@
 
   <!-- Offline Cache Track List -->
   <ul class="data-list scrollable-list">
-    {#each browserCacheList as item}
+    {#each filteredCacheList as item}
       {@const isPlayingThis = playerStore.playing && (String(playerStore.activeTrack?.id) === String(item.id) || playerStore.activeTrack?.url === item.relUrl)}
       <li class="track-item-card" class:is-active-playing={isPlayingThis}>
         <div class="track-title-row">
@@ -384,105 +452,26 @@
         </div>
       </li>
     {:else}
-      <li style="padding:20px; text-align:center; color:var(--text-muted);">{browserCacheLoading ? t('cache.scanningCache') : t('cache.noOfflineCacheOnDevice')}</li>
+      <li style="padding:20px; text-align:center; color:var(--text-muted);">{browserCacheLoading ? t('cache.scanningCache') : searchKw.trim() ? t('playlist.notFoundSong', { kw: searchKw }) : t('cache.noOfflineCacheOnDevice')}</li>
     {/each}
   </ul>
 </AccordionCard>
 
 <style>
-  .cache-stat-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    background: var(--stat-bar-bg);
-    border: 1px solid var(--border-subtle);
-    padding: 8px 12px;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    font-size: 13px;
-  }
-  .stat-top-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .auto-cache-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.06));
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    cursor: pointer;
-    user-select: none;
-    font-size: 12px;
-  }
-  .stat-actions-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .auto-cache-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.06)); border: 1px solid var(--border-subtle); border-radius: 6px; cursor: pointer; user-select: none; font-size: 12px; }
   .cache-action-btn { padding: 4px 10px; font-size: 12px; }
   .play-all-btn { font-weight: 600; }
   .btn-danger { color: #f87171; }
   .btn-danger:hover { background: rgba(239, 68, 68, 0.15); }
-  .play-filter-control, .clean-low-control {
-    display: inline-flex;
-    align-items: center;
-    background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.06));
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .play-filter-btn, .clean-low-btn {
-    background: transparent;
-    border: none;
-    padding: 4px 8px;
-    font-size: 12px;
-    color: var(--text-main);
-    cursor: pointer;
-  }
-  .clean-n-input {
-    width: 38px;
-    background: transparent;
-    border: none;
-    border-left: 1px solid var(--border-subtle);
-    color: var(--text-main);
-    font-size: 12px;
-    padding: 4px 2px;
-    text-align: center;
-  }
+  .play-filter-control, .clean-low-control { display: inline-flex; align-items: center; background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.06)); border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden; }
+  .play-filter-btn, .clean-low-btn { background: transparent; border: none; padding: 4px 8px; font-size: 12px; color: var(--text-main); cursor: pointer; }
+  .clean-n-input { width: 38px; background: transparent; border: none; border-left: 1px solid var(--border-subtle); color: var(--text-main); font-size: 12px; padding: 4px 2px; text-align: center; }
   .clean-unit-text { font-size: 11px; color: var(--text-muted); padding-right: 6px; }
-  .cache-sort-hint-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 8px;
-    margin-bottom: 6px;
-    font-size: 11px;
-    color: var(--text-secondary);
-  }
-  .hint-badge {
-    background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.06));
-    padding: 1px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border-subtle);
-  }
-  .track-item-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border-subtle);
-  }
+  .cache-sort-hint-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; margin-bottom: 6px; font-size: 11px; color: var(--text-secondary); }
+  .hint-badge { background: var(--btn-secondary-bg, rgba(255, 255, 255, 0.06)); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border-subtle); }
+  .track-item-card { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); }
   .track-title-row { display: flex; align-items: center; min-width: 0; flex: 1; }
-  .play-count-badge {
-    font-size: 10px;
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    padding: 1px 5px;
-    border-radius: 4px;
-  }
+  .play-count-badge { font-size: 10px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 1px 5px; border-radius: 4px; }
   .cache-time-tag { font-size: 10px; }
-  .btn-more-actions {
-    background: transparent;
-    border: none;
-    font-size: 16px;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px 8px;
-  }
+  .btn-more-actions { background: transparent; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; padding: 4px 8px; }
 </style>

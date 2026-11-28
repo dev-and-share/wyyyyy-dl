@@ -170,7 +170,7 @@
   <div class="flex items-center justify-between gap-1 sm:gap-1.5 mb-2.5">
     <div
       data-testid="my-playlists-filter-tabs"
-      class="flex gap-1 sm:gap-1.5 items-center flex-nowrap overflow-x-auto no-scrollbar min-w-0 flex-1 py-0.5"
+      class="flex gap-1 sm:gap-1.5 items-center flex-nowrap overflow-x-auto no-scrollbar min-w-0 flex-1 p-1"
     >
       <button
         class="btn-secondary rounded-lg px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-0.5 sm:gap-1 shrink-0 whitespace-nowrap break-keep bg-gradient-to-br from-slate-600 to-slate-700 transition-all hover:brightness-110 active:scale-95"

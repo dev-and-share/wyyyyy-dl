@@ -12,6 +12,7 @@
   import { matchesKeyword } from '../lib/utils';
   import { t } from '../lib/i18n';
   import SlotBtn from './SlotBtn.svelte';
+  import LocalSearchBox from './LocalSearchBox.svelte';
   import { Folder, Plus, Search, Heart, Trash2 } from '@lucide/svelte';
 
   let {
@@ -25,11 +26,20 @@
   }>();
 
   let searchKw = $state('');
+  let showSearch = $state(false);
   let showCreateInput = $state(false);
   let newName = $state('');
   let deletingId = $state<string | null>(null);
-  let searchInputEl = $state<HTMLInputElement | null>(null);
   let createInputEl = $state<HTMLInputElement | null>(null);
+
+  function toggleSearch() {
+    if (showSearch || searchKw) {
+      showSearch = false;
+      searchKw = '';
+    } else {
+      showSearch = true;
+    }
+  }
 
   function toggleCreateInput() {
     showCreateInput = !showCreateInput;
@@ -86,51 +96,30 @@
 </script>
 
 <div class="flex flex-col gap-3 select-none" data-testid="local-playlists-section">
-  <!-- 顶栏：标题与操作栏 (SP 移动端防撑破自适应优化) -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
-    <div class="flex items-center justify-between w-full sm:w-auto gap-2">
-      <div class="flex items-center gap-2">
-        <Folder size={16} class="text-emerald-400" />
-        <h3 class="font-bold text-sm text-[var(--text-main)]">{t('localPlaylist.title')}</h3>
-        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
-          {localPlaylistState.playlists.length}
-        </span>
-      </div>
-
-      <button
-        type="button"
-        class="sm:hidden px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors flex items-center gap-1 shrink-0 active:scale-95"
-        onclick={toggleCreateInput}
-      >
-        <Plus size={13} strokeWidth={2.5} />
-        <span>{t('localPlaylist.createBtn')}</span>
-      </button>
+  <!-- 顶栏：标题与操作栏 (统一点击 🔍 展开搜索框模式) -->
+  <div class="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+    <div class="flex items-center gap-2 min-w-0">
+      <Folder size={16} class="text-emerald-400 shrink-0" />
+      <h3 class="font-bold text-sm text-[var(--text-main)] truncate">{t('localPlaylist.title')}</h3>
+      <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium shrink-0">
+        {localPlaylistState.playlists.length}
+      </span>
     </div>
 
-    <div class="flex items-center gap-2 w-full sm:w-auto">
-      <div class="relative flex-1 sm:w-48">
-        <input
-          bind:this={searchInputEl}
-          type="search"
-          enterkeyhint="search"
-          placeholder={t('localPlaylist.searchPlaceholder')}
-          class="w-full pl-6 pr-2 py-1 rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-main)] border border-[var(--input-border)] focus:outline-none focus:border-emerald-500 transition-colors"
-          bind:value={searchKw}
-        />
-        <button
-          type="button"
-          tabindex="-1"
-          class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] opacity-40 hover:opacity-100 cursor-pointer p-0 bg-transparent border-none flex items-center justify-center transition-opacity"
-          onclick={() => searchInputEl?.focus()}
-          title={t('common.search')}
-        >
-          <Search size={11} />
-        </button>
-      </div>
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button
+        type="button"
+        class="btn-secondary rounded-lg px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-color)] bg-black/5 dark:bg-white/5 transition-all active:scale-95 flex items-center justify-center {showSearch || searchKw ? '!text-emerald-400 !border-emerald-500/40 !bg-emerald-500/10 font-bold' : ''}"
+        onclick={toggleSearch}
+        title={t('common.search')}
+        aria-label={t('common.search')}
+      >
+        <Search size={13} />
+      </button>
 
       <button
         type="button"
-        class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors items-center gap-1 shrink-0 active:scale-95"
+        class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-none shadow-xs transition-colors flex items-center gap-1 shrink-0 active:scale-95"
         onclick={toggleCreateInput}
       >
         <Plus size={13} strokeWidth={2.5} />
@@ -138,6 +127,17 @@
       </button>
     </div>
   </div>
+
+  <!-- 点击 🔍 展开搜索框 -->
+  {#if showSearch || searchKw}
+    <LocalSearchBox
+      bind:value={searchKw}
+      autofocus={true}
+      placeholder={t('localPlaylist.searchPlaceholder')}
+      onClear={() => { searchKw = ''; showSearch = false; }}
+      inputClassName="!py-1.5"
+    />
+  {/if}
 
   <!-- 新建歌单行内输入框 -->
   {#if showCreateInput}

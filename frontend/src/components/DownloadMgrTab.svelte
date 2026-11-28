@@ -15,7 +15,7 @@
   import { openSheet } from '../lib/ui.svelte';
   import { isSameTrack } from '../lib/trackStatus.svelte';
   import { routerState } from '../lib/router.svelte';
-  import { RefreshCw } from '@lucide/svelte';
+  import { RefreshCw, Search, AlertCircle, X } from '@lucide/svelte';
   import { t } from '../lib/i18n';
   import type { Track } from '../lib/types';
 
@@ -62,6 +62,7 @@
   let histList: any[] = $state([]);
   let histStats: any = $state(null);
   let histTotal = $state(0);
+  let showHistorySearch = $state(false);
   let histTotalPages = $derived(Math.max(1, Math.ceil(histTotal / 10)));
 
   let scanExternalLoading = $state(false);
@@ -233,6 +234,31 @@
     }
   }
 
+  function openAuditSheet() {
+    const actions: import('../lib/ui.svelte').SheetAction[] = [];
+    if ((histStats?.missingCount ?? 0) > 0) {
+      actions.push({ label: t('download.missingCount', { count: histStats.missingCount }), style: 'default', onclick: openMissingModal });
+    }
+    if ((histStats?.nonMp3Count ?? 0) > 0) {
+      actions.push({ label: t('download.nonMp3Format', { count: histStats.nonMp3Count }), style: 'default', onclick: openNonMp3Modal });
+    }
+    if (actions.length) {
+      openSheet({ title: t('download.tabHistory'), subtitle: `${histStats?.totalCount ?? histTotal ?? 0}`, actions });
+    }
+  }
+
+  function toHistoryTrack(h: any, artistName: string) {
+    return {
+      id: h.songId && h.songId > 0 ? h.songId : (h.id || `local_${Date.now()}`),
+      name: h.songName || h.name,
+      artist: artistName,
+      album: h.album || t('download.localLibrary'),
+      cover: h.cover || DEFAULT_VINYL_COVER,
+      url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath || '')}`,
+      isLocal: true
+    };
+  }
+
   function openTrackSheet(h: any) {
     const isPlayingThis = isSameTrack(curTrack, h);
     const artistName = h.artist || (h.artists ? formatArtist(h.artists) : '');
@@ -241,32 +267,9 @@
       title: h.songName || h.name || t('common.unknownSong'),
       subtitle: artistName || t('download.localAudio'),
       actions: [
-        {
-          label: isPlayingThis && playing ? t('track.actionPauseDesktop') : t('track.actionPlayLocalFull'),
-          style: 'primary',
-          onclick: () => {
-            onPlayQueue([{
-              id: h.songId && h.songId > 0 ? h.songId : (h.id || `local_${Date.now()}`),
-              name: h.songName || h.name,
-              artist: artistName,
-              album: h.album || t('download.localLibrary'),
-              cover: h.cover || DEFAULT_VINYL_COVER,
-              url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath || '')}`,
-              isLocal: true
-            }]);
-          }
-        },
-        {
-          label: t('playlist.locateInDisk'),
-          onclick: () => {
-            onReveal({ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, path: h.hostFilePath || h.filePath || h.path });
-          }
-        },
-        {
-          label: t('download.deleteFromHistory'),
-          style: 'danger',
-          onclick: () => deleteItem(h.id)
-        }
+        { label: isPlayingThis && playing ? t('track.actionPauseDesktop') : t('track.actionPlayLocalFull'), style: 'primary', onclick: () => onPlayQueue([toHistoryTrack(h, artistName)]) },
+        { label: t('playlist.locateInDisk'), onclick: () => onReveal({ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, path: h.hostFilePath || h.filePath || h.path }) },
+        { label: t('download.deleteFromHistory'), style: 'danger', onclick: () => deleteItem(h.id) }
       ]
     });
   }
@@ -304,28 +307,40 @@
 
     <div class="w-full flex-1 flex flex-col">
       <AccordionCard title={t('download.accordionHistoryShort')} flat open={true} accent="blue">
-      <div class="flex flex-wrap gap-2.5 bg-[var(--stat-bar-bg)] border border-[var(--border-subtle)] p-2.5 px-3.5 rounded-xl mb-2.5 items-center text-xs">
-        <span class="text-[var(--text-secondary)]">{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
-        <span class="text-[var(--text-secondary)]">{t('download.diskSpaceUsed', { size: histStats?.totalSize ? formatBytes(histStats.totalSize) : '-' })}</span>
-        {#if (histStats?.missingCount ?? 0) > 0}
-          <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-red-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openMissingModal} title={t('download.modalTitleMissing')}>
-            {t('download.missingCount', { count: histStats.missingCount })} <span class="text-[10px] border border-red-500/30 px-1 py-0.5 rounded-md">{t('download.viewArrow')}</span>
-          </button>
-        {/if}
-        {#if (histStats?.nonMp3Count ?? 0) > 0}
-          <button type="button" class="bg-transparent border-none p-0 cursor-pointer text-amber-500 hover:underline text-left inline-flex items-center gap-1 font-normal text-[13px]" onclick={openNonMp3Modal} title={t('download.modalTitleNonMp3')}>
-            {t('download.nonMp3Format', { count: histStats.nonMp3Count })} <span class="text-[10px] border border-amber-500/30 px-1 py-0.5 rounded-md">{t('download.viewArrow')}</span>
-          </button>
-        {/if}
-        <div class="ml-auto flex gap-1.5 flex-wrap">
+      <!-- Row 1: 顶部操作按钮栏 + 右侧放大镜 -->
+      <div class="flex items-center justify-between gap-1.5 w-full mb-2">
+        <div class="flex gap-1.5 flex-wrap min-w-0">
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanExternalLibraries}>{t('download.btnExternal')}</button>
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={scanDiskFiles}>{t('download.btnAlignDisk')}</button>
           <button class="btn-secondary px-2.5 py-1 text-xs" onclick={cleanMissingRecords}>{t('download.btnCleanMissing')}</button>
-          <button class="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1.5" onclick={() => loadHistory(1)}>
-            <RefreshCw size={12} />
-            <span>{t('common.refresh')}</span>
-          </button>
+          <button class="btn-secondary px-2.5 py-1 text-xs inline-flex items-center gap-1.5" onclick={() => loadHistory(1)}><RefreshCw size={12} /><span>{t('common.refresh')}</span></button>
         </div>
+        <button type="button" class="btn-secondary px-2 py-1 text-xs inline-flex items-center justify-center shrink-0 {showHistorySearch || histKw ? '!text-blue-400 !border-blue-500/40 !bg-blue-500/10 font-bold' : ''}" onclick={() => { if (showHistorySearch || histKw) { showHistorySearch = false; histKw = ''; loadHistory(1); } else { showHistorySearch = true; } }} title={t('common.search')} aria-label={t('common.search')}><Search size={13} /></button>
+      </div>
+
+      <!-- Row 2: 点击 🔍 展开搜索框 -->
+      {#if showHistorySearch || histKw}
+        <div class="flex gap-2 mb-2">
+          <div class="flex-1 min-w-0">
+            <LocalSearchBox bind:value={histKw} autofocus={true} placeholder={t('download.searchHistoryAdvancedPlaceholder')} historyKey="wyy_history_search_history" onSearch={() => loadHistory(1)} onClear={() => { histKw = ''; showHistorySearch = false; loadHistory(1); }} inputClassName="!py-1.5" />
+          </div>
+          <button class="btn-primary shrink-0 whitespace-nowrap hidden md:inline-flex px-4 py-1.5 text-xs" onclick={() => loadHistory(1)}>{t('common.search')}</button>
+        </div>
+      {/if}
+
+      <!-- Row 3: 统计信息与异常审计角标 -->
+      <div class="flex items-center justify-between gap-2 text-[11px] text-[var(--text-muted)] pb-2 mb-2 border-b border-[var(--border-subtle)]">
+        <div class="flex items-center gap-2 min-w-0 truncate">
+          <span>{t('download.recordedDownloads', { count: histStats?.totalCount ?? histTotal ?? 0 })}</span>
+          <span>·</span>
+          <span>{histStats?.totalSize ? formatBytes(histStats.totalSize) : '-'}</span>
+        </div>
+        {#if (histStats?.missingCount ?? 0) + (histStats?.nonMp3Count ?? 0) > 0}
+          <button type="button" class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/[0.04] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer transition-colors" onclick={openAuditSheet} title={t('common.moreActions')}>
+            <AlertCircle size={11} class="opacity-70" />
+            <span>{(histStats?.missingCount ?? 0) + (histStats?.nonMp3Count ?? 0)}</span>
+          </button>
+        {/if}
       </div>
 
       <!-- Scan result panels -->
@@ -334,7 +349,12 @@
           {#if scanExternalLoading}
             <div class="text-[var(--text-secondary)] text-center py-2.5">{t('download.scanningPleaseWait')}</div>
           {:else if externalResult}
-            <div class="text-[var(--text-main)] font-bold text-sm mb-1">{t('download.externalScanFinished')}</div>
+            <div class="flex items-start justify-between gap-2">
+              <div class="text-[var(--text-main)] font-bold text-sm">{t('download.externalScanFinished')}</div>
+              <button type="button" class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 bg-transparent border-none cursor-pointer transition-colors" onclick={() => externalResult = null} title={t('common.close')} aria-label={t('common.close')}>
+                <X size={14} />
+              </button>
+            </div>
             <div class="text-[var(--text-main)]">{t('download.configuredDirsList', { dirs: (externalResult.configuredDirs || []).join(' ; ') || '-' })}</div>
             <div class="text-[var(--text-main)]">{t('download.totalScannedFiles', { count: externalResult.scannedFiles || 0 })}</div>
             <div class="text-[var(--text-main)]">{t('download.newlyIndexedCount', { count: externalResult.addedCount || 0 })}</div>
@@ -348,11 +368,16 @@
           {#if scanDiskLoading}
             <div class="text-[var(--text-secondary)] text-center py-2.5">{t('download.scanningPleaseWait')}</div>
           {:else if diskResult}
-            <div>
-              <strong>{t('download.labelDbRecords')}</strong>{diskResult.totalRecords || 0} |
-              <strong>{t('download.labelValidRecords')}</strong>{diskResult.validRecordsCount || 0} |
-              <strong>{t('download.labelMissingRecords')}</strong><span class="text-red-500 font-semibold">{diskResult.missingCount || 0}</span> |
-              <strong>{t('download.labelUntrackedRecords')}</strong><span class="text-red-500 font-semibold">{diskResult.untrackedCount || 0}</span>
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <strong>{t('download.labelDbRecords')}</strong>{diskResult.totalRecords || 0} |
+                <strong>{t('download.labelValidRecords')}</strong>{diskResult.validRecordsCount || 0} |
+                <strong>{t('download.labelMissingRecords')}</strong><span class="text-red-500 font-semibold">{diskResult.missingCount || 0}</span> |
+                <strong>{t('download.labelUntrackedRecords')}</strong><span class="text-red-500 font-semibold">{diskResult.untrackedCount || 0}</span>
+              </div>
+              <button type="button" class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/10 bg-transparent border-none cursor-pointer transition-colors" onclick={() => diskResult = null} title={t('common.close')} aria-label={t('common.close')}>
+                <X size={14} />
+              </button>
             </div>
             {#if diskResult.untrackedCount > 0}
               <div class="flex items-center justify-between gap-2 mt-1 flex-wrap">
@@ -374,29 +399,13 @@
         </div>
       {/if}
 
-      <!-- Search Row -->
-      <div class="flex gap-2 mb-2.5">
-        <div class="flex-1 min-w-0">
-          <LocalSearchBox
-            bind:value={histKw}
-            placeholder={t('download.searchHistoryAdvancedPlaceholder')}
-            historyKey="wyy_history_search_history"
-            onSearch={() => loadHistory(1)}
-            onClear={() => loadHistory(1)}
-          />
-        </div>
-        <button class="btn-primary shrink-0 whitespace-nowrap hidden md:inline-flex px-4 py-1.5 text-xs" onclick={() => loadHistory(1)}>
-          {t('common.search')}
-        </button>
-      </div>
-
       <!-- History List -->
-      <ul class="data-list divide-y divide-black/5 dark:divide-white/5 border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--card-bg)] m-0 p-0 list-none">
+      <ul class="data-list divide-y divide-black/5 dark:divide-white/5 border-0 md:border border-[var(--border-subtle)] rounded-none md:rounded-xl overflow-hidden bg-transparent md:bg-[var(--card-bg)] m-0 p-0 list-none">
         {#each histList as h, idx (h.id || idx)}
           {@const isPlayingThis = isSameTrack(curTrack, h)}
           {@const artistName = h.artist || (h.artists ? formatArtist(h.artists) : '')}
           {@const displayPath = h.hostFilePath || h.filePath || h.path}
-          <li class="flex justify-between items-center py-2 px-3 hover:bg-black/5 dark:hover:bg-white/5 transition-all group">
+          <li class="flex justify-between items-center py-2 px-1 md:px-3 hover:bg-black/5 dark:hover:bg-white/5 transition-all group">
             <div class="flex-1 overflow-hidden min-w-0 pr-2">
               <div class="font-bold text-xs text-[var(--text-main)] truncate flex items-center">
                 <span>{(histPage - 1) * 10 + idx + 1}. {h.songName || h.name || t('common.unknownSong')}</span>
@@ -419,53 +428,19 @@
 
             <!-- Desktop actions -->
             <div class="hidden md:inline-flex items-center gap-1.5 shrink-0">
-              <SlotBtn
-                playing={isPlayingThis && playing}
-                onclick={() => onPlayQueue([{
-                  id: h.songId && h.songId > 0 ? h.songId : (h.id || `local_${Date.now()}`),
-                  name: h.songName || h.name,
-                  artist: artistName,
-                  album: h.album || t('download.localLibrary'),
-                  cover: h.cover || DEFAULT_VINYL_COVER,
-                  url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath || '')}`,
-                  isLocal: true
-                }])}
-              >
+              <SlotBtn playing={isPlayingThis && playing} onclick={() => onPlayQueue([toHistoryTrack(h, artistName)])}>
                 {isPlayingThis && playing ? t('track.actionPlaying') : t('track.actionPlayShort')}
               </SlotBtn>
-              <SlotBtn onclick={() => onReveal({ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, path: displayPath })}>
-                {t('common.reveal')}
-              </SlotBtn>
-              <SlotBtn onclick={() => deleteItem(h.id)} title={t('download.deleteFromHistory')}>
-                {t('common.delete')}
-              </SlotBtn>
+              <SlotBtn onclick={() => onReveal({ id: h.songId || h.id, name: h.songName || h.name, artist: artistName, path: displayPath })}>{t('common.reveal')}</SlotBtn>
+              <SlotBtn onclick={() => deleteItem(h.id)} title={t('download.deleteFromHistory')}>{t('common.delete')}</SlotBtn>
             </div>
 
             <!-- Mobile actions -->
             <div class="inline-flex md:hidden items-center gap-1 shrink-0">
-              <SlotBtn
-                playing={isPlayingThis && playing}
-                onclick={() => onPlayQueue([{
-                  id: h.songId && h.songId > 0 ? h.songId : (h.id || `local_${Date.now()}`),
-                  name: h.songName || h.name,
-                  artist: artistName,
-                  album: h.album || t('download.localLibrary'),
-                  cover: h.cover || DEFAULT_VINYL_COVER,
-                  url: `/v3/history/stream?path=${encodeURIComponent(h.relativePath || h.filePath || '')}`,
-                  isLocal: true
-                }])}
-              >
+              <SlotBtn playing={isPlayingThis && playing} onclick={() => onPlayQueue([toHistoryTrack(h, artistName)])}>
                 {isPlayingThis && playing ? t('track.actionPlaying') : t('track.actionPlayShort')}
               </SlotBtn>
-              <button
-                type="button"
-                class="w-7 h-7 flex items-center justify-center rounded-lg bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] cursor-pointer"
-                onclick={() => openTrackSheet(h)}
-                title={t('common.moreActions')}
-                aria-label={t('common.moreActions')}
-              >
-                ···
-              </button>
+              <button type="button" class="w-7 h-7 flex items-center justify-center rounded-lg bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] cursor-pointer" onclick={() => openTrackSheet(h)} title={t('common.moreActions')} aria-label={t('common.moreActions')}>···</button>
             </div>
           </li>
         {:else}

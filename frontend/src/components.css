@@ -385,7 +385,7 @@
             flex-direction: row !important;
             align-items: center !important;
             justify-content: space-between !important;
-            padding: 8px 8px !important;
+            padding: 8px 4px !important;
             gap: 6px !important;
         }
         .track-title-row {

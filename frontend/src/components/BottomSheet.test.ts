@@ -102,4 +102,31 @@ describe('BottomSheet Component', () => {
     expect(getByText('放弃操作')).toBeInTheDocument();
     expect(queryByText('取消')).toBeNull();
   });
+
+  it('triggers trailingAction independently without firing primary action onclick', async () => {
+    const primaryClick = vi.fn();
+    const copyClick = vi.fn();
+    openSheet({
+      title: '歌单详情',
+      actions: [
+        {
+          label: '🔗 解析详情 (13546852689)',
+          onclick: primaryClick,
+          trailingAction: {
+            icon: 'copy',
+            title: '复制',
+            onclick: copyClick
+          }
+        }
+      ]
+    });
+
+    const { getByTitle } = render(BottomSheet);
+    const copyBtn = getByTitle('复制');
+    await fireEvent.click(copyBtn);
+
+    await new Promise((r) => setTimeout(r, 150));
+    expect(copyClick).toHaveBeenCalledTimes(1);
+    expect(primaryClick).not.toHaveBeenCalled();
+  });
 });

@@ -194,3 +194,32 @@ export function extractRawAudioUrl(url?: string): string {
   return url;
 }
 
+/**
+ * 📋 Copy text to clipboard with execCommand fallback for non-HTTPS LAN origins.
+ */
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  const value = String(text ?? '');
+  if (!value) return false;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {}
+  try {
+    if (typeof document !== 'undefined') {
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) return true;
+    }
+  } catch {}
+  return false;
+}
+

@@ -13,7 +13,7 @@
     clearPlaylistPlayCount
   } from '../../lib/playlist.svelte';
   import { api } from '../../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl } from '../../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, formatCoverUrl, copyTextToClipboard } from '../../lib/utils';
   import PlaylistTrackFilter from '../PlaylistTrackFilter.svelte';
   import SlotBtn from '../SlotBtn.svelte';
   import TrackLikeBtn from '../TrackLikeBtn.svelte';
@@ -30,7 +30,7 @@
   import { t } from '../../lib/i18n';
   import DesktopHeaderActions from './DesktopHeaderActions.svelte';
   import PlaylistDownloadDropdown from '../PlaylistDownloadDropdown.svelte';
-  import { Play, HardDrive, Package, HeartCrack, Star, Search, Plus, Trash2, Loader2, Sparkles, TriangleAlert } from '@lucide/svelte';
+  import { Play, HardDrive, Package, HeartCrack, Star, Search, Plus, Trash2, Loader2, Sparkles, TriangleAlert, Copy } from '@lucide/svelte';
 
   let {
     playlistId, playlistTrigger = 0, curTrack = null, playing = false, likedSet,
@@ -195,6 +195,13 @@
     if (newId) loadData(newId);
   }
 
+  async function handleCopyPlaylistId() {
+    if (!playlist?.id) return;
+    const idText = String(playlist.id);
+    const ok = await copyTextToClipboard(idText);
+    showToast(ok ? t('common.copiedWithLabel', { label: t('common.playlistId'), text: idText }) : t('common.copyFailedWithText', { text: idText }), ok ? 'success' : 'warning');
+  }
+
   function handleClearPlayCount() {
     if (!playlist?.id) return;
     if (playCount <= 0) return showToast(t('playlist.playCountAlreadyZero'), 'info');
@@ -245,7 +252,9 @@
               {t('playlist.title')}
             </span>
           {/if}
-          <span class="text-xs text-[var(--text-muted)]">ID: {playlist.id}</span>
+          <button type="button" data-testid="detail-copy-playlist-id" class="inline-flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] bg-transparent border-none px-1.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors" onclick={handleCopyPlaylistId} title={t('common.copy')}>
+            <span>ID: {playlist.id}</span><Copy size={11} class="opacity-70" />
+          </button>
         </div>
         <h1 class="text-lg sm:text-xl font-bold text-[var(--text-main)] truncate tracking-tight">
           {cleanPlaylistDisplayName(playlist)}

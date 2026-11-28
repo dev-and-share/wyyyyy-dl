@@ -1,5 +1,5 @@
 import { render, fireEvent } from '@testing-library/svelte';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import PlaylistTrackFilter from './PlaylistTrackFilter.svelte';
 import {
   allTracks,
@@ -64,5 +64,17 @@ describe('PlaylistTrackFilter Component', () => {
     expect(getPlaylistSearchKeyword()).toBe('');
     expect(getFilteredTracks().length).toBe(4);
     expect(queryByText(/匹配/)).toBeNull();
+  });
+
+  it('invokes onClear callback when clear button is clicked', async () => {
+    const onClear = vi.fn();
+    const { getByPlaceholderText, getByTitle } = render(PlaylistTrackFilter, {
+      props: { autofocus: true, onClear }
+    });
+    const input = getByPlaceholderText(/过滤歌曲、歌手/i) as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: '晴天' } });
+    await fireEvent.click(getByTitle('清除筛选'));
+    expect(onClear).toHaveBeenCalledTimes(1);
+    expect(getPlaylistSearchKeyword()).toBe('');
   });
 });

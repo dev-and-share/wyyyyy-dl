@@ -19,7 +19,7 @@
   let formattedCover = $derived(formatCoverUrl(cover, 300));
 </script>
 
-<div class="flex gap-3 md:gap-4 my-2.5 items-center bg-white/[0.02] dark:bg-white/[0.02] p-3 rounded-[10px] border border-[var(--border-subtle)]">
+<div class="flex gap-3 md:gap-4 mt-0.5 mb-1.5 md:my-2.5 items-center bg-white/[0.02] dark:bg-white/[0.02] p-3 rounded-[10px] border border-[var(--border-subtle)]">
   <img
     src={formattedCover}
     alt=""

@@ -7,10 +7,18 @@ import { getInitialTheme, applyTheme, type ThemeMode } from './theme';
 
 export type SheetActionStyle = 'default' | 'primary' | 'danger' | 'cancel';
 
+export type SheetTrailingAction = {
+  icon?: 'copy';
+  label?: string;
+  title?: string;
+  onclick: () => void;
+};
+
 export type SheetAction = {
   label: string;
   style?: SheetActionStyle;
   onclick: () => void;
+  trailingAction?: SheetTrailingAction;
 };
 
 export type SheetData = {

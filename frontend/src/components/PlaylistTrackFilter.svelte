@@ -8,6 +8,14 @@
   import LocalSearchBox from './LocalSearchBox.svelte';
   import { t } from '../lib/i18n/index.svelte';
 
+  let {
+    autofocus = false,
+    onClear
+  }: {
+    autofocus?: boolean;
+    onClear?: () => void;
+  } = $props();
+
   let keyword = $state(getPlaylistSearchKeyword());
   let filtered = $derived(getFilteredTracks());
 
@@ -27,10 +35,14 @@
   <div class="flex-1 min-w-0">
     <LocalSearchBox
       bind:value={keyword}
+      {autofocus}
       placeholder={t('playlist.filterTracksPlaceholder')}
       clearTitle={t('playlist.clearFilter')}
       onInput={handleInput}
-      onClear={() => setPlaylistSearchKeyword('')}
+      onClear={() => {
+        setPlaylistSearchKeyword('');
+        onClear?.();
+      }}
       inputClassName="!py-1.5"
     />
   </div>

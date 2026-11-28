@@ -4,7 +4,7 @@
   import { t } from '../lib/i18n';
   import FolderNode from './FolderNode.svelte';
   import LocalSearchBox from './LocalSearchBox.svelte';
-  import { RefreshCw, Folder } from '@lucide/svelte';
+  import { RefreshCw, Folder, Search } from '@lucide/svelte';
   import { DEFAULT_VINYL_COVER, matchesKeyword } from '../lib/utils';
 
   let {
@@ -21,6 +21,7 @@
   let curRoot: any = $state(null);
   let tree: any[] = $state([]);
   let filterKw = $state('');
+  let showSearch = $state(false);
   let expandSignal = $state(0);
 
   async function loadRoots() {
@@ -109,35 +110,24 @@
 </script>
 
 <div>
-  <!-- 根目录选择与全局搜索整合行 (紧凑同行布局，充分利用右侧横向空间) -->
-  <div class="flex items-center gap-2 mb-2">
-    {#if roots.length > 0}
-      <div class="flex gap-1.5 shrink-0 overflow-x-auto max-w-[50%]">
-        {#each roots as r}
-          <button
-            type="button"
-            class="px-2.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all shrink-0 whitespace-nowrap {curRoot?.path === r.path ? 'btn-primary' : 'btn-secondary'}"
-            onclick={() => selectRoot(r)}
-          >
-            {r.name.includes('外部') || r.name.toLowerCase().includes('external') ? '📦 ' + r.name : '📁 ' + r.name} <!-- i18n-ignore: badge icon -->
-          </button>
-        {/each}
-      </div>
-    {/if}
-
-    <div class="flex-1 min-w-0">
-      <LocalSearchBox
-        bind:value={filterKw}
-        placeholder={t('folder.searchPlaceholder')}
-        historyKey="wyy_folder_search_history"
-        hideIcon={true}
-      />
+  <!-- 仅在存在多个根目录时展示切换芯片 -->
+  {#if roots.length > 1}
+    <div class="flex gap-1.5 mb-2 overflow-x-auto no-scrollbar">
+      {#each roots as r}
+        <button
+          type="button"
+          class="px-2.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all shrink-0 whitespace-nowrap {curRoot?.path === r.path ? 'btn-primary' : 'btn-secondary'}"
+          onclick={() => selectRoot(r)}
+        >
+          {r.name.includes('外部') || r.name.toLowerCase().includes('external') ? '📦 ' + r.name : '📁 ' + r.name} <!-- i18n-ignore: badge icon -->
+        </button>
+      {/each}
     </div>
-  </div>
+  {/if}
 
-  <!-- Global Tree Control (全部展开 / 折叠 / 刷新) -->
-  <div class="mb-2.5 flex items-center justify-between gap-1.5 flex-wrap">
-    <div class="flex gap-1.5 flex-wrap">
+  <!-- Global Tree Control & Search Toggle (全部展开 / 折叠 / 刷新 + 🔍) -->
+  <div class="mb-2.5 flex items-center justify-between gap-1.5">
+    <div class="flex gap-1.5 flex-wrap min-w-0">
       <button
         type="button"
         class="btn-secondary px-2.5 py-1 text-xs cursor-pointer active:scale-95 transition-all"
@@ -164,7 +154,30 @@
         <span>{t('common.refresh')}</span>
       </button>
     </div>
+
+    <button
+      type="button"
+      class="btn-secondary rounded-lg px-2 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] border border-[var(--border-color)] bg-black/5 dark:bg-white/5 transition-all active:scale-95 flex items-center justify-center shrink-0 {showSearch || filterKw ? '!text-red-400 !border-red-500/40 !bg-red-500/10 font-bold' : ''}"
+      onclick={() => { if (showSearch || filterKw) { showSearch = false; filterKw = ''; } else { showSearch = true; } }}
+      title={t('common.search')}
+      aria-label={t('common.search')}
+    >
+      <Search size={13} />
+    </button>
   </div>
+
+  {#if showSearch || filterKw}
+    <div class="mb-2.5">
+      <LocalSearchBox
+        bind:value={filterKw}
+        autofocus={true}
+        placeholder={t('folder.searchPlaceholder')}
+        historyKey="wyy_folder_search_history"
+        onClear={() => { filterKw = ''; showSearch = false; }}
+        inputClassName="!py-1.5"
+      />
+    </div>
+  {/if}
 
   <!-- Root Stats -->
   {#if curRoot}

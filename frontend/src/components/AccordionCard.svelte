@@ -131,8 +131,9 @@
 </script>
 
 {#if flat}
+  <!-- SP 移动端去外框通透流式布局，仅在 md+ 宽屏保留外层卡片壳 -->
   <div
-    class="bg-[var(--card-bg)] backdrop-blur-md rounded-2xl shadow-sm md:shadow-md overflow-hidden border border-[var(--border-color)] p-3 md:p-5 flex-1 flex flex-col {minHeight ? '' : 'min-h-[calc(100dvh-250px)] lg:min-h-0'}"
+    class="md:bg-[var(--card-bg)] md:backdrop-blur-md md:rounded-2xl md:shadow-md md:overflow-hidden md:border md:border-[var(--border-color)] md:p-5 flex-1 flex flex-col min-w-0 {minHeight ? '' : 'md:min-h-[calc(100dvh-250px)] lg:min-h-0'}"
     style={minHeight ? `min-height: ${minHeight};` : ''}
   >
     {#if children}

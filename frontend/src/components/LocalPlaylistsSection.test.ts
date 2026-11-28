@@ -27,12 +27,13 @@ describe('LocalPlaylistsSection', () => {
   });
 
   it('filters local playlists by keyword', async () => {
-    const { getByPlaceholderText, getByText, queryByText } = render(LocalPlaylistsSection, {
+    const { getByTitle, getByPlaceholderText, getByText, queryByText } = render(LocalPlaylistsSection, {
       props: {
         showToast: vi.fn()
       }
     });
 
+    await fireEvent.click(getByTitle('搜索'));
     const searchInput = getByPlaceholderText('搜索本地歌单...');
     await fireEvent.input(searchInput, { target: { value: '摇滚' } });
 

@@ -266,7 +266,7 @@
     <!-- 内容居中容器 (限制最大宽度 max-w-[1400px] 居中) -->
     <div class="w-full max-w-[1400px] mx-auto px-0 md:px-4 pt-0 {layoutState.wco.visible ? 'md:pt-1' : 'md:pt-3'} pb-8 lg:pb-0 relative flex flex-col min-w-0">
       <!-- 内容区 (按视口分支挂载 PC 或 SP 组件，杜绝双份 DOM 与后台隐藏哨兵死循环；已访问 Tab 保活瞬时切换) -->
-      <div class="flex flex-col gap-1 md:gap-3 px-3.5 sm:px-4 md:px-0 pb-[140px] md:pb-[80px] lg:pb-4">
+      <div class="flex flex-col gap-1 md:gap-3 px-3 sm:px-4 md:px-0 pb-[140px] md:pb-[80px] lg:pb-4">
         <!-- 📁 歌单 Tab -->
         {#if visitedTabs['playlist'] || routerState.tab === 'playlist'}
           <div style="display: {routerState.tab === 'playlist' ? 'contents' : 'none'};">

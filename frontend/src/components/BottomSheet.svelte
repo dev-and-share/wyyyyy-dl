@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { sheetState, closeSheet, type SheetActionStyle } from '../lib/ui.svelte';
   import { pushModalBackdrop } from '../lib/skinStore.svelte';
-  import { X } from '@lucide/svelte';
+  import { X, Copy } from '@lucide/svelte';
   import { t } from '../lib/i18n';
 
   $effect(() => {
@@ -17,7 +17,7 @@
     primary:
       'w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-sm transition-all cursor-pointer text-center',
     danger:
-      'w-full py-3 px-4 rounded-xl bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold text-sm transition-all cursor-pointer text-left',
+      'w-full py-3 px-4 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/25 text-red-500 dark:text-red-400 font-medium text-sm transition-all cursor-pointer text-left',
     cancel:
       'w-full py-3 px-4 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/[0.04] text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-main)] transition-all cursor-pointer mt-1 active:scale-98',
     default:
@@ -150,13 +150,43 @@
 
       <!-- Action buttons -->
       {#each sheetState.data.actions as action}
-        <button
-          type="button"
-          class={styleClass[action.style ?? 'default']}
-          onclick={() => handleAction(action.onclick)}
-        >
-          {action.label}
-        </button>
+        {#if action.trailingAction}
+          {@const trailing = action.trailingAction}
+          <div class="flex items-stretch gap-1.5 w-full">
+            <button
+              type="button"
+              class="{styleClass[action.style ?? 'default']} flex-1 min-w-0 truncate"
+              onclick={() => handleAction(action.onclick)}
+            >
+              {action.label}
+            </button>
+            <button
+              type="button"
+              class="shrink-0 px-3.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/[0.04] hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] hover:text-[var(--text-main)] flex items-center justify-center gap-1 text-xs font-medium transition-all cursor-pointer active:scale-95"
+              title={trailing.title || trailing.label || t('common.copy')}
+              aria-label={trailing.title || trailing.label || t('common.copy')}
+              onclick={(e) => {
+                e.stopPropagation();
+                handleAction(trailing.onclick);
+              }}
+            >
+              {#if trailing.icon === 'copy'}
+                <Copy size={15} />
+              {/if}
+              {#if trailing.label}
+                <span>{trailing.label}</span>
+              {/if}
+            </button>
+          </div>
+        {:else}
+          <button
+            type="button"
+            class={styleClass[action.style ?? 'default']}
+            onclick={() => handleAction(action.onclick)}
+          >
+            {action.label}
+          </button>
+        {/if}
       {/each}
 
       <!-- 📱 移动端标准取消按钮兜底：单手大拇指黄金触控区，一触即关 -->

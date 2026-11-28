@@ -402,7 +402,7 @@
       </div>
 
       {#if searchSource === 'netease'}
-        <div class="flex gap-1.5 items-center overflow-x-auto no-scrollbar py-0.5 w-full sm:w-auto">
+        <div class="flex gap-1.5 items-center overflow-x-auto no-scrollbar p-1 w-full sm:w-auto">
           <button type="button" class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep {sType === '1' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1')}>{t('search.typeSong')}</button>
           <button type="button" class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep {sType === '10' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('10')}>{t('search.typeAlbum')}</button>
           <button type="button" class="btn-secondary rounded-lg px-2.5 py-1.5 text-xs font-bold text-white shadow-sm inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap break-keep {sType === '1000' ? 'bg-gradient-to-br from-red-500 to-red-600 ring-2 ring-red-400/30' : 'bg-gradient-to-br from-slate-600 to-slate-700 opacity-80'}" onclick={() => setType('1000')}>{t('search.typePlaylist')}</button>

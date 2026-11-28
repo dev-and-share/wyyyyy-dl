@@ -2,11 +2,11 @@
   import { tick, onMount } from 'svelte';
   import {
     allTracks, getFilteredTracks, getTotalPages, getPlaylist, getCurPage,
-    getPlaylistSearchKeyword, isPlaylistLoading, incPage, recordPlaylistPlay,
+    getPlaylistSearchKeyword, setPlaylistSearchKeyword, isPlaylistLoading, incPage, recordPlaylistPlay,
     loadPlaylistDetail, getPaged, getPlaylistPlayCount, clearPlaylistPlayCount
   } from '../lib/playlist.svelte';
   import { api } from '../lib/api';
-  import { formatArtist, DEFAULT_VINYL_COVER } from '../lib/utils';
+  import { formatArtist, DEFAULT_VINYL_COVER, copyTextToClipboard } from '../lib/utils';
   import { toPlayerTrack } from '../lib/playerHelper';
   import AccordionCard from './AccordionCard.svelte';
   import DetailHeaderCard from './DetailHeaderCard.svelte';
@@ -22,7 +22,7 @@
   import { getTrackSourceStatus, getTrackPlayActionLabel, isSameTrack, markSongDownloaded } from '../lib/trackStatus.svelte';
   import { openSheet } from '../lib/ui.svelte';
   import { t } from '../lib/i18n';
-  import { Loader2, Music2, HardDrive, Play, Link, Package, HeartCrack, Star, Search } from '@lucide/svelte';
+  import { Loader2, Music2, Play, MoreHorizontal, Search } from '@lucide/svelte';
 
   let paged = $derived(getPaged());
   let totalPages = $derived(getTotalPages());
@@ -47,6 +47,9 @@
 
   let pidInput = $state('');
   let showIdInput = $state(false);
+  let pidInputEl = $state<HTMLInputElement | null>(null);
+  let showTrackFilter = $state(false);
+  let trackFilterKw = $derived(getPlaylistSearchKeyword());
   let showForkModal = $state(false);
   let addToPlaylistSong = $state<{ id: string | number; name: string; artist?: string } | null>(null);
   let removingTrack = $state<{ id: string | number; name: string; artist?: string } | null>(null);
@@ -271,35 +274,62 @@
       showToast(t('playlist.playCountClearedSuccess'), 'success');
     }
   }
+
+  function toggleTrackFilter() {
+    if (showTrackFilter || trackFilterKw) { showTrackFilter = false; setPlaylistSearchKeyword(''); }
+    else { showTrackFilter = true; }
+  }
+
+  function submitPidInput() {
+    if (isPlaylistLoading() || !pidInput.trim()) return;
+    showIdInput = false;
+    onViewPlaylist(pidInput);
+  }
+
+  async function handleCopyPlaylistId(id: string | number) {
+    const idText = String(id);
+    const ok = await copyTextToClipboard(idText);
+    showToast(ok ? t('common.copiedWithLabel', { label: t('common.playlistId'), text: idText }) : t('common.copyFailedWithText', { text: idText }), ok ? 'success' : 'warning');
+  }
+
+  function openPlaylistHeaderSheet() {
+    if (!playlist) return;
+    const actions: import('../lib/ui.svelte').SheetAction[] = [];
+    if (!playlist.isCreator) {
+      actions.push({ label: `📦 ${t('playlist.forkBtn')}`, style: 'default', onclick: () => { showForkModal = true; } });
+    }
+    actions.push(
+      {
+        label: `🔗 ${t('playlist.parseDetail')}${playlist.id ? ` (${playlist.id})` : ''}`,
+        style: 'default',
+        onclick: () => { showIdInput = !showIdInput; if (showIdInput) tick().then(() => { pidInputEl?.focus(); pidInputEl?.select(); }); },
+        trailingAction: playlist.id ? { icon: 'copy', title: t('common.copy'), onclick: () => handleCopyPlaylistId(playlist.id) } : undefined
+      },
+      { label: `🔄 ${t('common.refresh')}`, style: 'default', onclick: () => onViewPlaylist(String(playlist.id), true) }
+    );
+    if (playCount > 0) actions.push({ label: `🧹 ${t('common.clear')} (${t('myPlaylists.historyPlayCount', { count: playCount })})`, style: 'default', onclick: handleClearPlayCount });
+    if (!playlist.isCreator) {
+      actions.push({ label: playlist.subscribed ? `💔 ${t('playlist.unsubscribe')}` : `⭐ ${t('playlist.subscribe')}`, style: playlist.subscribed ? 'danger' : 'default', onclick: handleToggleSubscribe });
+    }
+    openSheet({ title: playlist.name || t('playlist.sectionDetail'), subtitle: `${playlist.creator || t('common.unknown')} · ${t('playlist.trackCount', { count: allTracks.length })}`, actions });
+  }
 </script>
 
 <AccordionCard title={t('playlist.sectionDetail')} bind:open flat accent="blue" {onToggle}>
-  <!-- 常驻歌单解析输入框 (标准规范，支持回车/按钮/一键清空) -->
-  <div class="flex items-center gap-1.5 md:gap-2.5 my-2 w-full animate-fade-in p-1.5 rounded-xl bg-black/5 dark:bg-white/[0.04] border border-[var(--border-subtle)]">
-    <div class="relative flex-1 min-w-0">
-      <input
-        type="search"
-        enterkeyhint="search"
-        placeholder="粘贴歌单链接或输入歌单 ID..."
-        class="w-full pl-3 pr-2 !py-1.5 text-xs rounded-lg"
-        bind:value={pidInput}
-        disabled={isPlaylistLoading()}
-        onkeydown={(e) => { if (e.key === 'Enter' && !isPlaylistLoading()) onViewPlaylist(pidInput); }}
-      />
-    </div>
-    <button
-      type="button"
-      class="btn-primary shrink-0 whitespace-nowrap !py-1.5 !px-3 text-xs flex items-center justify-center gap-1 cursor-pointer"
-      disabled={isPlaylistLoading() || !pidInput.trim()}
-      onclick={() => onViewPlaylist(pidInput)}
-    >
-      {#if isPlaylistLoading()}
-        <Loader2 size={12} class="animate-spin text-red-500" />
-      {:else}
-        <span>{t('playlist.viewDetailBtn')}</span>
+  <!-- 歌单解析输入框：未选歌单时默认展示，已打开歌单时收进「···」按需呼出 -->
+  {#if !playlist || showIdInput}
+    <div class="flex items-center gap-1.5 md:gap-2.5 my-1.5 md:my-2 w-full animate-fade-in p-0 md:p-1.5 rounded-none md:rounded-xl bg-transparent md:bg-black/5 md:dark:bg-white/[0.04] border-0 md:border md:border-[var(--border-subtle)]">
+      <div class="relative flex-1 min-w-0">
+        <input bind:this={pidInputEl} type="search" enterkeyhint="search" placeholder="粘贴歌单链接或输入歌单 ID..." class="w-full pl-3 pr-2 !py-1.5 text-xs rounded-lg" bind:value={pidInput} disabled={isPlaylistLoading()} onkeydown={(e) => { if (e.key === 'Enter') submitPidInput(); }} />
+      </div>
+      <button type="button" class="btn-primary shrink-0 whitespace-nowrap !py-1.5 !px-3 text-xs flex items-center justify-center gap-1 cursor-pointer" disabled={isPlaylistLoading() || !pidInput.trim()} onclick={submitPidInput}>
+        {#if isPlaylistLoading()}<Loader2 size={12} class="animate-spin text-red-500" />{:else}<span>{t('playlist.viewDetailBtn')}</span>{/if}
+      </button>
+      {#if playlist && showIdInput}
+        <button type="button" class="btn-secondary shrink-0 !py-1.5 !px-2 text-xs cursor-pointer" onclick={() => showIdInput = false} title={t('common.close')} aria-label={t('common.close')}>✕</button>
       {/if}
-    </button>
-  </div>
+    </div>
+  {/if}
 
   {#if !playlist && !isPlaylistLoading()}
     <div class="flex-1 py-10 px-4 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] rounded-2xl bg-[var(--card-bg)] border border-[var(--border-subtle)] my-2 min-h-[200px]">
@@ -320,55 +350,22 @@
       </div>
     </div>
   {:else if playlist}
-    <DetailHeaderCard cover={playlist.coverImgUrl || '/favicon.png'} title={playlist.name} subtitle={`${playlist.creator || t('common.unknown')} | ${t('playlist.trackCount', { count: allTracks.length })}`}>
-      <PlaylistDownloadDropdown
-        playlistId={playlist.id}
-        playlistName={playlist.name}
-        {allTracks}
-        {curTrack}
-        isLocal={playlist.isLocal}
-        variant="primary"
-        dropdownMode="sheet"
-        onDownloadAllToPc={() => downloadPlaylistById(String(playlist.id))}
-      />
-      <button
-        class="btn-secondary"
-        onclick={() => {
-          if (playlist?.id) recordPlaylistPlay(playlist.id);
-          onPlayQueue && onPlayQueue(allTracks.map((tItem: any) => toPlayerTrack(tItem)), { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false });
-        }}
-        title={t('playlist.playAllTooltip')}
-      >
+    <DetailHeaderCard cover={playlist.coverImgUrl || '/favicon.png'} title={playlist.name} subtitle={`${playlist.creator || t('common.unknown')} | ${t('playlist.trackCount', { count: allTracks.length })}${playCount > 0 ? ` · ${t('myPlaylists.historyPlayCount', { count: playCount })}` : ''}`}>
+      <PlaylistDownloadDropdown playlistId={playlist.id} playlistName={playlist.name} {allTracks} {curTrack} isLocal={playlist.isLocal} variant="primary" dropdownMode="sheet" onDownloadAllToPc={() => downloadPlaylistById(String(playlist.id))} />
+      <button type="button" class="btn-secondary" title={t('playlist.playAllTooltip')} onclick={() => { if (playlist?.id) recordPlaylistPlay(playlist.id); onPlayQueue?.(allTracks.map((tItem: any) => toPlayerTrack(tItem)), { startIndex: 0, playlistId: playlist?.id, isExplicitTrack: false }); }}>
         <Play size={13} fill="currentColor" /><span>{t('playlist.playAll')}</span>
       </button>
-      <button
-        type="button"
-        data-testid="sp-detail-playcount-badge"
-        class="btn-secondary !text-amber-400 !border-amber-500/30"
-        ondblclick={handleClearPlayCount}
-        title={playCount > 0 ? `${t('myPlaylists.historyPlayTooltip', { count: playCount })} (${t('playlist.doubleClickToClear')})` : t('playlist.doubleClickToClear')}
-      >
-        <span>{t('myPlaylists.historyPlayCount', { count: playCount })}</span>
+      <button type="button" data-testid="sp-detail-search-btn" class="btn-secondary {showTrackFilter || trackFilterKw ? '!text-blue-500 !border-blue-500/40 !bg-blue-500/10' : ''}" onclick={toggleTrackFilter} title={t('common.search')} aria-label={t('common.search')}>
+        <Search size={13} />
       </button>
-      <button
-        type="button"
-        class="btn-secondary !text-blue-400 !border-blue-500/30"
-        onclick={() => showIdInput = !showIdInput}
-        title={t('playlist.parseDetail')}
-      >
-        <Link size={13} /><span class="hidden sm:inline">{t('playlist.parseDetail')}</span>
+      <button type="button" data-testid="sp-detail-more-btn" class="btn-secondary" onclick={openPlaylistHeaderSheet} title={t('myPlaylists.moreActions')} aria-label={t('myPlaylists.moreActions')}>
+        <MoreHorizontal size={14} />
       </button>
-      {#if playlist && !playlist.isCreator}
-        <button class="btn-secondary !text-purple-400 !border-purple-500/30" onclick={() => showForkModal = true} title={t('playlist.forkTooltip')}>
-          <Package size={13} /><span>{t('playlist.forkBtn')}</span>
-        </button>
-        <button class="btn-secondary {playlist.subscribed ? '!text-red-400 !border-red-500/30' : ''}" onclick={handleToggleSubscribe} title={playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}>
-          {#if playlist.subscribed}<HeartCrack size={13} />{:else}<Star size={13} />{/if}<span>{playlist.subscribed ? t('playlist.unsubscribe') : t('playlist.subscribe')}</span>
-        </button>
-      {/if}
     </DetailHeaderCard>
 
-    <PlaylistTrackFilter />
+    {#if showTrackFilter || trackFilterKw}
+      <PlaylistTrackFilter autofocus={true} onClear={() => { showTrackFilter = false; }} />
+    {/if}
 
     {#if filteredTracks.length === 0}
       <div class="py-12 text-center text-xs text-[var(--text-muted)] bg-black/[0.02] dark:bg-white/[0.02] rounded-2xl p-6 my-2 border border-dashed border-[var(--border-color)] flex flex-col items-center justify-center">
@@ -388,7 +385,7 @@
       {/if}
       <ul
         bind:this={listContainerEl}
-        class="data-list scrollable-list"
+        class="data-list scrollable-list !mt-1 md:!mt-2.5"
         onscroll={handleListScroll}
         ontouchstart={handleTouchStart}
         ontouchmove={handleTouchMove}

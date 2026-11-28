@@ -129,4 +129,28 @@ describe('BrowserCacheSection', () => {
     expect(mockPlayQueue).toHaveBeenCalledTimes(2); // No new play queue
     expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('当前没有播放次数 ≥ 10 次的离线歌曲'), 'info', 2000);
   });
+
+  it('toggles search box on search icon click and filters cached tracks', async () => {
+    vi.spyOn(cacheHelper, 'scanBrowserCache').mockResolvedValue({
+      list: mockList,
+      totalBytes: 12000000
+    });
+
+    const { getByTitle, getByPlaceholderText, queryByPlaceholderText, findByText, queryByText } = render(BrowserCacheSection, {
+      props: {
+        onPlayQueue: vi.fn(),
+        showToast: vi.fn()
+      }
+    });
+
+    await findByText('晴天');
+    expect(queryByPlaceholderText(/过滤歌曲、歌手/)).toBeNull();
+
+    await fireEvent.click(getByTitle('搜索'));
+    const input = getByPlaceholderText(/过滤歌曲、歌手/) as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: '稻香' } });
+
+    expect(await findByText('稻香')).toBeInTheDocument();
+    expect(queryByText('晴天')).toBeNull();
+  });
 });
