@@ -56,6 +56,7 @@
   let activeSubtab: 'search' | 'album' | 'artist' = $state(initSubtab());
   const SUBTABS: ('search' | 'album' | 'artist')[] = ['search', 'album', 'artist'];
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(activeSubtab)));
+  let swipeProgress = $state<number | null>(null);
 
   function setSubtab(id: 'search' | 'album' | 'artist') {
     activeSubtab = id;
@@ -368,16 +369,12 @@
     { id: 'album', label: t('search.subtab.album'), icon: '💽', accent: 'blue' },
     { id: 'artist', label: t('search.subtab.artist'), icon: '🎤', accent: 'purple' }
   ]}
-  activeId={activeSubtab}
-  onChange={(id) => setSubtab(id as any)}
+  activeId={activeSubtab} progress={swipeProgress}
+  onChange={(id) => { swipeProgress = null; setSubtab(id as any); }}
 />
 
 <!-- 🛝 移动端原生合成器级 120Hz 零卡顿丝滑滚动容器 -->
-<SwipeableTabsView
-  activeIndex={activeTabIndex}
-  count={3}
-  onChange={handleSwipeIndexChange}
->
+<SwipeableTabsView activeIndex={activeTabIndex} count={3} onChange={handleSwipeIndexChange} onProgress={(p) => (swipeProgress = p)}>
   <!-- Section 1: 在线搜索 -->
   <div class="w-full flex-1 flex flex-col">
     <AccordionCard title={t('search.globalSearch')} flat open={true} accent="red">

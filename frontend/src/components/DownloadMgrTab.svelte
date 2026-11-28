@@ -38,6 +38,7 @@
   let mobileTab = $state<'playlists' | 'folder' | 'history' | 'cache'>('playlists');
   const SUBTABS: ('playlists' | 'folder' | 'history' | 'cache')[] = ['playlists', 'folder', 'history', 'cache'];
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(mobileTab)));
+  let swipeProgress = $state<number | null>(null);
 
   $effect(() => {
     if (routerState.downloadSubTab === 'local-playlists') mobileTab = 'playlists';
@@ -287,13 +288,15 @@
   <SegmentedTabs
     items={mobileTabs}
     activeId={mobileTab}
-    onChange={(id) => setMobileTab(id as any)}
+    progress={swipeProgress}
+    onChange={(id) => { swipeProgress = null; setMobileTab(id as any); }}
   />
 
   <SwipeableTabsView
     activeIndex={activeTabIndex}
     count={4}
     onChange={handleSwipeIndexChange}
+    onProgress={(p) => (swipeProgress = p)}
   >
     <div class="w-full flex-1 flex flex-col">
       <LocalPlaylistsSection {onPlayQueue} onViewPlaylist={onPlaylist} {showToast} />

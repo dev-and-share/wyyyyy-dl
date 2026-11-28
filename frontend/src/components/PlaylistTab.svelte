@@ -62,6 +62,7 @@
   const SUBTABS: PlaylistSubTabType[] = [PlaylistSubTab.MY, PlaylistSubTab.DETAIL, PlaylistSubTab.RECOMMEND];
 
   let activeTabIndex = $derived(Math.max(0, SUBTABS.indexOf(activeSubtab)));
+  let swipeProgress = $state<number | null>(null);
   let accMy = $state(true), accDetail = $state(true), accRecommend = $state(true);
 
   function saveAccState() {
@@ -228,7 +229,8 @@
     { id: 'recommend', label: t('playlist.tabRecommend'), icon: '📅', accent: 'amber' }
   ]}
   activeId={activeSubtab}
-  onChange={(id) => setSubtab(id as any)}
+  progress={swipeProgress}
+  onChange={(id) => { swipeProgress = null; setSubtab(id as any); }}
 />
 
 <!-- 🛝 移动端原生合成器级 120Hz 零卡顿丝滑滚动容器 -->
@@ -236,6 +238,7 @@
   activeIndex={activeTabIndex}
   count={3}
   onChange={handleSwipeIndexChange}
+  onProgress={(p) => (swipeProgress = p)}
 >
   <!-- Section 1: 我的歌单 -->
   <div class="w-full flex-1 flex flex-col">

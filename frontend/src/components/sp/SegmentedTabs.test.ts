@@ -41,8 +41,8 @@ describe('SegmentedTabs Component', () => {
     expect(onChange).toHaveBeenCalledWith('detail');
   });
 
-  it('highlights the active tab with the proper accent style', () => {
-    const { getByText } = render(SegmentedTabs, {
+  it('highlights the active tab with the proper accent style on the sliding indicator', () => {
+    const { getByText, getByTestId } = render(SegmentedTabs, {
       props: {
         items,
         activeId: 'detail',
@@ -51,6 +51,40 @@ describe('SegmentedTabs Component', () => {
     });
 
     const detailBtn = getByText('歌单详情').closest('button');
-    expect(detailBtn?.className).toContain('from-sky-500');
+    expect(detailBtn?.getAttribute('aria-selected')).toBe('true');
+    expect(detailBtn?.className).toContain('text-white');
+
+    const indicator = getByTestId('segmented-tabs-indicator');
+    expect(indicator.className).toContain('from-sky-500');
+    expect(indicator.style.transform).toContain('calc(100% + 4px)');
+  });
+
+  it('tracks fractional swipe progress smoothly and reverts cleanly when dragged back', async () => {
+    const { getByText, getByTestId, rerender } = render(SegmentedTabs, {
+      props: {
+        items,
+        activeId: 'my',
+        progress: 0.55,
+        onChange: () => {}
+      }
+    });
+
+    const indicator = getByTestId('segmented-tabs-indicator');
+    expect(indicator.style.transform).toContain('calc(55% + 2.2px)');
+    expect(indicator.className).toContain('from-sky-500');
+    expect(getByText('歌单详情').closest('button')?.className).toContain('text-white');
+    expect(getByText('我的歌单').closest('button')?.getAttribute('aria-selected')).toBe('true');
+
+    // User drags back before releasing finger
+    await rerender({
+      items,
+      activeId: 'my',
+      progress: 0.25,
+      onChange: () => {}
+    });
+
+    expect(indicator.style.transform).toContain('calc(25% + 1px)');
+    expect(indicator.className).toContain('from-red-500');
+    expect(getByText('我的歌单').closest('button')?.className).toContain('text-white');
   });
 });

@@ -7,6 +7,7 @@
     disabled?: boolean;
     minHeight?: string | number;
     onChange: (index: number) => void;
+    onProgress?: (progress: number | null) => void;
     children?: import('svelte').Snippet;
   }
 
@@ -16,6 +17,7 @@
     disabled = false,
     minHeight = 'calc(100dvh - 250px)',
     onChange,
+    onProgress,
     children
   }: Props = $props();
 
@@ -26,9 +28,36 @@
   let viewportEl = $state<HTMLDivElement | null>(null);
   let trackEl = $state<HTMLDivElement | null>(null);
   let isProgrammatic = false;
-  let scrollTimeout: any = null;
+  let isPointerDown = false;
+  let programmaticTimer: ReturnType<typeof setTimeout> | null = null;
+  let scrollSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSettledIndex = -1;
+  let lastKnownWidth = 0;
+  let lastEmittedProgress: number | null = null;
   let viewportHeight = $state<number | null>(null);
+
+  function emitProgress(next: number | null) {
+    if (next === null && lastEmittedProgress === null) return;
+    if (next !== null && lastEmittedProgress !== null && Math.abs(next - lastEmittedProgress) < 0.0005) {
+      return;
+    }
+    lastEmittedProgress = next;
+    onProgress?.(next);
+  }
+
+  function clearProgrammaticTimer() {
+    if (programmaticTimer !== null) {
+      clearTimeout(programmaticTimer);
+      programmaticTimer = null;
+    }
+  }
+
+  function clearSettleTimer() {
+    if (scrollSettleTimer !== null) {
+      clearTimeout(scrollSettleTimer);
+      scrollSettleTimer = null;
+    }
+  }
 
   function updateHeight() {
     if (!trackEl) return;
@@ -41,35 +70,137 @@
     }
   }
 
-  function handleScroll() {
-    if (isProgrammatic || !viewportEl) return;
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-      if (!viewportEl) return;
-      const width = viewportEl.clientWidth;
-      if (width <= 0) return;
-      const index = Math.round(viewportEl.scrollLeft / width);
-      if (index >= 0 && index < count && index !== activeIndex && index !== lastSettledIndex) {
-        lastSettledIndex = index;
-        onChange(index);
+  function snapToIndex(targetIndex: number, behavior: ScrollBehavior = 'smooth') {
+    if (!viewportEl) return;
+    const width = viewportEl.clientWidth;
+    if (width <= 0) return;
+    const targetLeft = targetIndex * width;
+    if (Math.abs(viewportEl.scrollLeft - targetLeft) <= 2) return;
+
+    if (behavior === 'auto') {
+      viewportEl.scrollLeft = targetLeft;
+      return;
+    }
+
+    isProgrammatic = true;
+    viewportEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    clearProgrammaticTimer();
+    programmaticTimer = setTimeout(() => {
+      isProgrammatic = false;
+      programmaticTimer = null;
+      if (viewportEl && !isPointerDown && viewportEl.clientWidth > 0) {
+        const expected = targetIndex * viewportEl.clientWidth;
+        if (Math.abs(viewportEl.scrollLeft - expected) > 2) {
+          viewportEl.scrollLeft = expected;
+        }
       }
-    }, 50);
+      emitProgress(null);
+    }, 360);
+  }
+
+  function settleScroll() {
+    clearSettleTimer();
+    if (!viewportEl || isPointerDown) return;
+    const width = viewportEl.clientWidth;
+    if (width <= 0) {
+      emitProgress(null);
+      return;
+    }
+
+    if (isProgrammatic) {
+      const targetLeft = activeIndex * width;
+      if (Math.abs(viewportEl.scrollLeft - targetLeft) <= 2) {
+        isProgrammatic = false;
+        clearProgrammaticTimer();
+        emitProgress(null);
+      }
+      return;
+    }
+
+    const index = Math.max(0, Math.min(count - 1, Math.round(viewportEl.scrollLeft / width)));
+    emitProgress(null);
+
+    if (index !== activeIndex && index !== lastSettledIndex) {
+      lastSettledIndex = index;
+      onChange(index);
+    }
+
+    // Snap guard: recover cleanly if browser scroll-snap aborted or stopped halfway
+    if (Math.abs(viewportEl.scrollLeft - index * width) > 2) {
+      snapToIndex(index, 'smooth');
+    }
+  }
+
+  function scheduleSettle(delayMs = 90) {
+    clearSettleTimer();
+    scrollSettleTimer = setTimeout(() => {
+      settleScroll();
+    }, delayMs);
+  }
+
+  function handleTouchStart() {
+    isPointerDown = true;
+    if (isProgrammatic) {
+      isProgrammatic = false;
+      clearProgrammaticTimer();
+    }
+    clearSettleTimer();
+  }
+
+  function handleTouchEndOrCancel() {
+    isPointerDown = false;
+    scheduleSettle(90);
+  }
+
+  function handleScrollEnd() {
+    if (!isPointerDown) {
+      settleScroll();
+    }
+  }
+
+  function handleScroll() {
+    if (!viewportEl) return;
+    if (disabled) {
+      emitProgress(null);
+      return;
+    }
+    if (isProgrammatic) return;
+
+    const width = viewportEl.clientWidth;
+    if (width <= 0) return;
+
+    const rawProgress = Math.max(0, Math.min(Math.max(0, count - 1), viewportEl.scrollLeft / width));
+    emitProgress(rawProgress);
+    scheduleSettle(90);
   }
 
   $effect(() => {
     const target = activeIndex;
     if (!viewportEl) return;
     const width = viewportEl.clientWidth;
-    if (width <= 0) return;
-    const targetLeft = target * width;
-    if (Math.abs(viewportEl.scrollLeft - targetLeft) > 5) {
-      isProgrammatic = true;
-      viewportEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        isProgrammatic = false;
+    if (width > 0) {
+      lastKnownWidth = width;
+      const targetLeft = target * width;
+      if (Math.abs(viewportEl.scrollLeft - targetLeft) > 5) {
+        isProgrammatic = true;
+        emitProgress(null);
+        clearSettleTimer();
+        viewportEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
+        clearProgrammaticTimer();
+        programmaticTimer = setTimeout(() => {
+          isProgrammatic = false;
+          programmaticTimer = null;
+          lastSettledIndex = target;
+          if (viewportEl && !isPointerDown && viewportEl.clientWidth > 0) {
+            const expected = target * viewportEl.clientWidth;
+            if (Math.abs(viewportEl.scrollLeft - expected) > 2) {
+              viewportEl.scrollLeft = expected;
+            }
+          }
+        }, 400);
+      } else {
         lastSettledIndex = target;
-      }, 350);
+      }
     }
     // Update container height to match active slide and prevent giant empty space
     tick().then(() => {
@@ -86,22 +217,42 @@
 
   onMount(() => {
     tick().then(() => {
-      if (viewportEl && activeIndex > 0) {
-        viewportEl.scrollLeft = activeIndex * viewportEl.clientWidth;
-        lastSettledIndex = activeIndex;
+      if (viewportEl) {
+        lastKnownWidth = viewportEl.clientWidth;
+        if (viewportEl.clientWidth > 0 && activeIndex > 0) {
+          viewportEl.scrollLeft = activeIndex * viewportEl.clientWidth;
+          lastSettledIndex = activeIndex;
+        }
       }
       updateHeight();
     });
+
+    const el = viewportEl;
+    el?.addEventListener('scrollend', handleScrollEnd, { passive: true });
 
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined' && trackEl) {
       resizeObserver = new ResizeObserver(() => {
         updateHeight();
-        if (viewportEl && viewportEl.clientWidth > 0 && activeIndex > 0) {
-          const expectedLeft = activeIndex * viewportEl.clientWidth;
-          if (Math.abs(viewportEl.scrollLeft - expectedLeft) > 5) {
-            viewportEl.scrollTo({ left: expectedLeft, behavior: 'auto' });
+        if (!viewportEl) return;
+        const width = viewportEl.clientWidth;
+        if (width <= 0) {
+          lastKnownWidth = 0;
+          isPointerDown = false;
+          isProgrammatic = false;
+          clearProgrammaticTimer();
+          clearSettleTimer();
+          emitProgress(null);
+          return;
+        }
+        const widthChanged = width !== lastKnownWidth;
+        lastKnownWidth = width;
+        if (!isPointerDown && !isProgrammatic && (widthChanged || scrollSettleTimer === null)) {
+          const expectedLeft = activeIndex * width;
+          if (Math.abs(viewportEl.scrollLeft - expectedLeft) > 2) {
+            viewportEl.scrollLeft = expectedLeft;
           }
+          emitProgress(null);
         }
       });
       if (viewportEl) resizeObserver.observe(viewportEl);
@@ -112,13 +263,19 @@
 
     const onResize = () => {
       if (viewportEl && viewportEl.clientWidth > 0) {
-        viewportEl.scrollTo({ left: activeIndex * viewportEl.clientWidth, behavior: 'auto' });
+        lastKnownWidth = viewportEl.clientWidth;
+        if (!isPointerDown) {
+          viewportEl.scrollLeft = activeIndex * viewportEl.clientWidth;
+          emitProgress(null);
+        }
       }
       updateHeight();
     };
     window.addEventListener('resize', onResize, { passive: true });
     return () => {
-      clearTimeout(scrollTimeout);
+      clearProgrammaticTimer();
+      clearSettleTimer();
+      el?.removeEventListener('scrollend', handleScrollEnd);
       window.removeEventListener('resize', onResize);
       resizeObserver?.disconnect();
     };
@@ -131,6 +288,9 @@
   aria-label="Swipeable tab view"
   class="swipeable-tabs-viewport {disabled ? 'overflow-x-hidden' : 'overflow-x-auto'}"
   style="--swipeable-min-height: {formattedMinHeight}; min-height: {formattedMinHeight}; {viewportHeight ? `height: ${viewportHeight}px;` : ''}"
+  ontouchstart={handleTouchStart}
+  ontouchend={handleTouchEndOrCancel}
+  ontouchcancel={handleTouchEndOrCancel}
   onscroll={handleScroll}
 >
   <div bind:this={trackEl} class="swipeable-tabs-track" style="min-height: {formattedMinHeight};">

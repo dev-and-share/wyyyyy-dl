@@ -27,6 +27,7 @@
   let activeTab = $state<TabId>('toplists');
   const activeCount = $derived(musicFreeStore.getActivePlugins().length);
   const activeTabIndex = $derived(SUBTABS.indexOf(activeTab));
+  let swipeProgress = $state<number | null>(null);
 
   function handleSwipeIndexChange(index: number) {
     if (SUBTABS[index]) {
@@ -45,7 +46,8 @@
         { id: 'manage', label: t('musicfree.tabManage'), icon: '⚙️', badge: activeCount, accent: 'purple' }
       ]}
       activeId={activeTab}
-      onChange={(id) => activeTab = id as any}
+      progress={swipeProgress}
+      onChange={(id) => { swipeProgress = null; activeTab = id as any; }}
     />
   </div>
 
@@ -95,6 +97,7 @@
     activeIndex={activeTabIndex}
     count={SUBTABS.length}
     onChange={handleSwipeIndexChange}
+    onProgress={(p) => (swipeProgress = p)}
   >
     <div class="w-full flex-1 flex flex-col">
       <MusicFreeTopListsTab
