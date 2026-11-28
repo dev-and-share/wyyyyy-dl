@@ -226,4 +226,78 @@ describe('PWA Service Worker lifecycle & auto-reload contracts', () => {
     });
     expect(hasPendingPwaUpdate()).toBe(false);
   });
+
+  it('silently activates same-version waiting worker without showing update badge when not playing', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => `const CACHE_NAME = 'wyy-v${__APP_VERSION__}';`
+    } as any);
+
+    const mockPostMessage = vi.fn();
+    const mockWorker = { postMessage: mockPostMessage };
+    const clearedSpy = vi.fn();
+    const availableSpy = vi.fn();
+    window.addEventListener('wyy:pwa-update-cleared', clearedSpy);
+    window.addEventListener('wyy:pwa-update-available', availableSpy);
+
+    mockGetRegistration.mockResolvedValue({
+      waiting: mockWorker,
+      update: vi.fn().mockResolvedValue(undefined)
+    });
+
+    const found = await probeForPwaUpdate({ isAudioPlaying: () => false });
+    expect(found).toBe(false);
+    expect(hasPendingPwaUpdate()).toBe(false);
+    expect(availableSpy).not.toHaveBeenCalled();
+    expect(clearedSpy).toHaveBeenCalled();
+    expect(mockPostMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+      isPlaying: false,
+      force: false
+    });
+
+    // Playing state: still suppresses SKIP_WAITING and suppresses false update badge
+    mockPostMessage.mockClear();
+    const foundWhilePlaying = await probeForPwaUpdate({ isAudioPlaying: () => true });
+    expect(foundWhilePlaying).toBe(false);
+    expect(mockPostMessage).not.toHaveBeenCalled();
+
+    window.removeEventListener('wyy:pwa-update-cleared', clearedSpy);
+    window.removeEventListener('wyy:pwa-update-available', availableSpy);
+    global.fetch = originalFetch;
+  });
+
+  it('triggerManualPwaUpdate waits for installing worker to reach installed state before sending SKIP_WAITING', async () => {
+    const mockPostMessage = vi.fn();
+    const listeners: Record<string, Function[]> = {};
+    const installingWorker: any = {
+      state: 'installing',
+      postMessage: mockPostMessage,
+      addEventListener: vi.fn((ev: string, fn: Function) => {
+        (listeners[ev] ||= []).push(fn);
+      })
+    };
+    const mockReg: any = {
+      waiting: null,
+      installing: installingWorker,
+      update: vi.fn().mockResolvedValue(undefined)
+    };
+    mockGetRegistration.mockResolvedValue(mockReg);
+
+    const triggered = await triggerManualPwaUpdate();
+    expect(triggered).toBe(true);
+    // Must not send SKIP_WAITING prematurely while still installing
+    expect(mockPostMessage).not.toHaveBeenCalled();
+
+    installingWorker.state = 'installed';
+    mockReg.waiting = installingWorker;
+    for (const fn of listeners['statechange'] || []) fn();
+
+    expect(mockPostMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+      isPlaying: false,
+      force: true
+    });
+  });
 });

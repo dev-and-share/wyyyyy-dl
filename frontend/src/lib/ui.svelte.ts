@@ -43,19 +43,36 @@ export const globalUiState = $state<{
   pwaUpdateVersion: null
 });
 
+function normalizeUiVersion(v?: string | null): string | null {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  return s.startsWith('v') ? s : `v${s}`;
+}
+
 export function setPwaUpdateAvailable(version?: string | null): void {
-  globalUiState.hasPwaUpdate = true;
-  if (version) {
-    globalUiState.pwaUpdateVersion = version;
+  const norm = normalizeUiVersion(version);
+  const current = typeof __APP_VERSION__ !== 'undefined' ? normalizeUiVersion(__APP_VERSION__) : null;
+  if (norm && current && norm === current) {
+    return;
   }
+  globalUiState.hasPwaUpdate = true;
+  if (norm) {
+    globalUiState.pwaUpdateVersion = norm;
+  }
+}
+
+export function clearPwaUpdateAvailable(): void {
+  globalUiState.hasPwaUpdate = false;
+  globalUiState.pwaUpdateVersion = null;
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('wyy:pwa-update-available', (e: any) => {
-    globalUiState.hasPwaUpdate = true;
-    if (e?.detail?.version) {
-      globalUiState.pwaUpdateVersion = e.detail.version;
-    }
+    setPwaUpdateAvailable(e?.detail?.version);
+  });
+  window.addEventListener('wyy:pwa-update-cleared', () => {
+    clearPwaUpdateAvailable();
   });
 }
 

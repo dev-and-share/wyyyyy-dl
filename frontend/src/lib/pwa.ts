@@ -18,9 +18,70 @@ export interface PwaLifecycleOptions {
 }
 
 let pendingWorker: ServiceWorker | null = null;
+let sameVersionWaitingWorker: ServiceWorker | null = null;
 let pendingRegistration: ServiceWorkerRegistration | null = null;
 let pendingVersion: string | null = null;
 let activeOptions: PwaLifecycleOptions = {};
+
+function normalizeVersion(v?: string | null): string | null {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  return s.startsWith('v') ? s : `v${s}`;
+}
+
+function getCurrentAppVersion(): string | null {
+  return typeof __APP_VERSION__ !== 'undefined' ? normalizeVersion(__APP_VERSION__) : null;
+}
+
+function dispatchUpdateAvailable(version?: string | null): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent('wyy:pwa-update-available', {
+      detail: { version: version || undefined }
+    })
+  );
+}
+
+function dispatchUpdateCleared(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('wyy:pwa-update-cleared'));
+}
+
+function activateSameVersionSilently(worker: ServiceWorker | null, opts: PwaLifecycleOptions = activeOptions): void {
+  if (!worker) return;
+  if (isPlayingNow(opts)) {
+    sameVersionWaitingWorker = worker;
+    return;
+  }
+  sameVersionWaitingWorker = null;
+  try {
+    worker.postMessage({ type: 'SKIP_WAITING', isPlaying: false, force: false });
+  } catch {}
+}
+
+async function handleWaitingWorker(
+  worker: ServiceWorker,
+  opts: PwaLifecycleOptions = activeOptions,
+  onFound?: (ver?: string) => void
+): Promise<boolean> {
+  pendingWorker = worker;
+  const ver = await getWorkerVersion(worker).catch(() => null);
+  const currentVer = getCurrentAppVersion();
+  if (ver && currentVer && ver === currentVer) {
+    pendingWorker = null;
+    pendingVersion = null;
+    dispatchUpdateCleared();
+    activateSameVersionSilently(worker, opts);
+    return false;
+  }
+
+  pendingWorker = worker;
+  if (ver) pendingVersion = ver;
+  onFound?.(ver || undefined);
+  dispatchUpdateAvailable(pendingVersion);
+  return true;
+}
 
 /**
  * 获取当前已探查到的待更新版本号 (e.g. 'v5.5.38')
@@ -33,17 +94,14 @@ export function getPendingUpdateVersion(): string | null {
  * 探查目标 Service Worker 的版本号（优先读取 /sw.js 的 CACHE_NAME，离线保底向 Worker 发送 GET_VERSION）
  */
 export async function getWorkerVersion(worker?: ServiceWorker | null): Promise<string | null> {
-  // 1. 优先读取 /sw.js 的 CACHE_NAME（极速无损、即时获取最新部署版本；加入时间戳避免 CDN/浏览器强缓存）
+  // 1. 优先读取 /sw.js 的 CACHE_NAME（加入时间戳避免 CDN/浏览器强缓存）
   if (typeof fetch !== 'undefined') {
     try {
       const res = await fetch(`/sw.js?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
-        const text = await res.text();
-        const match = text.match(/CACHE_NAME\s*=\s*['"]wyy-([^'"]+)['"]/);
-        if (match && match[1]) {
-          const v = match[1];
-          return v.startsWith('v') ? v : `v${v}`;
-        }
+        const match = (await res.text()).match(/CACHE_NAME\s*=\s*['"]wyy-([^'"]+)['"]/);
+        const norm = normalizeVersion(match?.[1]);
+        if (norm) return norm;
       }
     } catch {}
   }
@@ -52,17 +110,15 @@ export async function getWorkerVersion(worker?: ServiceWorker | null): Promise<s
   if (worker && typeof MessageChannel !== 'undefined') {
     try {
       const channel = new MessageChannel();
-      const versionPromise = new Promise<string | null>((resolve) => {
+      const v = await new Promise<string | null>((resolve) => {
         const timer = setTimeout(() => resolve(null), 300);
         channel.port1.onmessage = (e) => {
           clearTimeout(timer);
-          if (e.data?.version) resolve(e.data.version);
-          else resolve(null);
+          resolve(e.data?.version || null);
         };
+        worker.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
       });
-      worker.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
-      const v = await versionPromise;
-      if (v) return v.startsWith('v') ? v : `v${v}`;
+      return normalizeVersion(v);
     } catch {}
   }
 
@@ -95,28 +151,14 @@ function isPlayingNow(opts: PwaLifecycleOptions = activeOptions): boolean {
  */
 export function notifyPlaybackStateToSw(isPlaying: boolean): void {
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+  const payload = { type: 'AUDIO_PLAYBACK_STATE', isPlaying };
   try {
-    if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'AUDIO_PLAYBACK_STATE',
-        isPlaying
-      });
-    }
+    navigator.serviceWorker.controller?.postMessage(payload);
   } catch {}
   try {
     navigator.serviceWorker.getRegistration?.()?.then((reg) => {
-      if (reg?.waiting) {
-        reg.waiting.postMessage({
-          type: 'AUDIO_PLAYBACK_STATE',
-          isPlaying
-        });
-      }
-      if (reg?.installing) {
-        reg.installing.postMessage({
-          type: 'AUDIO_PLAYBACK_STATE',
-          isPlaying
-        });
-      }
+      reg?.waiting?.postMessage(payload);
+      reg?.installing?.postMessage(payload);
     }).catch(() => {});
   } catch {}
 }
@@ -157,32 +199,19 @@ export async function probeForPwaUpdate(options?: {
 }): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
-  const currentVersion =
-    typeof __APP_VERSION__ !== 'undefined'
-      ? String(__APP_VERSION__).startsWith('v')
-        ? String(__APP_VERSION__)
-        : `v${__APP_VERSION__}`
-      : null;
+  const currentVersion = getCurrentAppVersion();
+  const isPlaying = options?.isAudioPlaying?.() ?? isPlayingNow();
+  const effectiveOpts: PwaLifecycleOptions = { ...activeOptions, isAudioPlaying: () => isPlaying };
 
   try {
     // 1. 快速主动向服务端探查最新 /sw.js 的版本号（秒级响应，无需苦等 Worker 安装）
     const serverVer = await getWorkerVersion(null);
     if (serverVer && currentVersion && serverVer !== currentVersion) {
       pendingVersion = serverVer;
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('wyy:pwa-update-available', {
-            detail: { version: pendingVersion }
-          })
-        );
-      }
-      // 触发后台 sw 下载
-      if ('serviceWorker' in navigator) {
+      dispatchUpdateAvailable(pendingVersion);
+      if ('serviceWorker' in navigator && !isPlaying) {
         navigator.serviceWorker.getRegistration?.().then((reg) => {
-          if (reg && typeof reg.update === 'function') {
-            const isPlaying = options?.isAudioPlaying?.() ?? isPlayingNow();
-            if (!isPlaying) reg.update().catch(() => {});
-          }
+          reg?.update?.().catch(() => {});
         }).catch(() => {});
       }
       return true;
@@ -192,38 +221,22 @@ export async function probeForPwaUpdate(options?: {
     if ('serviceWorker' in navigator) {
       const reg = (await navigator.serviceWorker.getRegistration?.()) || pendingRegistration;
       if (reg) {
-        const notifyWaiting = async (worker: ServiceWorker) => {
-          pendingWorker = worker;
-          const ver = await getWorkerVersion(worker);
-          if (ver) pendingVersion = ver;
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('wyy:pwa-update-available', {
-                detail: { version: pendingVersion || undefined }
-              })
-            );
-          }
-        };
-
         if (reg.waiting) {
-          await notifyWaiting(reg.waiting);
-          return true;
+          return await handleWaitingWorker(reg.waiting, effectiveOpts);
         }
 
-        const isPlaying = options?.isAudioPlaying?.() ?? isPlayingNow();
         if (!isPlaying && typeof reg.update === 'function') {
           await reg.update().catch(() => {});
           const newWaiting = (reg as any).waiting as ServiceWorker | null;
           if (newWaiting) {
-            await notifyWaiting(newWaiting);
-            return true;
+            return await handleWaitingWorker(newWaiting, effectiveOpts);
           }
           if (reg.installing) {
             reg.installing.addEventListener(
               'statechange',
               () => {
                 if (reg.installing?.state === 'installed' && (reg as any).waiting) {
-                  notifyWaiting((reg as any).waiting);
+                  handleWaitingWorker((reg as any).waiting, effectiveOpts);
                 }
               },
               { once: true }
@@ -233,6 +246,10 @@ export async function probeForPwaUpdate(options?: {
       }
     }
 
+    if (serverVer && currentVersion && serverVer === currentVersion && !hasPendingPwaUpdate()) {
+      pendingVersion = null;
+      dispatchUpdateCleared();
+    }
     return hasPendingPwaUpdate();
   } catch {
     return hasPendingPwaUpdate();
@@ -241,18 +258,25 @@ export async function probeForPwaUpdate(options?: {
 
 /**
  * 用户在设置菜单顶部手动点击「新版本更新」按钮时触发：
- * 激活 waiting Service Worker 并在接管后刷新页面进入新版本
+ * 激活 waiting Service Worker（若仍在 installing 则等待安装完成再跳过等待）并在接管后刷新页面进入新版本
  */
 export async function triggerManualPwaUpdate(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
+  dispatchUpdateCleared();
   try {
-    let targetWorker = pendingWorker;
-    if (!targetWorker && 'serviceWorker' in navigator) {
-      const reg = (await navigator.serviceWorker.getRegistration?.()) || pendingRegistration;
-      targetWorker = reg?.waiting || null;
-      if (!targetWorker && reg?.installing) {
-        targetWorker = reg.installing;
+    let targetWaiting = pendingWorker;
+    let targetInstalling: ServiceWorker | null = null;
+    let reg: ServiceWorkerRegistration | undefined | null = pendingRegistration;
+
+    if (!targetWaiting && 'serviceWorker' in navigator) {
+      reg = (await navigator.serviceWorker.getRegistration?.()) || pendingRegistration;
+      targetWaiting = reg?.waiting || null;
+      targetInstalling = reg?.installing || null;
+      if (!targetWaiting && !targetInstalling && typeof reg?.update === 'function') {
+        await reg.update().catch(() => {});
+        targetWaiting = (reg as any).waiting || null;
+        targetInstalling = reg?.installing || null;
       }
     }
 
@@ -263,18 +287,50 @@ export async function triggerManualPwaUpdate(): Promise<boolean> {
       window.location.reload();
     };
 
-    if (targetWorker) {
+    const sendSkipWaiting = (worker: ServiceWorker) => {
+      worker.postMessage({ type: 'SKIP_WAITING', isPlaying: false, force: true });
+      pendingWorker = null;
+      pendingVersion = null;
+    };
+
+    if (targetWaiting) {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener?.('controllerchange', doReload, { once: true } as any);
       }
-      targetWorker.postMessage({ type: 'SKIP_WAITING', isPlaying: false, force: true });
-      pendingWorker = null;
+      sendSkipWaiting(targetWaiting);
+      // 放宽兜底超时，避免旧 SW activate 清理缓存期间抢跑 reload 导致再次亮灯
+      setTimeout(doReload, 2500);
+      return true;
+    }
 
-      setTimeout(doReload, 450);
+    if (targetInstalling) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener?.('controllerchange', doReload, { once: true } as any);
+      }
+      const tryActivateInstalled = () => {
+        const readyWorker = ((reg as any)?.waiting as ServiceWorker | null) || targetInstalling;
+        if (readyWorker && (targetInstalling?.state === 'installed' || (reg as any)?.waiting)) {
+          sendSkipWaiting(readyWorker);
+          return true;
+        }
+        return false;
+      };
+      if (!tryActivateInstalled()) {
+        targetInstalling.addEventListener?.(
+          'statechange',
+          () => {
+            tryActivateInstalled();
+          },
+          { once: false } as any
+        );
+      }
+      setTimeout(doReload, 3000);
       return true;
     }
 
     // 保底：若无 worker 实例（如本地直连、无 sw 缓存或纯页面差异），直接刷新
+    pendingWorker = null;
+    pendingVersion = null;
     doReload();
     return true;
   } catch (e) {
@@ -311,29 +367,10 @@ export function registerServiceWorker(
       .then((reg) => {
         pendingRegistration = reg;
         const handleFoundWorker = (worker: ServiceWorker) => {
-          // 🛡️ 严禁擅自调用 SKIP_WAITING！仅暂存 waiting worker 并在设置顶部高亮提示用户手动点击更新
-          pendingWorker = worker;
-          getWorkerVersion(worker).then((ver) => {
-            if (ver) pendingVersion = ver;
-            onUpdateFound?.(ver || undefined);
-            opts.onUpdateWaiting?.(reg, ver || undefined);
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(
-                new CustomEvent('wyy:pwa-update-available', {
-                  detail: { version: pendingVersion || undefined }
-                })
-              );
-            }
-          }).catch(() => {
-            onUpdateFound?.();
-            opts.onUpdateWaiting?.(reg);
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(
-                new CustomEvent('wyy:pwa-update-available', {
-                  detail: { version: pendingVersion || undefined }
-                })
-              );
-            }
+          // 🛡️ 严禁擅自调用 SKIP_WAITING！仅对真正存在版本差异的 waiting worker 展示更新按钮
+          handleWaitingWorker(worker, opts, (ver) => {
+            onUpdateFound?.(ver);
+            opts.onUpdateWaiting?.(reg, ver);
           });
         };
 
@@ -353,10 +390,7 @@ export function registerServiceWorker(
         // 📱 熄屏或切到前台唤醒时仅静默检查是否有新版本文件（仅在非播放状态下触发，且绝不自动激活）
         if (typeof document !== 'undefined') {
           document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-              if (isPlayingNow(opts)) {
-                return;
-              }
+            if (document.visibilityState === 'visible' && !isPlayingNow(opts)) {
               reg.update().catch(() => {});
             }
           });
@@ -420,6 +454,16 @@ export async function checkForPwaUpdate(options?: {
   }
 }
 
+function syncPauseOrEndedState() {
+  setTimeout(() => {
+    const playing = isPlayingNow();
+    notifyPlaybackStateToSw(playing);
+    if (!playing && sameVersionWaitingWorker) {
+      activateSameVersionSilently(sameVersionWaitingWorker);
+    }
+  }, 150);
+}
+
 // 🎧 全局 DOM 捕获阶段监听所有原生 <audio> 播放事件，实时向 Worker 同步播放状态（绝不自动触发更新或刷新）
 if (typeof window !== 'undefined') {
   window.addEventListener(
@@ -435,10 +479,7 @@ if (typeof window !== 'undefined') {
     'pause',
     (e) => {
       if (e.target instanceof HTMLAudioElement) {
-        setTimeout(() => {
-          const playing = isPlayingNow();
-          notifyPlaybackStateToSw(playing);
-        }, 150);
+        syncPauseOrEndedState();
       }
     },
     true
@@ -447,10 +488,7 @@ if (typeof window !== 'undefined') {
     'ended',
     (e) => {
       if (e.target instanceof HTMLAudioElement) {
-        setTimeout(() => {
-          const playing = isPlayingNow();
-          notifyPlaybackStateToSw(playing);
-        }, 150);
+        syncPauseOrEndedState();
       }
     },
     true

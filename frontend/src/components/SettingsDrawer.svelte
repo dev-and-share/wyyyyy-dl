@@ -49,8 +49,11 @@
   let dragOffset = $state(0);
   let isDragging = $state(false);
   let iosKeepAliveMin = $state(getF3TimeoutMinutes());
-  let hasUpdateAvailable = $derived(globalUiState.hasPwaUpdate || hasPendingPwaUpdate());
   let pendingVer = $derived(globalUiState.pwaUpdateVersion || getPendingUpdateVersion());
+  let hasUpdateAvailable = $derived(
+    (globalUiState.hasPwaUpdate || hasPendingPwaUpdate()) &&
+    (!pendingVer || pendingVer !== `v${__APP_VERSION__}`)
+  );
   let isUpdatingVersion = $state(false);
 
   async function handleManualUpdate() {
