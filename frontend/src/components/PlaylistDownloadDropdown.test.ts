@@ -138,7 +138,8 @@ describe('PlaylistDownloadDropdown Component', () => {
     await waitFor(() => {
       expect(pwaCacheModule.cacheTrackToBrowser).toHaveBeenCalledTimes(1);
       expect(pwaCacheModule.cacheTrackToBrowser).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 101, name: 'Song A' })
+        expect.objectContaining({ id: 101, name: 'Song A' }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
   });
@@ -187,6 +188,101 @@ describe('PlaylistDownloadDropdown Component', () => {
     await waitFor(() => {
       expect(apiModule.api.downloadPlaylist).toHaveBeenCalledWith('12345');
       expect(pwaCacheModule.cacheTrackToBrowser).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('prompts confirmation when clicking progress button while caching, and continues if dismissed', async () => {
+    window.innerWidth = 1024;
+    let resolveFirst!: (val: { success: boolean; msg: string }) => void;
+    const firstPromise = new Promise<{ success: boolean; msg: string }>((r) => {
+      resolveFirst = r;
+    });
+    vi.mocked(pwaCacheModule.cacheTrackToBrowser)
+      .mockReturnValueOnce(firstPromise)
+      .mockResolvedValueOnce({ success: true, msg: 'cached' });
+
+    const onDownloadAllToPc = vi.fn();
+    const { getByTestId, getByText, queryByTestId } = render(PlaylistDownloadDropdown, {
+      props: {
+        playlistId: '12345',
+        allTracks: sampleTracks,
+        onDownloadAllToPc
+      }
+    });
+
+    await fireEvent.click(getByTestId('btn-detail-download-menu-toggle'));
+    await fireEvent.click(getByTestId('btn-cache-all-via-pc'));
+
+    await waitFor(() => {
+      expect(getByTestId('btn-detail-download-all').textContent).toContain('正在缓存 (1/2)...');
+    });
+
+    // Click progress button while caching -> should open confirm modal, NOT trigger PC download
+    await fireEvent.click(getByTestId('btn-detail-download-all'));
+    expect(onDownloadAllToPc).not.toHaveBeenCalled();
+    expect(getByText('取消浏览器离线缓存？')).toBeInTheDocument();
+    expect(getByTestId('btn-cancel-cache-continue')).toBeInTheDocument();
+
+    // Click "继续缓存" -> closes modal and lets remaining tracks finish
+    await fireEvent.click(getByTestId('btn-cancel-cache-continue'));
+    expect(queryByTestId('btn-cancel-cache-continue')).not.toBeInTheDocument();
+
+    resolveFirst({ success: true, msg: 'cached' });
+
+    await waitFor(() => {
+      expect(pwaCacheModule.cacheTrackToBrowser).toHaveBeenCalledTimes(2);
+      expect(toastModule.showToast).toHaveBeenCalledWith(
+        '浏览器离线缓存完成：成功 2 / 共 2 首',
+        'success',
+        3500
+      );
+    });
+  });
+
+  it('aborts caching and shows cancelled toast when user confirms cancellation', async () => {
+    window.innerWidth = 1024;
+    let capturedSignal: AbortSignal | undefined;
+    let rejectOnAbort!: (err: Error) => void;
+    const firstPromise = new Promise<{ success: boolean; msg: string }>((_, rej) => {
+      rejectOnAbort = rej;
+    });
+
+    vi.mocked(pwaCacheModule.cacheTrackToBrowser).mockImplementationOnce((_track, opts) => {
+      capturedSignal = opts?.signal;
+      capturedSignal?.addEventListener('abort', () => {
+        const err = new Error('Aborted');
+        err.name = 'AbortError';
+        rejectOnAbort(err);
+      });
+      return firstPromise;
+    });
+
+    const { getByTestId } = render(PlaylistDownloadDropdown, {
+      props: {
+        playlistId: '12345',
+        allTracks: sampleTracks
+      }
+    });
+
+    await fireEvent.click(getByTestId('btn-detail-download-menu-toggle'));
+    await fireEvent.click(getByTestId('btn-cache-all-via-pc'));
+
+    await waitFor(() => {
+      expect(getByTestId('btn-detail-download-all').textContent).toContain('正在缓存 (1/2)...');
+    });
+
+    await fireEvent.click(getByTestId('btn-detail-download-all'));
+    await fireEvent.click(getByTestId('btn-cancel-cache-confirm'));
+
+    await waitFor(() => {
+      expect(capturedSignal?.aborted).toBe(true);
+      expect(pwaCacheModule.cacheTrackToBrowser).toHaveBeenCalledTimes(1);
+      expect(getByTestId('btn-detail-download-all').textContent).toContain('全部下载到电脑');
+      expect(toastModule.showToast).toHaveBeenCalledWith(
+        '已取消浏览器离线缓存（已缓存 0 / 共 2 首）',
+        'info',
+        3500
+      );
     });
   });
 });

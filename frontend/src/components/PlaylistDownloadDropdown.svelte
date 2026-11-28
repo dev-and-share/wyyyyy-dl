@@ -1,5 +1,6 @@
 <script lang="ts">
   import { HardDrive, ChevronDown, Laptop, Smartphone, Loader2 } from '@lucide/svelte';
+  import Modal from './Modal.svelte';
   import { t } from '../lib/i18n';
   import { api } from '../lib/api';
   import { showToast } from '../lib/toast.svelte';
@@ -35,8 +36,10 @@
 
   let isOpen = $state(false);
   let isBatchCaching = $state(false);
+  let showCancelConfirm = $state(false);
   let cacheProgress = $state({ current: 0, total: 0 });
   let dropdownEl = $state<HTMLElement | null>(null);
+  let batchAbortController: AbortController | null = null;
 
   const btnClass = $derived(variant === 'primary' ? 'btn-primary' : 'btn-secondary');
 
@@ -103,7 +106,10 @@
   }
 
   async function handleMainDownload() {
-    if (isBatchCaching) return;
+    if (isBatchCaching) {
+      showCancelConfirm = true;
+      return;
+    }
     if (onDownloadAllToPc) {
       onDownloadAllToPc();
       return;
@@ -116,6 +122,11 @@
     } catch (e: any) {
       showToast(t('download.requestFailed', { error: e?.message || e }), 'error');
     }
+  }
+
+  function confirmCancelBatchCache() {
+    showCancelConfirm = false;
+    batchAbortController?.abort();
   }
 
   async function handleBatchCache(mode: 'pc-only' | 'all') {
@@ -156,35 +167,50 @@
       }
     }
 
+    const controller = new AbortController();
+    batchAbortController = controller;
     isBatchCaching = true;
+    showCancelConfirm = false;
     cacheProgress = { current: 0, total: targets.length };
     showToast(t('playlist.cachingBatchStart', { count: targets.length }), 'info', 2000);
 
     let successCount = 0;
     for (let i = 0; i < targets.length; i++) {
+      if (controller.signal.aborted) break;
       const track = targets[i];
       cacheProgress = { current: i + 1, total: targets.length };
       try {
         const artist = formatArtist(track);
-        const res = await cacheTrackToBrowser({
-          id: track.id,
-          name: track.name,
-          artist,
-          cover: track.al?.picUrl || DEFAULT_VINYL_COVER,
-          album: track.al?.name || track.album
-        });
+        const res = await cacheTrackToBrowser(
+          {
+            id: track.id,
+            name: track.name,
+            artist,
+            cover: track.al?.picUrl || DEFAULT_VINYL_COVER,
+            album: track.al?.name || track.album
+          },
+          { signal: controller.signal }
+        );
+        if (controller.signal.aborted) break;
         if (res.success) {
           successCount++;
         }
       } catch (err) {
-        // continue
+        if (controller.signal.aborted) break;
       }
     }
 
+    const wasCancelled = controller.signal.aborted;
+    if (batchAbortController === controller) {
+      batchAbortController = null;
+    }
     isBatchCaching = false;
+    showCancelConfirm = false;
     showToast(
-      t('playlist.cachingBatchComplete', { success: successCount, total: targets.length }),
-      successCount > 0 ? 'success' : 'warning',
+      wasCancelled
+        ? t('playlist.cachingBatchCancelled', { success: successCount, total: targets.length })
+        : t('playlist.cachingBatchComplete', { success: successCount, total: targets.length }),
+      wasCancelled ? 'info' : successCount > 0 ? 'success' : 'warning',
       3500
     );
   }
@@ -202,8 +228,7 @@
     data-testid="btn-detail-download-all"
     class="{btnClass} flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-l-xl rounded-r-none text-xs font-semibold cursor-pointer border-r-0 shrink-0"
     onclick={handleMainDownload}
-    disabled={isBatchCaching}
-    title={t('playlist.downloadAllToPc')}
+    title={isBatchCaching ? t('playlist.clickToCancelBatchCache') : t('playlist.downloadAllToPc')}
   >
     {#if isBatchCaching}
       <Loader2 size={13} class="animate-spin text-red-500" />
@@ -278,6 +303,38 @@
     </div>
   {/if}
 </div>
+
+{#if showCancelConfirm && isBatchCaching}
+  <Modal
+    title={t('playlist.cancelBatchCacheTitle')}
+    icon="⚠️"
+    maxWidth="max-w-[420px]"
+    onClose={() => { showCancelConfirm = false; }}
+  >
+    <p class="text-xs text-[var(--text-secondary)] leading-relaxed m-0">
+      {t('playlist.cancelBatchCacheDesc', { current: cacheProgress.current, total: cacheProgress.total })}
+    </p>
+
+    {#snippet footer()}
+      <button
+        type="button"
+        data-testid="btn-cancel-cache-continue"
+        class="btn-secondary px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
+        onclick={() => { showCancelConfirm = false; }}
+      >
+        {t('playlist.continueCaching')}
+      </button>
+      <button
+        type="button"
+        data-testid="btn-cancel-cache-confirm"
+        class="px-4 py-1.5 rounded-xl text-xs font-semibold cursor-pointer text-white bg-red-600 hover:bg-red-500 active:scale-95 transition-all shadow-sm border-none"
+        onclick={confirmCancelBatchCache}
+      >
+        {t('playlist.confirmCancelCaching')}
+      </button>
+    {/snippet}
+  </Modal>
+{/if}
 
 <style>
   :global(.split-primary-toggle) {

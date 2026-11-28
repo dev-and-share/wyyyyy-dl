@@ -148,6 +148,9 @@ export async function cacheTrackToBrowser(
 
   const id = String(track.id);
   try {
+    if (options?.signal?.aborted) {
+      return { success: false, msg: t('common.cancel') };
+    }
     let audioUrl = track.url;
     let songData: any = {};
 
